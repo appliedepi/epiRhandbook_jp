@@ -315,6 +315,150 @@ exponent           | 2^3
 order of operations| ( )
 
 
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Working with Dates {.tabset .tabset-fade .tabset-pills}
+
+
+## Converting date variables to the date class
+
+It is important to make R recognize when a variable contains dates. Dates are an object class and can be tricky to work with. The templates provides some code for converting variables to class date, but if your data are not standardized to a MSF data dictionary this process can require attention. **The templates often use the function `guess_dates()`, but this guide will also demonstrate converting a variable to class date using the function `as.Date()`.** 
+
+
+<!-- ======================================================= -->
+## Packages
+
+The following packages are recommended for working with dates:  
+
+```{r dates_packages}
+# Create vector of names of required packages:
+packages_dates <- c("aweek",          
+                     "lubridate",
+                     "linelist"
+                     )
+
+# Checks if package is installed, installs if necessary, and loads package for current session
+pacman::p_load(packages_dates, character.only=TRUE)
+```
+
+
+
+<!-- ======================================================= -->
+## The function `guess_dates()` 
+
+**The function `guess_dates()` attempts to read a "messy" date variable containing dates in many different formats and convert the dates to a standard format.** You can [read more about `guess_dates()`](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html), which is in the **linelist** package.
+
+>**For example:** `guess_dates` would see the following dates "03 Jan 2018", "07/03/1982", and "08/20/85" and convert them in the class Date to: 2018-01-03, 1982-03-07, and 1985-08-20.  
+```{r, eval=F}
+#guess_dates(c("03 Jan 2018", "07/03/1982", "08/20/85")) # guess_dates() not yet available for R 4.0.2
+```
+
+*Some optional arguments for `guess_dates()` that you might include are:*  
+
+* `error_tolerance` - The proportion of entries which cannot be identified as dates to be tolerated (defaults to 0.1 or 10%)
+* `last_date` - the last valid date (defaults to current date)  
+* `first_date` - the first valid date. Defaults to fifty years before the last_date.
+
+
+```{r eval=FALSE}
+# An example using guess_dates on the variable dtdeath
+linelist_cleaned$dtdeath <- linelist::guess_dates(linelist_cleaned$dtdeath)
+# An example from the template using guess_dates over multiple date variables, with piping, error tolerance of 50%, and the earliest accepted date of 1 Jan 2016.
+linelist_cleaned <- linelist_cleaned %>%
+   mutate_at(vars(matches("date|Date")), linelist::guess_dates,
+           error_tolerance = 0.5, first_date = "2016-01-01")
+```
+
+
+<!-- ======================================================= -->
+## The function `as.Date()`  
+
+If `guess_dates()` is not working for you, you can use the base function `as.Date()` to convert a variable to class Date. **`as.Date()` cannot guess dates, and therefore requires that all the date values be in the same format before converting.** [Read more about using `as.Date()` here](https://www.stat.berkeley.edu/~s133/dates.html).
+
+It can be easiest to first convert the variable to character class, and then convert to date class:  
+
+  1. Turn the variable into character values using the function `as.character()`
+```{r eval=F}
+linelist_cleaned$date_of_onset <- as.character(linelist_cleaned$date_of_onset)
+```
+  2. Convert the variable from character values into date values, using the function `as.Date()`  
+  (note the capital "D" in this function)  
+  + Within the `as.Date()` function, you must use the `format=` argument to tell R which characters are which date components - which characters refer to the month, the day, and the year. If your values are already in one of R's standard formats (YYYY-MM-DD or YYYY/MM/DD) the `format=` argument is not necessary.  
+    
+    + The codes are:  
+         %d = Day # (of the month e.g. 16, 17, 18...)  
+         %a = abbreviated weekday (Mon, Tues, Wed, etc.)  
+         %A = full weekday (Monday, Tuesday, etc.)  
+         %m = # of month (e.g. 01, 02, 03, 04)  
+         %b = abbreviated month (Jan, Feb, etc.)  
+         %B = Full Month (January, February, etc.)  
+         %y = 2-digit year  (e.g. 89)  
+         %Y = 4-digit year  (e.g. 1989)  
+
+For example, if your character dates are in the format DD/MM/YYYY, like "24/04/1968", then your command to turn the values into dates will be as below. **Putting the format in quotation marks is necessary.**  
+```{r eval=F}
+linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, format = "%d/%m/%Y")
+```
+
+{{% notice tip %}}
+**The `format=` argument is *not* telling R the format you want the dates to be, but rather how to identify the date parts as they are *before* you run the command.**
+
+Also, be sure that in the `format=` argument you use the *date-part separator* (e.g. /, -, or space) that is present in your dates.
+{{% /notice %}}
+
+
+
+
+```{r, eval=F}
+# Convert the variable to class Date by providing the format of the variable
+linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, format="%Y-%m-%d")
+# Check the class of the variable again
+class(linelist_cleaned$date_of_onset)  
+```
+Once the values are in class Date, R will present them in it's standard format, which is YYYY-MM-DD.
+
+
+<!-- ======================================================= -->
+## Excel Dates
+
+Excel stores dates as the number of days since December 30, 1899. If the dataset you imported from Excel has a date variable showing numbers like "41369"... use the `as.Date()` function to convert, but **instead of supplying a format as above, supply an origin date**. Note that the origin date must be given in the default date format for R ("YYYY-MM-DD").
+
+```{r, eval=FALSE}
+# An example of providing an origin date when converting to class Date
+linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, origin = "1899-12-30")
+```
+
+
+<!-- ======================================================= -->
+## Changing the format of displayed dates 
+
+Once dates are the correct class, you often want them to display differently. For example, "Monday 05 Jan" instead of 2018-01-05. You can do this with the function `format()` in a similar was to `as.Date()`. Read more about it [in this tutorial](https://www.statmethods.net/input/dates.html) 
+
+#### Calculating distance between dates
+
+The difference between dates can be calculated by:  
+  
+  
+1. Correctly formating *both* date variable as class date (see instructions above)  
+2. Creating a new variable that is defined as one date variable subtracted from the other
+3. Converting the result to numeric class (default is class "datediff"). This ensures that subsequent mathematical calculations can be performed.  
+
+
+<!-- ======================================================= -->
+## Epidemiological weeks  
+
+The templates use the very flexible package **aweek** to set epidemiological weeks. You can read more about it [on the RECON website](https://www.repidemicsconsortium.org/aweek/)
+
+
+<!-- ======================================================= -->
+## Dates in Epicurves 
+
+See the chapter on epicurves.
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -1544,3 +1688,221 @@ Here are links to good online resources
 
 Other resources
 
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Heatmaps {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Age pyramids {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Diagrams {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Patient flow {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Clinical trials {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Event timelines {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Age-standardization {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Making nice tables {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Transmission Chains {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Visualization {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Analysis {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Survey analysis {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Time series analysis {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Rmarkdowns {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Abberation Detection/Corridor Analysis {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# GIS {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Animated maps {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Matching/Merging datasets {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+## Probabilistic matching {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Moving averages {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## visualizing {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Epidemic modeling
+
+<!-- ======================================================= -->
+## R(t) estimatation {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Doubling time {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Epidemic projections {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Knowing R Studio {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# R projects {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# ggplot2 tips {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+## Highlighting {.tabset .tabset-fade .tabset-pills}
+gghighlight
+
+<!-- ======================================================= -->
+## Labeling {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Modeling {.tabset .tabset-fade .tabset-pills}
+Tidymodels
+
+<!-- ======================================================= -->
+## Logistic Regression {.tabset .tabset-fade .tabset-pills}
+Tidymodels
+
+<!-- ======================================================= -->
+## Multi-level modeling Regression {.tabset .tabset-fade .tabset-pills}
+Tidymodels
+
+<!-- ======================================================= -->
+## Survival analysis {.tabset .tabset-fade .tabset-pills}
+Tidymodels
+
+<!-- ======================================================= -->
+## Tables of model results {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Causal diagrams {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# R with interactive console {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Shiny basics {.tabset .tabset-fade .tabset-pills}
+Flexdashboard  
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Connecting with relational databases {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Using R on network/company drives {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Interactive plots {.tabset .tabset-fade .tabset-pills}
+plotly
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Overwriting files with R {.tabset .tabset-fade .tabset-pills}
+plotly
