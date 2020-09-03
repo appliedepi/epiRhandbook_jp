@@ -39,7 +39,6 @@ knitr::opts_chunk$set(echo = TRUE,
 
 
 
-
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -60,12 +59,27 @@ knitr::opts_chunk$set(echo = TRUE,
 * *You can click "Code" tabs on the right to see and copy code.*  
 
 
-<!-- ======================================================= -->
-## Github
+```
+FOR EXAMPLE: This is a boxed example
+
+```
+
+> **_TIP:_**  The note content.
 
 
-<!-- ======================================================= -->
-## Contributors
+<span style="color: black;">**_NOTE:_** This is a note</span>
+
+
+
+<span style="color: darkgreen;">**_TIP:_** This is a tip.</span>
+
+
+
+<span style="color: orange;">**_CAUTION:_** This is a cautionary note.</span>
+
+
+
+<span style="color: red;">**_DANGER:_** This is a warning.</span>
 
 
 <!-- ======================================================= -->
@@ -78,6 +92,32 @@ Here the datasets used in this handbook will be described and will be "downloada
 * GIS coordinates  
 * GIS shapefile  
 * modeling dataset?
+
+```{r datasets_import_silent, cache=T}
+# import linelist
+linelist_raw <- rio::import(here::here("unified", "data", "fluH7N9_China_2013.csv"))  
+
+# import aggregated case counts of disease X
+count_data <- rio::import(here::here("unified", "data", "aggregated_counts_diseaseX.xlsx"))  
+
+# import ...
+
+```
+
+
+<!-- ======================================================= -->
+## Github
+
+The latest version of this handbook lives at this [github repository](https://github.com/nsbatra/R_epi_handbook). 
+
+
+<!-- ======================================================= -->
+## Contributors
+
+Crowdsourced by these people.... a...b...c...d...  
+
+Some of this material comes from the R4Epis website, which was also made by some of the same people...
+
 
 
 <!-- ======================================================= -->
@@ -97,14 +137,12 @@ For RStudio to function you must also have R installed on the computer (see the 
 
 By default RStudio displays four rectangle panes. 
 
-```{r image_RStudio, out.width = "100%", fig.align = "center"}
+```{r basics_RStudio, out.width = "100%", fig.align = "center"}
 knitr::include_graphics(here::here("unified", "images", "RStudio_overview.png"))
 ```
 
 
-{{% notice tip %}}
-If your RStudio displays only one left pane it is because you have no scripts open yet.
-{{% /notice %}}
+<span style="color: black;">**_TIP:_** If your RStudio displays only one left pane it is because you have no scripts open yet.</span>
 
 
 **The R Console Pane**  
@@ -135,6 +173,27 @@ This pane contains the Stata equivalents of the Plots Manager and Project Manage
 Change RStudio settings and appearance in the Tools drop-down menu, by selecting Global Options
 
 
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+## Working directory {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+### Set Manually
+
+From RStudio click: Session / Set Working Directory / Choose Directory (you will have to do this each time you open RStudio)
+
+<!-- ======================================================= -->
+### Set by Command
+
+Use the command `setwd()` with the filepath in quotations, for example: `setwd("C:/Documents/R Files")`
+
+```
+NOTE: If using an R project, the working directory will default to the R project root folder IF you open RStudio by clicking open the R project (the file with .rproj extension))
+
+```
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -154,19 +213,19 @@ An object exists when you have assigned it a value (see the assignment section b
  
 **object_name**  <-  **value** (or process/calculation that produce a value)
 
-> **For example:** While using an outbreak template you may want to record the current reporting week for later reference. In this example, the object `reporting_week` is created when it is assigned the character value `"2018-W10"`. `reporting_week` will appear in the R Environment (upper-right pane) and can be referenced in later commands.
+> EXAMPLE:** While using an outbreak template you may want to record the current reporting week for later reference. In this example, the object `reporting_week` is created when it is assigned the character value `"2018-W10"`. `reporting_week` will appear in the R Environment (upper-right pane) and can be referenced in later commands.
 > See the commands and their output in the boxes below. Note the [1] in the output is simply indicating that you are viewing the first (and only) item of the output
-```{r}
+
+```{r basics_objects_assignment}
 reporting_week <- "2018-W10"   # creates the object reporting_week by assigning a value
 reporting_week                 # prints the current value of reporting_week
 ```
 
-{{% notice info %}}
-**IMPORTANT: An object's value can be over-written** at any time by running an assignment command to re-define its value. Thus, the **order of the commands run is very important**.
-{{% /notice %}}
+<span style="color: orange;">**_CAUTION:_** **An object's value can be over-written** at any time by running an assignment command to re-define its value. Thus, the **order of the commands run is very important**.</span>
 
 
-```{r}
+
+```{r basics_objects_reassignment}
 reporting_week <- "2018-W51"   # assigns a NEW value to the object reporting_week
 reporting_week                 # prints the current value of reporting_week
 ```
@@ -179,7 +238,7 @@ reporting_week                 # prints the current value of reporting_week
 
 3) `linelist_cleaned` is re-defined as itself, but mutated to include a new variable, `obs_days`, representing the number of days between patient admission and exit
 
-```{r eval=FALSE}
+```{r basics_objects_dataframes, eval=FALSE}
 # linelist_raw is created and assigned the value of the imported CSV file
 linelist_raw <- rio::import(here("linelist.csv"))
 # linelist_cleaned is created and assigned the value of linelist_raw
@@ -203,7 +262,7 @@ A quick note on naming of objects:
 Objects can be a single piece of data (e.g. `my_number <- 24`), or they can consist of structured data. The graphic below, sourced from [this online R tutorial](http://venus.ifca.unican.es/Rintro/dataStruct.html) shows some common data structures and their names. Not included in this image is spatial data, which is discussed in another page.  
 
 
-```{r image_objects, out.width = "100%", fig.align = "center"}
+```{r basics_objects_structures, out.width = "100%", fig.align = "center"}
 knitr::include_graphics(here::here("unified", "images", "R_data_structures.png"))
 ```  
 
@@ -223,7 +282,7 @@ Note that to create a vector that "stands alone", or is not part of a data frame
 
 **Vectors within a data frame (variables in a dataset) can be called or referenced using the `$` symbol.** The `$` symbol connects the name of the column to the name of its dataset. The `$` symbol must be used, otherwise R will not know where to look for or create the column.  
 
-```{r, eval=F}
+```{r basics_objects_call, eval=F}
 # Retrieve the length of the vector age_years
 # (age_years is in the data frame linelist_cleaned)
 length(linelist_cleaned$age_years)  
@@ -231,7 +290,10 @@ length(linelist_cleaned$age_years)
 
 By typing the name of the data frame followed by `$` you will also see a list of all variables in the data frame. You can scroll through them using arrow key, select one with your Enter key, and avoid spelling mistakes!  
 
-(/images/Calling_Names.gif)  
+```{r basics_objects_callGIF, out.width = "100%", fig.align = "center"}
+knitr::include_graphics(here::here("unified", "images", "Calling_Names.gif"))
+```  
+
 
 <!-- ======================================================= -->
 ### Objects have Classes  
@@ -250,7 +312,7 @@ data.frame | A data frame is how R stores a **typical dataset**. It consists of 
 
 **You can test the class of an object by writing it within the function `class()`**. Note: you can reference a specific column within a dataset using the `$` notation to separate the name of the dataset and the name of the column.
 
-```{r echo=TRUE, eval=F}
+```{r basics_objects_class, echo=TRUE, eval=F}
 class(linelist_raw$age_years)
 class(linelist_raw$patient_origin)
 ```
@@ -281,7 +343,7 @@ Most tasks in R are performed through functions. **A function is like a machine 
 
 **Functions typically operate upon some object placed within the function's parentheses**. For example, when the function `summary()` is used on a variable of class numeric, the output is a summary of the variable's numeric and missing values.
 
-```{r, eval=F}
+```{r basics_functions_summary}
 summary(linelist_raw$age_years)
 ```
 
@@ -295,13 +357,14 @@ Functions often ask for several inputs. **Each piece of information needed is ca
 
 
 
-```{r image_function, out.width = "75%", fig.align = "center"}
+```{r basics_functions_image, out.width = "75%", fig.align = "center"}
 knitr::include_graphics(here::here("unified", "images", "Function_Bread_Example.png"))
 ```
 
 
 >**For example**, this `plot_age_pyramid()` command in the templates produces an age pyramid graphic based on defined age groups and a binary split variable, such as `sex`. The function is given three arguments within the parentheses, separated by commas. The values supplied to the arguments establish `linelist_cleaned` as the data frame to use, `age_group` as the variable to count, and `sex` as the binary variable to use for splitting the pyramid.
-```{r include=FALSE, results='hide', message=FALSE, warning=FALSE, eval=F}
+
+```{r basics_functions_arguments, include=FALSE, results='hide', message=FALSE, warning=FALSE, eval=F}
 ## create an age group variable by specifying categorical breaks
 linelist_cleaned$age_group <- age_categories(linelist_cleaned$age_years, 
                                              breakers = c(0, 3, 15, 30, 45))
@@ -309,13 +372,14 @@ linelist_cleaned$age_group <- age_categories(linelist_cleaned$age_years,
 
 
 
-```{r, message=FALSE, warning=FALSE, eval=F}
+```{r basics_functions_pyramid, message=FALSE, warning=FALSE, eval=F}
 # Creates an age pyramid by specifying the dataframe, age group variable, and a variable to split the pyramid
 plot_age_pyramid(data = linelist_cleaned, age_group = "age_group", split_by = "sex")
 ```
 
 > Often, the first half of argument assignment (e.g. `data = `) does not need to be specified if the arguments are written in a specific order (specified in the function's documentation). The below code produces the exact same pyramid as above, because the function expects the argument order: data frame, `age_group` variable, `split_by` variable.  
-```{r eval = FALSE, warning=FALSE, message=FALSE, eval=F}
+
+```{r, basics_functions_pyramid2, eval = FALSE, warning=FALSE, message=FALSE, eval=F}
 # This command will produce the same table as above
 plot_age_pyramid(linelist_cleaned, "age_group", "sex")
 ```
@@ -364,7 +428,8 @@ Within the template scripts you will see the pipe operator `%>%`. Simply explain
 Piping is not a base function. To use piping, the **dplyr** package must be installed and loaded. Near the top of every template script is a code chunk that installs and loads the necessary packages, including **dplyr**. You can [read more about piping in the documentation](https://magrittr.tidyverse.org/).
 
 > **For example:** The following code chunk from the AJD template data cleaning section can be read as "`linelist_cleaned` is defined as `linelist_cleaned`, filtered to remove the rows where the variables `case_number` and `date_of_admission` are missing"  
-``` {r eval=FALSE}
+
+``` {r basics_functions_pipes, eval=FALSE}
 # only keep variables with a case ID and a date of consultation
 linelist_cleaned <- linelist_cleaned %>% 
   filter(!is.na(case_number) & !is.na(date_of_admission))
@@ -419,7 +484,7 @@ Parentheses|`( )` Used to group criteria together and clarify order
 
 For example, below, we have a linelist with two variables we want to use to create our case definition, `hep_e_rdt`, a test result and `other_cases_in_hh`, which will tell us if there are other cases in the household. The command below uses the function `case_when()` to create the new variable `case_def` such that:
 
-```{r eval=FALSE}
+```{r basics_operators_casewhen, eval=FALSE}
 linelist_cleaned <- linelist_cleaned %>%
   mutate(case_def = case_when(
     is.na(hep_e_rdt) & is.na(other_cases_in_hh)           ~ NA_character_,
@@ -448,7 +513,7 @@ Note that R is case-sensitive, so "Positive" is different than "positive"...
   
 **To test whether a value is `NA`, use the special function `is.na()`**, which returns `TRUE` or `FALSE`.
 
-```{r}
+```{r basics_operators_missing}
 rdt_result <- c("Positive", "Suspected", "Positive", NA)   # two positive cases, one suspected, and one unknown
 is.na(rdt_result)  # Tests whether the value of rdt_result is NA
 ```
@@ -599,7 +664,11 @@ linelist_raw <- rio::import(here("data", "linelists", "linelist.xlsx"), which = 
 <!-- ======================================================= -->
 ## Select manually {.tabset .tabset-fade .tabset-pills}
 
-You can also use the *base R* command `file.choose()` (leaving the parentheses empty) to trigger appearance of a pop-up window that allows the user to manually select a file from their computer. For example:  
+You can import data manually by either:  
+
+1) Environment RStudio Pane, click "Import Dataset", and select the type of data 
+2) Click File / Import Dataset / (select the type of data)  
+3) You can also use the *base R* command `file.choose()` (leaving the parentheses empty) to trigger appearance of a pop-up window that allows the user to manually select a file from their computer. For example:  
 
 ```{r import_choose, eval=F}
 # A demonstration showing manual selection of a file. When this command is run, a pop-up window should appear. 
@@ -670,8 +739,7 @@ DT::datatable(manual_entry_cols)
 Use the `tribble` function from the **tibble** package from the tidverse.  
 https://tibble.tidyverse.org/reference/tribble.html  
 Note that each column must contain only one kind of data (character, numeric, etc.). You can create a list column, however (see documentation)
-
-For example:  
+You can use tabs and spacing to make the data entry more intuitive and readable. For example:  
 
 ```{r import_manual_row}
 # create the dataset manually by row
@@ -691,7 +759,7 @@ DT::datatable(manual_entry_rows)
 ```
 
 
-### Pasting from clipboard  
+#### Pasting from clipboard  
 
 
 x <- read.table(file = "clipboard", sep = "t", header=TRUE)
@@ -852,9 +920,39 @@ See the chapter on epicurves.
 <!-- ======================================================= -->
 # Cleaning data {.tabset .tabset-fade .tabset-pills}
 
-Suggest using piping (magrittr/tidyverse)
+Text about cleaning data, approaches, etc.
+
+<!-- ======================================================= -->
+## Packages {.tabset .tabset-fade .tabset-pills}
+
+```{r, clean_packages}
+pacman::p_load(tidyverse, janitor, epitrix)
+```
+
+<!-- ======================================================= -->
+## Clean Variable Names {.tabset .tabset-fade .tabset-pills}
+
+Variable names are used so often, it is best to have them be "clean" (no spaces, no unusual characters, etc.)  
+
+The function `clean_names()` from the package **janitor** is very useful. 
+
+https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#cleaning
 
 
+```{r clean_names}
+linelist <- linelist_raw %>% 
+  janitor::clean_names()
+```
+
+<!-- ======================================================= -->
+## Classes {.tabset .tabset-fade .tabset-pills}
+
+See section on [object classes](#Objects)
+
+```{r}
+linelist <- linelist_raw %>% 
+  mutate(age = as.numeric(age))
+```
 
 <!-- ======================================================= -->
 ## Creating new variables {.tabset .tabset-fade .tabset-pills}
@@ -914,13 +1012,86 @@ Tidyverse - grouping by values
 <!-- ======================================================= -->
 # Descriptive analyses {.tabset .tabset-fade .tabset-pills}
 
-desriptive statistics and tables
-Mean, median, mode, percentiles, 
-measures of central tendency
-word clouds
+<!-- ======================================================= -->
+# Summary Statistics {.tabset .tabset-fade .tabset-pills}
+
+**Summary of *numeric* variable**
+```{r descriptive_summary}
+summary(linelist$age)
+```
 
 
 
+**Mean**
+Note the argument na.rm=T, which removes missing values from the calculation.  
+If missing values are not excluded, the returned value will be NA (missing).
+```{r descriptive_mean}
+mean(linelist$age)
+mean(linelist$age, na.rm=TRUE)  # with the na.rm= argument set to TRUE
+```
+
+
+**Median**
+Note the argument na.rm=T, which removes missing values from the calculation.  
+If missing values are not excluded, the returned value will be NA (missing).
+```{r descriptive_median}
+median(linelist$age)
+median(linelist$age, na.rm=TRUE)  # with the na.rm= argument set to TRUE
+```
+
+
+**Range**
+Note the argument na.rm=T, which removes missing values from the calculation.  
+If missing values are not excluded, the returned value will be NA (missing).
+```{r descriptive_range}
+range(linelist$age)
+range(linelist$age, na.rm=TRUE)  # with the na.rm= argument set to TRUE
+```
+
+
+
+**Standard Deviation**
+Note the argument na.rm=T, which removes missing values from the calculation.  
+If missing values are not excluded, the returned value will be NA (missing).
+```{r descriptive_std}
+sd(linelist$age)
+sd(linelist$age, na.rm=TRUE)  # with the na.rm= argument set to TRUE
+```
+
+
+**Percentile**
+Note the argument na.rm=T, which removes missing values from the calculation.  
+If missing values are not excluded, the returned value will be NA (missing).
+```{r descriptive_pctile}
+stats::quantile(linelist$age, na.rm=TRUE)  # default %iles
+stats::quantile(linelist$age, probs = c(.05, 0.5, 0.75, 0.98), na.rm=TRUE) # percentiles specified
+```
+
+
+<!-- ======================================================= -->
+# Visualization {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+# Scatterplots {.tabset .tabset-fade .tabset-pills}
+
+plot(linelist$age)
+
+
+<!-- ======================================================= -->
+# Boxplots {.tabset .tabset-fade .tabset-pills}
+
+These can be created simply, or with **ggplot2**  
+
+```{r descriptive_box}
+graphics::boxplot(age ~ gender, data = linelist)
+```
+
+
+```{r descriptive_box_gg}
+ggplot(data = linelist, aes(y = age))+
+  geom_boxplot()
+```
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
