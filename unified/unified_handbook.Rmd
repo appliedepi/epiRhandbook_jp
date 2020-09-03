@@ -47,7 +47,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 
 <!-- ======================================================= -->
-## How to read this page
+## How to read this
   
 **Please note:**  
 
@@ -61,15 +61,444 @@ knitr::opts_chunk$set(echo = TRUE,
 
 
 <!-- ======================================================= -->
+## Github
+
+
+<!-- ======================================================= -->
+## Contributors
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# R Basics {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## RStudio Orientation {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+### Open RStudio {.tabset .tabset-fade .tabset-pills}
+**First, open RStudio.** As their icons can look very similar, be sure you are opening *RStudio* and not R.  
+
+
+For RStudio to function you must also have R installed on the computer (see the FAQ page for installation instructions). RStudio is an interface (GUI) for easier use of R. You can think of R as being the engine of a vehicle, doing the crucial work, and RStudio as the body of the vehicle (with seats, accessories, etc.) that helps you actually use the engine to move forward!\  
+
+By default RStudio displays four rectangle panes. 
+
+(/images/RStudio_overview.PNG)
+
+
+{{% notice tip %}}
+If your RStudio displays only one left pane it is because you have no scripts open yet.
+{{% /notice %}}
+
+
+**The R Console Pane**  
+
+The R Console, by default the left or lower-left pane in R Studio, is the home of the R "engine". This is where the commands are actually run and non-graphic outputs and error/warning messages appear. You can directly enter and run commands in the R Console, but realize that these commands are not saved as they are when running commands from a script.  
+
+If you are familiar with Stata, the R Console is like the Command Window and also the Results Window.
+
+**The Source Pane**  
+This pane, by default in the upper-left, is space to edit and run your scripts, including the RMarkdown outbreak and survey templates. This pane can also display datasets (data frames) for viewing.  
+
+For Stata users, this pane is similar to your Do-file and Data Editor windows.
+
+
+**The Environment Pane**  
+This pane, by default the upper-right, is most often used to see brief summaries of objects in the R Environment in the current session. These objects could include imported, modified, or created datasets, parameters you have defined (e.g. a specific epi week for the analysis), or vectors or lists you have defined during analysis (e.g. names of regions). Click on the arrow next to a dataframe name to see its variables.  
+
+In Stata, this is most similar to Variables Manager window.
+
+
+**Plots, Packages, and Help Pane**  
+The lower-right pane includes several tabs including plots (display of graphics including maps), help, a file library, and available R packages (including installation/update options).  
+
+This pane contains the Stata equivalents of the Plots Manager and Project Manager windows.
+
+<!-- ======================================================= -->
+### Changing your RStudio settings  
+Change RStudio settings and appearance in the Tools drop-down menu, by selecting Global Options
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+## Objects {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+### Everything is an object 
+
+Everything you store in R - datasets, variables, a list of village names, a total population number, even outputs such as graphs - are **objects** which are **assigned a name** and **can be referenced** in later commands.  
+
+An object exists when you have assigned it a value (see the assignment section below). When it is assigned a value, the object appears in the Environment (see the upper right pane of RStudio). It can then be operated upon, manipulated, changed, and re-defined.
+
+### Creating objects with the Assignment Operator (`<-`)
+
+**You create objects *by assigning them a value* with the <- operator.** You can think of the assignment operator `<-` as the words "is defined as". Assignment commands generally follow a standard order:  
+  
+ 
+**object_name**  <-  **value** (or process/calculation that produce a value)
+
+> **For example:** While using an outbreak template you may want to record the current reporting week for later reference. In this example, the object `reporting_week` is created when it is assigned the character value `"2018-W10"`. `reporting_week` will appear in the R Environment (upper-right pane) and can be referenced in later commands.
+> See the commands and their output in the boxes below. Note the [1] in the output is simply indicating that you are viewing the first (and only) item of the output
+```{r}
+reporting_week <- "2018-W10"   # creates the object reporting_week by assigning a value
+reporting_week                 # prints the current value of reporting_week
+```
+
+{{% notice info %}}
+**IMPORTANT: An object's value can be over-written** at any time by running an assignment command to re-define its value. Thus, the **order of the commands run is very important**.
+{{% /notice %}}
+
+
+```{r}
+reporting_week <- "2018-W51"   # assigns a NEW value to the object reporting_week
+reporting_week                 # prints the current value of reporting_week
+```
+
+**Datasets are also assigned names and defined as objects when they are imported.** In the code below:  
+
+1) The object `linelist_raw` is created and assigned the value of an imported CSV file  
+
+2) The object `linelist_cleaned` is created and assigned the value of `linelist_raw`  
+
+3) `linelist_cleaned` is re-defined as itself, but mutated to include a new variable, `obs_days`, representing the number of days between patient admission and exit
+
+```{r eval=FALSE}
+# linelist_raw is created and assigned the value of the imported CSV file
+linelist_raw <- rio::import(here("linelist.csv"))
+# linelist_cleaned is created and assigned the value of linelist_raw
+linelist_cleaned <- linelist_raw
+# linelist_cleaned is RE-defined as itself, but modified to include a new variable
+linelist_cleaned <- mutate(linelist_cleaned, 
+                           obs_days = as.numeric(date_of_exit - date_of_admission))
+```
+
+You can read more about importing and exporting datasets with the **rio** package [in this vignette](https://rdrr.io/cran/rio/f/vignettes/rio.Rmd)
+
+A quick note on naming of objects:
+
+  * Object names must not contain spaces, but you should use underscore (_) or a period (.) instead of a space.  
+  * Object names are case-sensitive (meaning that Dataset_A is different from dataset_A). 
+  * Object names must begin with a letter (cannot begin with a number like 1, 2 or 3).  
+
+<!-- ======================================================= -->
+### Objects can have Structure  
+
+Objects can be a single piece of data (e.g. `my_number <- 24`), or they can consist of structured data. The graphic below, sourced from [this online R tutorial](http://venus.ifca.unican.es/Rintro/dataStruct.html) shows some common data structures and their names. Not included in this image is spatial data, which is discussed in another page.  
+
+(/images/r_data_structures.png)  
+
+Using the templates, you will *most commonly* encounter data frames and vectors:  
+
+
+Common structure | Explanation | Example from templates
+------------------- | ------------------------------------ | ------------------------  
+Vectors | A container for a sequence of singular objects, all of the same class (e.g. numeric, character). | **"Variables" (columns) in data frames are vectors** (e.g. the variable `age_years`).  
+Data Frames | Vectors (e.g. columns) that are bound together that all have the same number of rows. | `linelist_raw` and `linelist_cleaned` are both data frames.  
+
+Note that to create a vector that "stands alone", or is not part of a data frame (such as a list of location names), the function `c()` is often used:  
+`list_of_names <- c("Ruhengeri", "Gisenyi", "Kigali", "Butare")`  
+
+<!-- ======================================================= -->
+### Using `$` to access/call variables  
+
+**Vectors within a data frame (variables in a dataset) can be called or referenced using the `$` symbol.** The `$` symbol connects the name of the column to the name of its dataset. The `$` symbol must be used, otherwise R will not know where to look for or create the column.  
+
+```{r, eval=F}
+# Retrieve the length of the vector age_years
+# (age_years is in the data frame linelist_cleaned)
+length(linelist_cleaned$age_years)  
+```
+
+By typing the name of the data frame followed by `$` you will also see a list of all variables in the data frame. You can scroll through them using arrow key, select one with your Enter key, and avoid spelling mistakes!  
+
+(/images/Calling_Names.gif)  
+
+<!-- ======================================================= -->
+### Objects have Classes  
+
+All the objects stored in R have a *class* which tells R how to handle the object. There are many possible classes, but common ones include:
+
+Class |	Explanation | Examples
+------ | ------------------------------------------ |  -----------------------------
+Character	| These are text/words/sentences **"within quotation marks"**. Math cannot be done on these objects.	| "Character objects are in quotation marks"  
+Numeric	| These are numbers and **can include decimals**. If within quotation marks the will be considered character. | 23.1 or 14  
+Integer | Numbers that are **whole only** (no decimals) | -5, 14, or 2000  
+Factor | These are vectors that have a **specified order** or hierarchy of values | Variable `msf_involvement` with ordered values N, S, SUB, and U.  
+Date | **Once R is told that certain data are Dates**, these data can be manipulated and displayed in special ways. See the page on Dates for more information. | 2018-04-12 or 15/3/1954 or Wed 4 Jan 1980  
+Logical | Values must be one of the two special values TRUE or FALSE (note these are **not** "TRUE" and "FALSE" in quotation marks) | TRUE or FALSE  
+data.frame | A data frame is how R stores a **typical dataset**. It consists of vectors (columns) of data bound together, that all have the same number of observations (rows). | The example AJS dataset named `linelist_raw` contains 68 variables with 300 observations (rows) each.  
+
+**You can test the class of an object by writing it within the function `class()`**. Note: you can reference a specific column within a dataset using the `$` notation to separate the name of the dataset and the name of the column.
+
+```{r echo=TRUE, eval=F}
+class(linelist_raw$age_years)
+class(linelist_raw$patient_origin)
+```
+
+The templates sometimes contain code converting objects between classes.
+
+Function | Action  
+----------------- | --------------------------------------------------------------    
+`as.character()` | Converts to character class  
+`as.numeric()` | Converts to numeric class  
+`as.integer()` | Converts to integer class
+`as.Date()` | Converts to Date class - Note: see section on dates for details  
+`as.factor()` | Converts to factor - Note: re-defining order of value levels requires extra arguments
+
+Here is [more material on classes and data structures in R](https://swcarpentry.github.io/r-novice-inflammation/13-supp-data-structures/).
+
+
+
+
+
+<!-- ======================================================= -->
+## Functions {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+### Simple Functions  
+
+Most tasks in R are performed through functions. **A function is like a machine that receives inputs, does some action with those inputs, and produces an output.** What the output is depends on the function.  
+
+**Functions typically operate upon some object placed within the function's parentheses**. For example, when the function `summary()` is used on a variable of class numeric, the output is a summary of the variable's numeric and missing values.
+
+```{r, eval=F}
+summary(linelist_raw$age_years)
+```
+
+
+On installation, R contains "base" functions that perform common tasks. Specialized functions have been created by R users, verified by the R community, and can be downloaded within "packages" to your RStudio for use. One of the more challenging aspects of R is that there are often many functions to choose from to complete a given task.  
+
+<!-- ======================================================= -->
+### Functions with Multiple Arguments  
+
+Functions often ask for several inputs. **Each piece of information needed is called an argument**. Some arguments are required for the function to work correctly, some are optional. Arguments can take character, numeric, logical (TRUE/FALSE), and other inputs. Optional arguments have default settings if they are not specified. **Arguments are located within the parentheses of the function, usually separated by commas**.  
+
+
+(/images/Function_Bread_Example.png)  
+
+
+>**For example**, this `plot_age_pyramid()` command in the templates produces an age pyramid graphic based on defined age groups and a binary split variable, such as `sex`. The function is given three arguments within the parentheses, separated by commas. The values supplied to the arguments establish `linelist_cleaned` as the data frame to use, `age_group` as the variable to count, and `sex` as the binary variable to use for splitting the pyramid.
+```{r include=FALSE, results='hide', message=FALSE, warning=FALSE, eval=F}
+## create an age group variable by specifying categorical breaks
+linelist_cleaned$age_group <- age_categories(linelist_cleaned$age_years, 
+                                             breakers = c(0, 3, 15, 30, 45))
+```
+
+
+
+```{r, message=FALSE, warning=FALSE, eval=F}
+# Creates an age pyramid by specifying the dataframe, age group variable, and a variable to split the pyramid
+plot_age_pyramid(data = linelist_cleaned, age_group = "age_group", split_by = "sex")
+```
+
+> Often, the first half of argument assignment (e.g. `data = `) does not need to be specified if the arguments are written in a specific order (specified in the function's documentation). The below code produces the exact same pyramid as above, because the function expects the argument order: data frame, `age_group` variable, `split_by` variable.  
+```{r eval = FALSE, warning=FALSE, message=FALSE, eval=F}
+# This command will produce the same table as above
+plot_age_pyramid(linelist_cleaned, "age_group", "sex")
+```
+
+**A more complex plot_age_pyramid command might include the optional arguments to:**  
+
+* Show proportions instead of counts (set `proportional = TRUE` when the default is `FALSE`)  
+* Specify the two colors to use (`pal = ` is short for "palette" and is supplied with a vector of two color names. See the Objects page for how the function `c()` makes a vector)  
+
+
+{{% notice tip %}}
+For arguments specified with an equals symbol (e.g. `coltotals = ...`), their order among the arguments is not important (must still be within the parentheses and separated by commas).
+{{% /notice %}}
+
+
+```{r message=FALSE, warning=FALSE, eval=F}
+plot_age_pyramid(linelist_cleaned, "age_group", "sex", proportional = TRUE, pal = c("orange", "purple"))
+```
+
+<!-- ======================================================= -->
+### Packages & Functions  
+
+R comes with "base" functions, but the R community has created and verified many other specialized functions that are available to you. These *functions* are contained within **packages** that can be downloaded to your computer. Once downloaded, you access the functions within a package by calling the package with the `library()` command at the beginning of each R session.
+
+{{% notice tip %}}
+**While you only have to install packages once, you must load them at the beginning of every R session using `library()`.** There is a code chunk at the beginning of each template that loads the necessary packages. 
+{{% /notice %}}
+
+Think of R as your personal library: When you download a package your library gains a book of functions, but each time you want to use a function in that book, you must borrow that book from your library.  
+
+For clarity in the templates, functions are often preceeded by the name of their package using the `::` symbol in the following way:  
+
+`package_name::function_name()`
+ 
+```{r eval=FALSE}
+#This line uses the package "rio"" and it's function "import" to import a dataset
+linelist_raw <- rio::import("linelist.xlsx", which = "Sheet1")
+```
+
+
+<!-- ======================================================= -->
+### The Pipe Operator (`%>%`) 
+
+Within the template scripts you will see the pipe operator `%>%`. Simply explained, the pipe operator passes an intermediate output from one function to the next. You can think of it as saying "then". Many functions can be linked together with `%>%`.  
+
+Piping is not a base function. To use piping, the **dplyr** package must be installed and loaded. Near the top of every template script is a code chunk that installs and loads the necessary packages, including **dplyr**. You can [read more about piping in the documentation](https://magrittr.tidyverse.org/).
+
+> **For example:** The following code chunk from the AJD template data cleaning section can be read as "`linelist_cleaned` is defined as `linelist_cleaned`, filtered to remove the rows where the variables `case_number` and `date_of_admission` are missing"  
+``` {r eval=FALSE}
+# only keep variables with a case ID and a date of consultation
+linelist_cleaned <- linelist_cleaned %>% 
+  filter(!is.na(case_number) & !is.na(date_of_admission))
+```
+
+{{% notice tip %}}
+**Remember that even when using piping to link functions, if the assignment operator (`<-`) is present, the object to the left will still be over-written (re-defined) by the right side.** In the code above, linelist_cleaned will be replaced by the new `linelist_cleaned` which likely has fewer observations.  
+{{% /notice %}}
+
+<!-- ======================================================= -->
+### Help & Documentation  
+
+To read more about a function, you can try searching online for resources OR use the Help tab in the lower-right R pane.  
+
+(/images/Function_Help.gif)
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+## Operators {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+### `%in%`
+
+<!-- ======================================================= -->
+### Relational and logical operators  
+
+**Relational operators compare values** and are often used when defining new variables and subsets of datasets. Here are the common relational operators in R:  
+
+Function                |Operator     |Example       |Example Result
+------------------------|-------------|--------------|---------------------------
+Equal to                |`==`         |`"A" == "a"`  |`FALSE` (because R is case sensitive) *Note that == (double equals) is different from = (single equals), which acts like the assignment operator `<-`*
+Not equal to            |`!=`         |`2 != 0`      |`TRUE`
+Greater than            |`>`          |`4 > 2`       |`TRUE`
+Less than               |`<`          |`4 < 2`       |`FALSE`
+Greater than or equal to|`>=`         |`6 >= 4`      |`TRUE`
+Less than or equal to   |`<=`         |`6 <= 4`      |`FALSE`
+Value is missing        |`is.na()`    |`is.na(7)`    |`FALSE` (see section on missing values)
+Value is not missing    |`!is.na()`   |`!is.na(7)`   |`TRUE`
+
+**Logical operators, such as AND and OR, are often used to connect relational operators and create more complicated criteria**. Complex statements might require parentheses ( ) for grouping and order of application.  
+
+Function   |Operator
+-----------|------------------------
+AND        |`&`
+OR         |`|` (vertical bar)
+Parentheses|`( )` Used to group criteria together and clarify order
+
+
+For example, below, we have a linelist with two variables we want to use to create our case definition, `hep_e_rdt`, a test result and `other_cases_in_hh`, which will tell us if there are other cases in the household. The command below uses the function `case_when()` to create the new variable `case_def` such that:
+
+```{r eval=FALSE}
+linelist_cleaned <- linelist_cleaned %>%
+  mutate(case_def = case_when(
+    is.na(hep_e_rdt) & is.na(other_cases_in_hh)           ~ NA_character_,
+    hep_e_rdt == "Positive"                               ~ "Confirmed",
+    hep_e_rdt != "Positive" & other_cases_in_hh == "Yes"  ~ "Probable",
+    TRUE                                                  ~ "Suspected"
+  ))
+```
+
+Criteria in example above               | Resulting value in new variable "case_def"
+----------------------------------------|-------------------------------------
+If the value for variables `hep_e_rdt` and `other_cases_in_hh` are missing | `NA` (missing)  
+If the value in `hep_e_rdt` is "Positive" | "Confirmed"  
+If the value in `hep_e_rdt` is NOT "Positive" AND the value in `other_cases_in_hh` is "Yes" | "Probable"  
+If one of the above criteria are not met | "Suspected"  
+
+
+{{% notice tip %}}
+Note that R is case-sensitive, so "Positive" is different than "positive"...
+{{% /notice %}}
+ 
+<!-- ======================================================= -->
+### Missing Values
+
+**In R, missing values are represented by the special value `NA`** (capital letters N and A - not in quotation marks). If you import data that records missing data in another way (e.g. 99, "Missing", or .), you may want to re-code those values to `NA`.
+  
+**To test whether a value is `NA`, use the special function `is.na()`**, which returns `TRUE` or `FALSE`.
+
+```{r}
+rdt_result <- c("Positive", "Suspected", "Positive", NA)   # two positive cases, one suspected, and one unknown
+is.na(rdt_result)  # Tests whether the value of rdt_result is NA
+```
+
+<!-- ======================================================= -->
+### Mathematical operators  
+
+Mathematical operators are often used to perform addition, division, to create new columns, etc. Below are common mathematical operators in R. Whether you put spaces around the operators is not important.  
+
+Objective          |Example in R
+-------------------|-------------
+addition           | 2 + 3
+subtraction        | 2 - 3
+multiplication     | 2 * 3
+division           | 30 / 5
+exponent           | 2^3
+order of operations| ( )
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+## Errors & Warnings {.tabset .tabset-fade .tabset-pills}
+
+
+<!-- ======================================================= -->
+### General Syntax
+
+A few things to remember when writing commands in R, to avoid errors and warnings:  
+
+* Always close parentheses - tip: count the number of opening "(" and closing parentheses ")" for each code chunk
+* Avoid spaces in column and object names. Use underscore ( _ ) or periods ( . ) instead
+* Keep track of and remember to separate a function's arguments with commas
+* R is case-sensitive, meaning `Variable_A` is *different* from `variable_A`
+
+<!-- ======================================================= -->
+### Code assists  
+
+Any script (RMarkdown or otherwise) will give clues when you have made a mistake. For example, if you forgot to write a comma where it is needed, or to close a parentheses, RStudio will raise a flag on that line, on the right side of the script, to warn you.  
+
+(/images/Warnings_and_Errors.png)
+
+<!-- ======================================================= -->
+### Errors and Warnings  
+
+When a command is run, the R Console may show you warning or error messages in red text.  
+
+* A **warning** means that R has completed your command, but had to take additional steps or produced unusual output that you should be aware of.  
+
+* An **error** means that R was not able to complete your command.  
+
+Look for clues: 
+
+* The error/warning message will often include a line number for the problem.  
+
+* If an object "is unknown" or "not found", perhaps you spelled it incorrectly, forgot to call a package with library(), or forgot to re-run your script after making changes.  
+
+If all else fails, copy the error message into Google along with some key terms - chances are that someone else has worked through this already!
+
+
+
+<!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Importing data {.tabset .tabset-fade .tabset-pills}
 
 
-
-
 <!-- ======================================================= -->
-## Importing data {.tabset .tabset-fade .tabset-pills}
+## `import()` {.tabset .tabset-fade .tabset-pills}
 
 When you import a dataset, you are doing the following:  
 
@@ -140,7 +569,7 @@ my_data <- rio::import(file.choose())
 
 
 <!-- ======================================================= -->
-## Relative filepaths (the *here* package) {.tabset .tabset-fade .tabset-pills}
+## Relative filepaths {.tabset .tabset-fade .tabset-pills}
 
 However, `import()` needs to be told where to look on your computer to find the file. Therefore, we have wrapped `import()` around the function `here()`. 
 
@@ -168,7 +597,7 @@ linelist_raw <- rio::import(here("data", "linelists", "linelist.xlsx"), which = 
 
 
 <!-- ======================================================= -->
-## Manual entry of data {.tabset .tabset-fade .tabset-pills}
+## Manual data entry {.tabset .tabset-fade .tabset-pills}
 
 ### Typing in data  
 You can enter data by columns or by rows:  
@@ -230,90 +659,6 @@ x
 
 
 
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-# Helpful operators {.tabset .tabset-fade .tabset-pills}
-
-
-<!-- ======================================================= -->
-## `%in%`
-
-<!-- ======================================================= -->
-## Relational and logical operators  
-
-**Relational operators compare values** and are often used when defining new variables and subsets of datasets. Here are the common relational operators in R:  
-
-Function                |Operator     |Example       |Example Result
-------------------------|-------------|--------------|---------------------------
-Equal to                |`==`         |`"A" == "a"`  |`FALSE` (because R is case sensitive) *Note that == (double equals) is different from = (single equals), which acts like the assignment operator `<-`*
-Not equal to            |`!=`         |`2 != 0`      |`TRUE`
-Greater than            |`>`          |`4 > 2`       |`TRUE`
-Less than               |`<`          |`4 < 2`       |`FALSE`
-Greater than or equal to|`>=`         |`6 >= 4`      |`TRUE`
-Less than or equal to   |`<=`         |`6 <= 4`      |`FALSE`
-Value is missing        |`is.na()`    |`is.na(7)`    |`FALSE` (see section on missing values)
-Value is not missing    |`!is.na()`   |`!is.na(7)`   |`TRUE`
-
-**Logical operators, such as AND and OR, are often used to connect relational operators and create more complicated criteria**. Complex statements might require parentheses ( ) for grouping and order of application.  
-
-Function   |Operator
------------|------------------------
-AND        |`&`
-OR         |`|` (vertical bar)
-Parentheses|`( )` Used to group criteria together and clarify order
-
-
-For example, below, we have a linelist with two variables we want to use to create our case definition, `hep_e_rdt`, a test result and `other_cases_in_hh`, which will tell us if there are other cases in the household. The command below uses the function `case_when()` to create the new variable `case_def` such that:
-
-```{r eval=FALSE}
-linelist_cleaned <- linelist_cleaned %>%
-  mutate(case_def = case_when(
-    is.na(hep_e_rdt) & is.na(other_cases_in_hh)           ~ NA_character_,
-    hep_e_rdt == "Positive"                               ~ "Confirmed",
-    hep_e_rdt != "Positive" & other_cases_in_hh == "Yes"  ~ "Probable",
-    TRUE                                                  ~ "Suspected"
-  ))
-```
-
-Criteria in example above               | Resulting value in new variable "case_def"
-----------------------------------------|-------------------------------------
-If the value for variables `hep_e_rdt` and `other_cases_in_hh` are missing | `NA` (missing)  
-If the value in `hep_e_rdt` is "Positive" | "Confirmed"  
-If the value in `hep_e_rdt` is NOT "Positive" AND the value in `other_cases_in_hh` is "Yes" | "Probable"  
-If one of the above criteria are not met | "Suspected"  
-
-
-{{% notice tip %}}
-Note that R is case-sensitive, so "Positive" is different than "positive"...
-{{% /notice %}}
- 
-<!-- ======================================================= -->
-## Missing Values
-
-**In R, missing values are represented by the special value `NA`** (capital letters N and A - not in quotation marks). If you import data that records missing data in another way (e.g. 99, "Missing", or .), you may want to re-code those values to `NA`.
-  
-**To test whether a value is `NA`, use the special function `is.na()`**, which returns `TRUE` or `FALSE`.
-
-```{r}
-rdt_result <- c("Positive", "Suspected", "Positive", NA)   # two positive cases, one suspected, and one unknown
-is.na(rdt_result)  # Tests whether the value of rdt_result is NA
-```
-
-<!-- ======================================================= -->
-## Mathematical operators  
-
-Mathematical operators are often used to perform addition, division, to create new columns, etc. Below are common mathematical operators in R. Whether you put spaces around the operators is not important.  
-
-Objective          |Example in R
--------------------|-------------
-addition           | 2 + 3
-subtraction        | 2 - 3
-multiplication     | 2 * 3
-division           | 30 / 5
-exponent           | 2^3
-order of operations| ( )
-
 
 
 <!-- ======================================================= -->
@@ -335,8 +680,9 @@ The following packages are recommended for working with dates:
 ```{r dates_packages}
 # Create vector of names of required packages:
 packages_dates <- c("aweek",          
-                     "lubridate",
-                     "linelist"
+                    "lubridate",
+                    "linelist",
+                    "ISOweek"
                      )
 
 # Checks if package is installed, installs if necessary, and loads package for current session
@@ -346,34 +692,7 @@ pacman::p_load(packages_dates, character.only=TRUE)
 
 
 <!-- ======================================================= -->
-## The function `guess_dates()` 
-
-**The function `guess_dates()` attempts to read a "messy" date variable containing dates in many different formats and convert the dates to a standard format.** You can [read more about `guess_dates()`](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html), which is in the **linelist** package.
-
->**For example:** `guess_dates` would see the following dates "03 Jan 2018", "07/03/1982", and "08/20/85" and convert them in the class Date to: 2018-01-03, 1982-03-07, and 1985-08-20.  
-```{r, eval=F}
-#guess_dates(c("03 Jan 2018", "07/03/1982", "08/20/85")) # guess_dates() not yet available for R 4.0.2
-```
-
-*Some optional arguments for `guess_dates()` that you might include are:*  
-
-* `error_tolerance` - The proportion of entries which cannot be identified as dates to be tolerated (defaults to 0.1 or 10%)
-* `last_date` - the last valid date (defaults to current date)  
-* `first_date` - the first valid date. Defaults to fifty years before the last_date.
-
-
-```{r eval=FALSE}
-# An example using guess_dates on the variable dtdeath
-linelist_cleaned$dtdeath <- linelist::guess_dates(linelist_cleaned$dtdeath)
-# An example from the template using guess_dates over multiple date variables, with piping, error tolerance of 50%, and the earliest accepted date of 1 Jan 2016.
-linelist_cleaned <- linelist_cleaned %>%
-   mutate_at(vars(matches("date|Date")), linelist::guess_dates,
-           error_tolerance = 0.5, first_date = "2016-01-01")
-```
-
-
-<!-- ======================================================= -->
-## The function `as.Date()`  
+## `as.Date()`  
 
 If `guess_dates()` is not working for you, you can use the base function `as.Date()` to convert a variable to class Date. **`as.Date()` cannot guess dates, and therefore requires that all the date values be in the same format before converting.** [Read more about using `as.Date()` here](https://www.stat.berkeley.edu/~s133/dates.html).
 
@@ -418,6 +737,34 @@ linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, format
 class(linelist_cleaned$date_of_onset)  
 ```
 Once the values are in class Date, R will present them in it's standard format, which is YYYY-MM-DD.
+
+
+
+<!-- ======================================================= -->
+## `guess_dates()` 
+
+**The function `guess_dates()` attempts to read a "messy" date variable containing dates in many different formats and convert the dates to a standard format.** You can [read more about `guess_dates()`](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html), which is in the **linelist** package.
+
+>**For example:** `guess_dates` would see the following dates "03 Jan 2018", "07/03/1982", and "08/20/85" and convert them in the class Date to: 2018-01-03, 1982-03-07, and 1985-08-20.  
+```{r, eval=F}
+#guess_dates(c("03 Jan 2018", "07/03/1982", "08/20/85")) # guess_dates() not yet available for R 4.0.2
+```
+
+*Some optional arguments for `guess_dates()` that you might include are:*  
+
+* `error_tolerance` - The proportion of entries which cannot be identified as dates to be tolerated (defaults to 0.1 or 10%)
+* `last_date` - the last valid date (defaults to current date)  
+* `first_date` - the first valid date. Defaults to fifty years before the last_date.
+
+
+```{r eval=FALSE}
+# An example using guess_dates on the variable dtdeath
+linelist_cleaned$dtdeath <- linelist::guess_dates(linelist_cleaned$dtdeath)
+# An example from the template using guess_dates over multiple date variables, with piping, error tolerance of 50%, and the earliest accepted date of 1 Jan 2016.
+linelist_cleaned <- linelist_cleaned %>%
+   mutate_at(vars(matches("date|Date")), linelist::guess_dates,
+           error_tolerance = 0.5, first_date = "2016-01-01")
+```
 
 
 <!-- ======================================================= -->
@@ -492,18 +839,16 @@ Suggest using piping (magrittr/tidyverse)
 <!-- ======================================================= -->
 ## Modifying existing values
 
-### Missing if... `na_if()`
+Missing if... `na_if()`
 
-### Replace
-
-### 
+Replace
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Transforming data (pivoting/melting etc.) {.tabset .tabset-fade .tabset-pills}
-
+# Transforming data {.tabset .tabset-fade .tabset-pills}
+(pivoting/melting etc.)
 Transforming datasets from wide-to-long, or long-to-wide...  
 
 <!-- ======================================================= -->
@@ -1766,33 +2111,46 @@ Other resources
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Abberation Detection/Corridor Analysis {.tabset .tabset-fade .tabset-pills}
+# Abberation Detection {.tabset .tabset-fade .tabset-pills}
+Corridor analysis
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# GIS Basics {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## Animations {.tabset .tabset-fade .tabset-pills}
+Could be moved to ggplot2 tips
 
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# GIS {.tabset .tabset-fade .tabset-pills}
+# Character search/Regex {.tabset .tabset-fade .tabset-pills}
 
-<!-- ======================================================= -->
-## Animated maps {.tabset .tabset-fade .tabset-pills}
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Matching/Merging datasets {.tabset .tabset-fade .tabset-pills}
-
+joins
+antijoins, etc
 
 <!-- ======================================================= -->
 ## Probabilistic matching {.tabset .tabset-fade .tabset-pills}
-
+rowmatcher
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Moving averages {.tabset .tabset-fade .tabset-pills}
+
+<!-- ======================================================= -->
+## calculating {.tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ## visualizing {.tabset .tabset-fade .tabset-pills}
@@ -1802,7 +2160,7 @@ Other resources
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Epidemic modeling
+# Epidemic modeling {.tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ## R(t) estimatation {.tabset .tabset-fade .tabset-pills}
@@ -1819,7 +2177,7 @@ Other resources
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Knowing R Studio {.tabset .tabset-fade .tabset-pills}
-
+.Rprofile
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -1840,7 +2198,7 @@ gghighlight
 
 <!-- ======================================================= -->
 ## Labeling {.tabset .tabset-fade .tabset-pills}
-
+ggrepel
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -1850,15 +2208,15 @@ Tidymodels
 
 <!-- ======================================================= -->
 ## Logistic Regression {.tabset .tabset-fade .tabset-pills}
-Tidymodels
+
 
 <!-- ======================================================= -->
 ## Multi-level modeling Regression {.tabset .tabset-fade .tabset-pills}
-Tidymodels
+
 
 <!-- ======================================================= -->
 ## Survival analysis {.tabset .tabset-fade .tabset-pills}
-Tidymodels
+
 
 <!-- ======================================================= -->
 ## Tables of model results {.tabset .tabset-fade .tabset-pills}
@@ -1891,7 +2249,7 @@ Flexdashboard
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Using R on network/company drives {.tabset .tabset-fade .tabset-pills}
+# R on network/company drives {.tabset .tabset-fade .tabset-pills}
 
 
 <!-- ======================================================= -->
@@ -1905,4 +2263,3 @@ plotly
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Overwriting files with R {.tabset .tabset-fade .tabset-pills}
-plotly
