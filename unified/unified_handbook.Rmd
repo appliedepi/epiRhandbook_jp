@@ -1,5 +1,5 @@
 ---
-title: "R Handbook for Epidemiologists (unified)"
+title: "R Handbook for Epidemiologists (1 Rmd file)"
 author: "Neale Batra"
 date: "`r format(Sys.time(), '%A %d %B %Y')`"
 output:
@@ -87,11 +87,11 @@ FOR EXAMPLE: This is a boxed example
 
 Here the datasets used in this handbook will be described and will be "downloadable" via link (the files will be stored within the HTML, so available offline as well)
 
-* Linelist  
-* Aggregated case counts  
-* GIS coordinates  
-* GIS shapefile  
-* modeling dataset?
+* Linelist (...)
+* Aggregated case counts (...)  
+* GIS coordinates (...)  
+* GIS shapefile (...)  
+* modeling dataset? (...)
 
 ```{r datasets_import_silent, cache=T}
 # import linelist
@@ -108,13 +108,15 @@ count_data <- rio::import(here::here("unified", "data", "aggregated_counts_disea
 <!-- ======================================================= -->
 ## Github
 
-The latest version of this handbook lives at this [github repository](https://github.com/nsbatra/R_epi_handbook). 
+The latest version of this handbook lives in the "Unified" folder at this [github repository](https://github.com/nsbatra/R_epi_handbook). 
 
 
 <!-- ======================================================= -->
 ## Contributors
 
-Crowdsourced by these people.... a...b...c...d...  
+Content provided by these people.... a...b...c...d...  
+
+Review provided by these people...   
 
 Some of this material comes from the R4Epis website, which was also made by some of the same people...
 
@@ -296,7 +298,7 @@ knitr::include_graphics(here::here("unified", "images", "Calling_Names.gif"))
 
 
 <!-- ======================================================= -->
-### Objects have Classes  
+### Objects have Classes  {#Object-Classes}
 
 All the objects stored in R have a *class* which tells R how to handle the object. There are many possible classes, but common ones include:
 
@@ -888,7 +890,7 @@ linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, origin
 
 
 <!-- ======================================================= -->
-## Changing the format of displayed dates 
+## How dates are displayed 
 
 Once dates are the correct class, you often want them to display differently. For example, "Monday 05 Jan" instead of 2018-01-05. You can do this with the function `format()` in a similar was to `as.Date()`. Read more about it [in this tutorial](https://www.statmethods.net/input/dates.html) 
 
@@ -945,9 +947,19 @@ linelist <- linelist_raw %>%
 ```
 
 <!-- ======================================================= -->
-## Classes {.tabset .tabset-fade .tabset-pills}
+## Classes {.tabset .tabset-fade .tabset-pills #Classes}
 
-See section on [object classes](#Objects)
+See section on [object classes](#Object-Classes)   
+
+See section on [object classes] \@ref(Classes)
+
+
+\@ref(classes)
+\@ref(object-classes)
+\@ref(Object-Classes)
+
+
+
 
 ```{r}
 linelist <- linelist_raw %>% 
@@ -957,30 +969,61 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 ## Creating new variables {.tabset .tabset-fade .tabset-pills}
 
+**base R** method 
+```{r}
+linelist$new_var <- "new value"
+```
+
+
+Using **dplyr**
+`mutate()`
+
+example
+
+
 <!-- ======================================================= -->
 ### Conditions (`case_when()`)
+
+
+cut()
+
+<!-- ======================================================= -->
+### Numeric groups  
+
+For example, creating age groups
+`cut()`
+
+`case_when()`
+
+`age_categories()` (R4Epis package)
+
 
 <!-- ======================================================= -->
 ### Percentiles
 
+
 <!-- ======================================================= -->
 ### New dates/times
+
+Time zones
+Shifting time (adding hours) example of WHO receiving reports of COVID from different time zones
 
 
 <!-- ======================================================= -->
 ## Modifying existing values {.tabset .tabset-fade .tabset-pills}
 
-<!-- ======================================================= -->
-### Highest in hierarchy
-
-
-
-<!-- ======================================================= -->
-## Modifying existing values
-
 Missing if... `na_if()`
 
 Replace
+
+<!-- ======================================================= -->
+### Highest in hierarchy
+
+Santa Clara County example - COVID contact tracing data - classification of multiple phone call records from same person into the highest category. (classify all as the highest of the group)
+
+
+
+
 
 
 <!-- ======================================================= -->
@@ -993,9 +1036,15 @@ Transforming datasets from wide-to-long, or long-to-wide...
 <!-- ======================================================= -->
 ## Wide-to-long
 
+**dplyr**
+`pivot_longer()`
 
 <!-- ======================================================= -->
 ## Long-to-wide
+
+**dplyr**
+`pivot_wider()`
+
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -1071,6 +1120,9 @@ stats::quantile(linelist$age, probs = c(.05, 0.5, 0.75, 0.98), na.rm=TRUE) # per
 <!-- ======================================================= -->
 # Visualization {.tabset .tabset-fade .tabset-pills}
 
+```{r out.width=c('50%', '50%'), fig.show='hold'}
+
+```
 
 <!-- ======================================================= -->
 # Scatterplots {.tabset .tabset-fade .tabset-pills}
@@ -1082,6 +1134,17 @@ plot(linelist$age)
 # Boxplots {.tabset .tabset-fade .tabset-pills}
 
 These can be created simply, or with **ggplot2**  
+
+```{r out.width=c('50%', '50%'), fig.show='hold'}
+# boxplot function
+graphics::boxplot(age ~ gender, data = linelist)
+
+# ggplot2 function
+ggplot(data = linelist, aes(y = age))+
+  geom_boxplot()
+
+```
+
 
 ```{r descriptive_box}
 graphics::boxplot(age ~ gender, data = linelist)
@@ -1170,7 +1233,7 @@ pacman::p_load(packages_epicurve, character.only=TRUE)
 <!-- ======================================================= -->
 ### Load data
 
-WTwo example datasets are used in this section:  
+Two example datasets are used in this section:  
 
 * Linelist of individual data from an H7N9 outbreak in 2013  
 * Aggregated case counts of a fictional disease in 2019
@@ -1300,7 +1363,7 @@ linelist$date_of_outcome <- as.Date(linelist$date_of_outcome, format = "%m/%d/%Y
 Verify that each variable was successfully converted to date class by printing statistics and a quick histogram for each one.
 
 
-```{r verify_dates}
+```{r verify_dates, out.width = c('50%', '50%', '50%'), fig.show='hold'}
 # To verify successful conversion of date variables
 
 # Creates list of column numbers of date variables 
@@ -1365,7 +1428,7 @@ The interval defines how the observations are grouped. Options are all those in 
 
 First date and last date can also be specified.  
 
-```{r incidence}
+```{r incidence, out.width=c('50%', '50%', '50%', '50%'), fig.show='hold'}
 # incidence object is created, with data aggregated at one day intervals
 epicurve_daily   <- incidence::incidence(linelist$date_of_onset, interval = "day")
 
@@ -1390,9 +1453,9 @@ plot(epicurve_monthly)
 
 Behind the scenes, incidence is using ggplot(), so you can add aesthetic themes and other lines using the ggplot syntax.
 
-```{r Incidence_aesthetics}
+```{r Incidence_aesthetics,  out.width = c('50%', '50%'), fig.show='hold'}
 # Set theme elements using ggplot syntax
-epicurve_theme <- theme(
+epicurve_theme <- ggplot2::theme(
   axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), 
   legend.title = element_blank(),
   panel.grid.major.x = element_line(color = "grey60", linetype = 3),
@@ -1493,7 +1556,7 @@ plot(epicurve_Zhejiang, show_cases = TRUE, border = "grey") +
 Below are tabs on using "ggplot2" package
 
 ### Daily and Weekly
-``` {r ggplot_simple}
+``` {r ggplot_simple,  out.width = c('50%', '50%'), fig.show='hold'}
 
 # Daily case counts 
 ###################
