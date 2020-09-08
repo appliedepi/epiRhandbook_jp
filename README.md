@@ -4,10 +4,11 @@ R handbook for field epidemiologists
 Open the HTML above to see the latest version.
 
 **The problem:**
-Field epidemiologists often work in low internet-connectivity environments and have limited technical support from HQ
-Epis learning or new to R often must Google and skim dozens of forum pages to complete common data manipulation and visualization epi tasks
-Most online R help resources are not task-centered nor epidemiology-focused
-Solution:
+Field epidemiologists often work in low internet-connectivity environments and have limited technical support from HQ  
+Epis learning or new to R often must Google and skim dozens of forum pages to complete common data manipulation and visualization epi tasks  
+Most online R help resources are not task-centered nor epidemiology-focused  
+
+**The solution:**
 An offline "handbook" or "reference book", consisting of task-centered pages which coach a user through common epidemiological tasks with easily-modifiable code examples
 
 **Guiding principles:**
