@@ -1,7 +1,7 @@
 # R_epi_handbook
-R handbook for field epidemiologists
+R handbook for epidemiologists
 
-Open the HTML above to see the latest version.
+***Open the HTML above to see the latest version.***
 
 **The problem:**  
 
