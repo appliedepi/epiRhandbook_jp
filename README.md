@@ -25,7 +25,7 @@ Open the HTML above to see the latest version.
 * Pages will be HTML (produced by Rmarkdown). Allows tabs, gifs, links, references, embedded files, etc. Still viewable offline.
 * Pages could be bundled together into a "bookdown", or it could just be one long Rmarkdown. Bookdown appears to not allow tabs. :(
 
-**A living document:**  
+*A living document:*  
 
 * Code hosted on Github repository
 * Users can download latest handbook version from Github or R4Epis website, can email it to friends and co-workers
