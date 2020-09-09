@@ -89,19 +89,28 @@ FOR EXAMPLE: This is a boxed example
 
 
 <!-- ======================================================= -->
-## Datasets used in this handbook
+## Datasets used in this handbook {#datasets}
 
 Here the datasets used in this handbook will be described and will be "downloadable" via link (the files will be stored within the HTML, so available offline as well)
 
-* Linelist (...)
+* Linelist (...)  Linelist for the 2013 (first wave) H7N9 outbreak in China ([source](https://datadryad.org/stash/dataset/doi:10.5061/dryad.2g43n))
 * Aggregated case counts (...)  
 * GIS coordinates (...)  
 * GIS shapefile (...)  
 * modeling dataset? (...)
 
-```{r datasets_import_silent, cache=T}
+```{r handbook_packages_silent, echo = F}
+pacman::p_load(tidyverse, rio, here, apyramid)
+```
+
+
+```{r datasets_import_silent, echo = F, cache=T}
 # import linelist
-linelist_raw <- rio::import(here::here("data", "fluH7N9_China_2013.csv"))  
+linelist_raw <- rio::import(here::here("data", "fluH7N9_China_2013.csv"))
+  
+  
+linelist <- linelist_raw %>% 
+  mutate(age = as.numeric(age))
 
 # import aggregated case counts of disease X
 count_data <- rio::import(here::here("data", "aggregated_counts_diseaseX.xlsx"))  
@@ -111,10 +120,13 @@ count_data <- rio::import(here::here("data", "aggregated_counts_diseaseX.xlsx"))
 ```
 
 
+
 <!-- ======================================================= -->
 ## Github
 
-The latest version of this handbook lives in the "Unified" folder at this [github repository](https://github.com/nsbatra/R_epi_handbook). 
+The latest version of this handbook lives in the "Unified" folder at this [github repository](https://github.com/nsbatra/R_epi_handbook).  
+
+You can learn more in this handbook about [using R and Github](#github)
 
 
 <!-- ======================================================= -->
@@ -131,17 +143,43 @@ Some of this material comes from the R4Epis website, which was also made by some
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# R Basics {.tabset .tabset-fade .tabset-pills}
+# R Basics {#rbasics .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
-## RStudio Orientation {.tabset .tabset-fade .tabset-pills}
+## Why use R?
+
+* Reproducibility  
+* Fewer errors  
+* Collaboration  
+* Free
+
+
+<!-- ======================================================= -->
+## Installation {#install .tabset .tabset-fade .tabset-pills}
+
+How to install R
+
+
+How to install R Studio
+
+
+Other things you may need to install:  
+* TinyTeX  
+* Pandoc  
+* RTools  
+
+
+<!-- ======================================================= -->
+## RStudio {#rstudio .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ### Open RStudio {.tabset .tabset-fade .tabset-pills}
 **First, open RStudio.** As their icons can look very similar, be sure you are opening *RStudio* and not R.  
 
 
-For RStudio to function you must also have R installed on the computer (see the FAQ page for installation instructions). RStudio is an interface (GUI) for easier use of R. You can think of R as being the engine of a vehicle, doing the crucial work, and RStudio as the body of the vehicle (with seats, accessories, etc.) that helps you actually use the engine to move forward!\  
+For RStudio to function you must also have R installed on the computer (see [this section](#install) for installation instructions).  
+
+**RStudio** is an interface (GUI) for easier use of **R**. You can think of R as being the engine of a vehicle, doing the crucial work, and RStudio as the body of the vehicle (with seats, accessories, etc.) that helps you actually use the engine to move forward!  
 
 By default RStudio displays four rectangle panes. 
 
@@ -160,13 +198,13 @@ The R Console, by default the left or lower-left pane in R Studio, is the home o
 If you are familiar with Stata, the R Console is like the Command Window and also the Results Window.
 
 **The Source Pane**  
-This pane, by default in the upper-left, is space to edit and run your scripts, including the RMarkdown outbreak and survey templates. This pane can also display datasets (data frames) for viewing.  
+This pane, by default in the upper-left, is space to edit and run your scripts. This pane can also display datasets (data frames) for viewing.  
 
 For Stata users, this pane is similar to your Do-file and Data Editor windows.
 
 
 **The Environment Pane**  
-This pane, by default the upper-right, is most often used to see brief summaries of objects in the R Environment in the current session. These objects could include imported, modified, or created datasets, parameters you have defined (e.g. a specific epi week for the analysis), or vectors or lists you have defined during analysis (e.g. names of regions). Click on the arrow next to a dataframe name to see its variables.  
+This pane, by default the upper-right, is most often used to see brief summaries of objects in the R Environment in the current session. These [objects](#objects) could include imported, modified, or created datasets, parameters you have defined (e.g. a specific epi week for the analysis), or vectors or lists you have defined during analysis (e.g. names of regions). Click on the arrow next to a dataframe name to see its variables.  
 
 In Stata, this is most similar to Variables Manager window.
 
@@ -178,6 +216,7 @@ This pane contains the Stata equivalents of the Plots Manager and Project Manage
 
 <!-- ======================================================= -->
 ### Changing your RStudio settings  
+
 Change RStudio settings and appearance in the Tools drop-down menu, by selecting Global Options
 
 
@@ -185,7 +224,32 @@ Change RStudio settings and appearance in the Tools drop-down menu, by selecting
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-## Working directory {.tabset .tabset-fade .tabset-pills}
+## Scripts {#scripts .tabset .tabset-fade .tabset-pills}
+
+R scripts (vs. typing in the console)  
+* Advantages (reproducability)
+* General sequence (into, load packages, load data, clean data, conduct analysis, save results)
+* Commenting
+
+Rmd 
+
+R notebooks
+
+R shiny  
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+## Working directory {#workingdirectory .tabset .tabset-fade .tabset-pills}
+
+**The working directory is the root file location used by R for your work.**  
+By default, it will save new files and outputs to this location, and will look for files to import (e.g. datasets) here as well.  
+
+```
+NOTE: If using an [R project](#rproject), the working directory will default to the R project root folder **IF** you open RStudio by clicking open the R project (the file with .rproj extension))
+
+```
 
 <!-- ======================================================= -->
 ### Set Manually
@@ -197,15 +261,11 @@ From RStudio click: Session / Set Working Directory / Choose Directory (you will
 
 Use the command `setwd()` with the filepath in quotations, for example: `setwd("C:/Documents/R Files")`
 
-```
-NOTE: If using an R project, the working directory will default to the R project root folder IF you open RStudio by clicking open the R project (the file with .rproj extension))
-
-```
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-## Objects {.tabset .tabset-fade .tabset-pills}
+## Objects {#objects .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ### Everything is an object 
@@ -214,67 +274,68 @@ Everything you store in R - datasets, variables, a list of village names, a tota
 
 An object exists when you have assigned it a value (see the assignment section below). When it is assigned a value, the object appears in the Environment (see the upper right pane of RStudio). It can then be operated upon, manipulated, changed, and re-defined.
 
-### Creating objects with the Assignment Operator (`<-`)
+### Creating objects (`<-`)
 
-**You create objects *by assigning them a value* with the <- operator.** You can think of the assignment operator `<-` as the words "is defined as". Assignment commands generally follow a standard order:  
-  
+**Create objects *by assigning them a value* with the <- operator.**  
+You can think of the assignment operator `<-` as the words "is defined as". Assignment commands generally follow a standard order:
  
 **object_name**  <-  **value** (or process/calculation that produce a value)
 
-> EXAMPLE:** While using an outbreak template you may want to record the current reporting week for later reference. In this example, the object `reporting_week` is created when it is assigned the character value `"2018-W10"`. `reporting_week` will appear in the R Environment (upper-right pane) and can be referenced in later commands.
-> See the commands and their output in the boxes below. Note the [1] in the output is simply indicating that you are viewing the first (and only) item of the output
+> **EXAMPLE:** You may want to record the current epidemiological reporting week as an object for reference in later code. In this example, the object `reporting_week` is created when it is assigned the character value `"2018-W10"` (the quote marks make these a character value).  
+The object `reporting_week` will then appear in the RStudio Environment pane (upper-right) and can be referenced in later commands.  
+
+
+See the R commands and their output in the boxes below. 
 
 ```{r basics_objects_assignment}
-reporting_week <- "2018-W10"   # creates the object reporting_week by assigning a value
-reporting_week                 # prints the current value of reporting_week
+reporting_week <- "2018-W10"   # this command creates the object reporting_week by assigning it a value
+reporting_week                 # this command prints the current value of reporting_week object in the console
 ```
+
+<span style="color: black;">**_NOTE:_** Note the `[1]` in the R console output is simply indicating that you are viewing the first item of the output</span>
+
 
 <span style="color: orange;">**_CAUTION:_** **An object's value can be over-written** at any time by running an assignment command to re-define its value. Thus, the **order of the commands run is very important**.</span>
 
-
+The following command will re-define the value of `reporting_week`: 
 
 ```{r basics_objects_reassignment}
 reporting_week <- "2018-W51"   # assigns a NEW value to the object reporting_week
-reporting_week                 # prints the current value of reporting_week
+reporting_week                 # prints the current value of reporting_week in the console
 ```
 
-**Datasets are also assigned names and defined as objects when they are imported.** In the code below:  
+**Datasets are also objects and must be assigned names when they are imported.**  
 
-1) The object `linelist_raw` is created and assigned the value of an imported CSV file  
-
-2) The object `linelist_cleaned` is created and assigned the value of `linelist_raw`  
-
-3) `linelist_cleaned` is re-defined as itself, but mutated to include a new variable, `obs_days`, representing the number of days between patient admission and exit
+In the code below, the object `linelist_raw` is created and assigned the value of a CSV file imported with the **rio** package.  
 
 ```{r basics_objects_dataframes, eval=FALSE}
 # linelist_raw is created and assigned the value of the imported CSV file
-linelist_raw <- rio::import(here("linelist.csv"))
-# linelist_cleaned is created and assigned the value of linelist_raw
-linelist_cleaned <- linelist_raw
-# linelist_cleaned is RE-defined as itself, but modified to include a new variable
-linelist_cleaned <- mutate(linelist_cleaned, 
-                           obs_days = as.numeric(date_of_exit - date_of_admission))
+linelist <- rio::import("my_linelist.csv")
 ```
 
-You can read more about importing and exporting datasets with the **rio** package [in this vignette](https://rdrr.io/cran/rio/f/vignettes/rio.Rmd)
+You can read more about importing and exporting datasets with the section on [importing data](#importdata).
 
-A quick note on naming of objects:
+<span style="color: orange;">**_CAUTION:_** A quick note on naming of objects:</span>
 
   * Object names must not contain spaces, but you should use underscore (_) or a period (.) instead of a space.  
   * Object names are case-sensitive (meaning that Dataset_A is different from dataset_A). 
-  * Object names must begin with a letter (cannot begin with a number like 1, 2 or 3).  
+  * Object names must begin with a letter (cannot begin with a number like 1, 2 or 3). 
+
+ 
 
 <!-- ======================================================= -->
-### Objects can have Structure  
+### Object Structure {#objectstructure}  
 
-Objects can be a single piece of data (e.g. `my_number <- 24`), or they can consist of structured data. The graphic below, sourced from [this online R tutorial](http://venus.ifca.unican.es/Rintro/dataStruct.html) shows some common data structures and their names. Not included in this image is spatial data, which is discussed in another page.  
+**Objects can be a single piece of data (e.g. `my_number <- 24`), or they can consist of structured data.**  
+
+The graphic below, sourced from [this online R tutorial](http://venus.ifca.unican.es/Rintro/dataStruct.html) shows some common data structures and their names. Not included in this image is spatial data, which is discussed in the [GIS section](#gis).  
 
 
-```{r basics_objects_structures, out.width = "100%", fig.align = "center"}
+```{r basics_objects_structures, echo=F, out.width = "100%", fig.align = "center"}
 knitr::include_graphics(here::here("images", "R_data_structures.png"))
 ```  
 
-Using the templates, you will *most commonly* encounter data frames and vectors:  
+In epidemiology (and particularly field epidemiology), you will *most commonly* encounter data frames and vectors:  
 
 
 Common structure | Explanation | Example from templates
@@ -286,17 +347,17 @@ Note that to create a vector that "stands alone", or is not part of a data frame
 `list_of_names <- c("Ruhengeri", "Gisenyi", "Kigali", "Butare")`  
 
 <!-- ======================================================= -->
-### Using `$` to access/call variables  
+### Variables (`$`) {#dollarsign}  
 
-**Vectors within a data frame (variables in a dataset) can be called or referenced using the `$` symbol.** The `$` symbol connects the name of the column to the name of its dataset. The `$` symbol must be used, otherwise R will not know where to look for or create the column.  
+**Vectors within a data frame (variables in a dataset) can be called, referenced, or created using the `$` symbol.** The `$` symbol connects the name of the column to the name of its data frame. The `$` symbol must be used, otherwise R will not know where to look for or create the column.  
 
 ```{r basics_objects_call, eval=F}
 # Retrieve the length of the vector age_years
-# (age_years is in the data frame linelist_cleaned)
-length(linelist_cleaned$age_years)  
+length(linelist$age) # (age is a variable in the linelist data frame)
+
 ```
 
-By typing the name of the data frame followed by `$` you will also see a list of all variables in the data frame. You can scroll through them using arrow key, select one with your Enter key, and avoid spelling mistakes!  
+By typing the name of the data frame followed by `$` you will also see a list of all variables in the data frame. You can scroll through them using your arrow key, select one with your Enter key, and avoid spelling mistakes!  
 
 ```{r basics_objects_callGIF, out.width = "100%", fig.align = "center"}
 knitr::include_graphics(here::here("images", "Calling_Names.gif"))
@@ -304,7 +365,7 @@ knitr::include_graphics(here::here("images", "Calling_Names.gif"))
 
 
 <!-- ======================================================= -->
-### Objects have Classes  {#Object-Classes}
+### Object Classes  {#objectclasses}
 
 All the objects stored in R have a *class* which tells R how to handle the object. There are many possible classes, but common ones include:
 
@@ -318,45 +379,55 @@ Date | **Once R is told that certain data are Dates**, these data can be manipul
 Logical | Values must be one of the two special values TRUE or FALSE (note these are **not** "TRUE" and "FALSE" in quotation marks) | TRUE or FALSE  
 data.frame | A data frame is how R stores a **typical dataset**. It consists of vectors (columns) of data bound together, that all have the same number of observations (rows). | The example AJS dataset named `linelist_raw` contains 68 variables with 300 observations (rows) each.  
 
-**You can test the class of an object by writing it within the function `class()`**. Note: you can reference a specific column within a dataset using the `$` notation to separate the name of the dataset and the name of the column.
+**You can test the class of an object by feeding it to the function `class()`**. Note: you can reference a specific column within a dataset using the `$` notation to separate the name of the dataset and the name of the column.
 
-```{r basics_objects_class, echo=TRUE, eval=F}
-class(linelist_raw$age_years)
-class(linelist_raw$patient_origin)
+```{r basics_objects_class, echo=TRUE, eval=T}
+class(linelist$age)     # class should be numeric
+
+class(linelist$gender)  # class should be character
 ```
 
-The templates sometimes contain code converting objects between classes.
+**Often, you will need to convert objects or variables to another class.**
 
 Function | Action  
 ----------------- | --------------------------------------------------------------    
 `as.character()` | Converts to character class  
 `as.numeric()` | Converts to numeric class  
 `as.integer()` | Converts to integer class
-`as.Date()` | Converts to Date class - Note: see section on dates for details  
+`as.Date()` | Converts to Date class - Note: see section on [dates](#dates) for details  
 `as.factor()` | Converts to factor - Note: re-defining order of value levels requires extra arguments
 
-Here is [more material on classes and data structures in R](https://swcarpentry.github.io/r-novice-inflammation/13-supp-data-structures/).
+Here is [more online material on classes and data structures in R](https://swcarpentry.github.io/r-novice-inflammation/13-supp-data-structures/).
 
 
 
 
 
 <!-- ======================================================= -->
-## Functions {.tabset .tabset-fade .tabset-pills}
+## Functions {#functions .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ### Simple Functions  
 
-Most tasks in R are performed through functions. **A function is like a machine that receives inputs, does some action with those inputs, and produces an output.** What the output is depends on the function.  
+**A function is like a machine that receives inputs, does some action with those inputs, and produces an output.**  
+What the output is depends on the function.    
 
-**Functions typically operate upon some object placed within the function's parentheses**. For example, when the function `summary()` is used on a variable of class numeric, the output is a summary of the variable's numeric and missing values.
+**Functions typically operate upon some object placed within the function's parentheses**. 
+For example, the function `sqrt()` calculates the square root of a number:  
 
-```{r basics_functions_summary}
-summary(linelist_raw$age_years)
+```{r basics_function_sqrt}
+sqrt(49)
 ```
 
+Functions can also be applied to variables in a dataset. For example, when the function `summary()` is applied to the numeric variable `age` in the dataset `linelist` ([what's the `$` symbol?](#objects)), the output is a summary of the variable's numeric and missing values.
 
-On installation, R contains "base" functions that perform common tasks. Specialized functions have been created by R users, verified by the R community, and can be downloaded within "packages" to your RStudio for use. One of the more challenging aspects of R is that there are often many functions to choose from to complete a given task.  
+```{r basics_functions_summary}
+summary(linelist$age)
+```
+
+<span style="color: black;">**_NOTE:_** Behind the scenes, a function represents complex additional code that has been wrapped up for the user into one easy command.</span>
+
+
 
 <!-- ======================================================= -->
 ### Functions with Multiple Arguments  
@@ -364,106 +435,95 @@ On installation, R contains "base" functions that perform common tasks. Speciali
 Functions often ask for several inputs. **Each piece of information needed is called an argument**. Some arguments are required for the function to work correctly, some are optional. Arguments can take character, numeric, logical (TRUE/FALSE), and other inputs. Optional arguments have default settings if they are not specified. **Arguments are located within the parentheses of the function, usually separated by commas**.  
 
 
-
-```{r basics_functions_image, out.width = "75%", fig.align = "center"}
+```{r basics_functions_image, echo=F, out.width = "75%", fig.align = "center"}
 knitr::include_graphics(here::here("images", "Function_Bread_Example.png"))
 ```
 
 
->**For example**, this `plot_age_pyramid()` command in the templates produces an age pyramid graphic based on defined age groups and a binary split variable, such as `sex`. The function is given three arguments within the parentheses, separated by commas. The values supplied to the arguments establish `linelist_cleaned` as the data frame to use, `age_group` as the variable to count, and `sex` as the binary variable to use for splitting the pyramid.
+>**For example**, this `age_pyramid()` command produces an age pyramid graphic based on defined age groups and a binary split variable, such as `gender`. The function is given three arguments within the parentheses, separated by commas. The values supplied to the arguments establish `linelist` as the data frame to use, `age_group` as the variable to count, and `gender` as the binary variable to use for splitting the pyramid by color.
 
-```{r basics_functions_arguments, include=FALSE, results='hide', message=FALSE, warning=FALSE, eval=F}
+```{r basics_functions_arguments, include=FALSE, results='hide', message=FALSE, warning=FALSE, eval=T}
 ## create an age group variable by specifying categorical breaks
-linelist_cleaned$age_group <- age_categories(linelist_cleaned$age_years, 
-                                             breakers = c(0, 3, 15, 30, 45))
+linelist$age_group <- cut(linelist$age, breaks = c(0, 3, 15, 30, 45, 60))
 ```
 
+<span style="color: black;">**_NOTE:_** For this example, in the background we have created a new variable called "age_group". To learn how to create new variable see [that section of this handbook](#newvars) </span>
 
 
-```{r basics_functions_pyramid, message=FALSE, warning=FALSE, eval=F}
+```{r basics_functions_pyramid, message=FALSE, warning=FALSE, eval=T}
 # Creates an age pyramid by specifying the dataframe, age group variable, and a variable to split the pyramid
-plot_age_pyramid(data = linelist_cleaned, age_group = "age_group", split_by = "sex")
+apyramid::age_pyramid(data = linelist, age_group = "age_group", split_by = "gender")
 ```
 
-> Often, the first half of argument assignment (e.g. `data = `) does not need to be specified if the arguments are written in a specific order (specified in the function's documentation). The below code produces the exact same pyramid as above, because the function expects the argument order: data frame, `age_group` variable, `split_by` variable.  
+> The first half of an argument assignment (e.g. `data = `) does not need to be specified if the arguments are written in a specific order (specified in the function's documentation). The below code produces the exact same pyramid as above, because the function expects the argument order: data frame, `age_group` variable, `split_by` variable.  
 
 ```{r, basics_functions_pyramid2, eval = FALSE, warning=FALSE, message=FALSE, eval=F}
-# This command will produce the same table as above
-plot_age_pyramid(linelist_cleaned, "age_group", "sex")
+# This command will produce the exact same graphic as above
+apyramid::age_pyramid(linelist, "age_group", "gender")
 ```
 
-**A more complex plot_age_pyramid command might include the optional arguments to:**  
+**A more complex `age_pyramid()` command might include the *optional* arguments to:**  
 
 * Show proportions instead of counts (set `proportional = TRUE` when the default is `FALSE`)  
-* Specify the two colors to use (`pal = ` is short for "palette" and is supplied with a vector of two color names. See the Objects page for how the function `c()` makes a vector)  
+* Specify the two colors to use (`pal = ` is short for "palette" and is supplied with a vector of two color names. See the [objects](#objectstructure) page for how the function `c()` makes a vector)  
 
 
-{{% notice tip %}}
-For arguments specified with an equals symbol (e.g. `coltotals = ...`), their order among the arguments is not important (must still be within the parentheses and separated by commas).
-{{% /notice %}}
+<span style="color: black;">**_NOTE:_** For arguments specified with an equals symbol (e.g. `coltotals = ...`), their order among the arguments is not important (must still be within the parentheses and separated by commas).</span>
 
 
-```{r message=FALSE, warning=FALSE, eval=F}
-plot_age_pyramid(linelist_cleaned, "age_group", "sex", proportional = TRUE, pal = c("orange", "purple"))
+```{r message=FALSE, warning=FALSE}
+age_pyramid(linelist, "age_group", "gender", proportional = TRUE, pal = c("orange", "purple"))
 ```
 
 <!-- ======================================================= -->
-### Packages & Functions  
+### Packages {#packages}  
 
-R comes with "base" functions, but the R community has created and verified many other specialized functions that are available to you. These *functions* are contained within **packages** that can be downloaded to your computer. Once downloaded, you access the functions within a package by calling the package with the `library()` command at the beginning of each R session.
+**Packages contain functions.**  
 
-{{% notice tip %}}
-**While you only have to install packages once, you must load them at the beginning of every R session using `library()`.** There is a code chunk at the beginning of each template that loads the necessary packages. 
-{{% /notice %}}
+On installation, R contains "base" functions that perform common elementary tasks. But many R users create specialized functions, which are verified by the R community and which you can download as a **package** for your own use.  
+
+One of the more challenging aspects of R is that there are often many functions or packages to choose from to complete a given task.  
+
+*Functions* are contained within **packages** which can be downloaded ("installed") to your computer from the internet. Once a package is downloaded, you access its functions by loading the package with the `library()` command at the beginning of each R session.
+
+```{r basics_packages_load, eval=F}
+# this loads the package "tidyverse" for use in the current R session
+library(tidyverse)
+```
+
+<span style="color: black;">**_NOTE:_** While you only have to install a package once, you must load it at the beginning of every R session using `library()` command, or an alternative like **pacman**'s `p_load()` function.</span>
 
 Think of R as your personal library: When you download a package your library gains a book of functions, but each time you want to use a function in that book, you must borrow that book from your library.  
 
-For clarity in the templates, functions are often preceeded by the name of their package using the `::` symbol in the following way:  
+For clarity in this handbook, functions are usually preceeded by the name of their package using the `::` symbol in the following way:  
 
-`package_name::function_name()`
+`package_name::function_name()`  
+
+Once a package is loaded for a session, this explicit style is not necessary. One can just use `function_name()`. However giving the package name is useful when a function name is common and may exist in multiple packages (e.g. `plot()`).  
+Using the package name will also load the package if it is not already loaded.
  
 ```{r eval=FALSE}
-#This line uses the package "rio"" and it's function "import" to import a dataset
-linelist_raw <- rio::import("linelist.xlsx", which = "Sheet1")
+# This command uses the package "rio" and its function "import()" to import a dataset
+linelist <- rio::import("linelist.xlsx", which = "Sheet1")
 ```
 
+**Dependencies**  
+Packages often depend on other packages, and these are called "dependencies". When a package is installed from CRAN, it will typically also install its dependenices.  
+
+
 
 <!-- ======================================================= -->
-### The Pipe Operator (`%>%`) 
+### Function Help  
 
-Within the template scripts you will see the pipe operator `%>%`. Simply explained, the pipe operator passes an intermediate output from one function to the next. You can think of it as saying "then". Many functions can be linked together with `%>%`.  
-
-Piping is not a base function. To use piping, the **dplyr** package must be installed and loaded. Near the top of every template script is a code chunk that installs and loads the necessary packages, including **dplyr**. You can [read more about piping in the documentation](https://magrittr.tidyverse.org/).
-
-> **For example:** The following code chunk from the AJD template data cleaning section can be read as "`linelist_cleaned` is defined as `linelist_cleaned`, filtered to remove the rows where the variables `case_number` and `date_of_admission` are missing"  
-
-``` {r basics_functions_pipes, eval=FALSE}
-# only keep variables with a case ID and a date of consultation
-linelist_cleaned <- linelist_cleaned %>% 
-  filter(!is.na(case_number) & !is.na(date_of_admission))
-```
-
-{{% notice tip %}}
-**Remember that even when using piping to link functions, if the assignment operator (`<-`) is present, the object to the left will still be over-written (re-defined) by the right side.** In the code above, linelist_cleaned will be replaced by the new `linelist_cleaned` which likely has fewer observations.  
-{{% /notice %}}
-
-<!-- ======================================================= -->
-### Help & Documentation  
-
-To read more about a function, you can try searching online for resources OR use the Help tab in the lower-right R pane.  
-
-(/images/Function_Help.gif)
-
+To read more about a function, you can try searching online for resources OR search in the Help tab of the lower-right RStudio pane.  
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-## Operators {.tabset .tabset-fade .tabset-pills}
+## Operators {#operators .tabset .tabset-fade .tabset-pills}
 
 
-<!-- ======================================================= -->
-### `%in%`
 
 <!-- ======================================================= -->
 ### Relational and logical operators  
@@ -542,6 +602,11 @@ order of operations| ( )
 
 
 <!-- ======================================================= -->
+### `%in%`  
+
+
+
+<!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Loading Packages {.tabset .tabset-fade .tabset-pills}
@@ -611,15 +676,51 @@ Other resources and online training/courses for introductory R skills
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Piping functions {.tabset .tabset-fade .tabset-pills}
+# Piping (`%>%`) {#piping .tabset .tabset-fade .tabset-pills}
 
-Two general ways of approaching coding are: 
+**Simply explained, the pipe operator (`%>%`) passes an intermediate output from one function to the next.**  
+You can think of it as saying "then". Many functions can be linked together with `%>%`.  
 
-**Re-defining objects**
+**Two general approaches to R coding are:**  
+
+1) **piping an object from function to function** (usually within the "tidyverse")  
+2) **defining intermediate objects** (and older method, still worth knowing about) 
+
+
+### **Piping** 
+
+* from **magrittr**. Included in **dplyr** and **tidyverse**
+* Makes code more clean and easier to read, intuitive
+* express a sequence of operations  
+* the object is altered and then passed on to the next function  
+
+Example:
+
+```{r piping_example_pipe, eval=F}
+# A fake example of how to bake a care using piping syntax
+
+cake <- flour %>%       # to define cake, start with flour, and then...
+  left_join(eggs) %>%   # add eggs
+  left_join(oil) %>%    # add oil
+  left_join(water) %>%  # add water
+  mix_together(utensil = spoon, minutes = 2) %>%                # mix together
+  bake(degrees = 350, system = "fahrenheit", minutes = 35) %>%  # bake
+  let_cool()            # let it cool down
+```
+
+https://cfss.uchicago.edu/notes/pipes/#:~:text=Pipes%20are%20an%20extremely%20useful,code%20and%20combine%20multiple%20operations.
+
+Piping is not a base function. To use piping, the **dplyr** package must be installed and loaded. Near the top of every template script is a code chunk that installs and loads the necessary packages, including **dplyr**. You can [read more about piping in the documentation](https://magrittr.tidyverse.org/).
+
+<span style="color: orange;">**_CAUTION:_** Remember that even when using piping to link functions, if the assignment operator (`<-`) is present, the object to the left will still be over-written (re-defined) by the right side.</span>
+
+
+### **Defining intermediate objects**
+
 as changes are made - 
 still handy to know
 
-Risks: creating new objects for each step - 
+Risks: creating new objects for each step - lots of objects. If you use the wrong one you might not know.
 naming can be confusing,
 errors not easily detectable
 
@@ -627,6 +728,7 @@ either name each intermediate object, or overwrite the original, or combine all 
 
 
 ```{r piping_example_redefine, eval=F}
+# a fake example of how to bake a cake using this method (defining intermediate objects)
 batter_1 <- left_join(flour, eggs)
 batter_2 <- left_join(batter_1, oil)
 batter_3 <- left_join(batter_2, water)
@@ -638,68 +740,56 @@ cake <- bake(batter_4, degrees = 350, system = "fahrenheit", minutes = 35)
 cake <- let_cool(cake)
 ```
 
-Combine all functions together - difficult to read
+Combine all functions together - also difficult to read
 ```{r piping_example_wide, eval=F}
+# an example of combining/nesting mutliple functions together - difficult to read
 cake <- let_cool(bake(mix_together(batter_3, utensil = spoon, minutes = 2), degrees = 350, system = "fahrenheit", minutes = 35))
 ```
 
-**Piping** 
-* from **magrittr**. Included in **dplyr** and **tidyverse**
-* Makes code more clean and easier to read, intuitive
-* express a sequence of operations  
-* the object is altered and then passed on to the next function  
 
-Example:
 
-```{r piping_example_pipe, eval=F}
-cake <- flour %>%       # start with an object
-  left_join(eggs) %>% 
-  left_join(oil) %>% 
-  left_join(water) %>% 
-  mix_together(utensil = spoon, minutes = 2) %>% 
-  bake(degrees = 350, system = "fahrenheit", minutes = 35) %>% 
-  let_cool()
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Importing data {#importdata .tabset .tabset-fade .tabset-pills}
+
+
+Introduction to importing data TODO
+
+
+<!-- ======================================================= -->
+## Packages {#packages}
+
+The key package we recommend for importing data is: **rio**. The package **rio** offers the useful function `import()` that can import many types of files into R.  
+
+The alternative to using **rio** would be to use functions from several other packages that are specific to a type of file (e.g. `read.csv()`, `read.xlsx()`, etc.). While these alternatives can be difficult to remember, always using `rio::import()` is relatively easy. 
+
+Optionally, the package **here** can be used in conjunction with **rio**. It locates files on your computer via *relative pathways*, usually within the context of an [R project](#rprojects).  Relative pathways are relative from a designated folder location, so that pathways listed in R code will not break when the script is run on a different computer.
+
+This code chunk shows the loading of packages for importing data. 
+
+```{r import_packages}
+# Checks if package is installed, installs if necessary, and loads package for current session
+pacman::p_load(rio, here)
+
 ```
-
-https://cfss.uchicago.edu/notes/pipes/#:~:text=Pipes%20are%20an%20extremely%20useful,code%20and%20combine%20multiple%20operations.
-
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-# Importing data {.tabset .tabset-fade .tabset-pills}
-
 
 <!-- ======================================================= -->
 ## `import()` {.tabset .tabset-fade .tabset-pills}
 
 When you import a dataset, you are doing the following:  
 
-1. Creating a new, named object in your R environment  
+1. Creating a new, named data frame object in your R environment  
 2. Defining the new object as the imported dataset  
 
 [TODO importing image]
 
 The function `import()` from the package **rio** makes it easy to import many types of data files.
 
-The function uses a file’s extension (e.g. .xlsx, .csv, .dta, etc.) to appropriately import the file (prior to `import()` you had to use specific functions to import different file types). You can read more about `import()` on this page TODO. 
+`import()` uses the file’s extension (e.g. .xlsx, .csv, .dta, etc.) to appropriately import the file. Any optional arguments specific to the filetype can be supplied as well.  
 
+You can read more about the **rio** package [in this online vignette](https://rdrr.io/cran/rio/f/vignettes/rio.Rmd)
 
-<!-- ======================================================= -->
-## Packages
-
-The key package we recommend for importing data is: **rio**. Optionally the package **here** can be very useful to locate files via relative pathways in the context of an R project.
-
-This code chunk shows the loading of packages required for importing data. 
-
-```{r import_packages}
-# Create vector of names of required packages:
-packages_import <- c("rio",          # File import
-                     "here"          # File locator (OPTIONAL)
-                     )               ### close vector of packages
-
-# Checks if package is installed, installs if necessary, and loads package for current session
-pacman::p_load(packages_import, character.only=TRUE)
-```
 
 <!-- ======================================================= -->
 ## Select by filepath {.tabset .tabset-fade .tabset-pills}  
@@ -707,6 +797,7 @@ pacman::p_load(packages_import, character.only=TRUE)
 Manually typing a filepath is prone to error, but is sometime the best way (for example, if referencing files from a shared/network drive). The function `import()` (from the package **rio**) accepts a filepath in quotes.  
 
 A few things to note:  
+
 * Slashes must be forward slashes, as in the code shown. This is *NOT* the default for Windows filepaths.  
 * Filepaths that begin with double slashes (e.g. "//...") will likely not be recognized by R and will produce an error. Consider moving these files to a "named" Drive that begins with a letter (e.g. "J:" or "C:"). See the section on using Network Drive for more details.
 
@@ -718,7 +809,7 @@ my_data <- rio::import("C:/Users/Neale/Documents/my_excel_file.xlsx")
 <!-- ======================================================= -->
 ## Select Excel sheet {.tabset .tabset-fade .tabset-pills}
 
-If importing a specific **sheet** from an Excel file, include the sheet name in the `which = ` argument of `import()`. See code example.  
+If importing a specific **sheet** from an Excel file, include the sheet name in the `which = ` argument of `import()`. For example:  
 
 ```{r import_sheet, eval=F}
 # A demonstration showing how to import a specific Excel sheet
@@ -739,7 +830,7 @@ You can import data manually by either:
 
 1) Environment RStudio Pane, click "Import Dataset", and select the type of data 
 2) Click File / Import Dataset / (select the type of data)  
-3) You can also use the *base R* command `file.choose()` (leaving the parentheses empty) to trigger appearance of a pop-up window that allows the user to manually select a file from their computer. For example:  
+3) To hard-code manual selection, use the *base R* command `file.choose()` (leaving the parentheses empty) to trigger appearance of a pop-up window that allows the user to manually select the file from their computer. For example:  
 
 ```{r import_choose, eval=F}
 # A demonstration showing manual selection of a file. When this command is run, a pop-up window should appear. 
@@ -750,30 +841,46 @@ my_data <- rio::import(file.choose())
 
 
 <!-- ======================================================= -->
-## Relative filepaths {.tabset .tabset-fade .tabset-pills}
+## Relative filepaths {#here .tabset .tabset-fade .tabset-pills}
 
-However, `import()` needs to be told where to look on your computer to find the file. Therefore, we have wrapped `import()` around the function `here()`. 
+Any import function needs to be told the filepath of where to look on your computer to find the file. In some circumstances, it is very useful to use the package **here** and it's function `here()` within `import()`.  
 
-The function here() from the package Here makes it easy to locate local files.
+The function `here()` from the package **here** makes it easy to locate files in a way that will not break when a script is run on different computers.
 
-here() works well within R projects. When the package is first loaded, it automatically considers the top-level folder of your R project as “here” - as a benchmark for all other files in the Project. In your script, if you want to import or reference a file saved in your R project’s folders, you use the function here() to tell R where the file is in relation to that benchmark.
+`here()` works best within [R projects](#rprojects). When the **here** package is first loaded, it automatically considers the top-level folder of your R project as “here” - a benchmark for all other files in the project.  
+
+Thus, in your script, if you want to import or reference a file saved in your R project’s folders, you use the function `here()` to tell R where the file is ***in relation to that benchmark***.
 
 If you are unsure where “here” is set to, run this command:
 
 ```{r import_here}
 # This command tells you the folder path that "here" is set to 
-here()
+here::here()
 ```
 
-Below is an example of importing the file “linelist.xlsx”. If the file you want is in the folder designated as “here”, all you have to do is provide the name of the file in quotes (with the appropriate ending).
+Below is an example of importing the file “fluH7N9_China_2013.csv”.  
+
+If the file is in the folder which is designated by the benchmark “here”, all you have to do is provide the name of the file in quotes (with the appropriate ending).
+
+```{r import_here_one, eval=F}
+linelist <- import(here("fluH7N9_China_2013.csv"))
+```
+
+If however, your file is within subfolders of the folder designated as “here” - let’s say it is in the subfolder “data” - you write these folder names before the file name, in quotes, and separated by commas, as below:
+```{r import_here_mutiple, eval=F}
+linelist <- import(here("data", "fluH7N9_China_2013.csv"))
+```
+
+The `here()` command produces a character filepath, which is then processed by the `import()` function.
+
+```{r import_here_path}
+here("data", "fluH7N9_China_2013.csv")
+```
 
 
-After the closing parenthes of here() the import() function continues. There is a comma and import()’s optional argument which =, specifying which sheet of the Excel file to import.
-
-If however, your file is within subfolders of the folder designated as “here” - let’s say it is in the subfolder “data” and then the sub-subfolder “linelists” - you write these folder names before the file name, in quotes, and separated by commas, as below:
+<span style="color: black;">**_NOTE:_** You can still import a specific sheet of an excel file as noted elsewhere. The `here()` command is only supplying the filepath.</span>
 
 
-linelist_raw <- rio::import(here("data", "linelists", "linelist.xlsx"), which = "Sheet1")
 
 
 
@@ -844,7 +951,7 @@ x
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Working with Dates {.tabset .tabset-fade .tabset-pills}
+# Working with Dates {#dates .tabset .tabset-fade .tabset-pills}
 
 
 ## Converting date variables to the date class
@@ -996,14 +1103,14 @@ The templates use the very flexible package **aweek** to set epidemiological wee
 <!-- ======================================================= -->
 ## Dates in Epicurves 
 
-See the chapter on epicurves.
+See the section on [epicurves](#epicurves).
 
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Cleaning data {.tabset .tabset-fade .tabset-pills}
+# Cleaning data {#cleaning .tabset .tabset-fade .tabset-pills}
 
 Text about cleaning data, approaches, etc.
 
@@ -1032,15 +1139,7 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 ## Classes {.tabset .tabset-fade .tabset-pills #Classes}
 
-See section on [object classes](#Object-Classes)   
-
-See section on [object classes] \@ref(Classes)
-
-
-\@ref(classes)
-\@ref(object-classes)
-\@ref(Object-Classes)
-
+See section on [object classes](#objectclasses)   
 
 
 
@@ -1050,7 +1149,7 @@ linelist <- linelist_raw %>%
 ```
 
 <!-- ======================================================= -->
-## Creating new variables {.tabset .tabset-fade .tabset-pills}
+## Creating new variables {#newvars .tabset .tabset-fade .tabset-pills}
 
 **base R** method 
 ```{r}
@@ -1065,10 +1164,9 @@ example
 
 
 <!-- ======================================================= -->
-### Conditions (`case_when()`)
+### Conditions (`case_when()`) {#casewhen}
 
 
-cut()
 
 <!-- ======================================================= -->
 ### Numeric groups  
@@ -1112,7 +1210,7 @@ Santa Clara County example - COVID contact tracing data - classification of mult
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Transforming data {.tabset .tabset-fade .tabset-pills}
+# Transforming data {#transformation .tabset .tabset-fade .tabset-pills}
 (pivoting/melting etc.)
 Transforming datasets from wide-to-long, or long-to-wide...  
 
@@ -1132,7 +1230,7 @@ Transforming datasets from wide-to-long, or long-to-wide...
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Grouping/aggregating data {.tabset .tabset-fade .tabset-pills}
+# Grouping/aggregating data {#grouping .tabset .tabset-fade .tabset-pills}
 
 Tidyverse - grouping by values
 
@@ -1142,10 +1240,10 @@ Tidyverse - grouping by values
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Descriptive analyses {.tabset .tabset-fade .tabset-pills}
+# Descriptive analyses {#descriptive .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
-# Summary Statistics {.tabset .tabset-fade .tabset-pills}
+# Summary Statistics {#summarystats .tabset .tabset-fade .tabset-pills}
 
 **Summary of *numeric* variable**
 ```{r descriptive_summary}
@@ -1210,13 +1308,13 @@ https://cfss.uchicago.edu/notes/grammar-of-graphics/
 ```
 
 <!-- ======================================================= -->
-# Scatterplots {.tabset .tabset-fade .tabset-pills}
+# Scatterplots {#scatterplot .tabset .tabset-fade .tabset-pills}
 
 plot(linelist$age)
 
 
 <!-- ======================================================= -->
-# Boxplots {.tabset .tabset-fade .tabset-pills}
+# Boxplots {#boxplot .tabset .tabset-fade .tabset-pills}
 
 These can be created simply, or with **ggplot2**  
 
@@ -1240,10 +1338,12 @@ graphics::boxplot(age ~ gender, data = linelist)
 ggplot(data = linelist, aes(y = age))+
   geom_boxplot()
 ```
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Simple Statistical Tests {.tabset .tabset-fade .tabset-pills}
+# Simple Statistical Tests {#stat_tests .tabset .tabset-fade .tabset-pills}
 
 quant/quant, quant/cat, cat/cat
 box plots
@@ -1254,7 +1354,7 @@ odds ratios, mantel-haensel, etc.
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Epidemic Curves {.tabset .tabset-fade .tabset-pills}
+# Epidemic Curves {#epicurves .tabset .tabset-fade .tabset-pills}
 
 
 
@@ -2398,20 +2498,20 @@ Other resources
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Heatmaps {.tabset .tabset-fade .tabset-pills}
+# Heatmaps {#heatmap .tabset .tabset-fade .tabset-pills}
 
 Also, 3d?
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Age pyramids {.tabset .tabset-fade .tabset-pills}
+# Age pyramids {#agepyramid .tabset .tabset-fade .tabset-pills}
 via ggplot and via R4Epis methods
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Diagrams {.tabset .tabset-fade .tabset-pills}
+# Diagrams {#diagrams .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ## Patient flow {.tabset .tabset-fade .tabset-pills}
@@ -2439,7 +2539,7 @@ Direct standardization package
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Making nice tables {.tabset .tabset-fade .tabset-pills}
+# Making nice tables {#tables .tabset .tabset-fade .tabset-pills}
 knitr::kable
 DT
 
@@ -2449,7 +2549,7 @@ DT
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Transmission Chains {.tabset .tabset-fade .tabset-pills}
+# Transmission Chains {#transmissionchains .tabset .tabset-fade .tabset-pills}
 
 
 <!-- ======================================================= -->
@@ -2464,21 +2564,21 @@ DT
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Survey analysis {.tabset .tabset-fade .tabset-pills}
+# Survey analysis {#surveys .tabset .tabset-fade .tabset-pills}
 Weighting?
 Other?
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Time series analysis {.tabset .tabset-fade .tabset-pills}
+# Time series analysis {#timeseries .tabset .tabset-fade .tabset-pills}
 
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Rmarkdowns {.tabset .tabset-fade .tabset-pills}
+# Rmarkdowns {#rmarkdown .tabset .tabset-fade .tabset-pills}
 
 To PPTs
 PDFs
@@ -2498,7 +2598,7 @@ Detecting spikes in syndromic/routine surveillance
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# GIS Basics {.tabset .tabset-fade .tabset-pills}
+# GIS Basics {#gis .tabset .tabset-fade .tabset-pills}
 
 Plotting coordinates
 Plotting polygons and shapefiles
@@ -2511,7 +2611,7 @@ Distance to nearest X (HCF)
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Character search/Regex {.tabset .tabset-fade .tabset-pills}
+# Character search/Regex {#characters .tabset .tabset-fade .tabset-pills}
 
 Syntax
 stringr
@@ -2520,7 +2620,7 @@ stringr
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Matching/Merging datasets {.tabset .tabset-fade .tabset-pills}
+# Matching/Merging datasets {#merging.tabset .tabset-fade .tabset-pills}
 joins
 antijoins, etc
 dplyr
@@ -2535,7 +2635,7 @@ Other methods
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Deduplicating {.tabset .tabset-fade .tabset-pills}
+# Deduplicating {#dedup .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ## Record elimination
@@ -2552,7 +2652,7 @@ Combining the values of multiple records into one record
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Moving averages {.tabset .tabset-fade .tabset-pills}
+# Moving averages {#movingaverage.tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ## Calculating {.tabset .tabset-fade .tabset-pills}
@@ -2565,7 +2665,7 @@ Combining the values of multiple records into one record
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Epidemic modeling {.tabset .tabset-fade .tabset-pills}
+# Epidemic modeling {#epidemics .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ## R(t) estimatation {.tabset .tabset-fade .tabset-pills}
@@ -2590,7 +2690,7 @@ Combining the values of multiple records into one record
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# R projects {.tabset .tabset-fade .tabset-pills}
+# R projects {#rprojects .tabset .tabset-fade .tabset-pills}
 
 here package
 
@@ -2599,7 +2699,7 @@ here package
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# ggplot2 tips {.tabset .tabset-fade .tabset-pills}
+# ggplot2 tips {#ggplot .tabset .tabset-fade .tabset-pills}
 
 
 <!-- ======================================================= -->
@@ -2630,7 +2730,7 @@ Complicated method (% 100 * ...)
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Modeling {.tabset .tabset-fade .tabset-pills}
+# Modeling {#modeling .tabset .tabset-fade .tabset-pills}
 Tidymodels
 
 <!-- ======================================================= -->
@@ -2655,14 +2755,14 @@ Tidymodels
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# R with interactive console {.tabset .tabset-fade .tabset-pills}
+# R with interactive console {#console .tabset .tabset-fade .tabset-pills}
 
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Shiny basics {.tabset .tabset-fade .tabset-pills}
+# Shiny basics {#shiny .tabset .tabset-fade .tabset-pills}
 Flexdashboard  
 
 
@@ -2670,14 +2770,14 @@ Flexdashboard
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Connecting with relational databases {.tabset .tabset-fade .tabset-pills}
+# Connecting with relational databases {#databases .tabset .tabset-fade .tabset-pills}
 
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# R on network/company drives {.tabset .tabset-fade .tabset-pills}
+# R on network/company drives {#networkdrive .tabset .tabset-fade .tabset-pills}
 
 Troubleshooting tips, common errors, etc.
 
@@ -2685,20 +2785,20 @@ Troubleshooting tips, common errors, etc.
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Report Factories {.tabset .tabset-fade .tabset-pills}
+# Report Factories {#reportfactory .tabset .tabset-fade .tabset-pills}
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Github and R {.tabset .tabset-fade .tabset-pills}
+# Github and R {#github .tabset .tabset-fade .tabset-pills}
 
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Interactive plots {.tabset .tabset-fade .tabset-pills}
+# Interactive plots {#plotly .tabset .tabset-fade .tabset-pills}
 plotly
 
 
@@ -2711,4 +2811,4 @@ plotly
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Common error messages {.tabset .tabset-fade .tabset-pills}
+# Common error messages {#errors .tabset .tabset-fade .tabset-pills}
