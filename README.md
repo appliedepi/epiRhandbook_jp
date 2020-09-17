@@ -1,7 +1,7 @@
 # R_epi_handbook
 R handbook for epidemiologists
 
-***Open the HTML above to see the latest version.***
+***Go to https://nsbatra.github.io/R_epi_handbook/handbook.html to see the latest version.***
 
 **The problem:**  
 
