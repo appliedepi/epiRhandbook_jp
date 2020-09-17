@@ -26,6 +26,12 @@ knitr::opts_chunk$set(echo = TRUE,
                       message = FALSE)
 ```
 
+
+```{r klippy, echo=FALSE, include=TRUE}
+#Enables "copy to clipboard" icons   https://rlesur.github.io/klippy/articles/klippy.html
+klippy::klippy(position = c('top', 'right'))
+```
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -34,16 +40,15 @@ knitr::opts_chunk$set(echo = TRUE,
 
 <!-- ======================================================= -->
 ## About this handbook
-  
+<h2> About this handbook </h2>
+
 **How to read this handbook:**  
 
 * *This handbook in an HTML file. It is not online, you are only using your web browser to view this local file.*  
 
 * *This handbook is ***best viewed with Google Chrome***. Some functions may not work in other browsers.*  
 
-* *Please click through all the tabs to see different sections*  
-
-* *You can click "Code" tabs on the right to see and copy code.*  
+* *Use tabs on the right to hide/view code. See 'Copy to clipboard' icon in the upper-right of each code section*  
 
 
 **Version**  
@@ -80,9 +85,9 @@ FOR EXAMPLE: This is a boxed example
 
 <span style="color: red;">**_DANGER:_** This is a warning.</span>
 
-<h2> Datasets used </h2>
 <!-- ======================================================= -->
 ## Datasets used {#datasets}
+<h2> Datasets used </h2>
 
 Here the datasets used in this handbook will be described and will be "downloadable" via link (the files will be stored within the HTML, so available offline as well)
 
@@ -94,6 +99,9 @@ Here the datasets used in this handbook will be described and will be "downloada
 
 ```{r handbook_packages_silent, echo = F}
 pacman::p_load(tidyverse, rio, here, apyramid)
+
+
+remotes::install_github("rlesur/klippy")
 ```
 
 
@@ -113,9 +121,9 @@ count_data <- rio::import(here::here("data", "aggregated_counts_diseaseX.xlsx"))
 ```
 
 
-<h2> Contributors </h2>
 <!-- ======================================================= -->
 ## Contributors
+<h2> Contributors </h2>
 
 **Maintainer:** Neale Batra (neale.batra@gmail.com)
 
@@ -140,8 +148,8 @@ Photo credits (logo)
 # R Basics {#rbasics .tabset .tabset-fade}
 
 <!-- ======================================================= -->
-<h2> Why use R? </h2>
 ## Why use R?
+<h2> Why use R? </h2>
 
 * Reproducibility  
 * Fewer errors  
@@ -149,8 +157,8 @@ Photo credits (logo)
 * Free
 
 <!-- ======================================================= -->
-<h2> Installation </h2>
 ## Installation {#install .tabset .tabset-fade .tabset-pills}
+<h2> Installation </h2>
 
 How to install R
 
@@ -164,8 +172,8 @@ Other things you may need to install:
 * RTools  
 
 <!-- ======================================================= -->
-<h2> RStudio </h2>
 ## RStudio {#rstudio .tabset .tabset-fade .tabset-pills}
+<h2> RStudio </h2>
 
 
 ### RStudio Orientation
@@ -1138,7 +1146,7 @@ linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, origin
 
 
 <!-- ======================================================= -->
-## How dates are displayed 
+## How dates are displayed  
 
 Once dates are the correct class, you often want them to display differently. For example, "Monday 05 Jan" instead of 2018-01-05. You can do this with the function `format()` in a similar was to `as.Date()`. Read more about it [in this tutorial](https://www.statmethods.net/input/dates.html) 
 
@@ -1268,18 +1276,39 @@ Santa Clara County example - COVID contact tracing data - classification of mult
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Transforming data {#transformation .tabset .tabset-fade .tabset-pills}
+# Transforming data {#transformation .tabset .tabset-fade}
+
 (pivoting/melting etc.)
 Transforming datasets from wide-to-long, or long-to-wide...  
 
 <!-- ======================================================= -->
-## Wide-to-long
+## Wide-to-long {#widetolong .tabset .tabset-fade .tabset-pills}
 
-**dplyr**
-`pivot_longer()`
+Transforming a dataset from wide to long
 
 <!-- ======================================================= -->
-## Long-to-wide
+### Data
+
+We start with data that is in a wide format, e.g. our [linelist](#datasets).  
+
+```{r}
+DT::datatable(linelist, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
+
+<!-- ======================================================= -->
+### `pivot_longer()`
+
+```{r}
+#tidyr::pivot_longer(linelist, dplyr::vars(-age, -date_of_hospitalisation), names_to = "variable", values_to = "value" )
+```
+
+<!-- ======================================================= -->
+### Result
+
+
+
+<!-- ======================================================= -->
+## Long-to-wide {#longtowide .tabset .tabset-fade .tabset-pills}
 
 **dplyr**
 `pivot_wider()`
@@ -2713,6 +2742,177 @@ Here are links to good online resources
 
 Other resources
 
+
+
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Combination Analysis {#combinations .tabset .tabset-fade}
+
+This analysis plots the frequency of different **combinations** of values/responses. In this example, we plot the frequency of different symptom combinations.  
+
+This analysis is often called:  
+**Multiple response analysis**
+**Sets analysis**
+**Combinations analysis**
+
+<!-- ======================================================= -->
+## View the data  
+
+This linelist includes five "yes/no" variables on reported symptoms. We will need to transform these variables a bit to use the **ggupset** package to make our plot.  
+
+```{r}
+# Adds new symptom variables to the linelist, with random "yes" or "no" values 
+linelist_sym <- linelist %>% 
+  mutate(fever  = sample(c("yes", "no"), nrow(linelist), replace = T),
+         chills = sample(c("yes", "no"), nrow(linelist), replace = T),
+         cough  = sample(c("yes", "no"), nrow(linelist), replace = T),
+         aches  = sample(c("yes", "no"), nrow(linelist), replace = T),
+         shortness_of_breath = sample(c("yes", "no"), nrow(linelist), replace = T))
+```
+
+View the data
+
+```{r}
+DT::datatable(linelist_sym, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+```
+
+<!-- ======================================================= -->
+## Re-format values  
+
+We convert the "yes" and "no the the actual symptom name. If "no", we set the value as blank. 
+
+```{r}
+# create column with the symptoms named, separated by semicolons
+linelist_sym_1 <- linelist_sym %>% 
+  
+  # convert the "yes" and "no" values into the symptom name itself
+  mutate(fever = case_when(fever == "yes" ~ "fever",          # if old value is "yes", new value is "fever"
+                           TRUE           ~ NA_character_),   # if old value is anything other than "yes", the new value is NA
+         
+         chills = case_when(chills == "yes" ~ "chills",
+                           TRUE           ~ NA_character_),
+         
+         cough = case_when(cough == "yes" ~ "cough",
+                           TRUE           ~ NA_character_),
+         
+         aches = case_when(aches == "yes" ~ "aches",
+                           TRUE           ~ NA_character_),
+         
+         shortness_of_breath = case_when(shortness_of_breath == "yes" ~ "shortness_of_breath",
+                           TRUE           ~ NA_character_))
+```
+
+Now we make two final variables:  
+1. Pasting together all the symptoms of the patient (character variable)  
+2. Convert the above to class *list*, so it can be accepted by **ggupset** to make the plot  
+
+```{r}
+linelist_sym_1 <- linelist_sym_1 %>% 
+  mutate(
+         # combine the variables into one, using paste() with a semicolon separating any values
+         all_symptoms = paste(fever, chills, cough, aches, shortness_of_breath, sep = "; "),
+         
+         # make a copy of all_symptoms variable, but of class "list" (which is required to use ggupset() in next step)
+         all_symptoms_list = as.list(strsplit(all_symptoms, "; "))
+         )
+```
+
+View the new data. Note the two columns at the end - the pasted combined values, and the list
+
+```{r}
+DT::datatable(linelist_sym, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+```
+
+<!-- ======================================================= -->
+## Create the plot  
+
+Load required package to make the plot (**ggupset**)
+
+```{r}
+pacman::p_load(ggupset)
+```
+
+
+Create the plot:
+
+```{r}
+ggplot(linelist_sym_1,
+       aes(x=all_symptoms_list)) +
+geom_bar() +
+scale_x_upset(reverse = FALSE,
+              n_intersections = 10,
+              sets = c("fever", "chills", "cough", "aches", "shortness_of_breath")
+              )+
+  labs(title = "Signs & symptoms",
+       subtitle = "10 most frequent combinations of signs and symptoms",
+       caption = "Caption here.",
+       x = "Symptom combination",
+       y = "Frequency in dataset")
+
+```
+  
+<!-- ======================================================= -->
+## Alternative method
+
+The UpSetR package allows more customization, but it more difficult to execute:
+
+https://github.com/hms-dbmi/UpSetR  *read this*
+https://gehlenborglab.shinyapps.io/upsetr/ *Shiny App version - you can upload your own data*
+https://cran.r-project.org/web/packages/UpSetR/UpSetR.pdf *documentation - difficult to interpret*
+
+
+```{r}
+pacman::p_load(UpSetR)
+```
+
+Convert symptoms variables to 1/0. 
+
+```{r}
+# Make using upSetR
+
+linelist_sym_2 <- linelist_sym %>% 
+  
+  # convert the "yes" and "no" values into the symptom name itself
+  mutate(fever = case_when(fever == "yes" ~ 1,          # if old value is "yes", new value is "fever"
+                           TRUE           ~ 0),   # if old value is anything other than "yes", the new value is NA
+         
+         chills = case_when(chills == "yes" ~ 1,
+                           TRUE           ~ 0),
+         
+         cough = case_when(cough == "yes" ~ 1,
+                           TRUE           ~ 0),
+         
+         aches = case_when(aches == "yes" ~ 1,
+                           TRUE           ~ 0),
+         
+         shortness_of_breath = case_when(shortness_of_breath == "yes" ~ 1,
+                           TRUE           ~ 0))
+```
+
+Now make the plot, using only the symptom variables. Must designate which "sets" to compare (the names of the symptom variables).  
+Alternatively use `nsets =` and `order.by = "freq"` to only show the top X combinations.  
+
+```{r}
+
+# Make the plot
+UpSetR::upset(
+  select(linelist_sym_2, fever, chills, cough, aches, shortness_of_breath),
+  sets = c("fever", "chills", "cough", "aches", "shortness_of_breath"),
+  order.by = "freq",
+  sets.bar.color = "#56B4E9",
+  empty.intersections = "on",
+  #nsets = 3,
+  number.angles = 0,
+  point.size = 3.5,
+  line.size = 2, 
+  mainbar.y.label = "Symptoms Combinations",
+  sets.x.label = "Patients with Symptom")
+
+```
 
 
 <!-- ======================================================= -->
