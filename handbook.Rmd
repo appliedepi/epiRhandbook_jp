@@ -101,7 +101,9 @@ Here the datasets used in this handbook will be described and will be "downloada
 pacman::p_load(tidyverse, rio, here, apyramid)
 
 
-remotes::install_github("rlesur/klippy")
+# remotes::install_github("rlesur/klippy")
+# remotes::install_github("reconhub/epicontacts@ttree")
+
 ```
 
 
@@ -1179,6 +1181,12 @@ See the section on [epicurves](#epicurves).
 # Cleaning data {#cleaning .tabset .tabset-fade}
 
 Text about cleaning data, approaches, etc.
+renaming
+replace missing with
+dealing with cases (all lower, etc)
+case_when()
+factors
+
 
 <!-- ======================================================= -->
 ## Packages {.tabset .tabset-fade .tabset-pills}
@@ -1270,8 +1278,39 @@ Santa Clara County example - COVID contact tracing data - classification of mult
 
 
 
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Missing Data {#transformation .tabset .tabset-fade}
 
+```{r}
+lines <- linelist %>%
+  mutate(date_of_onset = as.Date(date_of_onset, format = "%d/%m/%Y"),
+         week = aweek::week2date(aweek::date2week(date_of_onset))) %>% 
+  group_by(week) %>% 
+  summarize(n_obs = n(),
+            dt_hosp_missing = sum(date_of_hospitalisation == "" | is.na(date_of_hospitalisation)),
+            dt_hosp_p_miss = dt_hosp_missing / n_obs,
+            
+            outcome_missing = sum(outcome == "" | is.na(outcome)),
+            outcome_p_miss = outcome_missing / n_obs) %>%
+  reshape2::melt(id.vars = c("week")) %>%
+  filter(grepl("_p_", variable)) %>% 
+  
+  ggplot()+
+    geom_line(aes(x = week, y = value, group = variable, color = variable), size = 1, stat = "identity")+
+    labs(title = "Missingness in variables, as proportion of ",
+         #subtitle = str_glue("As of {format(report_date, '%d %b')}"), 
+         x = "Week",
+         y = "Proportion missing",
+         fill = "CalREDIE Variable") + 
+    scale_color_discrete(name = "Variable", labels = c("Date of Hospitalization Missing", "Outcome Missing"))+
+    scale_y_continuous(breaks = c(seq(0,1,0.1)))
+    #theme_cowplot()#+
+    #theme(legend.position = element_text("none"))
 
+lines
+```
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -1280,6 +1319,10 @@ Santa Clara County example - COVID contact tracing data - classification of mult
 
 (pivoting/melting etc.)
 Transforming datasets from wide-to-long, or long-to-wide...  
+
+
+<!-- ======================================================= -->
+## Filtering {#filter .tabset .tabset-fade .tabset-pills}
 
 <!-- ======================================================= -->
 ## Wide-to-long {#widetolong .tabset .tabset-fade .tabset-pills}
@@ -2759,6 +2802,8 @@ This analysis is often called:
 **Sets analysis**
 **Combinations analysis**
 
+The first method shown uses the package **ggupset**. More information can be found [online](https://rdrr.io/cran/ggupset/man/scale_x_upset.html) or offline in the package documentation in your RStudio Help tab.
+
 <!-- ======================================================= -->
 ## View the data  
 
@@ -2767,10 +2812,10 @@ This linelist includes five "yes/no" variables on reported symptoms. We will nee
 ```{r}
 # Adds new symptom variables to the linelist, with random "yes" or "no" values 
 linelist_sym <- linelist %>% 
-  mutate(fever  = sample(c("yes", "no"), nrow(linelist), replace = T),
-         chills = sample(c("yes", "no"), nrow(linelist), replace = T),
-         cough  = sample(c("yes", "no"), nrow(linelist), replace = T),
-         aches  = sample(c("yes", "no"), nrow(linelist), replace = T),
+  mutate(fever  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.80, 0.47)),
+         chills = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.60, 0.80)),
+         cough  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.75, 0.20)),
+         aches  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.45, 0.47)),
          shortness_of_breath = sample(c("yes", "no"), nrow(linelist), replace = T))
 ```
 
@@ -2903,9 +2948,9 @@ UpSetR::upset(
   select(linelist_sym_2, fever, chills, cough, aches, shortness_of_breath),
   sets = c("fever", "chills", "cough", "aches", "shortness_of_breath"),
   order.by = "freq",
-  sets.bar.color = "#56B4E9",
+  sets.bar.color = c("blue", "red", "yellow", "darkgreen", "orange"), # optional colors
   empty.intersections = "on",
-  #nsets = 3,
+  # nsets = 3,
   number.angles = 0,
   point.size = 3.5,
   line.size = 2, 
@@ -2915,6 +2960,8 @@ UpSetR::upset(
 ```
 
 
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -2922,11 +2969,21 @@ UpSetR::upset(
 
 Also, 3d?
 
+
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Age pyramids {#agepyramid .tabset .tabset-fade}
 via ggplot and via R4Epis methods
+
+
+
+
+
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -2938,6 +2995,14 @@ via ggplot and via R4Epis methods
 
 E.g. EVD patient "pathways" to outcome (via clinic or not, etc.)
 
+HIV care continuum datasets? PreP datasets?
+
+<!-- ======================================================= -->
+## Alluvial {.tabset .tabset-fade .tabset-pills}
+
+Sankey plots - show transitions among cohort over time, interrelatedness of groups
+Liza Coyer TODO
+
 <!-- ======================================================= -->
 ## Clinical trials {.tabset .tabset-fade .tabset-pills}
 
@@ -2946,6 +3011,9 @@ Or papers in meta-analysis
 <!-- ======================================================= -->
 ## Event timelines {.tabset .tabset-fade .tabset-pills}
 E.g. border closures during COVID
+
+
+
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -2956,12 +3024,23 @@ PHEindicatormethods package
 Direct standardization package
 
 
+
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Making nice tables {#tables .tabset .tabset-fade}
+
 knitr::kable
 DT
+
+quickly changing the denominator (per 100,000, etc.)
+
+Manually making tables
+
 
 
 
@@ -2981,6 +3060,11 @@ DT
 
 
 
+
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -2988,10 +3072,19 @@ DT
 Weighting?
 Other?
 
+
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Time series analysis {#timeseries .tabset .tabset-fade}
+
+
+
+
 
 
 
@@ -3009,12 +3102,22 @@ HTML candies
 Making tables, cheatsheet contained in HTML handbook?
 
 
+
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Abberation Detection {.tabset .tabset-fade}
 Endemic corridor analysis
 Detecting spikes in syndromic/routine surveillance
+
+
+
+
+
 
 
 <!-- ======================================================= -->
@@ -3033,10 +3136,18 @@ Distance to nearest X (HCF)
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
-# Character search/Regex {#characters .tabset .tabset-fade}
+# Character manipulation/search {#characters .tabset .tabset-fade}
 
 Syntax
-stringr
+stringr,  gsub,  
+splitting string variables
+search ICD & chief complaints
+/Regex
+occupation classification code
+
+
+
+
 
 
 <!-- ======================================================= -->
@@ -3052,6 +3163,11 @@ dplyr
 
 rowmatcher
 Other methods
+
+
+
+
+
 
 
 <!-- ======================================================= -->
@@ -3071,16 +3187,26 @@ Combining the values of multiple records into one record
 
 
 
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Moving averages {#movingaverage.tabset .tabset-fade}
 
+
 <!-- ======================================================= -->
 ## Calculating {.tabset .tabset-fade .tabset-pills}
 
+
 <!-- ======================================================= -->
 ## Visualizing {.tabset .tabset-fade .tabset-pills}
+
+
+
+
 
 
 
@@ -3102,11 +3228,17 @@ Combining the values of multiple records into one record
 
 
 
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Advanced R Studio {.tabset .tabset-fade}
 .Rprofile
+
+
+
 
 
 <!-- ======================================================= -->
@@ -3115,6 +3247,37 @@ Combining the values of multiple records into one record
 # R projects {#rprojects .tabset .tabset-fade}
 
 here package
+
+
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Writing functions {#writefunctions .tabset .tabset-fade}
+
+
+
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Missing Data {#missing .tabset-fade}
+How to quickly exclude or include in tables, charts, analysis, 
+exclude whole line if any is missing, all missing, etc.
+
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# if/else/loops  {#ifelse .tabset-fade}
+
+
 
 
 
@@ -3150,10 +3313,18 @@ Complicated method (% 100 * ...)
 ## Animations {.tabset .tabset-fade .tabset-pills}
 
 
+
+
+
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Modeling {#modeling .tabset .tabset-fade}
+
 Tidymodels
 
 <!-- ======================================================= -->
@@ -3169,16 +3340,43 @@ Tidymodels
 
 
 <!-- ======================================================= -->
+## Multi-stage Markov models {.tabset .tabset-fade .tabset-pills}
+
+Liza Coyer TODO this, logitudinal 
+
+
+<!-- ======================================================= -->
 ## Tables of model results {.tabset .tabset-fade .tabset-pills}
+
 
 <!-- ======================================================= -->
 ## Causal diagrams {.tabset .tabset-fade .tabset-pills}
+
+
+
+
+
 
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # R with interactive console {#console .tabset .tabset-fade}
+
+
+
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# sapply, lapply {#apply .tabset .tabset-fade}
+
+
+
+
+
 
 
 
@@ -3190,10 +3388,15 @@ Flexdashboard
 
 
 
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Connecting with relational databases {#databases .tabset .tabset-fade}
+
+
 
 
 
@@ -3205,16 +3408,27 @@ Flexdashboard
 Troubleshooting tips, common errors, etc.
 
 
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Report Factories {#reportfactory .tabset .tabset-fade}
 
 
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Github and R {#github .tabset .tabset-fade}
+
+
+
 
 
 
@@ -3225,13 +3439,32 @@ Troubleshooting tips, common errors, etc.
 plotly
 
 
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Overwriting files with R {.tabset .tabset-fade}
 
 
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 # Common error messages {#errors .tabset .tabset-fade}
+
+
+
+
+
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Gallery {#errors .tabset .tabset-fade}
+
+If there is sufficient file space, this will be a gallery of visualizations, tables, etc. with internal links to the relevant Handbook sections. 
