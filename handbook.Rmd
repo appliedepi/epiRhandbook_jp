@@ -98,18 +98,21 @@ Here the datasets used in this handbook will be described and will be "downloada
 * modeling dataset? (...)
 
 ```{r handbook_packages_silent, echo = F}
-pacman::p_load(tidyverse, rio, here, apyramid)
+pacman::p_load(tidyverse, rio, here, apyramid, linelist)
 
 
 # remotes::install_github("rlesur/klippy")
 # remotes::install_github("reconhub/epicontacts@ttree")
+# remotes::install_github("reconhub/linelist")
+
 
 ```
 
 
 ```{r datasets_import_silent, echo = F, cache=T}
+
 # import linelist
-linelist_raw <- rio::import(here::here("data", "fluH7N9_China_2013.csv"))
+linelist_raw <- import(here("data", "fluH7N9_China_2013.csv"))
   
   
 linelist <- linelist_raw %>% 
@@ -141,7 +144,7 @@ Some of this material comes from the R4Epis website, which was also made by some
 
 RECON
 
-Photo credits (logo)
+Photo credits (logo): CDC Public Image gallery; R Graph Gallery
 
 
 <!-- ======================================================= -->
@@ -151,7 +154,6 @@ Photo credits (logo)
 
 <!-- ======================================================= -->
 ## Overview
-<h2> Why use R? </h2>
 
 These tabs will provide basic R skills  
 
@@ -858,9 +860,9 @@ Introduction to importing data
 
 
 <!-- ======================================================= -->
-## Packages {#packages}
+## Packages {.tabset .tabset-fade .tabset-pills}  
 
-The key package we recommend for importing data is: **rio**. The package **rio** offers the useful function `import()` that can import many types of files into R.  
+The key package we recommend for importing data is: **rio**. **rio** offers the useful function `import()` which can import many types of files into R.  
 
 The alternative to using **rio** would be to use functions from several other packages that are specific to a type of file (e.g. `read.csv()`, `read.xlsx()`, etc.). While these alternatives can be difficult to remember, always using `rio::import()` is relatively easy. 
 
@@ -880,26 +882,37 @@ pacman::p_load(rio, here)
 When you import a dataset, you are doing the following:  
 
 1. Creating a new, named data frame object in your R environment  
-2. Defining the new object as the imported dataset  
-
-[TODO importing image]
+2. *Defining the new object* **as** *the imported dataset*  
 
 The function `import()` from the package **rio** makes it easy to import many types of data files.
+
+```{r, eval=F}
+# An example:
+#############
+library(rio)                                                     # ensure package rio is loaded for use
+
+# New object is defined as the imported data
+my_csv_data <- import("linelist.csv")                            # importing a csv file
+
+my_Excel_data <- import("observations.xlsx", which = "February") # import an Excel file
+```
 
 `import()` uses the file’s extension (e.g. .xlsx, .csv, .dta, etc.) to appropriately import the file. Any optional arguments specific to the filetype can be supplied as well.  
 
 You can read more about the **rio** package [in this online vignette](https://rdrr.io/cran/rio/f/vignettes/rio.Rmd)
 
+<span style="color: orange;">**_CAUTION:_** In the example above, the datasets are assumed to be located in the *working directory*, or the same folder as the script.</span>  
+
 
 <!-- ======================================================= -->
-## Select by filepath {.tabset .tabset-fade .tabset-pills}  
+## Import from filepath {.tabset .tabset-fade .tabset-pills}  
 
-Manually typing a filepath is prone to error, but is sometime the best way (for example, if referencing files from a shared/network drive). The function `import()` (from the package **rio**) accepts a filepath in quotes.  
+A filepath can be provided in full (as below) or as a *relative filepath* (see next tab). Providing a full filepath can be fast and may be the best if referencing files from a shared/network drive).  
 
-A few things to note:  
+The function `import()` (from the package **rio**) accepts a filepath in quotes. A few things to note:  
 
 * Slashes must be forward slashes, as in the code shown. This is *NOT* the default for Windows filepaths.  
-* Filepaths that begin with double slashes (e.g. "//...") will likely not be recognized by R and will produce an error. Consider moving these files to a "named" Drive that begins with a letter (e.g. "J:" or "C:"). See the section on using Network Drive for more details.
+* Filepaths that begin with double slashes (e.g. "//...") will likely **not be recognized by R** and will produce an error. Consider moving these files to a "named" or "lettered" drive that begins with a letter (e.g. "J:" or "C:"). See the section on using Network Drive for more details on this issue.
 
 ```{r import_filepath, eval=F}
 # A demonstration showing how to import a specific Excel sheet
@@ -907,7 +920,7 @@ my_data <- rio::import("C:/Users/Neale/Documents/my_excel_file.xlsx")
 ```
 
 <!-- ======================================================= -->
-## Select Excel sheet {.tabset .tabset-fade .tabset-pills}
+## Import Excel sheet {.tabset .tabset-fade .tabset-pills}
 
 If importing a specific **sheet** from an Excel file, include the sheet name in the `which = ` argument of `import()`. For example:  
 
@@ -920,24 +933,26 @@ If using the `here()` method to provide a relative pathway to `import()`, you ca
 
 ```{r import_sheet_here, eval=F}
 # Demonstration: importing a specific Excel sheet when using relative pathways with the 'here' package
-linelist_raw <- rio::import(here("data", "linelists", "linelist.xlsx"), which = "Sheet1")`  
+linelist_raw <- import(here("data", "linelists", "linelist.xlsx"), which = "Sheet1")`  
 ```
 
 <!-- ======================================================= -->
-## Select manually {.tabset .tabset-fade .tabset-pills}
+## Select file manually {.tabset .tabset-fade .tabset-pills}
 
-You can import data manually by either:  
+You can import data manually via one of these methods:  
 
-1) Environment RStudio Pane, click "Import Dataset", and select the type of data 
-2) Click File / Import Dataset / (select the type of data)  
-3) To hard-code manual selection, use the *base R* command `file.choose()` (leaving the parentheses empty) to trigger appearance of a pop-up window that allows the user to manually select the file from their computer. For example:  
+* Environment RStudio Pane, click "Import Dataset", and select the type of data 
+* Click File / Import Dataset / (select the type of data)  
+* To hard-code manual selection, use the *base R* command `file.choose()` (leaving the parentheses empty) to trigger appearance of a **pop-up window** that allows the user to manually select the file from their computer. For example:  
 
 ```{r import_choose, eval=F}
-# A demonstration showing manual selection of a file. When this command is run, a pop-up window should appear. 
+# A demonstration showing manual selection of a file. When this command is run, a POP-UP window should appear. 
 # The filepath of the selected file will be supplied to the import() command.
 
 my_data <- rio::import(file.choose())
 ```
+
+<span style="color: darkgreen;">**_TIP:_** The **pop-up window** may appear BEHIND your RStudio window.</span>
 
 
 <!-- ======================================================= -->
@@ -950,7 +965,7 @@ my_data <- rio::import(file.choose())
   * Useful if multiple users are running a script hosted on a network drive
 * A relative filepath: `import(here("data", "linelists", "ebola_linelist.xlsx"))`  
   * Path is given in relation to a root directory (typically the root folder of an R project)  
-  * Best if working within an R project, or sharing a project with others  
+  * Best if working within an R project, or planning to zip and share entire project with others  
   
 The package **here** and it's function `here()` facilitate relative pathways.
 
@@ -987,7 +1002,7 @@ linelist <- import(here("data", "fluH7N9_China_2013.csv"))
 ```
 
 
-<span style="color: black;">**_NOTE:_** You can still import a specific sheet of an excel file as noted elsewhere. The `here()` command is only supplying the filepath.</span>
+<span style="color: black;">**_NOTE:_** You can still import a specific sheet of an excel file as noted in the Excel tab. The `here()` command only supplies the filepath.</span>
 
 
 
@@ -995,16 +1010,20 @@ linelist <- import(here("data", "fluH7N9_China_2013.csv"))
 ## Manual data entry {.tabset .tabset-fade .tabset-pills}
 
 ### Entry by columns
-By default, R expect manual entry of data in vectors (columns) and combining them into a data frame: 
-NOTE: all vectors must be the same length!
+Since a data frame is a combination of vertical vectors (columns), R by default expects manual entry of data to also be in vertical vectors (columns). 
 
 ```{r import_manual_col}
-# define each vector (column) separately, each with their own name
+# define each vector (vertical column) separately, each with its own name
 PatientID <- c(235, 452, 778, 111)
 Treatment <- c("Yes", "No", "Yes", "Yes")
-Death   <- c(1, 0, 1, 0)
+Death     <- c(1, 0, 1, 0)
+```
+<span style="color: orange;">**_CAUTION:_** All vectors must be the same length (same number of values).</span>
 
-# combine the columns into one data frame, by referencing the vector names
+The vectors can then be bound together using the function `data.frame()`:  
+
+```{r}
+# combine the columns into a data frame, by referencing the vector names
 manual_entry_cols <- data.frame(PatientID, Treatment, Death)
 ```
 
@@ -1017,10 +1036,10 @@ DT::datatable(manual_entry_cols)
 
 
 ### Entry by rows
-Use the `tribble` function from the **tibble** package from the tidverse.  
-https://tibble.tidyverse.org/reference/tribble.html  
-Note that each column must contain only one kind of data (character, numeric, etc.). You can create a list column, however (see documentation)
-You can use tabs and spacing to make the data entry more intuitive and readable. For example:  
+Use the `tribble` function from the **tibble** package from the tidverse ([onlinetibble reference](https://tibble.tidyverse.org/reference/tribble.html)).  
+  
+Note how column headers start with a *tilde* (`~`).  Also note that each column must contain only one class of data (character, numeric, etc.).  
+You can use tabs, spacing, and new rows to make the data entry more intuitive and readable. For example:  
 
 ```{r import_manual_row}
 # create the dataset manually by row
@@ -1042,10 +1061,13 @@ DT::datatable(manual_entry_rows)
 
 ### Pasting from clipboard  
 
+If you copy data from elsewhere and have it on your clipboard, you can try the following command to convert those data into an R data frame:  
 
-x <- read.table(file = "clipboard", sep = "t", header=TRUE)
-x
-
+```{r}
+manual_entry_clipboard <- read.table(file = "clipboard",
+                                     sep = "t",           # separator could be tab, or commas, etc.
+                                     header=TRUE)         # if there is a header row
+```
 
 
 
@@ -1071,10 +1093,11 @@ The following packages are recommended for working with dates:
 
 ```{r dates_packages}
 # Checks if package is installed, installs if necessary, and loads package for current session
-pacman::p_load(aweek,
-               lubridate,
-               linelist,
-               ISOweek)
+
+pacman::p_load(aweek,      # flexibly converts dates to weeks, and vis-versa
+               lubridate,  # for conversions to months, years, etc.
+               linelist,   # function to guess messy dates
+               ISOweek)    # another option for creating weeks
 ```
 
 
@@ -1082,11 +1105,11 @@ pacman::p_load(aweek,
 <!-- ======================================================= -->
 ## `as.Date()`  
 
-The standard, **base** R function to convert an object or variable to class Date is `as.Date()` (not capitalization).  
+The standard, **base** R function to convert an object or variable to class Date is `as.Date()` (note capitalization).  
 
-`as.Date()` requires that the user specify the existing format so that it is able to convert and store each element correctly (day, month, year, etc.).  
+`as.Date()` requires that the user *specify the ***existing*** format of the date*, so it can understand, convert, and store each element (day, month, year, etc.) correctly. [Read more online about `as.Date()`](https://www.stat.berkeley.edu/~s133/dates.html).  
 
-**If used on a variable, `as.Date()` therefore requires that all the character date values be in the same format before converting.** [Read more about using `as.Date()` here](https://www.stat.berkeley.edu/~s133/dates.html).
+**If used on a variable, `as.Date()` therefore requires that all the character date values be in the same format before converting.** If your data are messy, try cleaning them or consider using `guess_dates()` from the **linelist** package.  
 
 It can be easiest to first convert the variable to character class, and then convert to date class:  
 
@@ -1095,8 +1118,8 @@ It can be easiest to first convert the variable to character class, and then con
 linelist_cleaned$date_of_onset <- as.character(linelist_cleaned$date_of_onset)
 ```
   2. Convert the variable from character values into date values, using the function `as.Date()`  
-  (note the capital "D" in this function)  
-  + Within the `as.Date()` function, you must use the `format=` argument to tell R which characters are which date components - which characters refer to the month, the day, and the year. If your values are already in one of R's standard formats (YYYY-MM-DD or YYYY/MM/DD) the `format=` argument is not necessary.  
+  (note the capital "D")  
+  + Within the `as.Date()` function, you must use the `format=` argument to tell R the *current* format of the date components - which characters refer to the month, the day, and the year, and how they are separated. If your values are already in one of R's standard date formats (YYYY-MM-DD or YYYY/MM/DD) the `format=` argument is not necessary.  
     
     + The codes are:  
          %d = Day # (of the month e.g. 16, 17, 18...)  
@@ -1112,47 +1135,45 @@ For example, if your character dates are in the format DD/MM/YYYY, like "24/04/1
 ```{r eval=F}
 linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, format = "%d/%m/%Y")
 ```
-<span style="color: darkgreen;">**_TIP:_** **The `format=` argument is *not* telling R the format you want the dates to be, but rather how to identify the date parts as they are *before* you run the command.**</span>
+<span style="color: darkgreen;">**_TIP:_** The `format=` argument is *not* telling R the format you want the dates to be, but rather how to identify the date parts as they are *before* you run the command.</span>  
 
-<span style="color: darkgreen;">**_TIP:_** Also, be sure that in the `format=` argument you use the *date-part separator* (e.g. /, -, or space) that is present in your dates.</span>
+<span style="color: darkgreen;">**_TIP:_**Be sure that in the `format=` argument you use the *date-part separator* (e.g. /, -, or space) that is present in your dates.</span>  
 
 
-The `as.character()` and `as.Date()` commands can be wrapped together such as:  
+The `as.character()` and `as.Date()` commands can optionally be combined as:  
 
 ```{r eval=F}
 linelist_cleaned$date_of_onset <- as.Date(as.character(linelist_cleaned$date_of_onset), format = "%d/%m/%Y")
 ```
 
-or within piping (see REF): 
-
-```{r eval=F}
-linelist_cleaned %>% 
-  mutate(as.Date(as.character(date_of_onset), format = "%d/%m/%Y"))
-```
-
-
-
-
+If using [piping](#piping) and the tidyverse, the above command might look like this:  
 
 ```{r, eval=F}
-# Convert the variable to class Date by providing the format of the variable
-linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, format="%Y-%m-%d")
-# Check the class of the variable again
+linelist_cleaned <- linelist_cleaned %>%
+  mutate(date_of_onset = as.character(date_of_onset),
+         date_of_onset = as.Date(date_of_onset, format = "%d/%m/%Y"))
+```
+
+Once complete, you can run a command to verify the class of the variable
+```{r, eval=F}
+# Check the class of the variable
 class(linelist_cleaned$date_of_onset)  
 ```
 
-Once the values are in class Date, R will present them in it's standard format, which is YYYY-MM-DD.
+Once the values are in class Date, R will by default display them in the standard format, which is YYYY-MM-DD.
 
 
 
 <!-- ======================================================= -->
 ## `guess_dates()` 
 
-**The function `guess_dates()` attempts to read a "messy" date variable containing dates in many different formats and convert the dates to a standard format.** You can [read more about `guess_dates()`](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html), which is in the **linelist** package.
+**The function `guess_dates()` attempts to read a "messy" date variable containing dates in many different formats and convert the dates to a standard format.** You can [read more online about `guess_dates()`](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html), which is in the **linelist** package.
 
 >**For example:** `guess_dates` would see the following dates "03 Jan 2018", "07/03/1982", and "08/20/85" and convert them in the class Date to: 2018-01-03, 1982-03-07, and 1985-08-20.  
+
 ```{r, eval=F}
-#guess_dates(c("03 Jan 2018", "07/03/1982", "08/20/85")) # guess_dates() not yet available for R 4.0.2
+linelist::guess_dates(c("03 Jan 2018", "07/03/1982", "08/20/85")) # guess_dates() not yet available on CRAN for R 4.0.2
+                                                                  # try install via devtools::install_github("reconhub/linelist")
 ```
 
 *Some optional arguments for `guess_dates()` that you might include are:*  
@@ -1164,31 +1185,60 @@ Once the values are in class Date, R will present them in it's standard format, 
 
 ```{r eval=FALSE}
 # An example using guess_dates on the variable dtdeath
-linelist_cleaned$dtdeath <- linelist::guess_dates(linelist_cleaned$dtdeath)
-# An example from the template using guess_dates over multiple date variables, with piping, error tolerance of 50%, and the earliest accepted date of 1 Jan 2016.
-linelist_cleaned <- linelist_cleaned %>%
-   mutate_at(vars(matches("date|Date")), linelist::guess_dates,
-           error_tolerance = 0.5, first_date = "2016-01-01")
+data_cleaned <- data %>% 
+  mutate(dtdeath = linelist::guess_dates(dtdeath, error_tolerance = 0.1, first_date = "2016-01-01")
 ```
 
 
 <!-- ======================================================= -->
 ## Excel Dates
 
-Excel stores dates as the number of days since December 30, 1899. If the dataset you imported from Excel has a date variable showing numbers like "41369"... use the `as.Date()` function to convert, but **instead of supplying a format as above, supply an origin date**. Note that the origin date must be given in the default date format for R ("YYYY-MM-DD").
+Excel stores dates as the number of days since December 30, 1899. If the dataset you imported from Excel shows dates as numbers or characters like "41369"... use the `as.Date()` function to convert, but **instead of supplying a format as above, supply an origin date**.  
+
+<span style="color: black;">**_NOTE:_** You should provide the origin date in R's default date format (`"YYYY-MM-DD"`).</span>
+
 
 ```{r, eval=FALSE}
-# An example of providing an origin date when converting to class Date
-linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, origin = "1899-12-30")
+# An example of providing the Excel 'origin date' when converting Excel number dates
+data_cleaned <- data %>% 
+  mutate(date_of_onset = as.Date(date_of_onset, origin = "1899-12-30"))
 ```
 
 
 <!-- ======================================================= -->
 ## How dates are displayed  
 
-Once dates are the correct class, you often want them to display differently. For example, "Monday 05 Jan" instead of 2018-01-05. You can do this with the function `format()` in a similar was to `as.Date()`. Read more about it [in this tutorial](https://www.statmethods.net/input/dates.html) 
+Once dates are the correct class, you often want them to display differently (e.g. in a plot, graph, or table). For example, to display as "Monday 05 Jan" instead of 2018-01-05. You can do this with the function `format()`, which works in a similar way as `as.Date()`. Read more [in this online tutorial](https://www.statmethods.net/input/dates.html)  
 
-#### Calculating distance between dates
+%d = Day # (of the month e.g. 16, 17, 18...)
+%a = abbreviated weekday (Mon, Tues, Wed, etc.)  
+%A = full weekday (Monday, Tuesday, etc.)  
+%m = # of month (e.g. 01, 02, 03, 04)  
+%b = abbreviated month (Jan, Feb, etc.)  
+%B = Full Month (January, February, etc.)  
+%y = 2-digit year  (e.g. 89)  
+%Y = 4-digit year  (e.g. 1989)  
+%h = hours (24-hr clock)  
+%m = minutes  
+%s = seconds
+%z = offset from GMT  
+%Z = Time zone (character)
+
+An example of formatting today's date:  
+
+```{r}
+# today's date, with formatting
+format(Sys.Date(), format="%d %B %Y")
+
+# easy way to get full date and time (no formatting)
+date()
+
+# formatted date, time, and time zone (using paste0() function)
+paste0(format(Sys.Date(), format= "%A, %b %d '%y, %z  %Z, "), format(Sys.time(), format = "%H:%M:%S"))
+```
+
+<!-- ======================================================= -->
+## Calculating distance between dates
 
 The difference between dates can be calculated by:  
   
@@ -1209,6 +1259,12 @@ The templates use the very flexible package **aweek** to set epidemiological wee
 
 See the section on [epicurves](#epicurves).
 
+<!-- ======================================================= -->
+## Dates miscellaneous  
+
+* `Sys.Date( )` returns the current date of your computer  
+* `Sys.Time()` returns the current time of your computer
+* `date()` returns the current date and time.  
 
 
 <!-- ======================================================= -->
@@ -2884,22 +2940,26 @@ Other resources
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade .tabset-pills}
 
-This analysis plots the frequency of different **combinations** of values/responses. In this example, we plot the frequency of different symptom combinations.  
+This analysis plots the frequency of different **combinations** of values/responses. In this example, we plot the frequency of symptom combinations.  
 
 This analysis is often called:  
 **Multiple response analysis**
 **Sets analysis**
 **Combinations analysis**
 
-The first method shown uses the package **ggupset**. More information can be found [online](https://rdrr.io/cran/ggupset/man/scale_x_upset.html) or offline in the package documentation in your RStudio Help tab.
+The first method shown uses the package **ggupset**, an the second using the package **UpSetR**. 
 
-```{r echo=F}
+```
+An example plot is below. Five symptoms are shown. Below each vertical bar is a line and dots indicating the combination of symptoms reflected by the bar above. To the right, horizontal bars reflect the frequency of each individual symptom.
+```
+
+```{r echo=F out.width= "75%"}
 # Adds new symptom variables to the linelist, with random "yes" or "no" values 
 linelist_sym <- linelist %>% 
-  mutate(fever  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.80, 0.47)),
-         chills = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.60, 0.80)),
-         cough  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.75, 0.20)),
-         aches  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.45, 0.47)),
+  mutate(fever  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.80, 0.20)),
+         chills = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.20, 0.80)),
+         cough  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.9, 0.15)),
+         aches  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.10, 0.90)),
          shortness_of_breath = sample(c("yes", "no"), nrow(linelist), replace = T))
 
 # produced the plot (just for show)
@@ -2925,7 +2985,7 @@ UpSetR::upset(
   number.angles = 0,
   point.size = 3.5,
   line.size = 2,
-  text.scale = 2,
+  text.scale = 1.5,
   mainbar.y.label = "Symptoms Combinations",
   sets.x.label = "Patients with Symptom")
 
@@ -3018,10 +3078,12 @@ scale_x_upset(reverse = FALSE,
 
 ```
   
-<!-- ======================================================= -->
-## Alternative method
+More information on **ggupset** can be found [online](https://rdrr.io/cran/ggupset/man/scale_x_upset.html) or offline in the package documentation in your RStudio Help tab.  
 
-The UpSetR package allows more customization, but it more difficult to execute:
+<!-- ======================================================= -->
+## **UpSetR** method
+
+The **UpSetR** package allows more customization, but it more difficult to execute:
 
 https://github.com/hms-dbmi/UpSetR  *read this*
 https://gehlenborglab.shinyapps.io/upsetr/ *Shiny App version - you can upload your own data*
@@ -3088,13 +3150,78 @@ UpSetR::upset(
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade .tabset-pills}
 
-
-<!-- ======================================================= -->
-## Spatial {.tabset .tabset-fade .tabset-pills}
-
+Nice to use when tracking metrics at many facilities/regions over time
 
 <!-- ======================================================= -->
 ## Tracking performance {.tabset .tabset-fade .tabset-pills}
+
+```{r}
+count_data <- rio::import("data/count_data.csv")
+
+DT::datatable(count_data, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+
+```
+
+Group the data by week and location, and then make summary calculations:  
+
+
+```{r}
+# Get number & percent of days data reported for, by week
+agg_weeks <- count_data %>% 
+  mutate(week = as.Date(aweek::week2date(aweek::date2week(data_date, floor_day = T)))) %>% 
+  group_by(location_name, week) %>% 
+  summarize(n_days = 7,
+            n_reports = n(),
+            malaria_tot = sum(malaria_tot, na.rm = T),
+            n_days_reported = length(unique(data_date)),
+            p_days_reported = round(100*(n_days_reported / n_days))) %>% 
+  filter(week < as.Date("2019-06-10"))
+
+### Days
+agg_days <- count_data %>% 
+  group_by(location_name, data_date) %>% 
+  summarize(n_days = 1,
+            n_reports = n(),
+            malaria_tot = sum(malaria_tot, na.rm = T),
+            n_days_reported = length(unique(data_date)),
+            p_days_reported = round(100*(n_days_reported / n_days))) %>% 
+  filter(data_date < as.Date("2019-06-10"))
+  
+```
+
+Then we make the plot:  
+
+```{r}
+# further modified ggplot of Continuous Variables
+ggplot(agg_weeks, aes(x=week, y=location_name, fill= p_days_reported))+
+  geom_tile(colour="white",size=0.2)+
+  guides(fill=guide_legend(title="Reporting\nperformance (%)"))+
+  labs(x="Week (date of data)",
+       y="Facility name",
+       title="Percent of days per week that facility reported data",
+       subtitle = "52 health facilities, April-May 2019",
+       caption = "7-day weeks beginning on Mondays.")+
+  scale_fill_gradient(low = "yellow", high = "darkgreen", na.value = "grey80")+
+  theme_light()+
+  theme(legend.position="right",legend.direction="vertical",
+        legend.title=element_text(size=12, face="bold"),
+        legend.margin=margin(grid::unit(0,"cm")),
+        legend.text=element_text(size=10,face="bold"),
+        legend.key.height=grid::unit(0.8,"cm"),
+        legend.key.width=grid::unit(0.2,"cm"),
+        axis.text.x=element_text(size=12),
+        axis.text.y=element_text(vjust=0.2),
+        axis.ticks=element_line(size=0.4),
+        axis.title=element_text(size=12, face="bold"),
+        plot.background=element_blank(),
+        panel.border=element_blank(),
+        plot.margin=margin(0.7,0.4,0.1,0.2,"cm"),
+        plot.title=element_text(hjust=0,size=14,face="bold"))
+
+
+
+```
+
 
 Also, 3d?
 
