@@ -507,7 +507,7 @@ knitr::include_graphics(here::here("images", "Function_Bread_Example.png"))
 
 ```{r basics_functions_arguments, include=FALSE, results='hide', message=FALSE, warning=FALSE, eval=T}
 ## create an age group variable by specifying categorical breaks
-linelist$age_group <- cut(linelist$age, breaks = c(0, 3, 15, 30, 45, 60))
+linelist$age_group <- cut(linelist$age, breaks = c(0, 5, 10, 15, 20, 30, 45, 60))
 ```
 
 <span style="color: black;">**_NOTE:_** For this example, in the background we have created a new variable called "age_group". To learn how to create new variable see [that section of this handbook](#newvars) </span>
@@ -1063,7 +1063,7 @@ DT::datatable(manual_entry_rows)
 
 If you copy data from elsewhere and have it on your clipboard, you can try the following command to convert those data into an R data frame:  
 
-```{r}
+```{r, eval=F}
 manual_entry_clipboard <- read.table(file = "clipboard",
                                      sep = "t",           # separator could be tab, or commas, etc.
                                      header=TRUE)         # if there is a header row
@@ -1249,6 +1249,11 @@ The difference between dates can be calculated by:
 
 
 <!-- ======================================================= -->
+## Converting dates/time zones
+
+TODO
+
+<!-- ======================================================= -->
 ## Epidemiological weeks  
 
 The templates use the very flexible package **aweek** to set epidemiological weeks. You can read more about it [on the RECON website](https://www.repidemicsconsortium.org/aweek/)
@@ -1310,18 +1315,20 @@ linelist <- linelist_raw %>%
 
 See section on [object classes](#objectclasses)   
 
-
-
 ```{r}
 linelist <- linelist_raw %>% 
-  mutate(age = as.numeric(age))
+  mutate(age           = as.numeric(age),
+         outcome       = as.character(outcome),
+         date_of_onset = as.Date(date_of_onset, format = "%d/%m/%Y"),
+         outcome       = factor(outcome, levels = c("Recover", "Death"))
+         )
 ```
 
 <!-- ======================================================= -->
 ## Creating new variables {#newvars .tabset .tabset-fade .tabset-pills}
 
 **base R** method 
-```{r}
+```{r, eval=F}
 linelist$new_var <- "new value"
 ```
 
@@ -1329,13 +1336,22 @@ linelist$new_var <- "new value"
 Using **dplyr**
 `mutate()`
 
-example
+
+
+```{r, eval=F}
+linelist <- linelist %>% 
+  mutate(new_var_dup    = id,                  # new variable - replicate another variable
+         new_var_static = 7,                   # new variable - all values the same
+         new_var_static = new_var_static + 5   # you can modify a variable multiple times
+         new_var_calc   = (age / 12) + months  # new variable - calculation
+         new_var_paste  = paste0(district, "(", province, ")") # new variable - pasting together values
+```
 
 
 <!-- ======================================================= -->
-### Conditions (`case_when()`) {#casewhen}
+## Groups by condition (`case_when()`) {#casewhen}
 
-
+TODO tutorial on using case_when()
 
 <!-- ======================================================= -->
 ### Numeric groups  
@@ -1347,16 +1363,7 @@ For example, creating age groups
 
 `age_categories()` (R4Epis package)
 
-
-<!-- ======================================================= -->
-### Percentiles
-
-
-<!-- ======================================================= -->
-### New dates/times
-
-Time zones
-Shifting time (adding hours) example of WHO receiving reports of COVID from different time zones
+by percentile
 
 
 <!-- ======================================================= -->
@@ -1366,8 +1373,11 @@ Missing if... `na_if()`
 
 Replace
 
+
 <!-- ======================================================= -->
 ### Highest in hierarchy
+
+Within a group, indicate/convert to the highest value in the group
 
 Santa Clara County example - COVID contact tracing data - classification of multiple phone call records from same person into the highest category. (classify all as the highest of the group)
 
@@ -1577,7 +1587,7 @@ ftable(table_3vars)
 <!-- ======================================================= -->
 ## Summary by group {#summary}
 
-```{r}
+```{r eval=F}
 count_data %>% 
   group_by(District) %>% 
   summarise(n_obs = n(), # number of observations
@@ -1626,7 +1636,7 @@ plot(linelist$age)
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade .tabset-pills}
 
-These can be created with:  
+Boxplots can be created with:  
 
 * the `boxplot()` function from the **graphics** package (installed automatically with **base R**), or  
 * the `ggplot()` function from the **ggplot2** package  
@@ -1640,8 +1650,8 @@ graphics::boxplot(age ~ outcome*gender,
 
 
 # with ggplot2 
-ggplot(data = linelist %>% filter(!is.na(gender)),
-       aes(y = age, x = outcome, fill = outcome))+
+ggplot(data = linelist,
+       mapping = aes(y = age, x = outcome, fill = outcome))+
   geom_boxplot()+
   ggtitle("Made using ggplot()")+
   facet_wrap(~gender)
@@ -1651,10 +1661,12 @@ ggplot(data = linelist %>% filter(!is.na(gender)),
 ## `boxplot()`
 
 Some options with `boxplot()` shown below are:  
-* boxplots by group (color specification optional) 
+
+* boxplots by group (color specification optional)  
 * violin plots  
 * boxplot width proportional to sample size  
-* Horizontal
+* Horizontal  
+
 
 ```{r, out.width=c('50%', '50%'), fig.show='hold'}
 # boxplot of one numeric variable
@@ -1702,10 +1714,12 @@ boxplot(age~outcome,
 
 
 Some options with `ggplot()` shown below are:  
-* boxplots by group (color specification optional) 
+
+* boxplots by group (color specification optional)  
 * violin plots  
 * boxplot width proportional to sample size  
-* Horizontal
+* Horizontal  
+
 
 ```{r, out.width=c('33%', '33%', '33%'), fig.show='hold'}
 # Simple boxplot of one numeric variable
@@ -1740,7 +1754,7 @@ ggplot(data = linelist %>% filter(!is.na(gender)), # dataset piped through a fil
 
 "Violin plots" can be made simply or very complex: 
 
-```{r}
+```{r out.width=c('33%', '33%', '33%'), fig.show='hold'}
 # Violin plots
 ggplot(linelist, aes(x=age, y=outcome, fill = outcome)) + 
   geom_violin(trim=FALSE)
@@ -1750,6 +1764,7 @@ ggplot(linelist, aes(x=age, y=outcome, fill = outcome)) +
 ggplot(linelist, aes(x=age, y=outcome, fill = outcome)) + 
   geom_violin(trim=FALSE)+
   coord_flip()
+
 
 # Add jittered points
 ggplot(linelist, aes(x=age, y=outcome, fill = outcome)) + 
@@ -1954,6 +1969,7 @@ DateVars
 
 #Note: other search tool options within vars_select include contains() ends_with(), starts_with(), or one_of()
 ```
+
 
 
 <!-- ======================================================= -->
@@ -2953,7 +2969,7 @@ The first method shown uses the package **ggupset**, an the second using the pac
 An example plot is below. Five symptoms are shown. Below each vertical bar is a line and dots indicating the combination of symptoms reflected by the bar above. To the right, horizontal bars reflect the frequency of each individual symptom.
 ```
 
-```{r echo=F out.width= "75%"}
+```{r echo=F, out.width= "75%"}
 # Adds new symptom variables to the linelist, with random "yes" or "no" values 
 linelist_sym <- linelist %>% 
   mutate(fever  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.80, 0.20)),
@@ -3152,6 +3168,48 @@ UpSetR::upset(
 
 Nice to use when tracking metrics at many facilities/regions over time
 
+For example:  
+
+```{r echo=F}
+count_data <- rio::import("data/count_data.csv")
+
+agg_weeks <- count_data %>% 
+  mutate(week = as.Date(aweek::week2date(aweek::date2week(data_date, floor_day = T)))) %>% 
+  group_by(location_name, week) %>% 
+  summarize(n_days = 7,
+            n_reports = n(),
+            malaria_tot = sum(malaria_tot, na.rm = T),
+            n_days_reported = length(unique(data_date)),
+            p_days_reported = round(100*(n_days_reported / n_days))) %>% 
+  filter(week < as.Date("2019-06-10"))
+
+ggplot(agg_weeks, aes(x=week, y=location_name, fill= p_days_reported))+
+  geom_tile(colour="white",size=0.2)+
+  guides(fill=guide_legend(title="Reporting\nperformance (%)"))+
+  labs(x="Week (date of data)",
+       y="Facility name",
+       title="Percent of days per week that facility reported data",
+       subtitle = "52 health facilities, April-May 2019",
+       caption = "7-day weeks beginning on Mondays.")+
+  scale_fill_gradient(low = "yellow", high = "darkgreen", na.value = "grey80")+
+  theme_light()+
+  theme(legend.position="right",legend.direction="vertical",
+        legend.title=element_text(size=12, face="bold"),
+        legend.margin=margin(grid::unit(0,"cm")),
+        legend.text=element_text(size=10,face="bold"),
+        legend.key.height=grid::unit(0.8,"cm"),
+        legend.key.width=grid::unit(0.2,"cm"),
+        axis.text.x=element_text(size=12),
+        axis.text.y=element_text(vjust=0.2),
+        axis.ticks=element_line(size=0.4),
+        axis.title=element_text(size=12, face="bold"),
+        plot.background=element_blank(),
+        panel.border=element_blank(),
+        plot.margin=margin(0.7,0.4,0.1,0.2,"cm"),
+        plot.title=element_text(hjust=0,size=14,face="bold"))
+
+```
+
 <!-- ======================================================= -->
 ## Tracking performance {.tabset .tabset-fade .tabset-pills}
 
@@ -3179,12 +3237,7 @@ agg_weeks <- count_data %>%
 
 ### Days
 agg_days <- count_data %>% 
-  group_by(location_name, data_date) %>% 
-  summarize(n_days = 1,
-            n_reports = n(),
-            malaria_tot = sum(malaria_tot, na.rm = T),
-            n_days_reported = length(unique(data_date)),
-            p_days_reported = round(100*(n_days_reported / n_days))) %>% 
+  
   filter(data_date < as.Date("2019-06-10"))
   
 ```
@@ -3192,7 +3245,6 @@ agg_days <- count_data %>%
 Then we make the plot:  
 
 ```{r}
-# further modified ggplot of Continuous Variables
 ggplot(agg_weeks, aes(x=week, y=location_name, fill= p_days_reported))+
   geom_tile(colour="white",size=0.2)+
   guides(fill=guide_legend(title="Reporting\nperformance (%)"))+
@@ -3238,14 +3290,36 @@ Also, 3d?
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade .tabset-pills}
 
-via ggplot and via R4Epis methods
+via ggplot and via R4Epis methods   TODO
+
+```{r echo=F}
+
+linelist$age <- as.numeric(linelist$age)
+
+
+linelist$age_group <- cut(linelist$age, breaks = c(0, 5, 10, 15, 20, 30, 45, 60))
+
+apyramid::age_pyramid(data = linelist, age_group = "age_group", split_by = "gender")
+```
 
 <!-- ======================================================= -->
 ## **apyramid** package {.tabset .tabset-fade .tabset-pills}
 
+```{r}
+
+linelist$age <- as.numeric(linelist$age)
+
+
+linelist$age_group <- cut(linelist$age, breaks = c(0, 5, 10, 15, 20, 30, 45, 60))
+
+
+apyramid::age_pyramid(data = linelist, age_group = "age_group", split_by = "gender")
+```
+
 <!-- ======================================================= -->
 ## `ggplot()` {.tabset .tabset-fade .tabset-pills}
 
+with ggplot is more complex, but is done in this way...  TODO
 
 
 
@@ -3359,13 +3433,69 @@ quickly changing the denominator (per 100,000, etc.)
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade .tabset-pills}
 
+The primary tool to visualize and analyze transmission chains is the package **epicontacts**, developed by the folks at RECON.  
+
+```{r out.width=c('50%', '50%'), fig.show='hold', echo=F}
+library(epicontacts)
+library(outbreaks)
+
+links <- epicontacts::make_epicontacts(linelist = mers_korea_2015$linelist,
+                                       contacts = mers_korea_2015$contacts, 
+                                       directed = TRUE)
+# plot without time
+plot(links,
+     selector = FALSE,
+     height = 700,
+     width = 700)
+
+# plot with date of onset as x-axis
+plot(sim,
+     x_axis = 'onset',
+     height = 700,
+     width = 700,
+)
+```
+
+
+
+
 <!-- ======================================================= -->
 ## Visualization {.tabset .tabset-fade .tabset-pills}
 
+```{r}
+
+links <- epicontacts::make_epicontacts(linelist = mers_korea_2015$linelist,
+                                       contacts = mers_korea_2015$contacts, 
+                                       directed = TRUE)
+# plot without time
+plot(links,
+     selector = FALSE,
+     height = 700,
+     width = 700)
+
+```
+
+And in a transmission tree, with *date of onset on the x-axis*:  
+
+Note: this currently requires installing a development version of **epicontacts** from github... @ttree 
+
+```{r}
+
+# plot with date of onset as x-axis
+plot(sim,
+     x_axis = 'onset',
+     height = 700,
+     width = 700,
+)
+
+```
 
 <!-- ======================================================= -->
 ## Analysis {.tabset .tabset-fade .tabset-pills}
 
+```{r}
+summary(links)
+```
 
 
 
