@@ -1,7 +1,8 @@
-# R_epi_handbook
-R handbook for epidemiologists
+# An R handbook for epidemiologists
 
-***Go to https://nsbatra.github.io/R_epi_handbook/handbook.html to see the latest version.***
+***Go to https://nsbatra.github.io/Epi_R_handbook/handbook.html to see the latest version.***
+
+Download the contribution guide here: https://nsbatra.github.io/Epi_R_handbook/contribution_guide.html  
 
 **The problem:**  
 
@@ -23,7 +24,6 @@ R handbook for epidemiologists
 
 *The Pages:*
 * Pages will be HTML (produced by Rmarkdown). Allows tabs, gifs, links, references, embedded files, etc. Still viewable offline.
-* Pages could be bundled together into a "bookdown", or it could just be one long Rmarkdown. Bookdown appears to not allow tabs. :(
 
 *A living document:*  
 
