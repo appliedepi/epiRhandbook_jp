@@ -4,29 +4,23 @@
 
 ***Download the contribution guide here:*** https://nsbatra.github.io/Epi_R_handbook/contribution_guide.html  
 
-**The problem:**  
+The problem:
 
-* Field epidemiologists often work in low internet-connectivity environments and have limited technical support from HQ  
-* Epis learning or new to R often must Google and skim dozens of forum pages to complete common data manipulation and visualization epi tasks  
-* Most online R help resources are not task-centered nor epidemiology-focused  
+* Field epidemiologists often work in low internet-connectivity environments and have limited technical support from HQ
+* Epis learning or new to R often must Google and skim dozens of forum pages to complete common data manipulation and visualization epi tasks
+* Most online R help resources are not task-centered nor epidemiology-focused
 
-**The solution:**  
+Our objective:
 
-* An offline "handbook" or "reference book", consisting of task-centered pages which coach a user through common epidemiological tasks with easily-modifiable code examples
+* **To make available a handbook covering common epidemiological tasks and outputs, with clear explanations, step-by-step instructions, and code examples.** We are not looking to reinvent the “how to learn R” wheel, but rather to be a reference book specifically for epidemiologists, which, if needed, can be downloaded offline and used in a setting or field deployment with poor/no internet access.
 
-**Guiding principles:**  
+Audiences:
 
-* Pages have consistent structure, e.g. problem statement, dataset(s) at start, solutions (with code), outputs, links to other relevant pages
-* Pages are heavily annotated in basic language and, when relevant, display step-by-step transformations of datasets and graphics
-* Pages can present multiple ways to solve each task, with emphasis on packages and solutions that are stable and simple
+*Primary audience: Field epis and applied epidemiologists - urgently needing R code to modify in order to execute a task*
+* Those learning R and code-based workflows
+* Those who know other software (STATA, SAS…) but need equivalent code in R
+* Those working in poor-connectivity environments where extensive Google searching may be frustrating or impossible
+* …with written language that is simple and can be understood by non-native English speakers
 
-**Methods:**  
-
-*The Pages:*
-* Pages will be HTML (produced by Rmarkdown). Allows tabs, gifs, links, references, embedded files, etc. Still viewable offline.
-
-*A living document:*  
-
-* Code hosted on Github repository
-* Users can download latest handbook version from Github or R4Epis website, can email it to friends and co-workers
-* Since optimal R code for a task frequently changes, additional pages and updates could be crowdsourced
+*Secondary audience: Research, Governmental, and University epidemiologists, particularly:*
+* Those at institutions transitioning to using R
