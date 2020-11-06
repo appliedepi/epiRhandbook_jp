@@ -4,6 +4,6 @@ pacman::p_load(
      tidyverse,
      rio,
      here,
-     apyramid,
-     linelist
+     linelist,
+     DT
 )
