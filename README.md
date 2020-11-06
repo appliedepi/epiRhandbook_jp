@@ -1,6 +1,6 @@
 # An R handbook for epidemiologists
 
-***Go to https://nsbatra.github.io/Epi_R_handbook/handbook.html to see the latest version.***
+***Go to https://nsbatra.github.io/Epi_R_handbook/pages/handbook_combined.html to see the latest version.***
 
 Download the contribution guide here: https://nsbatra.github.io/Epi_R_handbook/contribution_guide.html  
 
