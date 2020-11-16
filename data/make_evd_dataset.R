@@ -45,7 +45,7 @@ t.test(data = evd, age ~gender)
 # add years/months column
 #########################
 # set default as "years"
-evd$age_time <- "years"
+evd$age_unit <- "years"
 
 # get random entries to change to months
 to_months <- round(rnorm(n=round(nrow(evd)*.005),  mean=nrow(evd)*.5, sd=1000)) # 0.5% of rows
@@ -56,9 +56,9 @@ months_nums <- sample(c(seq(1:12), 18, 24, 36), size = length(to_months), replac
 
 # replace ages with months numbers
 evd$age[to_months]      <- months_nums
-evd$age_time[to_months] <- "months" 
+evd$age_unit[to_months] <- "months" 
 
-table(evd$age_time, evd$age)
+table(evd$age_unit, evd$age)
 
 
 # GENDER MISSING
