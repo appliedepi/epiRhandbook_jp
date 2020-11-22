@@ -143,5 +143,14 @@ evd <- evd %>%
             `hosp date` = date_of_hospitalisation)
 
 
+# CLASSES
+##########
+evd$`date onset` <- as.character(evd$`date onset`)
+evd$`date onset`[1] <- "15 April 2014"
+class(evd$`date onset`)
+
+evd$age <- as.character(evd$age)
+
+
 # exort
-rio::export(evd, here::here("data", "ebola_simulated.csv"))
+rio::export(evd, here::here("data", "ebola_simulated.xlsx"))
