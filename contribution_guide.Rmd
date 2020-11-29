@@ -292,13 +292,13 @@ See chapters 10 and 11 of [this tutorial](https://happygitwithr.com/credential-c
 <!-- ======================================================= -->
 # Contributing content {#template .tabset .tabset-fade}
 
-**Each page is stored within its own Rmarkdown file in the "pages" folder of the R project.** You can make a new page using the file `_template.Rmd`.  
+**Each page is stored within its own Rmarkdown file in the "pages" folder of the R project.** You can make a new page using the file `_template.Rmd`. The outputs html outputs will save into the "_outputs_knitted" folder.  
 
-Each page can be knitted on its own, as in this case the page will source the `page_setup.Rmd` file to load the datasets and default settings.  
+Each page can be knitted on its own, as in this case the page will source the `_page_setup.Rmd` file to load the datasets and default settings.  
 
 To produce the whole handbook, the file `handbook_combined.Rmd` contains many chunks which each source/run one of the page scripts in the "pages" folder, combining them all into one Rmarkdown html document.  
 
-* If you want to work on your page: open it and edit it, then knit it individually and examine your work, and make sure it is included as a chunk within `handbook_combined.Rmd`.  
+* If you want to work on your page: open it, run the script `_page_setup.R` and edit it, then knit the page individually and examine your work, and make sure it is included as a chunk within `handbook_combined.Rmd`.  
 * If you want to knit the entire handbook, knit `handbook_combined.Rmd`.  
 
 Test your page routinely by knitting it. Then test knitting the entire handbook on your local cloned repo. If your page is breaking the handbook (the knitting of `handbook_combined.Rmd`) and you can't resolve it, alert the core team and temporarily put `eval=F` next to your page's chunk, so it does not stop the knitting of the entire handbook.
@@ -319,6 +319,9 @@ We have elected to utilize tabs in each page, in order to make the handbook easi
 
 Have several tabs in your Handbook page, generally structured as follows (*There are very few hard rules - the structure below can be disregarded if a good argument can be made otherwise*):  
 
+**`_page_setup`** - This chunk only runs if the page is being knitted independently from other pages. If run, it sources the `_page_setup.R` script which loads the datasets.  
+
+
 **Overview tab** - Must be called "Overview". Can just contain a bit of intro text describing the objectives of the page. You can also include a graphic to demonstrate graphics or skills what the page will explain. This is so when a user is scrolling, it will catch their eye. If you include a graphic here, please be considerate and shrink it to a reasonably small size. Think of it as a thumbnail.  
 
 **Preparation tabs** - If your page involves loading special packages, data import, cleaning, or other set-up steps, please put them in a "Preparation" tab. Feel free to add sub-tabs if necessary to break up the steps - use your judgment. We don't want tabs to get too long that they require lots of vertical scrolling. Particularly in these steps, **explicity show data transformations to the user** - when melting, spreading, or otherwise making major changes to data in your page. These points are where beginners often get lost. Use the command below as often as necessary to show your dataset and its transformations:  
@@ -334,7 +337,7 @@ Consider that we want to emphasize packages/approaches that are **tidyverse-orie
 
 **Resources tab** - Here you can link to online or other resources on the subject.  
 
-**`page_cleanup`** - Lastly, there is a chunk that sources the `page_cleanup.Rmd` script, which sets the datasets back to their default values.  
+**`_page_cleanup`** - Lastly, there is a chunk that sources the `_page_cleanup.Rmd` script, which sets the datasets back to their default values.  
 
 
 ### An example  
@@ -447,6 +450,13 @@ Within your page:
 * On each page, make sure it would be clear to a beginning which functions come from which packages. Do not be afraid to use double-colons such as `dplyr::n()` or describe the package using **bold face** in the accompanying text.  
 
 
+When choosing a package to use, please use the following list:  
+* Prioritize **stringr** over `paste0()` (use `str_glue()`, `str_detect()`, etc.)  
+*  
+*  
+
+
+
 <!-- ======================================================= -->
 ## Notes/Tips/Cautions/Warnings
 
@@ -494,13 +504,13 @@ created by three tickmarks above and below (without the hashes before the tickma
 <!-- ======================================================= -->
 ## Datasets
 
-Add your datasets to the "Data" folder in the R project. 
-Then you can import and reference them using the `import()` function combined with the **here** package like below:  
+Most pages should use the `linelist_cleaned.rds` file available in the "data" folder. Import it using `rio::import()`. YOu can have two lines of import - one visible to the reader (`rio::import("linelist_cleaned.rds")`) set to `eval=F` and one which actually runs that uses **here** (`rio::import(here::here("data", "linelist_cleaned.rds")`).  
+
+The cleaning on `linelist_cleaned.rds` is done in the cleaning handbook page. Also note that the raw dataset can be edited from the `make_evd_dataset.R` script in the data folder.  
 
 ```{r, eval=F}
 # import aggregated case counts of disease X
-district_count_data <- rio::import(here::here("data", "district_count_data.xlsx"))  
-
+district_count_data <- rio::import(here::here("data", "linelist_cleaned.rds"))  
 ```
 
 (here() is a very useful tool to implement file paths relative to a designated root folder in an R project)
