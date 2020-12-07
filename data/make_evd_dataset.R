@@ -1,6 +1,6 @@
 # modify the ebola_sim linelist from outbreaks package
 ######################################################
-pacman::p_load(tidyverse, rio, here, incidence)
+pacman::p_load(tidyverse, rio, here, incidence, outbreaks)
 
 # parts of evd
 evd_sim    <- outbreaks::ebola_sim$linelist
@@ -118,6 +118,54 @@ evd$aches[to_NA_sym] <- NA
 evd$vomit[to_NA_sym] <- NA
 
 
+### ADD DUPLICATE ROWS
+######################
+duplicate_rownums <- round(rnorm(n=round(nrow(evd)*.02),  # 2% of entries
+                         mean=nrow(evd)*.5,    # mean middle of the outbreak 
+                         sd=1000))
+hist(duplicate_rownums)
+evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
+
+### Add 3 blank rows to bottom (to be filtered out)
+###################################################
+evd[nrow(evd)+1,] <- NA
+evd[nrow(evd)+1,] <- NA
+evd[nrow(evd)+1,] <- NA
+
+### ADD ROWS TO BE FILTERED OUT (from another outbreak years before)
+###############################
+exclude_rownums <- round(rnorm(n=round(nrow(evd)*.10),  # 5% of entries
+                                 mean=nrow(evd)*.5,    # mean middle of the outbreak 
+                                 sd=1000))
+hist(exclude_rownums)
+outbreak2 <- evd[duplicate_rownums, ] # new outbreak data
+
+hist(outbreak2$date_of_infection, 50)
+range(outbreak2$date_of_infection, na.rm=T)
+
+# reduce dates by 2 years
+outbreak2 <- outbreak2 %>% mutate(across(contains("date"), lubridate::ymd)) %>%
+        mutate(date_of_onset = date_of_onset - lubridate::years(2),
+               date_of_hospitalisation = date_of_hospitalisation - lubridate::years(2),
+               date_of_infection = date_of_infection - lubridate::years(2),
+               date_of_outcome = date_of_outcome - lubridate::years(2),
+               
+               hospital = rep(c("Hospital A", "Hospital B"), nrow(outbreak2)/2))
+outbreak2[1:10,"hospital"] <- "Connaught Hospital"  # add hospital to some
+
+range(outbreak2$date_of_infection, na.rm=T)
+table(outbreak2$hospital, useNA = "always")
+table(lubridate::year(outbreak2$date_of_onset), useNA = "always")
+
+evd <- rbind(evd, outbreak2) #rbind the second outbreak rows
+
+hist(evd$date_of_onset, 50)
+table(evd$hospital, useNA = "always")
+
+### ADD COLUMN TO BE REMOVED
+############################
+evd$row_num <- seq(1:nrow(evd))
+evd <- select(evd, row_num, everything())
 # 
 # # LOCATION COORDINATES (TO DO)
 # ######################
@@ -152,5 +200,5 @@ class(evd$`date onset`)
 evd$age <- as.character(evd$age)
 
 
-# exort
+# export
 rio::export(evd, here::here("data", "ebola_simulated.xlsx"))
