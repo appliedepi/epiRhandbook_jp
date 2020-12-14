@@ -194,10 +194,44 @@ evd <- evd %>%
 # CLASSES
 ##########
 evd$`date onset` <- as.character(evd$`date onset`)
-evd$`date onset`[1] <- "15 April 2014"
+evd$`date onset`[1] <- "15th April 2014"
 class(evd$`date onset`)
 
 evd$age <- as.character(evd$age)
+
+
+### ADD data dictionary row !!!
+
+evd <- evd %>% 
+        mutate(across(everything(), as.character)) %>% 
+        add_row(.before = 1,
+                row_num = "000",
+                case_id = "case identification number assigned by MOH",
+                generation = "transmission chain generation number",
+                `infection date` = "estimated date of infection, mm/dd/yyyy",
+                `date onset` = "date of symptom onset, YYYY-MM-DD",
+                `hosp date` = "date of initial hospitalization, mm/dd/yyyy",
+                date_of_outcome = "date of outcome status determination",
+                outcome = "either 'Death' or 'Recovered' or 'Unknown'",
+                gender = "either 'm' or 'f' or 'unknown'",
+                hospital = "Name of hospital of first admission",
+                lon = "longitude of residence, approx",
+                lat = "latitude of residence, approx",
+                infector = "case_id of infector",
+                source = "context of known transmission event",
+                age = "age number",
+                age_unit = "age unit, either 'years' or 'months' or 'days'",
+                fever = "presence of fever on admission, either 'yes' or 'no'",
+                chills = "presence of chills on admission, either 'yes' or 'no'",
+                cough = "presence of cough on admission, either 'yes' or 'no'",
+                aches = "presence of aches on admission, either 'yes' or 'no'",
+                vomit = "presence of vomiting on admission, either 'yes' or 'no'"
+                )
+
+        
+
+### Add merged column header cells !!!
+# DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
 
 
 # export
