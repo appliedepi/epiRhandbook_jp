@@ -1,6 +1,6 @@
 # modify the ebola_sim linelist from outbreaks package
 ######################################################
-pacman::p_load(tidyverse, rio, here, incidence)
+pacman::p_load(tidyverse, rio, here, incidence, outbreaks)
 
 # parts of evd
 evd_sim    <- outbreaks::ebola_sim$linelist
@@ -118,6 +118,54 @@ evd$aches[to_NA_sym] <- NA
 evd$vomit[to_NA_sym] <- NA
 
 
+### ADD DUPLICATE ROWS
+######################
+duplicate_rownums <- round(rnorm(n=round(nrow(evd)*.02),  # 2% of entries
+                         mean=nrow(evd)*.5,    # mean middle of the outbreak 
+                         sd=1000))
+hist(duplicate_rownums)
+evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
+
+### Add 3 blank rows to bottom (to be filtered out)
+###################################################
+evd[nrow(evd)+1,] <- NA
+evd[nrow(evd)+1,] <- NA
+evd[nrow(evd)+1,] <- NA
+
+### ADD ROWS TO BE FILTERED OUT (from another outbreak years before)
+###############################
+exclude_rownums <- round(rnorm(n=round(nrow(evd)*.10),  # 5% of entries
+                                 mean=nrow(evd)*.5,    # mean middle of the outbreak 
+                                 sd=1000))
+hist(exclude_rownums)
+outbreak2 <- evd[duplicate_rownums, ] # new outbreak data
+
+hist(outbreak2$date_of_infection, 50)
+range(outbreak2$date_of_infection, na.rm=T)
+
+# reduce dates by 2 years
+outbreak2 <- outbreak2 %>% mutate(across(contains("date"), lubridate::ymd)) %>%
+        mutate(date_of_onset = date_of_onset - lubridate::years(2),
+               date_of_hospitalisation = date_of_hospitalisation - lubridate::years(2),
+               date_of_infection = date_of_infection - lubridate::years(2),
+               date_of_outcome = date_of_outcome - lubridate::years(2),
+               
+               hospital = rep(c("Hospital A", "Hospital B"), nrow(outbreak2)/2))
+outbreak2[1:10,"hospital"] <- "Connaught Hospital"  # add hospital to some
+
+range(outbreak2$date_of_infection, na.rm=T)
+table(outbreak2$hospital, useNA = "always")
+table(lubridate::year(outbreak2$date_of_onset), useNA = "always")
+
+evd <- rbind(evd, outbreak2) #rbind the second outbreak rows
+
+hist(evd$date_of_onset, 50)
+table(evd$hospital, useNA = "always")
+
+### ADD COLUMN TO BE REMOVED
+############################
+evd$row_num <- seq(1:nrow(evd))
+evd <- select(evd, row_num, everything())
 # 
 # # LOCATION COORDINATES (TO DO)
 # ######################
@@ -146,11 +194,45 @@ evd <- evd %>%
 # CLASSES
 ##########
 evd$`date onset` <- as.character(evd$`date onset`)
-evd$`date onset`[1] <- "15 April 2014"
+evd$`date onset`[1] <- "15th April 2014"
 class(evd$`date onset`)
 
 evd$age <- as.character(evd$age)
 
 
-# exort
+### ADD data dictionary row !!!
+
+evd <- evd %>% 
+        mutate(across(everything(), as.character)) %>% 
+        add_row(.before = 1,
+                row_num = "000",
+                case_id = "case identification number assigned by MOH",
+                generation = "transmission chain generation number",
+                `infection date` = "estimated date of infection, mm/dd/yyyy",
+                `date onset` = "date of symptom onset, YYYY-MM-DD",
+                `hosp date` = "date of initial hospitalization, mm/dd/yyyy",
+                date_of_outcome = "date of outcome status determination",
+                outcome = "either 'Death' or 'Recovered' or 'Unknown'",
+                gender = "either 'm' or 'f' or 'unknown'",
+                hospital = "Name of hospital of first admission",
+                lon = "longitude of residence, approx",
+                lat = "latitude of residence, approx",
+                infector = "case_id of infector",
+                source = "context of known transmission event",
+                age = "age number",
+                age_unit = "age unit, either 'years' or 'months' or 'days'",
+                fever = "presence of fever on admission, either 'yes' or 'no'",
+                chills = "presence of chills on admission, either 'yes' or 'no'",
+                cough = "presence of cough on admission, either 'yes' or 'no'",
+                aches = "presence of aches on admission, either 'yes' or 'no'",
+                vomit = "presence of vomiting on admission, either 'yes' or 'no'"
+                )
+
+        
+
+### Add merged column header cells !!!
+# DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
+
+
+# export
 rio::export(evd, here::here("data", "ebola_simulated.xlsx"))
