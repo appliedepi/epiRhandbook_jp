@@ -228,11 +228,23 @@ evd <- evd %>%
                 vomit = "presence of vomiting on admission, either 'yes' or 'no'"
                 )
 
-        
+### CHANGE HOSPITAL NAMES ###
+evd <- evd %>% 
+        mutate(hospital = recode(hospital,
+                # OLD = NEW
+                "Connaught Hopital" = "Port Hopital",
+                "Connaught Hospital" = "Port Hospital",
+                "Rokupa Hopital"    = "Central Hopital",
+                "Rokupa Hospital"   = "Central Hospital",
+                "other"             = "Other",
+                "Princess Christian Maternity Hopital (PCMH)" = "St. Marks Maternity Hopital (SMMH)",
+                "Princess Christian Maternity Hospital (PCMH)" = "St. Mark's Maternity Hospital (SMMH)"))
+
+
 
 ### Add merged column header cells !!!
 # DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
-
+# "Merged header" and then underneath two columns each saying "this is under a merged header"
 
 # export
 rio::export(evd, here::here("data", "ebola_simulated.xlsx"))
