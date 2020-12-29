@@ -240,7 +240,11 @@ evd <- evd %>%
                 "Princess Christian Maternity Hopital (PCMH)" = "St. Marks Maternity Hopital (SMMH)",
                 "Princess Christian Maternity Hospital (PCMH)" = "St. Mark's Maternity Hospital (SMMH)"))
 
+### ADD TIME COLUMN
 
+# time of admission HH:MM (most in day) (LINELIST)
+# datetime variable with timezone set to eastern time ... how reduce to date (HENRYs PAGE)
+# outbreak straddles a timezone (HENRY'S PAGE)
 
 ### Add merged column header cells !!!
 # DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
