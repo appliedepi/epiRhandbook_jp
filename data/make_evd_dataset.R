@@ -201,32 +201,32 @@ evd$age <- as.character(evd$age)
 
 
 ### ADD data dictionary row !!!
-
-evd <- evd %>% 
-        mutate(across(everything(), as.character)) %>% 
-        add_row(.before = 1,
-                row_num = "000",
-                case_id = "case identification number assigned by MOH",
-                generation = "transmission chain generation number",
-                `infection date` = "estimated date of infection, mm/dd/yyyy",
-                `date onset` = "date of symptom onset, YYYY-MM-DD",
-                `hosp date` = "date of initial hospitalization, mm/dd/yyyy",
-                date_of_outcome = "date of outcome status determination",
-                outcome = "either 'Death' or 'Recovered' or 'Unknown'",
-                gender = "either 'm' or 'f' or 'unknown'",
-                hospital = "Name of hospital of first admission",
-                lon = "longitude of residence, approx",
-                lat = "latitude of residence, approx",
-                infector = "case_id of infector",
-                source = "context of known transmission event",
-                age = "age number",
-                age_unit = "age unit, either 'years' or 'months' or 'days'",
-                fever = "presence of fever on admission, either 'yes' or 'no'",
-                chills = "presence of chills on admission, either 'yes' or 'no'",
-                cough = "presence of cough on admission, either 'yes' or 'no'",
-                aches = "presence of aches on admission, either 'yes' or 'no'",
-                vomit = "presence of vomiting on admission, either 'yes' or 'no'"
-                )
+### CANCEL - this is done only as a demonstration in the cleaning page now (dec 29 2020 NB)
+# evd <- evd %>% 
+#         mutate(across(everything(), as.character)) %>% 
+#         add_row(.before = 1,
+#                 row_num = "000",
+#                 case_id = "case identification number assigned by MOH",
+#                 generation = "transmission chain generation number",
+#                 `infection date` = "estimated date of infection, mm/dd/yyyy",
+#                 `date onset` = "date of symptom onset, YYYY-MM-DD",
+#                 `hosp date` = "date of initial hospitalization, mm/dd/yyyy",
+#                 date_of_outcome = "date of outcome status determination",
+#                 outcome = "either 'Death' or 'Recovered' or 'Unknown'",
+#                 gender = "either 'm' or 'f' or 'unknown'",
+#                 hospital = "Name of hospital of first admission",
+#                 lon = "longitude of residence, approx",
+#                 lat = "latitude of residence, approx",
+#                 infector = "case_id of infector",
+#                 source = "context of known transmission event",
+#                 age = "age number",
+#                 age_unit = "age unit, either 'years' or 'months' or 'days'",
+#                 fever = "presence of fever on admission, either 'yes' or 'no'",
+#                 chills = "presence of chills on admission, either 'yes' or 'no'",
+#                 cough = "presence of cough on admission, either 'yes' or 'no'",
+#                 aches = "presence of aches on admission, either 'yes' or 'no'",
+#                 vomit = "presence of vomiting on admission, either 'yes' or 'no'"
+#                 )
 
 ### CHANGE HOSPITAL NAMES ###
 evd <- evd %>% 
@@ -240,11 +240,21 @@ evd <- evd %>%
                 "Princess Christian Maternity Hopital (PCMH)" = "St. Marks Maternity Hopital (SMMH)",
                 "Princess Christian Maternity Hospital (PCMH)" = "St. Mark's Maternity Hospital (SMMH)"))
 
-### ADD TIME COLUMN
+### ADD COLUMN: TIME OF ADMISSION
+ # Hours:
+evd <- evd %>% 
+        mutate(hours = round(rnorm(n=nrow(evd), mean=13, sd=4)),   # avg 1pm
+               hours = ifelse(hours>24 | hours < 0, NA, hours),   
+               hours = str_pad(hours, 2, pad = "0"),             # pad with leading zeros
+               minutes = round(rnorm(n=nrow(evd), mean=30, sd=20)),
+               minutes = ifelse(minutes>60 | minutes <0, NA, minutes),
+               minutes = str_pad(minutes, 2, pad = "0"),
+               
+               time_admission = str_c(hours, minutes, sep = ":")
+               ) %>% 
+        select(-hours, -minutes)
 
-# time of admission HH:MM (most in day) (LINELIST)
-# datetime variable with timezone set to eastern time ... how reduce to date (HENRYs PAGE)
-# outbreak straddles a timezone (HENRY'S PAGE)
+
 
 ### Add merged column header cells !!!
 # DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
