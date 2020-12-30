@@ -5,5 +5,6 @@ pacman::p_load(
      rio,
      here,
      DT,
-     stringr
+     stringr,
+     lubridate
 )
