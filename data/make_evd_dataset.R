@@ -118,14 +118,6 @@ evd$aches[to_NA_sym] <- NA
 evd$vomit[to_NA_sym] <- NA
 
 
-### ADD DUPLICATE ROWS
-######################
-duplicate_rownums <- round(rnorm(n=round(nrow(evd)*.02),  # 2% of entries
-                         mean=nrow(evd)*.5,    # mean middle of the outbreak 
-                         sd=1000))
-hist(duplicate_rownums)
-evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
-
 ### Add 3 blank rows to bottom (to be filtered out)
 ###################################################
 evd[nrow(evd)+1,] <- NA
@@ -256,9 +248,17 @@ evd <- evd %>%
 
 
 
+### ADD DUPLICATE ROWS
+######################
+duplicate_rownums <- round(rnorm(n=round(nrow(evd)*.02),  # 2% of entries
+                                 mean=nrow(evd)*.5,    # mean middle of the outbreak 
+                                 sd=1000))
+hist(duplicate_rownums)
+evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
+
 ### Add merged column header cells !!!
 # DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
 # "Merged header" and then underneath two columns each saying "this is under a merged header"
 
 # export
-rio::export(evd, here::here("data", "ebola_simulated.xlsx"))
+rio::export(evd, here::here("data", "linelist_raw.xlsx"))
