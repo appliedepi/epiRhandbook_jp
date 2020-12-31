@@ -126,11 +126,13 @@ evd[nrow(evd)+1,] <- NA
 
 ### ADD ROWS TO BE FILTERED OUT (from another outbreak years before)
 ###############################
-exclude_rownums <- round(rnorm(n=round(nrow(evd)*.10),  # 5% of entries
+outbreak2_rownums <- round(rnorm(n=round(nrow(evd)*.10),  # 5% of entries
                                  mean=nrow(evd)*.5,    # mean middle of the outbreak 
                                  sd=1000))
-hist(exclude_rownums)
-outbreak2 <- evd[duplicate_rownums, ] # new outbreak data
+
+outbreak2_rownums <- outbreak2_rownums[outbreak2_rownums > 0]
+hist(outbreak2_rownums)
+outbreak2 <- evd[outbreak2_rownums, ] # new outbreak data
 
 hist(outbreak2$date_of_infection, 50)
 range(outbreak2$date_of_infection, na.rm=T)
@@ -262,3 +264,14 @@ evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
 
 # export
 rio::export(evd, here::here("data", "linelist_raw.xlsx"))
+
+
+
+#################################################################################
+#################################################################################
+#################################################################################
+
+
+#### Make alerts linelist  
+
+
