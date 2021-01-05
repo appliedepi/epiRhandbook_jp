@@ -1,6 +1,6 @@
 # modify the ebola_sim linelist from outbreaks package
 ######################################################
-pacman::p_load(tidyverse, rio, here, incidence, outbreaks)
+pacman::p_load(tidyverse, rio, here, incidence, outbreaks, lubridate)
 
 # parts of evd
 evd_sim    <- outbreaks::ebola_sim$linelist
@@ -41,6 +41,47 @@ evd <- bind_rows(evd_m, evd_f)
 
 # run t-test
 t.test(data = evd, age ~gender)
+
+
+
+# ADD CT VALUE
+##############
+# add delay
+evd <- evd %>%
+        # difference in days between onset and hospitalisation
+        mutate(onset_to_hosp_days = as.numeric(date_of_hospitalisation - date_of_onset)) %>% 
+        mutate(delay_short_long   = ifelse(onset_to_hosp_days <= mean(onset_to_hosp_days, na.rm=T), "short", "long"))
+
+table(evd$delay_short_long)
+
+hist(evd$onset_to_hosp_days, breaks = 30)
+
+
+# Make CT for short delay
+ct_short <- round(abs(rnorm(n = nrow(evd %>% filter(delay_short_long == "short")), mean = 19, sd = 1)))
+hist(ct_short)
+
+# make CT for long delay
+ct_long <- round(abs(rnorm(n = nrow(evd %>% filter(delay_short_long == "long")), mean = 22, sd = 1)))
+hist(ct_long)
+
+
+# add CT (split database by delay, add ages, then re-join)
+evd_ct_short <- evd %>% filter(delay_short_long == "short") %>% 
+        mutate(ct_blood = ct_short)
+
+evd_ct_long <- evd %>% filter(delay_short_long == "long") %>% 
+        mutate(ct_blood = ct_long)
+
+evd <- bind_rows(evd_ct_short, evd_ct_long)
+
+# run t-test
+t.test(data = evd, ct_blood ~ delay_short_long)
+ggplot(data = evd,
+       mapping = aes(y = ct_blood, x = onset_to_hosp_days))+
+        geom_density_2d()+
+        ggtitle("D) SCATTER PLOT made using ggplot()")
+
 
 # add years/months column
 #########################
@@ -261,6 +302,10 @@ evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
 ### Add merged column header cells !!!
 # DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
 # "Merged header" and then underneath two columns each saying "this is under a merged header"
+
+
+# remove other columns
+evd <- select(evd, -onset_to_hosp_days, -delay_short_long)
 
 # export
 rio::export(evd, here::here("data", "linelist_raw.xlsx"))
