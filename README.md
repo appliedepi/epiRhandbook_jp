@@ -1,4 +1,4 @@
-# An R handbook for epidemiologists
+# A R handbook for epidemiologists
 
 ***Go to https://nsbatra.github.io/Epi_R_handbook/pages/handbook_combined.html to see the latest version of the handbook.***
 

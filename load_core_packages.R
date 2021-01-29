@@ -4,6 +4,8 @@ pacman::p_load(
      tidyverse,
      rio,
      here,
-     linelist,
-     DT
+     DT,
+     stringr,
+     lubridate,
+     patchwork
 )
