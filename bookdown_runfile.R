@@ -8,6 +8,8 @@ rmarkdown::render_site(
 rmarkdown::render_site(
      output_format = 'bookdown::bs4_book')
 
+
+
 # to knit your 
 rmarkdown::render(
      input = c("raw_pages/index.Rmd", "raw_pages/deduplication.Rmd"),
