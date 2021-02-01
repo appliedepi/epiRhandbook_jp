@@ -1,0 +1,402 @@
+
+# Joining & matching datasets {.tabset .tabset-fade}  
+
+
+<!-- ======================================================= -->
+## Overview {.tabset .tabset-fadehosp_info}
+
+
+```{r out.width = c('50%'), fig.show='hold', echo=F}
+knitr::include_graphics(here::here("images", "left-join.gif"))
+```
+
+This page describes common "joins" and also probabilistic matching between dataframes.  
+
+
+<!-- ======================================================= -->
+## Preparation {.tabset .tabset-fade}
+
+Because traditional joins (non-probabilistic) can be very specific, requiring exact string matches, you may need to do cleaning on the datasets *prior to* the join (e.g. change spellings, change case to all lower or upper).  
+
+
+<!-- ======================================================= -->
+### Datasets {.tabset .tabset-fade}
+In the joining examples, we'll use the following datasets:  
+
+1) A "miniature" version of the `linelist`, containing only the columns `case_id`, `date_onset`, and `hospital`, and only the first 10 rows  
+2) A separate dataframe named `hosp_info`, which contains more details about each hospital  
+
+
+**"miniature" linelist**  
+
+Below is the miniature linelist used for demonstration purposes:  
+
+```{r}
+linelist_mini <- linelist %>%                 # start with original linelist
+  select(case_id, date_onset, hospital) %>%   # select columns
+  head(10)                                    # keep only the first 10 rows
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(linelist_mini, rownames = FALSE, options = list(pageLength = nrow(linelist_mini)))
+```
+
+**Hospital Information dataframe**  
+
+Below is the separate dataframe with additional information about each hospital.  
+
+```{r, echo = F}
+hosp_info = data.frame(
+  hosp_name     = c("central hospital", "military", "military", "port", "St. Mark's", "ignace", "sisters"),
+  catchment_pop = c(1950280, 40500, 10000, 50280, 12000, 5000, 4200),
+  level  = c("Tertiary", "Secondary", "Primary", "Secondary", "Secondary", "Primary", "Primary")
+)
+```
+
+```{r message=FALSE, echo=F}
+# display the hospital data as a table
+DT::datatable(hosp_info, rownames = FALSE, options = list(pageLength = nrow(hosp_info)))
+```
+
+
+
+
+
+<!-- ======================================================= -->
+### Pre-cleaning {.tabset .tabset-fade}
+
+Because traditional (non-probabilistic) joins are case-sensitive and require exact string matches, we will clean-up the `hosp_info` dataset prior to the joins.  
+
+**Identify differences**  
+
+We need the values of `hosp_name` column in `hosp_info` dataframe to match the values of `hospital` column in the `linelist` dataframe.  
+
+Here are the values in `linelist_mini`:  
+
+```{r}
+unique(linelist_mini$hospital)
+```
+
+and here are the values in `hosp_info`:  
+
+```{r}
+unique(hosp_info$hosp_name)
+```
+
+
+
+**Align matching values**  
+
+We begin by cleaning the values in `hosp_name`. We use logic to code the values in the new column using `case_when()` (LINK). We correct the hospital names that exist in both dataframes, and leave the others as they are (see `TRUE ~ hosp_name`).   
+
+<span style="color: orange;">**_CAUTION:_** Typically, one should create a new column (e.g. `hosp_name_clean`), but for ease of demonstration we show modification of the old column</span>
+
+```{r}
+hosp_info <- hosp_info %>% 
+  mutate(
+    hosp_name = case_when(
+      hosp_name == "military"          ~ "Military Hospital",
+      hosp_name == "port"              ~ "Port Hospital",
+      hosp_name == "St. Mark's"        ~ "St. Mark's Maternity Hospital (SMMH)",
+      hosp_name == "central hospital"  ~ "Central Hospital",
+      TRUE                             ~ hosp_name
+      )
+    )
+```
+
+We now see that the hospital names that appear in both dataframe are aligned. There are some hospitals in `hosp_info` that are not present in `linelist` - we will deal with these later, in the join.  
+
+```{r}
+unique(hosp_info$hosp_name)
+```
+
+If you need to convert to all values UPPER or lower case, use these functions from **stringr**, as shown in the page on characters/strings (LINK).  
+
+`str_to_upper()`  
+`str_to_upper()`  
+`str_to_title()`  
+
+
+
+
+<!-- ======================================================= -->
+## Joins {.tabset .tabset-fade}
+
+**dplyr** offers several different joins. Below they are described, with some simple use cases. Many thanks to [https://github.com/gadenbuie](https://github.com/gadenbuie) for the moving images!  
+
+
+
+
+<!-- ======================================================= -->
+### General syntax {.tabset .tabset-fade}
+
+
+**General function structure**  
+
+Any of these join commands can be run independently, like below.  
+
+An object is being created, or re-defined: dataframe 2 is being joined to dataframe 1, on the basis of matches between the "ID" column in `df1` and "identifier" column in `df2`. Because this example uses `left_join()`, any rows in `df2` that do not match to `df1` will be dropped.     
+
+```{r, eval=F}
+object <- left_join(df1, df2, by = c("ID" = "identifier"))
+```
+
+The join commands can also be run within a pipe chain. The first dataframe `df1` is known to be the dataframe that is being passed through the pipes. An example is shown below, in context with some additional non-important `mutate()` and `filter()` commands before the join.  
+
+```{r eval=F}
+object <- df1 %>%
+  filter(var1 == 2) %>%        # for demonstration only
+  mutate(lag = day + 7) %>%    # for demonstration only
+  left_join(df1, by = c("ID" = "identifier"))  # join df2 to df1
+```
+
+**Join columns (`by = `)**  
+
+You must specify the columns in each dataset in which the values must match, using the arguemnt `by = `. You have a few options:  
+
+* Specify only one column name (`by = "ID"`) - this only works if this exact column name is present in both dataframes!  
+* Specify the different names (`by = c("ID" = "Identifier")` - use this if the column names are different in the 2 dataframes  
+* Specify multiple columns to match on (`by = c("ID" = "Identifier", "date_onset" = "Date_of_Onset")`) - this will require exact matches on multiple columns for rows to join.  
+
+
+<span style="color: orange;">**_CAUTION:_** Joins are case-specific! Therefore it is useful to convert all values to lowercase or uppercase prior to joining. See the page on characters/strings.</span>
+
+
+
+
+
+<!-- ======================================================= -->
+### Left & right joins  
+
+**A left or right join is commonly used to add information to a dataframe** - new information is added only to rows that already exist in the baseline dataframe.  
+
+These are common joins in epidemiological work - they are used to add information from one dataset into another. 
+
+*The order of the dataframes is important*.  
+
+* In a *left join*, the *first* (left) dataframe listed is the baseline  
+* In a *right join*, the *second* (right) dataframe listed is the baseline  
+
+**All rows of the baseline dataframe are kept.** Information in the secondary dataframe is joined to the baseline dataframe *only if there is a match via the identifier column(s)*. In addition:  
+* Rows in the secondary dataframe that do not match are dropped.  
+* If there are many baseline rows that match to one row in the secondary dataframe (many-to-one), the baseline information is added to each matching baseline row.  
+* If a baseline row matches to multiple rows in the secondary dataframe (one-to-many), all combinations are given, meaning new rows may be added to your returned dataframe!  
+
+```{r out.width = c('50%'), fig.show='hold', echo=F}
+knitr::include_graphics(here::here("images", "left-join.gif"))
+knitr::include_graphics(here::here("images", "right-join.gif"))
+```
+
+**Example**  
+
+Below is the output of a `left_join()` of `hosp_info` (secondary dataframe)  *into* `linelist_mini` (baseline dataframe). Note the following:  
+
+* All original rows of the baseline dataframe `linelist_mini` are kept  
+* One original row of `linelist_mini` is duplicated ("Military Hospital") because it matched to *two* rows in the secondary dataframe, so both combinations are returned  
+* The join identifier column of the secondary dataset (`hosp_name`) has disappeared because it is redundant with the identifier column in the primary dataset (`hospital`)  
+* When a baseline row did not match to any secondary row (e.g. when `hospital` is "Other" or "Missing"), `NA` fills in the columns from the secondary dataframe  
+* Rows in the secondary dataframe with no match to the baseline dataframe ("sisters" and "ignace") were dropped  
+
+
+```{r, eval=F}
+linelist_mini %>% 
+  left_join(hosp_info, by = c("hospital" = "hosp_name"))
+```
+
+```{r message=FALSE, echo=F}
+linelist_mini %>% 
+  left_join(hosp_info, by = c("hospital" = "hosp_name")) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 11))
+```
+
+
+
+
+**"Should I use a right join, or a left join?"**  
+Most important is to ask "which dataframe should retain all of its rows?" - use this one as the baseline.
+
+The two commands below achieve the same output - 10 rows of `hosp_info` joined *into* a `linelist_mini` baseline. However, the column order will differ based on whether `hosp_info` arrives from the right (in the left join) or arrives from the left (in the right join). The order of the rows may also shift consequently.   
+
+Also consider whether your use-case is within a pipe chain (`%>%`). If the dataset in the pipes is the baseline, you will likely use a left join to add data to it.  
+
+```{r, eval=F}
+# The two commands below achieve the same data, but with differently ordered rows and columns
+left_join(linelist_mini, hosp_info, by = c("hospital" = "hosp_name"))
+right_join(hosp_info, linelist_mini, by = c("hosp_name" = "hospital"))
+```
+
+```{r message=FALSE, echo=F}
+left_join(linelist_mini, hosp_info, by = c("hospital" = "hosp_name")) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 11))
+```
+
+```{r message=FALSE, echo=F}
+right_join(hosp_info, linelist_mini, by = c("hosp_name" = "hospital")) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 11))
+```
+
+
+
+
+<!-- ======================================================= -->
+### Full join  
+
+**A full join is the most *inclusive* of the joins** - it returns all rows from both dataframes.  
+
+If there are any rows present in one and not the other (where no match was found), the dataframe will become wider as `NA` values are added to fill-in. Watch the number of columns and rows carefully and troubleshoot case-sensitivity and exact string matches. 
+
+Adjustment of the "baseline" (first) dataframe will not impact which records are returned, but it will impact the column order, row order, and which identifier column is retained.  
+
+```{r out.width = c('50%'), fig.show='hold', echo=F}
+knitr::include_graphics(here::here("images", "full-join.gif"))
+```
+
+
+**Example**  
+
+Below is the output of a `full_join()` of `hosp_info`  *into* `linelist_mini`. Note the following:  
+
+* All baseline rows (`linelist_mini`) are kept  
+* One baseline row is duplicated ("Military Hospital") because it matched to two secondary rows and both combinations are returned  
+* Only the identifier column from the baseline is kept (`hospital`)  
+* `NA` fills in where baseline rows did not match to secondary rows (`hospital` was "Other" or "Missing"), or the opposite (where `hosp_name` was "ignace" or "sisters")  
+
+
+```{r, eval=F}
+linelist_mini %>% 
+  full_join(hosp_info, by = c("hospital" = "hosp_name"))
+```
+
+```{r message=FALSE, echo=F}
+linelist_mini %>% 
+  full_join(hosp_info, by = c("hospital" = "hosp_name")) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 13))
+```
+
+
+<!-- ======================================================= -->
+### Inner join  
+
+**An inner join is the most *restrictive* of the joins** - it returns only rows with matches across both dataframes.  
+This means that your original dataset may reduce in number of rows. Adjustment of the "baseline" (first) dataframe will not impact which records are returned, but it will impact the column order, row order, and which identifier column is retained.   
+
+
+```{r out.width = c('50%'), fig.show='hold', echo=F}
+knitr::include_graphics(here::here("images", "inner-join.gif"))
+```
+
+
+**Example**  
+
+Below is the output of an `inner_join()` of `linelist_mini` (baseline) with `hosp_info` (secondary). Note the following:  
+
+* Not all baseline rows are kept (rows where `hospital` is "Missing" or "Other" are removed because had no match in the secondary dataframe  
+* Likewise, secondary rows where `hosp_name` is "sisters" or "ignace" are removed as they have no match in the baseline dataframe  
+* Only the identifier column from the baseline is kept (`hospital`)  
+
+
+```{r, eval=F}
+linelist_mini %>% 
+  inner_join(hosp_info, by = c("hospital" = "hosp_name"))
+```
+
+
+```{r, eval=F}
+hosp_info %>% 
+  inner_join(linelist_mini, by = c("hosp_name" = "hospital"))
+```
+
+
+```{r message=FALSE, echo=F}
+linelist_mini %>% 
+  inner_join(hosp_info, by = c("hospital" = "hosp_name")) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 12))
+```
+
+
+
+
+
+<!-- ======================================================= -->
+### Anti join  
+
+**The anti join returns rows in dataframe 1 that *do not* have a match in dataframe 2.**  
+
+Common scenarios for an anti-join include identifying records not present in another dataframe, troubleshooting spelling in a join (catching records that *should have* matched), and examining records that were excluded after another join.  
+
+**As with right_join() and left_join(), the *baseline* dataframe (listed first) is important**. The returned rows are from it only. Notice in the gif below that row in the non-baseline dataframe (purple 4) is not returned even though it does not match.  
+
+```{r out.width = c('50%'), fig.show='hold', echo=F}
+knitr::include_graphics(here::here("images", "anti-join.gif"))
+```
+
+**Simple example**  
+
+For an example, let's find the `hosp_info` hospitals that do not have any cases present in `linelist_mini`. We list `hosp_info` first, as the baseline dataframe. The two hospitals which are not present in `linelist_mini` are returned.  
+
+```{r, eval=F}
+hosp_info %>% 
+  anti_join(linelist_mini, by = c("hosp_name" = "hospital"))
+```
+
+```{r message=FALSE, echo=F}
+hosp_info %>% 
+  anti_join(linelist_mini, by = c("hosp_name" = "hospital")) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 12))
+```
+**Example 2**  
+
+For another example, let us say we ran an `inner_join()` between `linelist_mini` and `hosp_info`. This returns only 8 of the original 11 `linelist_mini` records.  
+
+```{r, eval=F}
+linelist_mini %>% 
+  inner_join(hosp_info, by = c("hospital" = "hosp_name"))
+```
+```{r message=FALSE, echo=F}
+linelist_mini %>% 
+  inner_join(hosp_info, by = c("hospital" = "hosp_name")) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 8))
+```
+
+To review the 3 `linelist_mini` records that were excluded in the inner join, we can run an anti-join with `linelist_mini` as the baseline dataframe.  
+
+```{r, eval = F}
+linelist_mini %>% 
+  anti_join(hosp_info, by = c("hospital" = "hosp_name"))
+```
+
+```{r message=FALSE, echo=F}
+linelist_mini %>% 
+  anti_join(hosp_info, by = c("hospital" = "hosp_name")) %>% 
+  DT::datatable(rownames = FALSE, options = list(pageLength = 5))
+```
+
+To see the `hosp_info` records that were excluded in the inner join, we could also run an anti-join with `hosp_info` as the baseline dataframe.  
+
+
+
+<!-- ======================================================= -->
+## Probabalistic matching {.tabset .tabset-fade}
+
+rowmatcher
+other options (finlay?)
+
+
+
+<!-- ======================================================= -->
+### Option 2 sub-tab {.tabset .tabset-fade}
+
+Sub-tabs if necessary. Re-name as needed.
+
+
+
+<!-- ======================================================= -->
+## Resources {.tabset .tabset-fade}
+
+The [dplyr page on joins](https://dplyr.tidyverse.org/reference/join.html)  
+
+
+
+
+
+

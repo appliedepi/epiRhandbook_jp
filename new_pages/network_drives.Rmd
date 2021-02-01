@@ -1,0 +1,170 @@
+
+# R on network drives {.tabset .tabset-fade}  
+
+ 
+
+
+<!-- ======================================================= -->
+## Overview {.tabset .tabset-fade .tabset-pills}
+
+Using R on network or "company" shared drives can be extremely frustrating. This page contains approaches, common errors, and suggestions on troubleshooting, including for the particularly delicate situations involving Rmarkdown.  
+
+**Using R on Network Drives: Overarching principles**  
+
+1) Must have administrator access on your computer. Setup RStudio specifically to run as administrator.  
+2) Use your "\\\" package library as little as possible, save packages to "C:" library when possible.  
+3) the **rmarkdown** package must not be in a "\\\" library, as then it can't talk to TinyTex or Pandoc.  
+
+
+
+<!-- ======================================================= -->
+## Preparation {.tabset .tabset-fade .tabset-pills}
+
+
+**Using R on Network Drives: Overarching principles**  
+
+1) Must have administrator access on your computer. Setup RStudio specifically to run as administrator.  
+2) Use your "\\\" package library as little as possible, save packages to "C:" library when possible.  
+3) the **rmarkdown** package must not be in a "\\\" library, as then it can't talk to TinyTex or Pandoc.  
+
+**Useful commands**
+
+```{r, eval=F}
+# Find libraries
+.libPaths()                   # Your library paths, listed in order that R installs/searches. 
+                              # Note: all libraries will be listed, but to install to some (e.g. C:) you 
+                              # may need to be running RStudio as an administrator (it won't appear in the 
+                              # install packages library drop-down menu) 
+
+# Switch order of libraries
+# this can effect the priority of R finding a package. E.g. you may want your C: library to be listed first
+myPaths <- .libPaths() # get the paths
+myPaths <- c(myPaths[2], myPaths[1]) # switch them
+.libPaths(myPaths) # reassign them
+
+# Find Pandoc
+Sys.getenv("RSTUDIO_PANDOC")  # Find where RStudio thinks your Pandoc installation is
+
+# Find a package
+# gives first location of package (note order of your libraries)
+find.package("rmarkdown", lib.loc = NULL, quiet = FALSE, verbose = getOption("verbose")) 
+```
+
+
+
+<!-- ======================================================= -->
+## Troubleshooting common errors {.tabset .tabset-fade .tabset-pills}
+
+
+**"Failed to compile...tex in rmarkdown"**  
+
+check/install tinytex, to C: location
+
+```{r, eval=F}
+# check/install tinytex, to C: location
+tinytex::install_tinytex()
+tinytex:::is_tinytex() # should return TRUE (note three colons)
+```
+
+
+**Internet routines cannot be loaded**  
+
+For example, "Error in tools::startDynamicHelp() : internet routines cannot be loaded"  
+
+* Try selecting 32-bit version from RStudio via Tools/Global Options.  
+  * note: if 32-bit version does not appear in menu, make sure not using RStudio v1.2.  
+* Or try uninstalling R and re-installing with different bit (32 instead of 64)
+
+
+**C: library does not appear as an option when I try to install packages manually**
+
+* Must run RStudio as an administrator, then it will appear.  
+* To set-up RStudio to always run as administrator (advantageous when using an Rproject where you don't click RStudio icon to open)... right-click the Rstudio icon, open properties, compatibility, and click the checkbox Run as Administrator.  
+
+
+**Pandoc 1 error**  
+
+If you are getting pandoc error 1 when knitting Rmarkdowns on network drives:  
+
+* this can help (of two library locations, have the one with lettered drive listed first)  
+* This worked when knitting on local drive but while on network internet connection  
+* See https://ciser.cornell.edu/rmarkdown-knit-to-html-word-pdf/  
+
+```{r, eval=F}
+myPaths <- .libPaths() # get the library paths
+myPaths <- c(myPaths[2], myPaths[1]) # switch them
+.libPaths(myPaths) # reassign them
+```
+
+
+**Pandoc Error 83 (can't find file...rmarkdown...lua...)**  
+This means that it was unable to find this file.  
+
+See https://stackoverflow.com/questions/58830927/rmarkdown-unable-to-locate-lua-filter-when-knitting-to-word  
+
+Possibilities:  
+
+1) Rmarkdown package is not installed  
+2) Rmarkdown package is not findable  
+3) an admin rights issue.  
+
+R is not able to find the 'rmarkdown' package file, so check which library the rmarkdown package lives. 
+If it is in a library that in inaccessible (e.g. starts with "\\\") consider manually moving it to C: or other named drive library.  
+But be aware that the rmarkdown package has to be able to reach tinytex, so rmarkdown package can't live on a network drive.
+
+
+**Pandoc Error 61**
+For example: "Error: pandoc document conversion failed with error 61"  
+
+"Could not fetch..."  
+
+* Try running RStudio as administrator (right click icon, select run as admin, see above instructions)  
+* Also see if the specific package that was unable to be reached can be moved to C: library.
+
+**LaTex error (see below)**
+
+"! Package pdftex.def Error: File `cict_qm2_2020-06-29_files/figure-latex/unnamed-chunk-5-1.png' not found: using draft setting."
+
+"Error: LaTeX failed to compile file_name.tex."  
+See https://yihui.org/tinytex/r/#debugging for debugging tips. 
+See file_name.log for more info.
+
+
+**Pandoc Error 127**
+This could be a RAM (space) issue. Re-start your R session and try again. 
+
+
+**Mapping network drives**
+
+How does one open a file "through a mapped network drive"?  
+
+* First, you'll need to know the network location you're trying to access.  
+* Next, in the Windows file manager, you will need to right click on "This PC" on the right hand pane, and select "Map a network drive".  
+* Go through the dialogue to define the network location from earlier as a lettered drive.  
+* Now you have two ways to get to the file you're opening. Using the drive-letter path should work.  
+
+From: https://stackoverflow.com/questions/48161177/r-markdown-openbinaryfile-does-not-exist-no-such-file-or-directory/55616529?noredirect=1#comment97966859_55616529
+
+
+**ISSUES WITH HAVING A SHARED LIBRARY LOCATION ON NETWORK DRIVE**  
+
+**Error in install.packages()**  
+
+Try removing... /../.../00LOCK (directory)  
+
+* Manually delete the 00LOCK folder directory from your package the library. Try installing again.  
+* You can try the command pacman::p_unlock() (you can also put this command in the Rprofile so it runs every time project opens.)  
+* Then try installing the package again. It may take several tries.  
+* If all else fails, install the package to another library and then manually copy it over.  
+
+
+
+<!-- ======================================================= -->
+## Resources {.tabset .tabset-fade .tabset-pills}
+
+This tab should stay with the name "Resources".
+Links to other online tutorials or resources.
+
+
+
+

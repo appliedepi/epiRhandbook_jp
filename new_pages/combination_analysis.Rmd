@@ -1,0 +1,230 @@
+
+# Combination analysis {.tabset .tabset-fade}  
+
+<!-- ======================================================= -->
+## Overview {.tabset .tabset-fade .tabset-pills}
+
+
+This analysis plots the frequency of different **combinations** of values/responses. In this example, we plot the frequency of symptom combinations.  
+
+This analysis is often called:  
+**Multiple response analysis**
+**Sets analysis**
+**Combinations analysis**
+
+The first method shown uses the package **ggupset**, an the second using the package **UpSetR**. 
+
+```
+An example plot is below. Five symptoms are shown. Below each vertical bar is a line and dots indicating the combination of symptoms reflected by the bar above. To the right, horizontal bars reflect the frequency of each individual symptom.
+```
+
+```{r echo=F, out.width= "75%"}
+pacman::p_load(tidyverse,
+               UpSetR,
+               ggupset)
+
+# Adds new symptom variables to the linelist, with random "yes" or "no" values 
+linelist_sym <- linelist %>% 
+  mutate(fever  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.80, 0.20)),
+         chills = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.20, 0.80)),
+         cough  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.9, 0.15)),
+         aches  = sample(c("yes", "no"), nrow(linelist), replace = T, prob = c(0.10, 0.90)),
+         shortness_of_breath = sample(c("yes", "no"), nrow(linelist), replace = T))
+
+# produced the plot (just for show)
+linelist_sym_2 <- linelist_sym %>% 
+  mutate(fever = case_when(fever == "yes" ~ 1,          # if old value is "yes", new value is "fever"
+                           TRUE           ~ 0),   # if old value is anything other than "yes", the new value is 
+         chills = case_when(chills == "yes" ~ 1,
+                           TRUE           ~ 0),
+         cough = case_when(cough == "yes" ~ 1,
+                           TRUE           ~ 0),
+         aches = case_when(aches == "yes" ~ 1,
+                           TRUE           ~ 0),
+         shortness_of_breath = case_when(shortness_of_breath == "yes" ~ 1,
+                           TRUE           ~ 0))
+# Make the plot
+UpSetR::upset(
+  select(linelist_sym_2, fever, chills, cough, aches, shortness_of_breath),
+  sets = c("fever", "chills", "cough", "aches", "shortness_of_breath"),
+  order.by = "freq",
+  sets.bar.color = c("blue", "red", "yellow", "darkgreen", "orange"), # optional colors
+  empty.intersections = "on",
+  # nsets = 3,
+  number.angles = 0,
+  point.size = 3.5,
+  line.size = 2,
+  text.scale = 1.5,
+  mainbar.y.label = "Symptoms Combinations",
+  sets.x.label = "Patients with Symptom")
+
+```
+  
+
+
+
+<!-- ======================================================= -->
+## Preparation {.tabset .tabset-fade .tabset-pills}
+
+```{r}
+pacman::p_load(tidyverse,
+               UpSetR,
+               ggupset)
+```
+
+<!-- ======================================================= -->
+### View the data  
+
+This linelist includes five "yes/no" variables on reported symptoms. We will need to transform these variables a bit to use the **ggupset** package to make our plot.  
+
+View the data (scroll to the right to see the symptoms variables)
+
+```{r, echo=F}
+DT::datatable(linelist_sym, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+```
+
+<!-- ======================================================= -->
+### Re-format values  
+
+We convert the "yes" and "no the the actual symptom name. If "no", we set the value as blank. 
+
+```{r}
+# create column with the symptoms named, separated by semicolons
+linelist_sym_1 <- linelist_sym %>% 
+  
+  # convert the "yes" and "no" values into the symptom name itself
+  mutate(fever = case_when(fever == "yes" ~ "fever",          # if old value is "yes", new value is "fever"
+                           TRUE           ~ NA_character_),   # if old value is anything other than "yes", the new value is NA
+         
+         chills = case_when(chills == "yes" ~ "chills",
+                           TRUE           ~ NA_character_),
+         
+         cough = case_when(cough == "yes" ~ "cough",
+                           TRUE           ~ NA_character_),
+         
+         aches = case_when(aches == "yes" ~ "aches",
+                           TRUE           ~ NA_character_),
+         
+         shortness_of_breath = case_when(shortness_of_breath == "yes" ~ "shortness_of_breath",
+                           TRUE           ~ NA_character_))
+```
+
+Now we make two final variables:  
+1. Pasting together all the symptoms of the patient (character variable)  
+2. Convert the above to class *list*, so it can be accepted by **ggupset** to make the plot  
+
+```{r}
+linelist_sym_1 <- linelist_sym_1 %>% 
+  mutate(
+         # combine the variables into one, using paste() with a semicolon separating any values
+         all_symptoms = paste(fever, chills, cough, aches, shortness_of_breath, sep = "; "),
+         
+         # make a copy of all_symptoms variable, but of class "list" (which is required to use ggupset() in next step)
+         all_symptoms_list = as.list(strsplit(all_symptoms, "; "))
+         )
+```
+
+View the new data. Note the two columns at the end - the pasted combined values, and the list
+
+```{r}
+DT::datatable(linelist_sym, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+```
+
+
+<!-- ======================================================= -->
+## `ggupset` {.tabset .tabset-fade .tabset-pills}
+
+Load required package to make the plot (**ggupset**)
+
+```{r}
+pacman::p_load(ggupset)
+```
+
+
+Create the plot:
+
+```{r}
+ggplot(linelist_sym_1,
+       aes(x=all_symptoms_list)) +
+geom_bar() +
+scale_x_upset(reverse = FALSE,
+              n_intersections = 10,
+              sets = c("fever", "chills", "cough", "aches", "shortness_of_breath")
+              )+
+  labs(title = "Signs & symptoms",
+       subtitle = "10 most frequent combinations of signs and symptoms",
+       caption = "Caption here.",
+       x = "Symptom combination",
+       y = "Frequency in dataset")
+
+```
+  
+More information on **ggupset** can be found [online](https://rdrr.io/cran/ggupset/man/scale_x_upset.html) or offline in the package documentation in your RStudio Help tab. 
+
+
+<!-- ======================================================= -->
+## `UpSetR` {.tabset .tabset-fade .tabset-pills}
+The **UpSetR** package allows more customization, but it more difficult to execute:
+
+https://github.com/hms-dbmi/UpSetR  *read this*
+https://gehlenborglab.shinyapps.io/upsetr/ *Shiny App version - you can upload your own data*
+https://cran.r-project.org/web/packages/UpSetR/UpSetR.pdf *documentation - difficult to interpret*
+
+
+```{r}
+pacman::p_load(UpSetR)
+```
+
+Convert symptoms variables to 1/0. 
+
+```{r}
+# Make using upSetR
+
+linelist_sym_2 <- linelist_sym %>% 
+  
+  # convert the "yes" and "no" values into the symptom name itself
+  mutate(fever = case_when(fever == "yes" ~ 1,          # if old value is "yes", new value is "fever"
+                           TRUE           ~ 0),   # if old value is anything other than "yes", the new value is NA
+         
+         chills = case_when(chills == "yes" ~ 1,
+                           TRUE           ~ 0),
+         
+         cough = case_when(cough == "yes" ~ 1,
+                           TRUE           ~ 0),
+         
+         aches = case_when(aches == "yes" ~ 1,
+                           TRUE           ~ 0),
+         
+         shortness_of_breath = case_when(shortness_of_breath == "yes" ~ 1,
+                           TRUE           ~ 0))
+```
+
+Now make the plot, using only the symptom variables. Must designate which "sets" to compare (the names of the symptom variables).  
+Alternatively use `nsets =` and `order.by = "freq"` to only show the top X combinations.  
+
+```{r}
+
+# Make the plot
+UpSetR::upset(
+  select(linelist_sym_2, fever, chills, cough, aches, shortness_of_breath),
+  sets = c("fever", "chills", "cough", "aches", "shortness_of_breath"),
+  order.by = "freq",
+  sets.bar.color = c("blue", "red", "yellow", "darkgreen", "orange"), # optional colors
+  empty.intersections = "on",
+  # nsets = 3,
+  number.angles = 0,
+  point.size = 3.5,
+  line.size = 2, 
+  mainbar.y.label = "Symptoms Combinations",
+  sets.x.label = "Patients with Symptom")
+
+```
+
+
+<!-- ======================================================= -->
+## Resources {.tabset .tabset-fade .tabset-pills}
+
+This tab should stay with the name "Resources".
+Links to other online tutorials or resources.
+
+

@@ -1,0 +1,177 @@
+
+# R Markdown {.tabset .tabset-fade}  
+
+R Markdown is a fantastic tool for creating automated, reproducible, and share-worthy outputs. It can generate static or interactive outputs, in the form of html, word, pdf, powerpoint, and others. 
+
+<!-- ======================================================= -->
+## Overview {.tabset .tabset-fade .tabset-pills}
+
+Using markdown will allow you easily recreate an entire formatted document, including tables/figures/text, using new data (e.g. daily surveillance reports) and/or subsets of data (e.g. reports for specific geographies). 
+
+This guide will go through the basics. See 'resources' tab for further info.
+
+<!-- ======================================================= -->
+## Preparation {.tabset .tabset-fade .tabset-pills}
+
+Preparation of an R Markdown workflow involves ensuring you have set up an R project and have a folder structure that suits the desired workflow. 
+
+For instance, you may want an 'output' folder for your rendered documents, an 'input' folder for new cleaned data files, as well as subfolders within them which are date-stamped or reflect the subgeographies of interest. The markdown itself can go in a 'rmd' subfolder, particularly if you have multiple Rmd files within the same project. 
+
+You can set code up to create output subfolders for you each time you run reports (see "Producing an output"), but you should have the overall design in mind. 
+
+Because R Markdown can run into pandoc issues when running on a shared network drive, it is recommended that your folder is on your local machine, e.g. in a project within 'My Documents'. If you use Git (much recommended!), this will be familiar. 
+
+
+<!-- ======================================================= -->
+## The R Markdown file {.tabset .tabset-fade .tabset-pills}
+
+An R Markdown document looks like and can be edited just like a standard R script, in R Studio. However, it contains more than just the usual R code and hashed comments. There are three basic components:
+
+**1. Metadata**: This is referred to as the ‘YAML metadata’ and is at the top of the R Markdown document between two ‘---‘s. It will tell your Rmd file what type of output to produce, formatting preferences, and other metadata sucsh as document title, author, and date. There are other uses not mentioned here (but referred to in ‘Producing an output’). Note that indentation matters. 
+
+```{r, echo=F}
+knitr::include_graphics(here::here("images", "markdown", "1_yaml.png"))
+```
+
+**2. Text**: This is the narrative of your document, including the titles. It is written in the markdown language, used across many different programmes. This means you can add basic formatting, for instance:
+
+* `_text_` or `*text*` to _italicise_
+* `**text**` for **bold text**
+* `#` at the start of a new line for a title (and `##` for second-level title, `##` for third-level title etc)
+* `*` at the start of a new line for bullet points 
+* ```text``` to display text as code (as above)
+
+The actual appearance of the font can be set by using specific templates (specified in the YAML metadata; see example tabs).  
+
+You can also include minimal R code within backwards ticks, for within-text values. See example below.
+
+```{r, echo=F}
+knitr::include_graphics(here::here("images", "markdown", "2_text.png"))
+```
+
+
+**3. Code chunks**: This is where the R code goes, for the actual data management and visualisation. To note:
+These ‘chunks’ will appear to have a slightly different background colour from the narrative part of the document. 
+
+Each chunk always starts with three backticks and chunk information within squiggly brackets, and ends with three more backticks.
+
+Some notes about the content of the squiggly brackets:
+
+*	They start with ‘r’ to indicate that the language name within the chunk is r
+*	Followed by the chunk name - note this should ALWAYS be a unique name or else R will complain when you try to render. 
+*	It can include other options too, but many of these can be configured with point-and-click using the setting buttons at the top right of the chunk. Here, you can specify which parts of the chunk you want the rendered document to include, namely the code, the outputs, and the warnings. This will come out as written preferences within the squiggly brackets, e.g. ‘echo=FALSE’ if you specify you want to ‘Show output only’. 
+
+There are also two arrows at the top right of each chunk, which are useful to run code within a chunk, or all code in prior chunks. 
+
+```{r, echo=F}
+knitr::include_graphics(here::here("images", "markdown", "3_chunk.png"))
+```
+
+
+<!-- ======================================================= -->
+## Producing an output {.tabset .tabset-fade .tabset-pills}
+
+**General notes**
+
+Everything used by this markdown must be referenced within the Rmd file. For instance, you need to load any required packages or data. 
+
+**A single or test run from within R Markdown**
+
+To render a single document, for instance if you are testing it or if you only need to produce one rendered document at a time, you can do it from within the open R Markdown file. Click the "knit" button at the top of the document. 
+
+```{r, echo=F}
+knitr::include_graphics(here::here("images", "markdown", "4_knitbutton.png"))
+```
+
+
+The 'R Markdown' tab will start processing to show you the overall progress, and a complete document will automatically open when complete. This document will also be saved in the same folder as your markdown, and with the same file name aside from the file extension. This is obviously not ideal for version control, as you will then rename the file yourself.
+
+**A single run from an separate script**
+
+To run the markdown so that a date-stamped file is produced, you can create a separate script and call the Rmd file from within it. You can also specify the folder and file name, and include a dynamic date and time, so that file will be date stamped on production. 
+
+
+```
+rmarkdown::render(("rmd_reports/create_RED_report.Rmd"),  
+                        output_file = paste0("outputs/Report_", Sys.Date, ".docx")) # Use 'paste0' to combine text and code for a dynamic file name
+``` 
+**Routine runs into newly created date-stamped sub folders**
+
+Add a couple lines of code to define the date you are running the report (e.g. using Sys.Date as in the example above) and create new sub folders. If you want the date to reflect a specific date rather than the current date, you can also enter it as an object. 
+
+```
+# Set the date of report
+refdate <- as.Date("2020-12-21")
+
+# Create the folders
+outputfolder <- paste0("outputs/", refdate) # This is the new folder name
+dir.create(outputfolder) # Creates the folder (in this case assumed 'outputs' already exists)
+
+#Run the loop
+rmarkdown::render(("rmd_reports/create_report.Rmd"),  
+                        output_file = paste0(outputfolder, "/Report_", refdate, ".docx")) #Dyanmic folder name now included
+``` 
+
+You may want some dynamic information to be included in the markdown itself. This is addressed in the next section. 
+
+<!-- ======================================================= -->
+## Parametrised reports {.tabset .tabset-fade .tabset-pills}
+
+Parameterised reports are the next step so that the content of the R Markdown itself can also be dynamic. For example, the title can change according to the subgeography you are running, and the data can filter to that subgeography of interest. 
+
+Let's say you want to run the markdown to produce a report with surveillance data for Area1 and Area2. You will:
+
+1. Edit your R Markdown:
+  a) Change your YAML metadata to include a 'params' section, which specifies the dynamic object. 
+  b) Refer to this parameterised object within the code as needed. E.g. `filter(area == params$areanumber)` rather than `filter(area=="Area1")`. 
+  
+For instance (simplified version which does not include setup code such as library/data loading):
+
+```{r, echo=F}
+knitr::include_graphics(here::here("images", "markdown", "5_parameterized.png"))
+```
+
+
+You can change the content by editing the YAML as needed, or set up a loop in a separate script to iterate through the areas. As with the previous section, you can set up the folders as well. 
+
+As you can see below, you set up a list which includes all areas of interest (`arealist`), and when rendering the markdown you specify that the parameterized `areanumber` for a specific iteration is the Nth value of the arealist. For instance, for the first iteration, areanumber will equate to "Area1". The code below also specifies that the Nth area name will be included in the output file name. 
+
+Note that this will work even if an area or date are specified within the YAML itself - that YAML information will get overwritten by the loop. 
+
+```
+# Set the date of report
+refdate <- as.Date("2020-12-21")
+
+# Set the list (note that this can also be an imported list)
+arealist <- c("Area1", "Area2", "Area3", "Area4", "Area5")
+
+# Create the folders
+outputfolder <- paste0("outputs/", refdate) # This is the new folder name
+dir.create(outputfolder) # Creates the folder (in this case assumed 'outputs' already exists)
+
+#Run the loop
+
+for(i in 1:length(arealist))  { # This will loop through from the first value to the last value in 'arealist'
+
+rmarkdown::render(here("rmd_reports/create_report.Rmd"), 
+                        params = list(areanumber = arealist[1], #Assigns the nth value of arealist to the current areanumber
+                                      refdate = refdate),
+                        output_file = paste0(outputfolder, "/Report_", arealist[1], refdate, ".docx")) 
+                        
+}
+
+
+``` 
+
+
+<!-- ======================================================= -->
+## Resources {.tabset .tabset-fade .tabset-pills}
+
+Further information can be found via:
+
+* https://bookdown.org/yihui/rmarkdown/
+* https://rmarkdown.rstudio.com/articles_intro.html
+
+
+
+

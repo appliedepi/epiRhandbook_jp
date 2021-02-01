@@ -1,0 +1,126 @@
+
+# Missing data {.tabset .tabset-fade}
+
+```{r, out.width=c("50%"), echo=F}
+knitr::include_graphics(here::here("images", "missingness.png"))
+```
+
+<!-- ======================================================= -->
+## Overview {.tabset .tabset-fade}
+
+This page will cover:  
+
+1) Useful functions for assessing missingness  
+2) Assess missingness in a dataframe  
+3) Plotting missingness over time  
+4) Handling how `NA` is displayed in plots  
+5) Imputation  
+
+
+
+<!-- ======================================================= -->
+## Useful functions {.tabset .tabset-fade}
+<h2> Useful functions </h2>
+
+The following are useful functions when assessing or handling missing values:  
+
+
+**`is.na()` and `!is.na()`**  
+
+To identify missing values use `is.na()` or its opposite (with `!` in front). Both are from **base** R.  
+These return a logical vector (`TRUE` or `FALSE`). Remember that you can `sum()` the resulting vector to count the number `TRUE`, e.g. `sum(is.na(linelist$date_outcome))`.   
+
+```{r}
+my_vector <- c(1, 4, 56, NA, 5, NA, 22)
+is.na(my_vector)
+!is.na(my_vector)
+```
+
+**`na.omit()`**  
+
+This function, if applied to a dataframe, will remove rows with *any* missing values. It is also from **base** R.  
+If applied to a vector, it will remove `NA` values from the vector it is applied to. For example:  
+
+```{r}
+sum(na.omit(my_vector))
+```
+
+**`na.rm = TRUE`**  
+
+Often a mathematical function will by default *include* `NA` in calculations, which results in the function returning `NA` (this is designed intentionally, to make you aware that you have missing data).  
+You can usually avoid this by removing missing values from the calculation, by including the argument `na.rm = TRUE` (na.rm stands for "remove `NA`").  
+
+```{r}
+mean(my_vector)
+
+mean(my_vector, na.rm = TRUE)
+```
+
+
+
+<!-- ======================================================= -->
+## Assess a dataframe {.tabset .tabset-fade}
+<h2> Assess a dataframe </h2>
+
+
+
+
+<!-- ======================================================= -->
+## Missingness over time {.tabset .tabset-fade}
+<h2> Missingness over time </h2>
+
+
+Change in percent of weekly observations that are missing in X column.  
+
+```{r}
+outcome_missing <- linelist %>%
+  mutate(week = lubridate::floor_date(date_onset, "week")) %>% 
+  group_by(week) %>% 
+  summarize(n_obs = n(),
+            outcome_missing = sum(is.na(outcome) | outcome == ""), # include "" because this is character
+            outcome_p_miss = outcome_missing / n_obs) %>%
+  reshape2::melt(id.vars = c("week")) %>%
+  filter(grepl("_p_", variable))
+```
+
+Then we plot the proportion missing as a line, by week
+
+```{r}
+ggplot(data = outcome_missing)+
+    geom_line(aes(x = week, y = value, group = variable, color = variable), size = 2, stat = "identity")+
+    labs(title = "Weekly missingness in 'Outcome'",
+         x = "Week",
+         y = "Proportion missing") + 
+    scale_color_discrete(name = "", labels = c("Weekly proportion of missing outcomes"))+
+    scale_y_continuous(breaks = c(seq(0,1,0.1)))+
+  theme_minimal()+
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+
+
+
+<!-- ======================================================= -->
+## `NA` in plots {.tabset .tabset-fade}
+<h2> `NA` in plots </h2>
+
+
+
+
+
+<!-- ======================================================= -->
+## Imputation {.tabset .tabset-fade}
+<h2> Imputation </h2>
+
+
+
+
+
+<!-- ======================================================= -->
+## Resources {.tabset .tabset-fade}
+<h2> Resources </h2>
+
+
+

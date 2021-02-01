@@ -1,0 +1,138 @@
+
+# Grouping/aggregating data {.tabset .tabset-fade}  
+     
+This page reviews how to group and aggregate data for descriptive analysis. It makes use of tidyverse packages for common and easy-to-use functions. 
+
+<!-- ======================================================= -->
+## Overview {.tabset .tabset-fade .tabset-pills}
+
+Before doing descriptive analyses, it will almost always be a necessary to first group your data and summarize it across these groups (whether it be by time period, place, or a relevant categorical variable) since most often summary statistics across these groups are more meaningful. Luckily, tidyverse makes this really easy through the `group_by` function.
+
+This page will how to perform these grouping operations
+
+* Fast & easy using `group_by()` command in **dplyr** or
+* Base R `aggregate()` command 
+
+
+.drop=F in `group_by()` command
+
+
+<!-- ======================================================= -->
+## Preparation {.tabset .tabset-fade .tabset-pills}
+     
+For this tab we use the `linelist` dataset that is cleaned in the Cleaning tab.
+
+**Load packages**  
+     
+Ensure tidyverse is installed, which includes dplyr for group_by 
+
+```{r}
+pacman::p_load(rio,       # to import data
+               here,      # to locate files
+               tidyverse  # to clean, handle, and plot the data (includes dplyr!)
+)
+```
+
+Load the data  
+
+```{r, echo=F}
+linelist <- rio::import(here("data", "linelist_cleaned.rds"))
+```
+
+```{r, eval=F}
+linelist <- rio::import(here("data", "linelist_cleaned.xlsx"))
+```
+
+
+<!-- ======================================================= -->
+## `group_by()` {.tabset .tabset-fade .tabset-pills}
+     
+You can perform different operations after first grouping by one variable, say, `outcome`. This provides instruction that any calculations should then be performed within the context of the grouped columns. You can group by 1 or more columns.
+
+First, let's convert `outcome` to a factor to make resulting plots easier to work with.
+
+```{r, eval=F}
+linelist <- linelist %>%
+  mutate(outcome = as.factor(outcome))
+  
+```
+
+Below we will walk through a few examples of `group_by` functionalities:
+
+`tally()` gives you a simple count of rows across each category.
+
+```{r, eval=T}
+count_by_outcome <- linelist %>%
+  group_by(outcome) %>%
+  tally()
+  
+```
+
+Here we see that there were 2 633 deaths, 2 026 recoveries, and 1 348 with no outcome recorded.
+
+We can easily produce summary tables with a range of different descirptive statistics. The `summarise()` after `group_by` allows you to more carefully specify the summary statistic operation to be performed. Below we will find the average age across each outcome group. 
+
+Remember to use na.rm = TRUE to exclude the NA values from the calculation of mean age.
+
+```{r, eval=T}
+avg_age_by_outcome <- linelist %>%
+  group_by(outcome) %>%
+  summarise(avg_age = mean(age, na.rm=TRUE ))
+  
+```
+
+We see that the average age is roughly stable across outcomes, with those recovering being slightly lower at 14.7 years.
+
+
+We can also group by more than 1 variable. You can either specify these variables, or use the `group_by_at` or `group_by_if` to use specified criteria in which to choose the grouping parameteres.
+
+For instance, we can find the number of cases, by gender and month of onset...
+
+```{r, eval=T}
+
+count_gender_by_month_of_onset <- linelist %>%
+  mutate(month_of_onset = format(date_onset,"%B")) %>%
+  group_by(month_of_onset, gender) %>%
+  tally()
+  
+```
+
+We could also take initial records from each group, for instance, which can be handy if used in conjunction with sorting. Below we can sort by `date_of_onset` and then find the first case for each `hospital`
+
+```{r, eval=T}
+first_record_per_hosp <- linelist %>%
+  arrange(date_onset) %>%
+  group_by(hospital) %>%
+  slice(1)
+  
+```
+
+You can perform any summary function on grouped data; see the Cheat Sheet here for more info:
+https://github.com/rstudio/cheatsheets/blob/master/data-transformation.pdf
+
+<!-- ======================================================= -->
+## `mutate` with grouped data {.tabset .tabset-fade .tabset-pills}
+
+To retain all of the other columns and just add a new variable for average age, we can use `mutate` instead of summarize. This could be perhaps be useful for some additional descriptive statistics where you wanted other variables still intact.
+
+```{r, eval=T}
+avg_age_by_outcome_2 <- linelist %>%
+  group_by(outcome) %>%
+  mutate(avg_age = mean(age, na.rm=TRUE ))
+  
+```
+
+
+<!-- ======================================================= -->
+## `aggregate()` {.tabset .tabset-fade .tabset-pills}
+
+
+
+<!-- ======================================================= -->
+## Resources {.tabset .tabset-fade .tabset-pills}
+
+Here are some useful resources for more information:
+*https://github.com/rstudio/cheatsheets/blob/master/data-transformation.pdf
+*https://datacarpentry.org/R-genomics/04-dplyr.html
+*https://dplyr.tidyverse.org/reference/group_by.html
+*https://itsalocke.com/files/DataManipulationinR.pdf

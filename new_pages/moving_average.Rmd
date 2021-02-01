@@ -1,0 +1,138 @@
+
+# Moving averages {.tabset .tabset-fade}  
+
+```{r, out.width=c("50%"), echo=F}
+knitr::include_graphics(here::here("images", "moving_avg_epicurve.png"))
+```
+
+<!-- ======================================================= -->
+## Overview {.tabset .tabset-fade .tabset-pills}
+
+This page will cover methods to calculate and visualize moving averages, for:  
+
+
+**To see a moving average for an epicurve, see the page on epicurves (LINK)**  
+
+
+
+
+<!-- ======================================================= -->
+## Preparation {.tabset .tabset-fade .tabset-pills}
+
+**Load packages**  
+
+```{r}
+pacman::p_load(
+  tidyverse,      # for data management and viz
+  slider,         # for calculating moving averages
+  tidyquant,      # for calculating moving averages on-the-fly in ggplot
+)
+```
+
+
+<!-- ======================================================= -->
+## Calculate-then-display {.tabset .tabset-fade .tabset-pills}
+
+Using the package **slider** to calculate a moving average in a dataframe, prior to any plotting.  
+
+In this approach, the moving average is calculated in the dataset prior to plotting:  
+
+* Within `mutate()`, a new column is created to hold the average. `slide_index()` from **slider** package is used as shown below.  
+* In the `ggplot()`, a `geom_line()` is added after the histogram, reflecting the moving average.  
+
+See the helpful online [vignette for the **slider** package](https://cran.r-project.org/web/packages/slider/vignettes/slider.html)  
+
+
+
+* Can assign `.before = Inf` to achieve cumulative averages from the first row  
+* Use `slide()` in simple cases  
+* Use `slide_index()` to designate a date column as an index, so that dates which do not appear in the dataframe are still included in the window  
+  * `.before`, `.after` TODO  
+  * `.complete` TODO  
+  * 
+
+
+First we count the number of cases reported each day. Note that `count()` is appropriate if the data are in a linelist format (one row per case) - if starting with aggregated counts you will need to follow a different approach (e.g. `summarize()` - see page on Summarizing data).  
+
+```{r}
+# make dataset of daily counts and 7-day moving average
+#######################################################
+ll_counts_7day <- linelist %>% 
+  count(date_onset, name = "new_cases") %>%    # count cases by date, new column is named "new_cases"
+  filter(!is.na(date_onset))
+```
+
+The new dataset now looks like this:  
+
+```{r}
+DT::datatable(ll_counts_7day, rownames = FALSE, options = list(pageLength = 6, scrollX=T) )
+```
+
+Next, we create a new column that is the 7-day average. We are using the function `slide_index()` from **slider** specifically because we recognize that *there are missing days* in the above dataframe, and they must be accounted for. To do this, we set a our "index" (`.i` argument) as `the column `date_onset`. Since `date_onset` is a column of class Date, the function recognizes and when calculating it counts the days that do not appear in the dataframe. If you were to use another **slider** function like `slide()`, this indexing would not occur.  
+
+Also not that the 7-day window, in this example, is achieved with the argument `.before = 6`. In this way the window is the day and 6 days preceding. If you want the window to be different (centered or following) use `.after` in conjunction.  
+
+
+```{r}
+## calculate the average number of cases in the preceding 7 days
+ll_counts_7day <- ll_counts_7day %>% 
+  mutate(
+    avg_7day = slider::slide_index_dbl(    # create new column
+        new_cases,                       # calculate avg based on value in new_cases column
+        .i = date_onset,                 # index column is date_onset, so non-present dates are included in 7day window 
+        .f = ~mean(.x, na.rm = TRUE),    # function is mean() with missing values removed
+        .before = 6,                     # window is the day and 6-days before
+        .complete = TRUE))               # fills in first days with NA
+```
+
+
+Step 2 is plotting the 7-day average, in this case shown on top of the underlying daily data.    
+
+```{r}
+ggplot(data = ll_counts_7day, aes(x = date_onset)) +
+    geom_histogram(aes(y = new_cases), fill="#92a8d1", stat = "identity", position = "stack", colour = "#92a8d1")+ 
+    geom_line(aes(y = avg_7day), color="red", size = 1) + 
+    scale_x_date(
+      date_breaks = "1 month",
+      date_labels = '%d/%m',
+      expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0), limits = c(0, NA)) + 
+    labs(x="", y ="Number of confirmed cases")+ 
+    theme_minimal() 
+```
+
+
+<!-- ======================================================= -->
+## Calculate on-the-fly {.tabset .tabset-fade .tabset-pills}
+
+TBD - **tidyquant**
+
+
+```{r, eval=F}
+per_pos_plot_county <- ggplot(data = filter(tests_per_county),
+       aes(x = DtSpecimenCollect_Final, y = prop_pos))+
+  geom_line(size = 1, alpha = 0.2)+  # plot raw values
+  tidyquant::geom_ma(n=7, size = 2)+ # plot moving average
+  theme_minimal_hgrid()+
+  coord_cartesian(xlim = c(as.Date("2020-03-15"), Sys.Date()), ylim = c(0, 15))+
+  labs(title    = "COUNTY-WIDE TESTING PERCENT POSITIVE",
+       subtitle = "Daily and 7-day moving average",
+       y        = "Percent Positive",
+       x        = "Date Specimen Collected")+
+  theme_text_size+
+  theme(axis.text = element_text(face = "bold", size = 14),
+        panel.background = element_rect(fill = "khaki")
+        )
+```
+
+
+<!-- ======================================================= -->
+## Resources {.tabset .tabset-fade .tabset-pills}
+
+
+See the helpful online [vignette for the **slider** package](https://cran.r-project.org/web/packages/slider/vignettes/slider.html)  
+
+If your use case requires that you “skip over” weekends and even holidays, you might like **almanac** package.
+
+
+

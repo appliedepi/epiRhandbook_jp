@@ -39,17 +39,124 @@ The broad R community is enormous and collaborative. New packages and tools are 
 <h2> Packages </h2>
 
 
+An R package is a shareable bundle of code and documentation that contains pre-defined functions. Users in the R community develop and share packages all the time, so chances are likely that a solution exists for you! You will install and use hundreds of packages in your use of R.  
 
 
-Below we load some of the packages used in this page:  
+
+**CRAN**  
+
+CRAN (Comprehensive R Archive Network) is a public warehouse of R packages that have been published by R community members. Most often, R users download packages from CRAN.  
+
+
+
+**Install vs. Load**
+
+To use a package, 2 steps must be implemented:  
+
+1) The package must be **installed** (once), *and*  
+2) The package must be **loaded** (each R session)  
+
+The basic function for installing a package is `install.packages()`, where the name of the package is provided *in quotes*. This can also be accomplished point-and-click by going to the RStudio "Packages" pane and clicking "Install". 
+
+```{r, eval=F}
+install.packages("tidyverse")
+```
+
+The basic function to **load** a package for use (after it has been installed) is `library()`, with the name of the package *NOT in quotes*.  
+
+```{r, eval=F}
+library(tidyverse)
+```
+
+
+
+**Using pacman**  
+
+This handbook uses the package **pacman** (abbreviation for "package manager"), which offers the useful function `p_load()`. This function combines the above two steps into one -  it *installs and/or loads packages*, depending on what is needed. If the package has not yet been installed, it will attempt to install from CRAN, and then load it.  
+
+Below, we load some of the packages used in this R basics page:  
 
 ```{r}
-pacman::p_load(
-  tidyverse,
-  rio,
-  here
-)
+pacman::p_load(tidyverse, rio, here)
 ```
+
+The function `p_isinstalled()` will test whether packages are installed already.  
+
+
+
+
+**Install from github**
+
+Sometimes, you need to install the *development version* of a package, from a github repository. You can use `p_load_gh()` from **pacman** (this function is a wrapper around `install_github()` from **devtools**).  
+
+```{r, eval=F}
+# install development version of package from github repository
+p_install_gh("reconhub/epicontacts")
+
+# load development version of package which you had downloaded from github repository
+p_load_gh("reconhub/epicontacts")
+```
+
+Read more about **pacman** [here](http://trinker.github.io/pacman/vignettes/Introduction_to_pacman.html)
+
+
+**Install from ZIP or TAR**
+
+You could get the package from a URL:  
+
+```{r, eval=F}
+packageurl <- "https://cran.r-project.org/src/contrib/Archive/dsr/dsr_0.2.2.tar.gz"
+install.packages(packageurl, repos=NULL, type="source")
+```
+
+Or download it to your computer in a zipped file:  
+
+Option 1:  
+
+```{r, eval=F}
+library(devtools)
+install_local("~/Downloads/dplyr-master.zip")
+```
+
+Option 2:  
+
+```{r, eval=F}
+install.packages(path_to_source, repos = NULL, type="source")
+
+install.packages("~/Downloads/dplyr-master.zip", repos=NULL, type="source")
+```
+
+
+
+
+**Delete packages**
+
+Use `p_delete()` from **pacman**, or `remove.packages()` from **base** R. Alternatively, go find the folder which contains your library and manually delete the folder.
+
+
+**Dependencies**  
+
+Packages often depend on other packages to work. These are called dependencies. If a dependency fails to install, then the package depending on it may also fail to install.  
+
+See the dependencies of a package with `p_depends()`, and see which packages depend on it with `p_depends_reverse()`  
+
+
+**Masked functions**  
+
+It is not uncommon that two or more packages contain the same function name. For example, the package **dplyr** has a `filter()` function, but so does the package **stats**. The default `filter()` function depends on the order these packages are first loaded in the R session - the later one will be the default for the command `filter()`. 
+
+You can check the order in your Environment pane of R Studio - click the drop-down for "Global Environment" and see the order of the packages. Functions from higher packages will mask those of the same name in lower packages. When first loading a package, R will warn you in the console if masking is occurring, but this is easy to miss.   
+
+Here are ways you can fix masking:  
+
+1) Specify the package name in the command. For example, use `dplyr::filter()`  
+2) Re-arrange the order in which the packages are loaded (e.g. within `library()` or `p_load()`), and re-start R  
+3) `detach()` the desired package and re-attach it, thus making it the highest/default version.  
+
+
+**Installing older versions of packages**  
+
+See this [guide](https://support.rstudio.com/hc/en-us/articles/219949047-Installing-older-versions-of-packages)  
 
 
 <!-- ======================================================= -->
