@@ -9,13 +9,13 @@ Heatmaps can be useful when tracking reporting metrics across many facilities/ju
 
 For example, the image below shows % of weekdays that data was received from each facility, week-by-week:  
 
-```{r echo=F, out.width=c('50%','50%'), fig.show='hold'}
-
+```{r echo=F, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%','50%')}
+linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
 facility_count_data <- rio::import(here::here("data", "facility_count_data.rds"))
 pacman::p_load(aweek, tidyverse)
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE, echo=F}
 # Create weekly summary dataset
 ###############################
 agg_weeks <- facility_count_data %>% 
@@ -44,7 +44,7 @@ agg_weeks <- facility_count_data %>%
 ```
 
 
-```{r}
+```{r echo=F, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%','50%')}
 # METRICS PLOT
 ##############
 ggplot(agg_weeks,
@@ -184,7 +184,7 @@ To achieve this:
 5) The dataframe is joined (`right_join()`) to a comprehensive list of all possible facility-week combinations, to make the dataset complete. The matrix of all possible combinations is created by applying `expand()` to those two columns of the dataframe as it is at that moment in the pipe chain (represented by "."). Because a `right_join()` is used, all rows in the `expand()` dataframe are kept, and added to agg_weeks if necessary. These new rows appear with `NA` (missing) summarized values.  
 
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # Create weekly summary dataset
 agg_weeks <- facility_count_data %>% 
   
@@ -231,7 +231,7 @@ The `ggplot()` is make using `geom_tile()`:
 #### Basic  
 <h4> Basic </h4>
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 ggplot(agg_weeks,
        aes(x = aweek::week2date(week),            # transformed to date class
            y = location_name,
@@ -282,9 +282,11 @@ facility_order <- agg_weeks %>%
   summarize(tot_reports = sum(n_days_reported, na.rm=T)) %>% 
   arrange(tot_reports) # ascending order
 ```
+
 ```{r}
 as.tibble(facility_order)
 ```
+
 Now use the above vector (`facility_order$location_name`) to be the order of the factor levels of location_name in the dataset `agg_weeks`:  
 
 ```{r}
@@ -294,7 +296,7 @@ agg_weeks <- agg_weeks %>%
 
 And now the data are re-plotted, with location_name being an ordered factor:  
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 ggplot(agg_weeks,
        aes(x = aweek::week2date(week),            # transformed to date class
            y = location_name,
@@ -342,7 +344,7 @@ You can add a `geom_text()` layer on top of the tiles, to display the actual num
 
 * Note the fillowing code added `geom_text(aes(label=p_days_reported))+`. In the aesthetic `aes()` of the `geom_tile()` the argument `label` (what to show) is set to the same numeric column used to create the color gradient.  
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 ggplot(agg_weeks,
        aes(x = aweek::week2date(week),            # transformed to date class
            y = location_name,
@@ -393,7 +395,7 @@ Contoured heatmap of cases over a basemap
 
 http://data-analytics.net/cep/Schedule_files/geospatial.html
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 pacman::p_load(OpenStreetMap)
 
 # Fit basemap by range of lat/long coordinates. Choose tile type
