@@ -12,6 +12,7 @@ This page will cover:
 
 1) Useful functions for assessing missingness  
 2) Assess missingness in a dataframe  
+3) Filter out rows with missingness  
 3) Plotting missingness over time  
 4) Handling how `NA` is displayed in plots  
 5) Imputation  
@@ -42,6 +43,8 @@ linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
 linelist <- rio::import("linelist_cleaned.rds")
 ```
 
+
+
 <!-- ======================================================= -->
 ## Useful functions {.tabset .tabset-fade}
 
@@ -59,6 +62,7 @@ is.na(my_vector)
 !is.na(my_vector)
 ```
 
+
 **`na.omit()`**  
 
 This function, if applied to a dataframe, will remove rows with *any* missing values. It is also from **base** R.  
@@ -67,6 +71,7 @@ If applied to a vector, it will remove `NA` values from the vector it is applied
 ```{r}
 sum(na.omit(my_vector))
 ```
+
 
 **`na.rm = TRUE`**  
 
@@ -82,37 +87,155 @@ mean(my_vector, na.rm = TRUE)
 
 
 <!-- ======================================================= -->
-## Assess a dataframe {.tabset .tabset-fade}
+## Assess missingness in a dataframe {.tabset .tabset-fade}
+
+You can use the package **naniar** to assess and visualize missingness.  
+
+```{r}
+pacman::p_load(naniar)
+```
+
+### Statistics  
+
+Some basic missingness functions from **naniar** include:  
+
+The percent of all values that are missing  
+
+```{r}
+pct_miss(linelist)  # also see n_miss() for counts
+```
+
+These two functions return the percent of rows with any missing values, or that are entirely complete, respectively. Note that "" or " " will register as non-missing.  
+
+```{r}
+pct_miss_case(linelist)   # also see n_complete() for counts
+
+pct_complete_case(linelist) # see n_complete
+```
+
+
+
+### Visualizing missingness  
+
+The `gg_miss_var()` function will tell you the number missing in each column. You can add a bare column name to the argument `facet = ` if desired to see the plot by groups. By default, counts are shown instead of percents (`show_pct = FALSE`). You can also add labs as a normal ggplot with `+labs()`.  
+
+
+```{r}
+gg_miss_var(linelist, show_pct = TRUE)
+```
+
+You can use `vis_miss()` to visualize the dataframe as a heatmap, showing whether each value is missing or not:  
+
+```{r}
+vis_miss(linelist)
+```
+
+
+### Explore and visualize missingness relationships  
+
+How do you visualize something that is not there??? By default, ggplot removes points with missing values from plots.  
+
+**naniar** offers a solution via `geom_miss_point()`. When creating a scatterplot of two columns, records with one of the values missing and the other present are shown by setting the missing values to 10% lower than the lowest value in the column, and coloring them distinctly.  
+In the scatterplot below, the red dots are records where the X column is present but the value for the Y column is missing.  
+
+
+```{r}
+ggplot(
+  linelist, 
+  aes(x = generation,             
+      y = days_onset_hosp)) +     # column to show missingness
+  geom_miss_point()
+```
+
+To assess missingness in the dataframe by another column, consider `gg_miss_fct()`, which returns a heatmap of percent missingness in the dataframe by a factor/categorical (or date) column:  
+
+```{r}
+gg_miss_fct(linelist, age_cat5)
+```
+
+
+This function can also be used on date column to neat effect:  
+
+```{r}
+gg_miss_fct(linelist, date_onset)
+```
 
 
 
 
-<!-- ======================================================= -->
-## Missingness over time {.tabset .tabset-fade}
+**"Shadow" columns**
+
+Another way to visualize missingness in one column by values in a second column is using the "shadow" that **naniar** can create. Essentially, `bind_shadow()` creates a binary `NA`/not `NA` column for every column, and adds all these columns to the dataset (doubling the number of columns).  See below:  
 
 
-Change in percent of weekly observations that are missing in X column.  
+```{r}
+shadowed_linelist <- linelist %>% 
+  bind_shadow()
+
+names(shadowed_linelist)
+```
+
+These "shadow" columns can be used to plot the density of proportion of values that are missing by another column X. For example, the plot below shows the proportion of records missing `days_onset_hosp` (number of days from symptom onset to hospitalisation), by that record's value in `date_hospitalisation`. Essentially, you are plot the density of the x-axis column, but stratify the results (`color = `) by a shadow column of interest. This analysis works best if the x-axis is numeric or date column.  
+
+
+```{r, message = F}
+ggplot(
+  shadowed_linelist,                   # dataframe with shadow columns
+  aes(x = date_hospitalisation,        # numeric or date column
+      colour = days_onset_hosp_NA)) +  # shadown column of interest
+  geom_density()                       # plots the density curves
+```
+
+You can also use these "shadow" columns to stratify a statistical summary, as shown below:
+
+```{r}
+linelist %>%
+  bind_shadow() %>%                # create the shows cols
+  group_by(date_outcome_NA) %>%    # shadow col for stratifying
+  summarise_at(.vars = c("days_onset_hosp"),     # variable of interest for calculations
+               .funs = c("mean", "sd", "var", "min", "max"),  # stats to calculate
+               na.rm = TRUE)       # other arguments for the stat calculations
+```
+
+
+An alternative way to plot the proportion of values in one column, including missingness, is given below. It does not involve **naniar**. This example shows percent of weekly observations that are missing in a column):  
+
+1) Aggregate the data into a useful time unit (days, weeks, etc.), summarizing the proportion of observations with `NA` (and any other values of interest)  
+2) Plot the proportion missing as a line using `ggplot()`  
+
+Below, we take the linelist, add a new column for week, group the data by week, and then calculate the percent of that week's records where the value is missing. (note: if you want % of 7 days the calculation would be slightly different).  
 
 ```{r}
 outcome_missing <- linelist %>%
-  mutate(week = lubridate::floor_date(date_onset, "week")) %>% 
-  group_by(week) %>% 
-  summarize(n_obs = n(),
-            outcome_missing = sum(is.na(outcome) | outcome == ""), # include "" because this is character
-            outcome_p_miss = outcome_missing / n_obs) %>%
-  reshape2::melt(id.vars = c("week")) %>%
-  filter(grepl("_p_", variable))
+  mutate(week = lubridate::floor_date(date_onset, "week")) %>%   # create new week column
+  group_by(week) %>%                                             # group the rows by week
+  summarize(                                                     # summarize each week
+    n_obs = n(),                                                     # number of records
+    
+    outcome_missing = sum(is.na(outcome) | outcome == ""),       # number of records missing the value
+    outcome_p_miss  = outcome_missing / n_obs,                   # proportion of records missing the value
+  
+    outcome_dead    = sum(outcome == "Death", na.rm=T),          # number of records as dead
+    outcome_p_dead  = outcome_dead / n_obs) %>%                  # proportion of records as dead
+  
+  tidyr::pivot_longer(-week, names_to = "statistic") %>%         # pivot all columns except week, to long format for ggplot
+  filter(stringr::str_detect(statistic, "_p_"))                  # keep only the proportion values
 ```
 
 Then we plot the proportion missing as a line, by week
 
 ```{r, message=F}
 ggplot(data = outcome_missing)+
-    geom_line(aes(x = week, y = value, group = variable, color = variable), size = 2, stat = "identity")+
-    labs(title = "Weekly missingness in 'Outcome'",
+    geom_line(
+      aes(x = week, y = value, group = statistic, color = statistic),
+      size = 2,
+      stat = "identity")+
+    labs(title = "Weekly outcomes",
          x = "Week",
-         y = "Proportion missing") + 
-    scale_color_discrete(name = "", labels = c("Weekly proportion of missing outcomes"))+
+         y = "Proportion of weekly records") + 
+     scale_color_discrete(
+       name = "",
+       labels = c("Died", "Missing outcome"))+
     scale_y_continuous(breaks = c(seq(0,1,0.1)))+
   theme_minimal()+
   theme(
@@ -122,23 +245,67 @@ ggplot(data = outcome_missing)+
 
 
 
+<!-- ======================================================= -->
+## Filter out rows with missing values {.tabset .tabset-fade}
+
+To quickly remove rows with missing values, use the **dplyr** function `drop_na()`.  
+
+The original `linelist` has `nrow(linelist)` rows. The adjusted number of rows is shown below:  
+
+```{r, eval=F}
+linelist %>% 
+  drop_na() %>%     # remove rows with ANY missing values
+  nrow()
+```
+
+Additionally you can specify columns to evaluate for missingness:  
+
+```{r}
+linelist %>% 
+  drop_na(date_onset) %>% # remove rows missing date_onset 
+  nrow()
+```
+
+Multiple columns can be specified one after the other, or using this standard syntax:  
+
+```{r}
+linelist %>% 
+  drop_na(contains("date")) %>% # remove rows missing values in any "date" column 
+  nrow()
+```
+
+
 
 <!-- ======================================================= -->
-## `NA` in plots {.tabset .tabset-fade}
+## Handling `NA` in `ggplot()` {.tabset .tabset-fade}
 
+It is often wise to report the number of values excluded from a plot in a caption. Below is an example:  
 
+In `ggplot()`, you can add `labs()` and within it a `caption = `. In the caption, you can use `str_glue()` from **stringr** package to paste values together into a sentence dynamically so they will adjust to the data. An example is below:  
 
+* Note the use of `\n` for a new line.  
+* Note that if multiple column would contribute to values not being plotted (e.g. age or sex if those are reflected in the plot), then you must filter on those columns as well to correctly calculate the number not shown.  
 
+```{r, eval=F}
+labs(
+  title = "Weekly case incidence, by gender",
+  y = "Weekly case incidence",
+  x = "Week of symptom onset",
+  caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; {nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown."))  
+```
+
+Sometimes, it can be easier to save the value as an object in commands before the `ggplot()` command, and simply reference the named value within the `str_glue()`.  
 
 <!-- ======================================================= -->
 ## Imputation {.tabset .tabset-fade}
 
-
+Under construction - TBD - TODO
 
 
 
 <!-- ======================================================= -->
 ## Resources {.tabset .tabset-fade}
 
+Vignette on the [naniar package](https://cran.r-project.org/web/packages/naniar/vignettes/getting-started-w-naniar.html)
 
-
+Gallery of [missing value visualizations](https://cran.r-project.org/web/packages/naniar/vignettes/naniar-visualisation.html)
