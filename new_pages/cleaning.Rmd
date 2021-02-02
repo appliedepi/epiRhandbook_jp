@@ -8,22 +8,11 @@
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade } 
 
-This page demonstrates common steps necessary to clean a dataset. It uses a simulated Ebola case linelist, which is used throughout the handbook.  
+This page demonstrates common steps necessary to clean a dataset, starting with importing raw data and demonstrating a "pipe chain" of cleaning steps. This page uses a simulated Ebola case linelist, which is referenced throughout the handbook.  
 
-```{r, out.width = "75%", fig.align = "center", echo=F}
+```{r, out.width = "100%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "cleaning_dataset_snip.png"))
 ```
-
-* Dealing with character case (upper, lower, title, etc.)
-* Factor columns  
-
-replace missing with
-dealing with cases (all lower, etc)
-case_when()
-factors
-
-
-
 
 
 
@@ -32,7 +21,6 @@ factors
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Preparation
-<h2> Preparation </h2>
 
 ### Load packages  
 
@@ -47,7 +35,7 @@ pacman::p_load(tidyverse,  # data manipulation and visualization
 
 Import the raw dataset using the `import()` function from the package **rio**.  (LINK HERE TO IMPORT PAGE)  
 
-```{r, echo=F}
+```{r, echo=F, message=F}
 # HIDDEN FROM READER
 # actually load the data using here()
 linelist_raw <- rio::import(here::here("data", "linelist_raw.xlsx"))
@@ -71,9 +59,8 @@ DT::datatable(head(linelist_raw,50), rownames = FALSE, filter="top", options = l
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Cleaning pipeline
-<h2> Cleaning pipeline </h2>
 
-In epidemiological analysis and data processing, cleaning steps are often performed together and sequentially. In R this often manifests as a cleaning "pipeline", where the raw dataset is passed or "piped" from one cleaning step to another. The chain utilizes **dplyr** verbs and the **magrittr** pipe operator (see handbook page on **dplyr** and tidyverse coding style (LINK HERE). The pipe begins with the "raw" data (`linelist_raw`) and ends with a "clean" dataset (`linelist`).  
+In epidemiological analysis and data processing, cleaning steps are often performed linked together, sequentially. In R this often manifests as a cleaning "pipeline", where the raw dataset is passed or "piped" from one cleaning step to another. The chain utilizes **dplyr** verbs and the **magrittr** pipe operator (see handbook page on **dplyr** and tidyverse coding style (LINK HERE). The pipe begins with the "raw" data (`linelist_raw`) and ends with a "clean" dataset (`linelist`).  
 
 In a cleaning pipeline the order of the steps is important. Cleaning steps might include:  
 
@@ -89,7 +76,6 @@ In a cleaning pipeline the order of the steps is important. Cleaning steps might
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Column names {.tabset .tabset-fade } 
-<h2> Column names </h2>
 
 Column names are used very often so they need to have "clean" syntax. We suggest the following:  
 
@@ -107,12 +93,10 @@ Also note that in the raw data, the two final columns names were two merged cell
 names(linelist_raw)
 ```
 
-```
 Note: For a column name that include spaces, surround the name with back-ticks, for example: linelist$`infection date`. On a keyboard, the back-tick (`) is different from the single quotation mark ('), and is sometimes on the same key as the tilde (~).
-```
+
 
 ### Automatic colummn name cleaning  
-<h3> Automatic column name cleaning </h3>
 
 The function `clean_names()` from the package **janitor** standardizes column names and makes them unique by doing the following:  
 
@@ -137,7 +121,6 @@ names(linelist)
 
 
 ### Manual column name cleaning  
-<h3> Manual column name cleaning </h3>
 
 Re-naming columns manually is often necessary. Below, re-naming is performed using the `rename()` function from the **dplyr** package, as part of a pipe chain. `rename()` uses the style "NEW = OLD", the new column name is given before the old column name.  
 
@@ -204,7 +187,6 @@ linelist_raw <- openxlsx::readWorkbook("linelist_raw.xlsx", fillMergedCells = TR
 
 
 ### Skip import of rows  
-<h3> Skip import of rows </h3>
 
 Sometimes, you may want to avoid importing a row of data (e.g. the column names, which are row 1).  
 you can do this with the argument `skip = ` if using `import()` from the **rio** package on a .xlsx or .csv file. Provide the number of rows you want to skip.  
@@ -311,7 +293,6 @@ stickers_dict
 
 
 ### Combine two header rows  
-<h3> Combine two header rows </h3>
 
 In some cases, you may want to combine two header rows into one. This command will define the column names as the combination (pasting together) of the existing column names with the value underneath in the first row. Replace "df" with the name of your dataset.  
 
@@ -329,7 +310,6 @@ names(df) <- paste(names(df), df[1, ], sep = "_")
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Select or re-order columns {.tabset .tabset-fade } 
-<h2> Select or re-order columns </h2>
 
 <span style="color: orange;">**_CAUTION:_** This tab may follow from previous tabs.</span>
 
@@ -346,7 +326,6 @@ names(linelist)
 ```
 
 ### Select & re-order
-<h3> Select & re-order </h3>
 
 
 **Select only the columns you want to remain, *and their order of appearance***  
@@ -407,7 +386,6 @@ linelist %>%
 
 
 ### `select()` as a stand-alone command
-<h3> `select()` as a stand-alone command </h3>
 
 Select can also be used as an independent command (not in a pipe chain). In this case, the first argument is the original dataframe to be operated upon.  
 
@@ -422,7 +400,6 @@ names(linelist_age)
 
 
 ### Add to the pipe chain  
-<h3> Add to the pipe chain </h3>
 
 In the linelist, there are a few columns we do not need: `row_num`, `merged_header`, and `x28`. Remove them by adding a `select()` command to the cleaning pipe chain:  
 
@@ -456,7 +433,6 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Modify class {.tabset .tabset-fade  #Classes}
-<h2> Modify class </h2>
 
 <span style="color: orange;">**_CAUTION:_** This tab may follow from previous tabs.</span>
 
@@ -475,7 +451,6 @@ linelist <- linelist %>%
 ```
 
 ### Pre-checks and errors  
-<h3> Pre-checks and errors </h3>
 
 First we run some checks on the classes of important columns.  
 
@@ -510,7 +485,6 @@ Especially after converting to class date, check your data visually or with `tab
 
 
 ### Modify multiple columns  
-<h3> Modify multiple columns </h3>  
 
 
 You can use The **dplyr** function `across()` with `mutate()` to convert several columns at once to a new class. `across()` allows you to specify which columns you want a function to apply to. Below, we want to mutate the columns where `is.POSIXct()` (a type of date/time class that shows unnecessary timestamps) is `TRUE`, and apply the function `is.Date()` to them, in order to convert them to class "date".   
@@ -582,7 +556,6 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Add columns and rows {.tabset .tabset-fade } 
-<h2> Add columns and rows </h2>
 
 See the tabs below to add columns and rows
 
@@ -590,10 +563,8 @@ See the tabs below to add columns and rows
 
 <!-- ======================================================= -->
 ### Add columns  {.tabset .tabset-fade }
-<h3> Add columns </h3>
 
 #### `mutate()`  
-<h4> `mutate()` </h4>
 
 We advise creating new columns with **dplyr** functions as part of a chain of such verb functions (e.g. filter, mutate, etc.)  
 If in need of a stand-alone command, you can use `mutate()` or the **base** R style to create a new column (see below).  
@@ -623,6 +594,7 @@ linelist <- linelist %>%                       # creating new, or modifying old 
 DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
 ```
 
+
 <span style="color: darkgreen;">**_TIP:_** The verb `transmute()` adds new columns just like `mutate()` but also drops/removes all other columns that you do not mention.</span>
 
 ```{r, echo=F}
@@ -634,7 +606,6 @@ linelist <- linelist %>%
 
 
 #### New columns using **base** R  
-<h4> New columns using **base** R </h4>
 
 
 To define a new column (or re-define a column) using **base** R, just use the assignment operator as below.
@@ -647,7 +618,6 @@ linelist$new_var <- linelist$old_var + linelist$age
 
 <!-- ======================================================= -->
 ### Add rows  
-<h3> Add rows </h3>
 
 TO DO
 
@@ -670,7 +640,6 @@ If your class is off you will see an error like this: Error: Can't combine `..1$
 
 
 ### New columns using grouped values
-<h3> New columns using grouped values </h3>
 
 <span style="color: orange;">**_CAUTION:_** This tab may follow from previous tabs.</span>
 
@@ -743,7 +712,6 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Recoding values {.tabset .tabset-fade  #recode}
-<h2> Recoding values </h2>
 
 For example, in `linelist` the values in the column "hospital" must be cleaned. There are several different spellings (often the word "Hospital" is missing an "s" and is written "Hopital"), and many missing values.
 
@@ -754,7 +722,6 @@ table(linelist$hospital, useNA = "always")
 
 <!-- ======================================================= -->
 ### Manual recoding {.tabset .tabset-fade }
-<h3> Manual recoding </h3>
 
 These tabs demonstrate re-coding values manually b providing specific spellings to be corrected:  
 
@@ -782,7 +749,6 @@ mutate(gender = replace(gender, id == "2195", NA)
 
 
 #### `recode()`  
-<h4> `recode()` </h4>
 
 To change spellings manually, one-by-one, you can use the `recode()` function *within the `mutate()` function. The code is saying that the column "hospital" should be defined as the current column "hospital", but with certain changes (the syntax is OLD = NEW). **Don't forget commas!**  
 
@@ -812,7 +778,6 @@ table(linelist$hospital, useNA = "always")
 
 
 #### **base** R  
-<h4> **base** R </h4>
 
 
 If necessary, you make manual changes to a specific value in a dataframe by referencing the row number of case ID. But remember it is better if you can make these changes permanently in the underlying data! 
@@ -826,7 +791,6 @@ linelist$date_onset[linelist$case_id == "9d4019"] <- as.Date("2020-10-24")
 
 <!-- ======================================================= -->
 ### Recoding by logic {.tabset .tabset-fade}
-<h3> Recoding by logic </h3>
 
 These tabs demonstrate re-coding values in a column using logic and conditions:  
 
@@ -839,7 +803,6 @@ These tabs demonstrate re-coding values in a column using logic and conditions:
 
 
 #### `case_when()`  
-<h4> `case_when()` </h4>
 
 
 If you need to use logic statements to recode values, or want to use operators like `%in%`, use **dplyr**'s `case_when()` instead. **If you use `case_when()` please read the thorough explanation HERE LINK, as there are important differences from `recode()` in syntax and logic order!**   
@@ -858,7 +821,6 @@ linelist <- linelist %>%
 
 
 #### `ifelse()` and `if_else()`  
-<h4> `ifelse()` and `if_else()` </h4>
 
 For simple uses of logical re-coding or new variable creationgyou can use `ifelse()` or `if_else()`. Though in most cases it is better to use `case_when()`.  
 
@@ -892,7 +854,6 @@ Note: If you want to alternate a value used in your code based on other circumst
 
 <!-- ======================================================= -->
 ### Recoding using special **dplyr** functions  
-<h3> Recoding using special **dplyr** functions </h3>
 
 
 #### Using `replace_na()`  
@@ -933,7 +894,6 @@ cumsum(), cummean(), cummin(), cummax(), cumany(), cumall(),
 
 <!-- ======================================================= -->
 ### Recoding using cleaning dictionaries
-<h3> Recoding using cleaning dictionaries </h3>
 
 <span style="color: orange;">**_CAUTION:_** This tab may follow from previous tabs.</span>
 
@@ -963,7 +923,6 @@ mll_clean <- mll_raw %>%
 
 <!-- ======================================================= -->
 ### Add to pipe chain  
-<h3> Add to pipe chain </h3>
 
 Here we add the described cleaning steps to the pipe chain.  
 
@@ -1028,7 +987,6 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Filter rows {.tabset .tabset-fade }
-<h2> Filter rows </h2>
 
 <span style="color: orange;">**_CAUTION:_** This tab may follow from previous tabs.</span>
 
@@ -1038,7 +996,6 @@ The tabs below show how to filter rows based on simple and complex logical condi
 
 <!-- ======================================================= -->
 ### A simple `filter()`  
-<h3> A simple `filter()` </h3>
 
 This simple example re-defines the dataframe `linelist` as itself, having filtered the rows to meet a logical condition. **Only the rows where the logical statement within the parentheses is `TRUE` are kept.**  
 
@@ -1057,7 +1014,6 @@ After the filter is applied, the number of rows in `linelist` is `r nrow(linelis
 
 <!-- ======================================================= -->
 ### A complex `filter()` 
-<h3> A complex `filter()` </h3>
 
 A more complex example using `filter()`:  
 
@@ -1148,7 +1104,6 @@ linelist <- linelist[!is.na(case_id), ]
 
 
 ### Filtering to quickly review data  
-<h3> Filtering to quickly review data </h3>
 
 This **base** R syntax can be handy when you want to quickly view a subset of rows and columns. Use the **base** R `View()` command (note the capital "V") around the [] subset you want to see. The result will appear as a dataframe in your RStudio viewer panel. For example, if I want to review onset and hospitalization dates of 3 specific cases:  
 
@@ -1177,7 +1132,6 @@ View(linelist %>%
 
 
 ### Add to pipe chain  
-<h3> Add to pipe chain </h3>
 
 
 ```{r}
@@ -1253,7 +1207,6 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Numeric categories {#num_cats .tabset .tabset-fade}
-<h2> Numeric categories </h2>
 
 <span style="color: orange;">**_CAUTION:_** This tab may follow from previous tabs.</span>
 
@@ -1283,7 +1236,6 @@ class(linelist$age_years)
 
 <!-- ======================================================= -->
 ### `age_categories()`**
-<h3> `age_categories()` </h3>
 
 With the **epikit** package, you can use the `age_categories()` function to easily categorize and label numeric columns (note: this can be applied to non-age numeric variables too). The output is an ordered factor.
 
@@ -1335,7 +1287,6 @@ table(linelist$age_cat, useNA = "always")
 
 <!-- ======================================================= -->
 ### `cut()` {#cut .tabset .tabset-fade}
-<h3> `cut()` </h3>
 
 You can use the **base** R function `cut()`, which creates categories from a numeric variable. The differences from `age_categories()` are:  
 
@@ -1350,7 +1301,6 @@ If used within `mutate()` (a **dplyr** verb) it is not necessary to specify the 
 
 
 #### Simple `cut()` example  
-<h3> Simple `cut()` example </h3>
 
 Create new column of age categories (`age_cat`) by cutting the numeric `age_year` column at specified break points. The example below replicates the first `age_categories()` example.  
 
@@ -1377,7 +1327,6 @@ table(linelist$age_cat, useNA = "always")
 
 
 #### `cut()` details  
-<h3> `cut()` details </h3>
 
 
 Below is a detailed description of the behavior of using `cut()` to make the `age_cat` column. Key points:    
@@ -1507,7 +1456,6 @@ length(age_seq) == length(age_labels)
 
 <!-- ======================================================= -->
 ### `case_when()`
-<h3> `case_when()` </h3>
 
 The dplyr function `case_when()` can also be used to create numeric categories.  
 
@@ -1546,7 +1494,6 @@ table(linelist$age_cat, useNA = "always")
 
 
 ### Add to pipe chain  
-<h3> Add to pipe chain </h3>
 
 Below, code to create two categorical age columns is added to the cleaning pipe chain:  
 
@@ -1631,7 +1578,6 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## rowwise() **dplyr()**
-<h2> rowwise() **dplyr** </h2>
 
 https://cran.r-project.org/web/packages/dplyr/vignettes/rowwise.html
 
@@ -1654,7 +1600,6 @@ linelist <- linelist %>%
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Transforming multiple variables at once
-<h2> Transforming multiple variables at once </h2>
 
 <span style="color: orange;">**_CAUTION:_** This tab may follow from previous tabs.</span>
 
@@ -1682,16 +1627,16 @@ Here are a few online resources on using `across()`: [Hadley Wickham's thoughts/
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 ## Deduplication
-<h2> Deduplication </h2>
 
 <span style="color: orange;">**_CAUTION:_** This tab may follow from previous tabs.</span>
+
+See the handbook page on deduplications (LINK), just one aspect of which is addressed here.  
 
 The package **dplyr** offers the `distinct()` function to reduce the dataframe to only unique rows - removing duplicates.  
 In this case we just want to remove rows that are complete duplicates, so we just add the simple command `distinct()`.  
 
-For more complex deduplications see the page on deduplicating.  
-
 We begin with `r nrow(linelist)` rows in `linelist`. 
+
 ```{r}
 linelist <- linelist %>% 
   distinct()
