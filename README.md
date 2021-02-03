@@ -1,8 +1,7 @@
 # A R handbook for epidemiologists
 
-***Go to https://nsbatra.github.io/Epi_R_handbook/pages/handbook_combined.html to see the latest version of the tabbed html handbook.***
-
-***Go to https://nsbatra.github.io/Epi_R_handbook/docs/index.html to see the latest version of the bs4-book style handbook website.***
+***Go to https://epi-r-handbook.netlify.app/ to see the latest version of the online handbook.***
+***Go to https://nsbatra.github.io/Epi_R_handbook/pages/handbook_combined.html to see the latest version of the downloadable offline html handbook (with tabs).***
 
 ***Download the contribution guide here:*** https://nsbatra.github.io/Epi_R_handbook/contribution_guide.html  
 
