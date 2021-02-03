@@ -36,7 +36,9 @@ The following packages are recommended for working with dates:
 pacman::p_load(aweek,      # flexibly converts dates to weeks, and vis-versa
                lubridate,  # for conversions to months, years, etc.
                linelist,   # function to guess messy dates
-               ISOweek)    # another option for creating weeks
+               ISOweek,    # another option for creating weeks
+               tidyverse,
+               )    
 ```
 
 
@@ -385,7 +387,42 @@ This may seem largely abstract, and is often not needed if the user isn't workin
 <!-- ======================================================= -->
 ## Epidemiological weeks  
 
-The templates use the very flexible package **aweek** to set epidemiological weeks. You can read more about it [on the RECON website](https://www.repidemicsconsortium.org/aweek/)
+Use the `floor_date()` function from **lubridate**, with `unit = "week"`. See example below for specifying the week start day. The returned output is the start date of the week, in Date class.  
+
+For example, to create a new column that is weeks, then use `group_by()` with `summarize()` to get weekly case counts.  
+
+To aggregate into weeks and show ALL weeks (even ones with no cases), do this:  
+
+
+1) Create a new 'week' column within `mutate()`, using `floor_date()` from the **lubridate** package:  
+    + use `unit = ` to set the desired time unit, e.g. "week`  
+    + use `week_start = ` to set the weekday start of the week (7 = Sunday, 1 = Monday)  
+
+2) Follow with `complete()` to ensure that all weeks appear - even those with no cases.  
+
+
+For example:  
+
+```{r}
+# Make dataset of weekly case counts
+weekly_counts <- linelist %>% 
+  mutate(
+    week = lubridate::floor_date(date_onset,
+                                 unit = "week")) %>%  # new column of week of onset
+  count(week) %>%                                     # group data by week and count rows per group
+  filter(!is.na(week)) %>%                            # remove entries for cases missing date_onset
+  complete(week = seq.Date(from = min(week),          # fill-in all weeks with no cases reported
+                           to = max(week),
+                           by="week"))
+```
+
+Here are the first 20 rows of the resulting dataframe:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(head(weekly_counts, 20), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
+
+You can also use the package **aweek** to set epidemiological weeks. You can read more about it [on the RECON website](https://www.repidemicsconsortium.org/aweek/)
 
 
 <!-- ======================================================= -->
