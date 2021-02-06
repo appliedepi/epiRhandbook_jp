@@ -1,4 +1,4 @@
-# Importing data {.tabset .tabset-fade}
+# Importing and exporting {.tabset .tabset-fade}
 
 <!-- ======================================================= -->
 ## Overview
@@ -9,7 +9,7 @@ Introduction to importing data
 <!-- ======================================================= -->
 ## Packages {.tabset .tabset-fade}  
 
-The key package we recommend for importing data is: **rio**. **rio** offers the useful function `import()` which can import many types of files into R.  
+The key package we recommend for importing many types of data is: **rio**. **rio** offers the useful function `import()` which can import many types of files into R.  
 
 The alternative to using **rio** would be to use functions from several other packages that are specific to a type of file (e.g. `read.csv()`, `read.xlsx()`, etc.). While these alternatives can be difficult to remember, always using `rio::import()` is relatively easy. 
 
@@ -23,8 +23,64 @@ pacman::p_load(rio, here)
 
 ```
 
+
+
 <!-- ======================================================= -->
-## `import()` {.tabset .tabset-fade}
+## Relative filepaths (`here()`) {#here .tabset .tabset-fade}
+
+*Relative filepaths* differ from static filepaths in that they are *relative from a [R project](#rproject) root directory*. 
+For example:  
+
+* **A static filepath**: `import("C:/Users/nsbatra/My Documents/R files/epiproject/data/linelists/ebola_linelist.xlsx")`  
+  * Specific fixed path
+  * Useful if multiple users are running a script hosted on a network drive
+* **A relative filepath**: `import(here("data", "linelists", "ebola_linelist.xlsx"))`  
+  * Path is given in relation to a directory  
+  * Best if working within an R project  
+  
+Use the package **here** and its function `here()` to implement relative pathways.
+
+`here()` works best within [R projects](#rprojects). When the **here** package is first loaded (`library(here)`), it places a small file called "here" in the top-level folder of your R project as a "benchmark" or "anchor" for all other files in the project.  
+
+Thus, in your script, if you want to import or reference a file saved in your R project’s folders, you use the function `here()` to tell R where the file is ***in relation to that benchmark***. **here** relative filepaths can be used for both importing and exporting/saving data.  
+
+
+If you are unsure where “here” is set to, run the function `here()` with the empty brackets:
+
+```{r import_here, eval=F}
+# This command tells you the folder path that "here" is set to 
+here::here()
+```
+
+Below is an example of importing the file “fluH7N9_China_2013.csv” which is located in the benchmark “here” folder. All you have to do is provide the name of the file in quotes (with the appropriate ending).
+
+```{r import_here_one, eval=F}
+linelist <- import(here("fluH7N9_China_2013.csv"))
+```
+
+If the file is within a subfolder - let’s say a “data” folder - write these folder names in quotes, separated by commas, as below:
+
+```{r import_here_mutiple, eval=F}
+linelist <- import(here("data", "fluH7N9_China_2013.csv"))
+```
+
+Using the `here()` command produces a character filepath, which can then processed by the `import()` function.
+
+```{r import_here_path, eval=F}
+# the filepath
+here("data", "fluH7N9_China_2013.csv")
+
+# the filepath is given to the import() function
+linelist <- import(here("data", "fluH7N9_China_2013.csv"))
+```
+
+
+<span style="color: black;">**_NOTE:_** You can still import a specific sheet of an excel file as noted in the Excel tab. The `here()` command only supplies the filepath.</span>
+
+
+
+<!-- ======================================================= -->
+## Importing {.tabset .tabset-fade}
 
 When you import a dataset, you are doing the following:  
 
@@ -68,7 +124,7 @@ R files
 
 
 <!-- ======================================================= -->
-## Import from filepath {.tabset .tabset-fade}  
+### Import from filepath {.tabset .tabset-fade}  
 
 A filepath can be provided in full (as below) or as a *relative filepath* (see next tab). Providing a full filepath can be fast and may be the best if referencing files from a shared/network drive).  
 
@@ -83,7 +139,7 @@ my_data <- rio::import("C:/Users/Neale/Documents/my_excel_file.xlsx")
 ```
 
 <!-- ======================================================= -->
-## Excel sheet {.tabset .tabset-fade}
+### Excel sheet {.tabset .tabset-fade}
 
 If importing a specific **sheet** from an Excel file, include the sheet name in the `which = ` argument of `import()`. For example:  
 
@@ -100,7 +156,7 @@ linelist_raw <- import(here("data", "linelists", "linelist.xlsx"), which = "Shee
 ```
 
 <!-- ======================================================= -->
-## Select file manually {.tabset .tabset-fade}
+### Select file manually {.tabset .tabset-fade}
 
 You can import data manually via one of these methods:  
 
@@ -116,57 +172,6 @@ my_data <- rio::import(file.choose())
 ```
 
 <span style="color: darkgreen;">**_TIP:_** The **pop-up window** may appear BEHIND your RStudio window.</span>
-
-
-<!-- ======================================================= -->
-## Relative filepaths (`here()`) {#here .tabset .tabset-fade}
-
-*Relative filepaths* differ from static filepaths in that they are *relative from a [R project](#rproject) root directory*. For example:  
-
-* A static filepath: `import("C:/Users/nsbatra/My Documents/R files/epiproject/data/linelists/ebola_linelist.xlsx")`  
-  * Specific fixed path
-  * Useful if multiple users are running a script hosted on a network drive
-* A relative filepath: `import(here("data", "linelists", "ebola_linelist.xlsx"))`  
-  * Path is given in relation to a root directory (typically the root folder of an R project)  
-  * Best if working within an R project, or planning to zip and share entire project with others  
-  
-The package **here** and it's function `here()` facilitate relative pathways.
-
-`here()` works best within [R projects](#rprojects). When the **here** package is first loaded (`library(here)`), it automatically considers the top-level folder of your R project as “here” - a **benchmark** for all other files in the project.  
-
-Thus, in your script, if you want to import or reference a file saved in your R project’s folders, you use the function `here()` to tell R where the file is ***in relation to that benchmark***.
-
-If you are unsure where “here” is set to, run the function `here()` with the empty brackets:
-
-```{r import_here, eval=F}
-# This command tells you the folder path that "here" is set to 
-here::here()
-```
-
-Below is an example of importing the file “fluH7N9_China_2013.csv” which is located in the benchmark “here” folder. All you have to do is provide the name of the file in quotes (with the appropriate ending).
-
-```{r import_here_one, eval=F}
-linelist <- import(here("fluH7N9_China_2013.csv"))
-```
-
-If the file is within a subfolder - let’s say a “data” folder - write these folder names in quotes, separated by commas, as below:
-```{r import_here_mutiple, eval=F}
-linelist <- import(here("data", "fluH7N9_China_2013.csv"))
-```
-
-Using the `here()` command produces a character filepath, which can then processed by the `import()` function.
-
-```{r import_here_path, eval=F}
-# the filepath
-here("data", "fluH7N9_China_2013.csv")
-
-# the filepath is given to the import() function
-linelist <- import(here("data", "fluH7N9_China_2013.csv"))
-```
-
-
-<span style="color: black;">**_NOTE:_** You can still import a specific sheet of an excel file as noted in the Excel tab. The `here()` command only supplies the filepath.</span>
-
 
 
 
@@ -384,3 +389,19 @@ manual_entry_clipboard <- read.table(file = "clipboard",
 ```
 
 
+
+
+<!-- ======================================================= -->
+## Rdata files {.tabset .tabset-fade}
+
+`.Rdata` files store R objects, and can actually store multiple R objects within one file, for example multiple dataframes, model results, lists, etc. This can be very useful to consolidate or share your data.  
+
+```{r, eval=F}
+rio::export(my_list, my_dataframe, my_vector, "my_objects.Rdata")
+```
+
+If you have a list and you want it to be imported with the original structure (e.g. list of lists), use `import_list()`:  
+
+```{r, eval=F}
+rio::import_list("my_list_of_lists.Rdata")
+```

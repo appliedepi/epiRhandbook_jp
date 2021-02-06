@@ -126,6 +126,7 @@ ggplot(data = evd)+
         facet_wrap(~gender)
 
 
+
 # ADD CT VALUE
 ##############
 # add delay
@@ -357,7 +358,7 @@ evd <- evd %>%
 # CLASSES
 ##########
 evd$`date onset` <- as.character(evd$`date onset`)
-evd$`date onset`[1] <- "15th April 2014"
+#evd$`date onset`[1] <- "15th April 2014"
 class(evd$`date onset`)
 
 evd$age <- as.character(evd$age)
@@ -432,12 +433,20 @@ evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
 # "Merged header" and then underneath two columns each saying "this is under a merged header"
 
 
+
+# round weight and height and temp values
+evd <- evd %>% 
+        mutate(wt_kg = round(wt_kg),
+               ht_cm = round(ht_cm),
+               temp  = round(temp,1))
+
+
 # remove other columns
-evd <- select(evd, -onset_to_hosp_days, -delay_short_long)
+evd <- select(evd, date_of_outcome:age, age_unit, everything()) %>% 
+        select(-onset_to_hosp_days, -delay_short_long)
 
 # export
 rio::export(evd, here::here("data", "linelist_raw.xlsx"))
-
 
 
 #################################################################################
