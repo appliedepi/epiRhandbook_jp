@@ -4,7 +4,7 @@
 
 ################################################################################
 
-# render **the whole handbook** in "bs4 book" style
+# render **the WHOLE handbook** in "bs4 book" style
 # (for online viewing only - not a self-contained file)  
 bookdown::render_book(
      output_format = 'bookdown::bs4_book',

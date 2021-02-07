@@ -430,6 +430,59 @@ You can also use the package **aweek** to set epidemiological weeks. You can rea
 
 See the section on [epicurves](#epicurves).
 
+
+<!-- ======================================================= -->
+## Lagging and leading calculations (#lag)  
+
+`lead()` and `lag()` are functions from the **dplyr** package which help find previous (lagged) or subsequent (leading) values in a vector - typically a numeric or date vector. This is useful when doing calculations of change/difference between time units.  
+
+
+```{r, eval=F}
+counts <- import(here("data", "district_count_data.xlsx")) %>% 
+  filter(District == "Nibari") %>% 
+  mutate(Date = as.Date(Date),
+         week_start = lubridate::floor_date(Date, "week")) %>%
+  group_by(week_start) %>% 
+  summarize(cases_wk = sum(Cases, na.rm=T)) %>% 
+  complete(week_start = seq.Date(min(week_start), max(week_start), by = "week"))
+```
+
+Let's say you want to calculate the difference in cases between a current week and the previous one. The data are initially provided in weekly counts as shown below. To learn how to aggregate counts from daily to weekly see the page on aggregating (LINK).  
+
+```{r message=FALSE, echo=F}
+DT::datatable(counts, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
+
+**When using `lag()` or `lead()` the order of rows in the dataframe is very important! - pay attention to whether your dates/numbers are ascending or descending**  
+
+First, create a new column containing the value of the previous (lagged) week.  
+
+* Control the number of units back/forward with `n = ` (must be a non-negative integer)  
+* Use `default = ` to define the value placed in non-existing rows (e.g. the first row for which there is no lagged value). By default this is `NA`.  
+* Use `order_by = TRUE` if your reference column is not ordered  
+
+```{r}
+counts <- counts %>% 
+  mutate(cases_prev_wk = lag(cases_wk, n = 1))
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(counts, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
+Next, create a new column which is the difference between the two cases columns:  
+
+```{r}
+counts <- counts %>% 
+  mutate(cases_prev_wk = lag(cases_wk, n = 1),
+         case_diff = cases_wk - cases_prev_wk)
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(counts, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
+
+You can read more about `lead()` and `lag()` in the documentation [here](https://dplyr.tidyverse.org/reference/lead-lag.html) or by entering `?lag` in your console.  
+
 <!-- ======================================================= -->
 ## Dates miscellaneous  
 

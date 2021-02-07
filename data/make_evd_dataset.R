@@ -442,7 +442,7 @@ evd <- evd %>%
 
 
 # remove other columns
-evd <- select(evd, date_of_outcome:age, age_unit, everything()) %>% 
+evd <- select(evd, case_id:age, age_unit, everything()) %>% 
         select(-onset_to_hosp_days, -delay_short_long)
 
 # export

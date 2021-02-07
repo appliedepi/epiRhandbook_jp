@@ -1,7 +1,7 @@
 # Cleaning data {.tabset .tabset-fade}
 
 
-```{r, out.height = "25%", fig.align = "center", echo=F}
+```{r, out.height = "10%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "cleaning.png"))
 ```
 
@@ -35,6 +35,27 @@ Here are some of the functions described in this page:
 
 
 
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+## Cleaning pipeline
+
+In epidemiological analysis and data processing, cleaning steps are often performed linked together, sequentially. In R this often manifests as a cleaning "pipeline", where *the raw dataset is passed or "piped" from one cleaning step to another*.  
+
+The chain utilizes **dplyr** verbs and the **magrittr** pipe operator (see handbook page on **dplyr** and tidyverse coding style (LINK HERE). The pipe begins with the "raw" data (`linelist_raw`) and ends with a "clean" dataset (`linelist`).  
+
+In a cleaning pipeline the order of the steps is important. Cleaning steps might include:  
+
+* Importing of data  
+* Column names cleaned or changed  
+* Rows filtered, added, or de-duplicated  
+* Columns selected, added, transformed, or re-ordered  
+* Values re-coded, cleaned, or grouped  
+
+
+
+
 <!-- ======================================================= -->
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -61,7 +82,9 @@ pacman::p_load(
 <!-- ======================================================= -->
 ## Import data  
 
-See the page on importing data for more details. Here we import the raw .xlsx dataset using the `import()` function from the package **rio**, and save it initially as the dataframe object `linelist_raw`.  (LINK HERE TO IMPORT PAGE)  
+Here we import the raw .xlsx dataset using the `import()` function from the package **rio**, and save it as the dataframe `linelist_raw`. If your dataset is large and takes a long time to import, it can be useful to have the import command be separate from the pipe chain and the "raw" saved as a distinct file. This also allows easy comparison between the original and cleaned versions.  
+
+See the page on importing data for more details. (LINK HERE TO IMPORT PAGE)
 
 ```{r, echo=F, message=F}
 # HIDDEN FROM READER
@@ -81,24 +104,129 @@ DT::datatable(head(linelist_raw,50), rownames = FALSE, filter="top", options = l
 ```
 
 
+### Skip import of rows  
+
+Sometimes, you may want to avoid importing a row of data (e.g. the column names, which are row 1).  
+you can do this with the argument `skip = ` if using `import()` from the **rio** package on a .xlsx or .csv file. Provide the number of rows you want to skip.  
 
 
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-## Cleaning pipeline
 
-In epidemiological analysis and data processing, cleaning steps are often performed linked together, sequentially. In R this often manifests as a cleaning "pipeline", where *the raw dataset is passed or "piped" from one cleaning step to another*.  
+```{r, eval=F}
+linelist_raw <- import("linelist_raw.xlsx", skip = 1)  # does not import header row
+```
 
-The chain utilizes **dplyr** verbs and the **magrittr** pipe operator (see handbook page on **dplyr** and tidyverse coding style (LINK HERE). The pipe begins with the "raw" data (`linelist_raw`) and ends with a "clean" dataset (`linelist`).  
+Unfortunately `skip = ` only accepts one integer value, *not* a range (e.g. "2:10"). To skip import of specific rows that are not consecutive from the top, consider importing multiple times and using `bind_rows()` from **dplyr**. See the example below of skipping only row 2.  
 
-In a cleaning pipeline the order of the steps is important. Cleaning steps might include:  
 
-* Importing of data  
-* Column names cleaned or changed  
-* Rows filtered, added, or de-duplicated  
-* Columns selected, added, transformed, or re-ordered  
-* Values re-coded, cleaned, or grouped  
+
+### Remove a second header row  
+
+Your data may have a *second* row of data, for example it may have a "data dictionary" row that looks like this:  
+
+```{r, echo=F}
+# HIDDEN FROM READER
+####################
+# Create second header row of "data dictionary" and insert into row 2. Save as new dataframe.
+linelist_2headers <- linelist_raw %>%  
+        clean_names() %>% 
+        rename(date_infection       = infection_date,
+           date_hospitalisation = hosp_date,
+           date_outcome         = date_of_outcome) %>% 
+        mutate(across(everything(), as.character)) %>% 
+        add_row(.before = 1,
+                row_num = "000",
+                case_id = "case identification number assigned by MOH",
+                generation = "transmission chain generation number",
+                date_infection = "estimated date of infection, mm/dd/yyyy",
+                date_onset = "date of symptom onset, YYYY-MM-DD",
+                date_hospitalisation = "date of initial hospitalization, mm/dd/yyyy",
+                date_outcome = "date of outcome status determination",
+                outcome = "either 'Death' or 'Recovered' or 'Unknown'",
+                gender = "either 'm' or 'f' or 'unknown'",
+                hospital = "Name of hospital of first admission",
+                lon = "longitude of residence, approx",
+                lat = "latitude of residence, approx",
+                infector = "case_id of infector",
+                source = "context of known transmission event",
+                age = "age number",
+                age_unit = "age unit, either 'years' or 'months' or 'days'",
+                fever = "presence of fever on admission, either 'yes' or 'no'",
+                chills = "presence of chills on admission, either 'yes' or 'no'",
+                cough = "presence of cough on admission, either 'yes' or 'no'",
+                aches = "presence of aches on admission, either 'yes' or 'no'",
+                vomit = "presence of vomiting on admission, either 'yes' or 'no'",
+                time_admission = "time of hospital admission HH:MM")
+```
+
+
+```{r message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(head(linelist_2headers, 5), rownames = FALSE, filter="top", options = list(pageLength = 4, scrollX=T) )
+```
+
+This situation can be problematic because it can result in all columns being imported as class "character", even if they are numbers or another class. To solve this, you will likely need to import the data twice.  
+
+1) Import the data in order to store the correct column names  
+2) Import the data again, skipping the first *two* rows (header and second rows)  
+3) Bind the correct names onto the reduced dataframe
+
+The exact arguments used to bind the correct column names depends on the type of data file (.csv, .tsv, .xlsx, etc.). If using **rio**'s `import()` function, understand which function **rio** uses to import your data, and then give the appropriate argument to skip lines and/or designate the column names. See the handbook page on importing data (LINK) for details on **rio**.  
+
+**For Excel files:**  
+
+```{r, eval=F}
+# For excel files (remove 2nd row)
+linelist_raw_names <- import("linelist_raw.xlsx") %>% names()  # save true column names
+
+# import, skip row 2, assign to col_names =
+linelist_raw <- import("linelist_raw.xlsx", skip = 2, col_names = linelist_raw_names) 
+```
+
+**For CSV files:**  
+
+```{r, eval=F}
+# For csv files
+linelist_raw_names <- import("linelist_raw.csv") %>% names() # save true column names
+
+# note argument is 'col.names ='
+linelist_raw <- import("linelist_raw.csv", skip = 2, col.names = linelist_raw_names) 
+```
+
+**Backup option** - changing column names as a separate command
+
+```{r, eval=F}
+# assign/overwrite headers using the base 'colnames()' function
+colnames(linelist_raw) <- linelist_raw_names
+```
+
+
+### Create a data dictionary  
+
+Bonus! If you do have a second row that is a data dictionary, you can easily create a proper data dictionary from it using the `gather()` command from the **tidyr** package. This tip is adapted from this [post](source: https://alison.rbind.io/post/2018-02-23-read-multiple-header-rows/).  
+
+
+```{r}
+dict <- linelist_2headers %>%             # begin: linelist with dictionary as first row
+  head(1) %>%                             # keep only column names and first dictionary row                
+  pivot_longer(cols = everything(),       # pivot all columns to long format
+               names_to = "Column",       # assign new column names
+               values_to = "Description")
+```
+
+```{r message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(dict, rownames = FALSE, filter="top", options = list(pageLength = 4, scrollX=T) )
+```
+
+### Combine two header rows  
+
+In some cases, you may want to combine two header rows into one. This command will define the column names as the combination (pasting together) of the existing column names with the value underneath in the first row. Replace "df" with the name of your dataset.  
+
+```{r, eval=F}
+names(df) <- paste(names(df), df[1, ], sep = "_")
+```
+
+
 
 
 
@@ -237,120 +365,6 @@ linelist_raw <- openxlsx::readWorkbook("linelist_raw.xlsx", fillMergedCells = TR
 <span style="color: red;">**_DANGER:_** If column names are merged, you will end up with duplicate column names, which you will need to fix manually - R does not work well with duplicate column names! You can re-name them by referencing their position (e.g. column 5), as explained in the section on manual column name cleaning..</span>
 
 
-### Skip import of rows {-}  
-
-Sometimes, you may want to avoid importing a row of data (e.g. the column names, which are row 1).  
-you can do this with the argument `skip = ` if using `import()` from the **rio** package on a .xlsx or .csv file. Provide the number of rows you want to skip.  
-
-
-
-```{r, eval=F}
-linelist_raw <- import("linelist_raw.xlsx", skip = 1)  # does not import header row
-```
-
-Unfortunately `skip = ` only accepts one integer value, *not* a range (e.g. "2:10"). To skip import of specific rows that are not consecutive from the top, consider importing multiple times and using `bind_rows()` from **dplyr**. See the example below of skipping only row 2.  
-
-
-
-#### Removing a second header row {-}  
-
-Your data may have a *second* row of data, for example it may have a "data dictionary" row that looks like this:  
-
-```{r, echo=F}
-# HIDDEN FROM READER
-####################
-# Create second header row of "data dictionary" and insert into row 2. Save as new dataframe.
-linelist_2headers <- linelist %>%         
-        mutate(across(everything(), as.character)) %>% 
-        add_row(.before = 1,
-                row_num = "000",
-                case_id = "case identification number assigned by MOH",
-                generation = "transmission chain generation number",
-                date_infection = "estimated date of infection, mm/dd/yyyy",
-                date_onset = "date of symptom onset, YYYY-MM-DD",
-                date_hospitalisation = "date of initial hospitalization, mm/dd/yyyy",
-                date_outcome = "date of outcome status determination",
-                outcome = "either 'Death' or 'Recovered' or 'Unknown'",
-                gender = "either 'm' or 'f' or 'unknown'",
-                hospital = "Name of hospital of first admission",
-                lon = "longitude of residence, approx",
-                lat = "latitude of residence, approx",
-                infector = "case_id of infector",
-                source = "context of known transmission event",
-                age = "age number",
-                age_unit = "age unit, either 'years' or 'months' or 'days'",
-                fever = "presence of fever on admission, either 'yes' or 'no'",
-                chills = "presence of chills on admission, either 'yes' or 'no'",
-                cough = "presence of cough on admission, either 'yes' or 'no'",
-                aches = "presence of aches on admission, either 'yes' or 'no'",
-                vomit = "presence of vomiting on admission, either 'yes' or 'no'",
-                time_admission = "time of hospital admission HH:MM")
-```
-
-
-```{r message=FALSE, echo=F}
-# display the linelist data as a table
-DT::datatable(head(linelist_2headers, 5), rownames = FALSE, filter="top", options = list(pageLength = 4, scrollX=T) )
-```
-
-This situation can be problematic because it can result in all columns being imported as class "character", even if they are numbers or another class. To solve this, you will likely need to import the data twice.  
-
-1) Import the data in order to store the correct column names  
-2) Import the data again, skipping the first *two* rows (header and second rows)  
-3) Bind the correct names onto the reduced dataframe
-
-The exact arguments used to bind the correct column names depends on the type of data file (.csv, .tsv, .xlsx, etc.). If using **rio**'s `import()` function, understand which function **rio** uses to import your data, and then give the appropriate argument to skip lines and/or designate the column names. See the handbook page on importing data (LINK) for details on **rio**.  
-
-**For Excel files:**  
-
-```{r, eval=F}
-# For excel files (remove 2nd row)
-linelist_raw_names <- import("linelist_raw.xlsx") %>% names()  # save true column names
-
-# import, skip row 2, assign to col_names =
-linelist_raw <- import("linelist_raw.xlsx", skip = 2, col_names = linelist_raw_names) 
-```
-
-**For CSV files:**  
-
-```{r, eval=F}
-# For csv files
-linelist_raw_names <- import("linelist_raw.csv") %>% names() # save true column names
-
-# note argument is 'col.names ='
-linelist_raw <- import("linelist_raw.csv", skip = 2, col.names = linelist_raw_names) 
-```
-
-**Backup option** - changing column names as a separate command
-
-```{r, eval=F}
-# assign/overwrite headers using the base 'colnames()' function
-colnames(linelist_raw) <- linelist_raw_names
-```
-
-Bonus! If you do have a second row that is a data dictionary, you can easily create a proper data dictionary from it using the `gather()` command from the **tidyr** package.  
-source: https://alison.rbind.io/post/2018-02-23-read-multiple-header-rows/
-
-TO DO
-```{r, eval=F}
-library(tidyr)
-dict <- linelist_raw %>% 
-  clean_names() %>% 
-  gather(variable_name, variable_description)
-dict
-```
-
-
-### Combine two header rows  
-
-In some cases, you may want to combine two header rows into one. This command will define the column names as the combination (pasting together) of the existing column names with the value underneath in the first row. Replace "df" with the name of your dataset.  
-
-```{r, eval=F}
-names(df) <- paste(names(df), df[1, ], sep = "_")
-```
-
-
-
 
 
 
@@ -364,43 +378,42 @@ Often the first step of cleaning data is selecting the columns you want to work 
 
 <span style="color: orange;">**_CAUTION:_** In the examples below, `linelist` is modified with `select()` but not over-written. New column names are only displayed for purpose of example.</span>
 
-
 **Here are all the column names in the linelist:**
 
 ```{r}
 names(linelist)
 ```
 
-**Select only the columns you want to remain, *and their order of appearance***  
+### Keep columns  
 
-*Note that in these examples we modify the column names and display the result, but do not assign/overwrite `lineline`.*  
+**Select only the columns you want to remain**  
+
+Put their names in the `select()` command, with no quotation marks. They will appear in the order you provide.  
 
 ```{r}
 # linelist dataset is piped through select() command, and names() prints just the column names
 linelist %>% 
   select(case_id, date_onset, date_hospitalisation, fever) %>% 
-  names() # display the column names
-```
- 
-
-**Indicate which columns to remove** by placing a minus symbol "-" in front of the column name (e.g. `select(-outcome)`), or a vector of column names (as below). All other columns will be retained. Inside `select()` you can use normal operators such as `c()` to list several columns, `:` for consecutive columns, `!` for opposite, `&` for AND, and `|` for OR.  
-
-```{r}
-linelist %>% 
-  select(-c(date_onset, fever:vomit)) %>% # remove onset and all symptom columns
-  names()
+  names()  # display the column names
 ```
 
-**Re-order the columns** - use `everything()` to signify all other columns not specified in the `select()` command:  
+
+
+
+### Helper functions  
+
+Helper functions and operators exist to make it easy to specify columns.  
+
+For example, if you want to re-order the columns, `everything()` is useful to signify all other columns not yet mentions. The command below pulls columns `date_onset` and `date_hospitalisation` to the beginning:  
 
 ```{r}
 # move case_id, date_onset, date_hospitalisation, and gender to beginning
 linelist %>% 
-  select(case_id, date_onset, date_hospitalisation, gender, everything()) %>% 
+  select(date_onset, date_hospitalisation, everything()) %>% 
   names()
 ```
 
-As well as `everything()` there are several helpers that work *within* `select()`, namely:  
+As well as `everything()` here are other helpers functions that work *within* `select()`:  
 
 * `everything()`  - all other columns not mentioned  
 * `last_col()`    - the last column  
@@ -412,7 +425,19 @@ As well as `everything()` there are several helpers that work *within* `select()
 * `num_range()`   - 
 * `any_of()`      - matches if column is named. Useful if the name might not exist. Example: `select(any_of(date_onset, date_death, cardiac_arrest))`  
 
-Here is an example using `where()`:  
+In addition, use normal operators such as `c()` to list several columns, `:` for consecutive columns, `!` for opposite, `&` for AND, and `|` for OR.  
+
+
+Use `where()` to specify logical criteria for columns. If providing a function inside `where()`, do not include the empty parentheses. Below selects columns that are class Numeric.
+
+```{r}
+# select columns that are class Numeric
+linelist %>% 
+  select(where(is.numeric)) %>% 
+  names()
+```
+
+Use `contains()` to select only columns in which the column name contains a string. `ends_with()` and `starts_with()` provide more nuance.  
 
 ```{r}
 # select columns containing certain characters
@@ -421,6 +446,8 @@ linelist %>%
   names()
 ```
 
+The function `matches()` works similarly to `contains()` but can be provided a regular expression (LINK), such as multiple strings separated by OR bars within the parentheses:  
+
 ```{r}
 # searched for multiple character matches
 linelist %>% 
@@ -428,6 +455,27 @@ linelist %>%
   names()
 ```
 
+<span style="color: orange;">**_CAUTION:_** If a column name that you specifically provide does not exist in the data, it can return an error and stop your code. Consider using `any_of()` to cite columns that may or may not exist, especially useful in negative (remove) selections.</span>
+
+```{r}
+linelist %>% 
+  select(any_of(c("village_origin", "village_detection", "village_residence", "village_travel"))) %>% 
+  names()
+```
+
+
+
+### Remove columns  
+
+**Indicate which columns to remove** by placing a minus symbol "-" in front of the column name (e.g. `select(-outcome)`), or a vector of column names (as below). All other columns will be retained. 
+
+```{r}
+linelist %>% 
+  select(-c(date_onset, fever:vomit)) %>% # remove onset and all symptom columns
+  names()
+```
+
+### Standalone  
 
 `select()` can also be used as an independent command (not in a pipe chain). In this case, the first argument is the original dataframe to be operated upon.  
 
@@ -594,7 +642,7 @@ linelist$new_var <- linelist$old_var + linelist$age
 
 
 
-#### Add to pipe chain {-}  
+#### Add to pipe chain  
 
 **Below, a new column is added to the pipe chain.**  
 
@@ -680,8 +728,8 @@ Dates can be especially difficult! The date values must all be in the same forma
 
 Here are a few scenarios where you need to re-code (change) values:  
 
-* to edit one specific value, for example a date with an incorrect year or format  
-* to reconcile values that not spelled the same
+* to edit one specific value (e.g. one date with an incorrect year or format)  
+* to reconcile values not spelled the same
 * to create a new column of groupings of categorical values  
 * to create a new column of grouping of numeric values (e.g. age categories)  
 
@@ -969,8 +1017,6 @@ linelist <- linelist %>%
 ```
 
 
-TO DO
-lead(), lag()
 cumsum(), cummean(), cummin(), cummax(), cumany(), cumall(),  
 
 
