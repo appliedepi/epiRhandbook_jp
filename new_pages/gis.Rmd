@@ -1,60 +1,458 @@
-
 # GIS basics {.tabset .tabset-fade}  
 
-The Page title should be succinct. Consider adding a tag with no spaces into the curly brackets, such as below. This can be used for internal links within the handbook. 
-`{#title_tag .tabset .tabset-fade}`
 
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade .tabset-pills}
 
-Keep the title of this section as "Overview".  
-This tab should include:  
+Spatial aspects of your data can provide a lot of insights into the situation of the outbreak to answer questions such as: 
 
-* Textual overview of the purpose of this page  
-* Small image showing outputs   
+* Where are the current disease hotspots?
+* How the hotspots have changed over time?
+* How is the access to health facility? Any improvements are needed?
+
+In this section, we will explore basic spatial data visualization methods using **tmap** and **ggplot2** packages.
+We will also walk through some of the basic spatial data management and querying methods with the **sf** package.
+
+**Choropleth map**  
+
+```{r, fig.align = "center", fig.show='hold', echo=F}
+knitr::include_graphics(here::here("images", "gis_choropleth.png"))
+```
+
+**Density heatmap**  
+
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "gis_heatmap.png"))
+```
+
+**Health facility catchment area**
+
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "gis_hf_catchment.png"))
+```
+
 
 
 
 <!-- ======================================================= -->
 ## Preparation {.tabset .tabset-fade .tabset-pills}
 
-Keep the title of this section as "Preparation".  
-Data preparation steps such as:  
-
-* Loading dataset  
-* Adding or changing variables  
-* melting, pivoting, grouping, etc.   
-
-<!-- ======================================================= -->
-### sub-tab 1 {.tabset .tabset-fade .tabset-pills}
-
-Can be used to separate major steps of data preparation. Re-name as needed
+**Load packages**  
+First, load the packages required for this analysis:  
 
 
-<!-- ======================================================= -->
-### sub-tab 2 {.tabset .tabset-fade .tabset-pills}
+```{r}
+pacman::p_load(rio,       # to import data
+               here,      # to locate files
+               tidyverse, # to clean, handle, and plot the data (includes ggplot2 package)
+               sf,  # to manage spatial data using a Simple Feature format
+               tmap,# to produce simple maps, works for both interactive and static maps
+               janitor, # to clean column names
+               OpenStreetMap # to add OSM basemap in ggplot map
+               )   
+```
 
-Can be used to separate major steps of data preparation. Re-name as needed.
+
+
+**Sample case data**
+
+```{r}
+# import aggregated case counts of disease X
+linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))  
+
+# Create sf object
+linelist_sf <- 
+     linelist %>%
+     st_as_sf(coords = c("lon", "lat"), crs = 4326)
+
+```
+
+
+
+
+**Sierra Leone: Admin boundary shapefiles**  
+Data downloaded from HDX:
+https://data.humdata.org/dataset/sierra-leone-all-ad-min-level-boundaries
+
+```{r}
+# ADM3 level
+sle_adm3 <- 
+  sf::read_sf(here::here("data/shp", "sle_adm3.shp")) %>% janitor::clean_names()
+
+# ADM4 level
+sle_adm4 <-
+  sf::read_sf(here::here("data/shp", "sle_adm4.shp")) %>% janitor::clean_names()
+
+```
+
+
+**Sierra Leone: Population by ADM3**  
+Data downloaded from HDX:
+https://data.humdata.org/dataset/sierra-leone-population
+
+```{r}
+# Population by ADM3
+sle_adm3_pop <- 
+     read.csv(here::here("data/population", "sle_admpop_adm3_2020.csv")) %>% janitor::clean_names()
+```
+
+
+
+**Sierra Leone: Health facility data from OpenStreetMap**  
+Data downloaded from HDX:
+https://data.humdata.org/dataset/hotosm_sierra_leone_health_facilities
+
+
+```{r}
+# OSM health facility shapefile
+sle_hf <- 
+        sf::read_sf(here::here("data/shp", "sle_hf.shp")) %>%
+        janitor::clean_names() %>%
+        filter(amenity %in% c("hospital", "clinic", "doctors"))
+```
+
+
+
+
 
 
 <!-- ======================================================= -->
 ## Plotting coordinates {.tabset .tabset-fade .tabset-pills}
 
+The easiest way to plot the XY coordinates (points) is to draw a map directly from the sf object which we created in the preparation section.
+
+**tmap** offers simple mapping capabilities for both static (*plot* mode) and interactive (*view* mode) with just a few lines of codes.
+
+This blog provides a good comparison among different mapping options in R.
+https://rstudio-pubs-static.s3.amazonaws.com/324400_69a673183ba449e9af4011b1eeb456b9.html
+
+
+```{r}
+tmap_mode("view") # or "plot"
+tm_shape(linelist_sf) + tm_dots(size=0.1, col='blue') +
+tm_shape(sle_adm4) + tm_borders(col = "#686868", lwd = 2) +
+tm_shape(sle_adm3) + tm_borders(col = "#000000", lwd = 3)
+
+```
+
+
+
 <!-- ======================================================= -->
 ## polygons and shapefiles {.tabset .tabset-fade .tabset-pills}
 
-<!-- ======================================================= -->
-## Simple analyses {.tabset .tabset-fade .tabset-pills}
+Choropleth maps can be useful to visualize your data by pre-defined area usually by administrative unit or health area for outbreak response to be able to target resources for specific area high incidence rates for example.
+
+The current linelist data does not contain any information about the administrative units.
+Although it is ideal to store such information during the initial data collection phase, we can also assign administrative units to individual cases based on their spatial relationships (i.e. point intersects with a polygon).
+
+**sf** package offers various methods for spatial joins.
+See more documentation about the st_join method and spatial join types here: 
+https://r-spatial.github.io/sf/reference/geos_binary_pred.html
+
+
+**Spatial assign administrative units to cases**
+First spatially intersect our case locations (points) with the ADM4 boundaries (polygons)
+
+```{r}
+case_adm <- 
+     linelist_sf %>%
+     sf::st_join(sle_adm4,   join = st_intersects) %>%
+     select(names(linelist_sf), admin4name, admin4pcod, admin3name, admin3pcod)
+
+# Now you will see the ADM3-4 names attached to each case
+case_adm %>% select(case_id, admin4name, admin3name)
+
+```
+
+
+19 cases did not get assigned to any administrative unit as the polygons do not cover the areas or some points are located in the ocean.
+See red points in the map below.
+
+```{r}
+case_noadm <- 
+     case_adm %>% 
+     filter(is.na(admin3name)) %>%
+     select(names(linelist_sf))
+
+tmap_mode("view") # or "plot"
+tm_shape(linelist_sf) + tm_dots(size=0.1, col='blue') +
+tm_shape(case_noadm) + tm_dots(size=0.1, col='red') +
+tm_shape(sle_adm3) + tm_borders(col = "#000000", lwd = 3)
+
+```
+
+
+We can assign these cases to their nearest ADM4 polygon this time instead of intersecting.
+
+```{r}
+case_noadm_nearest <-
+     case_noadm %>%
+     st_join(sle_adm4, join=st_nearest_feature) %>%
+     select(names(linelist_sf), admin4name, admin4pcod, admin3name, admin3pcod)
+
+case_noadm_nearest %>% select(case_id, admin4name, admin3name)
+
+```
+
+
+Merge all cases with the administrative units. 
+
+```{r}
+linelist_adm <-
+     case_adm %>% filter(!is.na(admin3name)) %>%
+     bind_rows(case_noadm_nearest)
+
+```
+
+
+Case counts by ADM3
+
+```{r}
+case_adm3 <-
+     linelist_adm %>% as_tibble() %>%
+     #filter(!is.na(admin3pcod)) %>%
+     group_by(admin3pcod, admin3name) %>%
+     summarise(cases = n()) %>%
+     arrange(desc(cases))
+
+
+case_adm3
+
+```
+
+
+**Choropleth mapping**
+Now that we have the administrative unit names assigned to all cases, we can start mapping the case counts by area (choropleth maps).
+
+Since we also have population data by ADM3, we can add this information to the *case_adm3* table created previously.
+
+```{r}
+# Add population data and calculate cases per 10K population
+case_adm3 <-
+     case_adm3 %>%
+     left_join(sle_adm3_pop, by=c("admin3pcod"="adm3_pcode")) %>%
+     select(names(case_adm3), total) %>%
+     mutate(case_10kpop = round(cases/total * 10000, 3))
+
+case_adm3
+
+```
+
+
+Join this table with the ADM3 polygons for mapping
+
+```{r}
+# Add population data and calculate cases per 10K population
+case_adm3_sf <-
+        case_adm3 %>%
+        left_join(sle_adm3, by="admin3pcod") %>%
+        select(objectid, admin3pcod, admin3name=admin3name.x, admin2name, admin1name,
+               cases, total, case_10kpop, geometry) %>%
+        st_as_sf()
+
+```
+
+
+Mapping the results
+
+```{r}
+# Number of cases
+tmap_mode("plot")
+tm_shape(case_adm3_sf) + 
+        tm_polygons("cases") +
+        tm_text("admin3name")
+
+```
+
+
+```{r}
+# Cases per 10K population
+tmap_mode("plot")
+tm_shape(case_adm3_sf) + 
+        tm_polygons("case_10kpop",
+                    breaks=c(0, 10, 50, 100, 500),
+                    palette = "Purples"
+                    ) +
+        tm_text("admin3name")
+
+```
 
 <!-- ======================================================= -->
-## Distance to nearest X (HCF) {.tabset .tabset-fade .tabset-pills}
+## Time series heatmap {.tabset .tabset-fade .tabset-pills}
+
+We can also look at the combination of time and space by facetting the heatmaps.
+
+Set parameters for the basemap using the **OpenStreetMap** package.
+
+```{r, message=F}
+
+# Fit basemap by range of lat/long coordinates. Choose tile type
+map <- openmap(c(max(linelist$lat, na.rm=T), max(linelist$lon, na.rm=T)),  # limits of tile
+               c(min(linelist$lat, na.rm=T), min(linelist$lon, na.rm=T)),
+               zoom = NULL,
+               type = c("osm", "stamen-toner", "stamen-terrain","stamen-watercolor", "esri","esri-topo")[1],
+               mergeTiles = TRUE)
+
+# Projection WGS84
+map.latlon <- openproj(map, projection = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+
+```
+
+
+**Cumulative heatmap**
+
+```{r}
+
+# Plot map. Must be autoplotted to work with ggplot
+OpenStreetMap::autoplot.OpenStreetMap(map.latlon)+
+        # Density tiles  
+        ggplot2::stat_density_2d(aes(x = lon,
+                                     y = lat,
+                                     fill = ..level..,
+                                     alpha=..level..),
+                                 bins = 10,
+                                 geom = "polygon",
+                                 contour_var = "count",
+                                 data = linelist %>% filter(date_onset>='2014-07-01' & date_onset<='2015-02-28'),
+                                 show.legend = F) +
+        #scale_fill_gradient(low = "black", high = "red")+
+        labs(x = "Longitude",
+             y = "Latitude",
+             title = "Distribution of simulated cases")
+
+```
+
+
+**Heatmap by month of onset**
+
+```{r}
+# Extract month of onset
+linelist$date_onset_ym <- format(linelist$date_onset, "%Y-%m")
+
+# Simply facet above map by month of onset
+# Plot map. Must be autoplotted to work with ggplot
+OpenStreetMap::autoplot.OpenStreetMap(map.latlon)+
+        # Density tiles  
+        ggplot2::stat_density_2d(aes(x = lon,
+                                     y = lat,
+                                     fill = ..level..,
+                                     alpha=..level..),
+                                 bins = 10,
+                                 geom = "polygon",
+                                 contour_var = "count",
+                                 data = linelist %>% filter(date_onset>='2014-07-01' & date_onset<='2015-02-28'),
+                                 show.legend = F) +
+        #scale_fill_gradient(low = "black", high = "red")+
+        labs(x = "Longitude",
+             y = "Latitude",
+             title = "Distribution of simulated cases by month of onset") +
+        facet_wrap(~ date_onset_ym, ncol = 4)
+
+```
+
+
+<!-- ======================================================= -->
+## Health facility catchment area {.tabset .tabset-fade .tabset-pills}
+
+It might be useful to know where the health facilities are located in relation to the disease hot spots.
+
+
+**Finding the nearest health facility**
+We can use the *st_nearest_feature* method from the **sf** package to assign the cloest health facility to individual cases.
+
+
+```{r}
+# Closet health facility to each case
+linelist_sf_hf <-
+        linelist_sf %>%
+        st_join(sle_hf,   join = st_nearest_feature) %>%
+        select(case_id, osm_id, name, amenity)
+
+```
+
+We can see that "Den Clinic" is the closest health facility for about ~30% of the cases.
+
+```{r}
+# Group cases by health facility
+hf_catchment <-
+        linelist_sf_hf %>% as.data.frame() %>%
+        group_by(name) %>%
+        summarise(case_n = n()) %>%
+        arrange(desc(case_n))
+
+hf_catchment
+```
+
+Visualizing the results on the map
+
+```{r}
+tmap_mode("view")
+tm_shape(linelist_sf_hf) + tm_dots(size=0.1, col='name') +
+        tm_shape(sle_hf) + tm_dots(size=0.3, col='red') + tm_text("name")
+```
+
+
+**Cases within 30 mins Walking distance from the closest health facility**
+
+We can also explore how many cases are located within 2.5km (~30 mins) walking distance from the closest health facility.
+
+Note: 
+For more accurate distance calculations, it is better to re-project your sf object to the respective local map projection system such as UTM (Earth projected onto a planar surface). 
+In this example, for simplicity we will stick to the World Geodetic System (WGS84) Geograhpic coordinate system (Earth represented in a spherical / round surface, therefore the units are in decimal degrees). We will use a general conversion of: 1 decimal degree = ~111km.
+
+See more information about map projections and coordinate systems:
+https://www.esri.com/arcgis-blog/products/arcgis-pro/mapping/gcs_vs_pcs/
+
+
+First create a circular buffer with a radius of ~2.5km aroudn each health facility
+
+```{r}
+sle_hf_2k <-
+        sle_hf %>%
+        st_buffer(dist=0.02) # approximately 2.5km 
+```
+
+Intersect this with the cases
+
+```{r}
+# Intersect the cases with the buffers
+linelist_sf_hf_2k <-
+        linelist_sf_hf %>%
+        st_join(sle_hf_2k, join = st_intersects, left = TRUE) %>%
+        filter(osm_id.x==osm_id.y | is.na(osm_id.y)) %>%
+        select(case_id, osm_id.x, name.x, amenity.x, osm_id.y)
+```
+
+Count the results
+
+1225 out of 5888 cases (20.8%, shown in red dots in the map below) live more than 30 mins away from the nearest health facility)
+
+```{r}
+nrow(linelist_sf_hf_2k)
+nrow(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),])
+```
+
+Visualize the results
+
+```{r}
+tmap_mode("view")
+tm_shape(linelist_sf_hf) + tm_dots(size=0.08, col='name') +
+        tm_shape(sle_hf_2k) + tm_borders(col = "red", lwd = 2) +
+        tm_shape(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),]) +tm_dots(size=0.1, col='red')
+```
+
 
 <!-- ======================================================= -->
 ## Resources {.tabset .tabset-fade .tabset-pills}
 
-This tab should stay with the name "Resources".
-Links to other online tutorials or resources.
+* R Simple Features and sf package
+https://cran.r-project.org/web/packages/sf/vignettes/sf1.html
 
+* R tmap package
+https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html
+
+* ggmap: Spatial Visualization with ggplot2
+https://journal.r-project.org/archive/2013-1/kahle-wickham.pdf
 
 
 
