@@ -22,7 +22,7 @@ plot(epicurve_weekly)
 #####################################
 
 # Make age for males
-ages_m <- round(abs(rnorm(n = nrow(evd %>% filter(gender == "m")), mean = 15, sd = 15)))
+ages_m <- round(abs(rnorm(n = nrow(evd %>% filter(gender == "m")), mean = 15, sd = 20)))
 hist(ages_m)
 
 
