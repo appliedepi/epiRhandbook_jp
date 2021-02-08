@@ -1,79 +1,201 @@
 
-# Iteration {.tabset .tabset-fade}  
+# Iteration and loops {.tabset .tabset-fade}  
 
 
 
-A purrr [tutorial](https://jennybc.github.io/purrr-tutorial/index.html ) 
 
-
-
-<!-- ======================================================= -->
-## Overview {.tabset .tabset-fade .tabset-pills}
-
-Keep the title of this section as "Overview".  
-This tab should include:  
-
-* Textual overview of the purpose of this page  
-* Small image showing outputs   
 
 
 
 <!-- ======================================================= -->
 ## Preparation {.tabset .tabset-fade .tabset-pills}
 
-Keep the title of this section as "Preparation".  
-Data preparation steps such as:  
 
-* Loading dataset  
-* Adding or changing variables  
-* melting, pivoting, grouping, etc.   
+**Load packages**  
 
-<!-- ======================================================= -->
-### sub-tab 1 {.tabset .tabset-fade .tabset-pills}
-
-Can be used to separate major steps of data preparation. Re-name as needed
-
-
-<!-- ======================================================= -->
-### sub-tab 2 {.tabset .tabset-fade .tabset-pills}
-
-Can be used to separate major steps of data preparation. Re-name as needed.
+```{r}
+pacman::p_load(
+     rio,
+     here, 
+     purrr,
+     tidyverse
+)
+```
 
 
+**Load data**  
 
-<!-- ======================================================= -->
-## Option 1 {.tabset .tabset-fade .tabset-pills}
+```{r, echo=F, message=F}
+linelist <- import(here("data", "linelist_cleaned.rds"))
+```
 
-This tab can be renamed. 
-This tab should demonstrate execution of the task using recommended package/approach. For example, using a package customized for this task where the execution is simple and fast but perhaps less customizable. For example using *incidence* package to create an epicurve.
+```{r eval=F}
+# fake import the linelist
+linelist <- rio::import("linelist_cleaned.xlsx")
+```
 
+The first 50 rows are displayed:  
 
-<!-- ======================================================= -->
-### Option 1 sub-tab {.tabset .tabset-fade .tabset-pills}
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
 
-Sub-tabs if necessary. Re-name as needed.
-
-
-
-<!-- ======================================================= -->
-## Option 2 {.tabset .tabset-fade .tabset-pills}
-
-This tab can be re-named. 
-This tab should demonstrate execution of the task a more standard/core package (e.g. ggplot2, or base R) that allows for more flexibility in the output or more package stability. For example, showing how to create an epicurve using *ggplot2*. 
-
-
-<!-- ======================================================= -->
-### Option 2 sub-tab {.tabset .tabset-fade .tabset-pills}
-
-Sub-tabs if necessary. Re-name as needed.
 
 
 
 <!-- ======================================================= -->
-## Resources {.tabset .tabset-fade .tabset-pills}
+## *for loops* {.tabset .tabset-fade .tabset-pills}
 
-This tab should stay with the name "Resources".
-Links to other online tutorials or resources.
+As an epidemiologist, it is a common need to repeat analyses on sub-groups (e.g. jurisdictions or sub-populations). Iterating with a *for loop* is one method to automate this process.  
+
+For example, let's say we are making epidemic curves. We can make an epidemic curve (LINK) of all the cases:  
+
+```{r}
+# create 'incidence' object
+outbreak <- incidence2::incidence(   
+     linelist,                       # dataframe
+     date_index = date_onset,        # date column
+     interval = "week",              # aggregate counts weekly
+     groups = gender,                # group values by gender
+     na_as_group = TRUE)             # missing gender is own group
+
+# plot epi curve
+plot(outbreak,                       # name of incidence object
+     fill = "gender",                # color bars by gender
+     color = "black",                # outline color of bars
+     title = "Outbreak of ALL cases" # title
+     )
+```
+
+To produce a separate plot for each hospital's cases, we can put this code within a *for loop*. The elementary syntax is: `for (item in vector) {do something}`.  
+
+* The "item" can be any word you wish. Keep it short. Often "i" is used.  
+* The word "in" is special and must be present.  
+* The vector can be character, as in this example, but is more often numeric (`c(1,2,3,4,5...)`) so that it can be used with index brackets `[[x]]` to extract and save. See subsequent example below.  
+
+First, we save a named vector of the unique hospital names, `hospital_names`. The *for loop* will run once for each of these names (`for (hosp in hospital_names) {` and each time the current hospital name will be represented as "hosp" for use within the loop.  
+
+* In the loop, a `filter()` is applied to `linelist`, such that column `hospital` must equal the current value of `hosp`  
+* The incidence object is created on the filtered linelist  
+* The plot for the current hospital is created, with an auto-adjusting title  
+* The plot for the current hospital is temporarily saved and then printed  
+* The loop then moves onward to repeat with the next hospital in `hospital_names`  
+
+```{r, out.width='32%', message = F}
+# make vector of the hospital names
+hospital_names <- unique(linelist$hospital)
+
+# for each name ("hosp") in hospital_names, create and print the epi curve
+for (hosp in hospital_names) {
+     
+     # create incidence object specific to the current hospital
+     outbreak_hosp <- incidence2::incidence(
+                    linelist %>% filter(hospital == hosp),   # linelist is filtered to the current hospital
+                    date_index = date_onset,
+                    interval = "week", 
+                    groups = gender,
+                    na_as_group = TRUE
+     )
+     
+     # Create and save the plot. Title automatically adjusts to the current hospital
+     plot_hosp <- plot(outbreak_hosp,
+                       fill = "gender",
+                       color = "black",
+                       title = stringr::str_glue("Epidemic of cases admitted to {hosp}")
+                       )
+     
+     # print the plot for the current hospital
+     print(plot_hosp)
+
+} # end the for loop when it has been run for every hospital in hospital_names 
+```
+
+When "i" is a number:  
+
+**What is "i"?**  
+
+Often in loops it is useful to have the iterating "item" be a number - this allows indexing `[[x]]` to assign or extract. This is often written "i".  
+
+Here is the above *for loop*, but written so that the vector is numeric `c(1,2,3,4,5,6)` and the hospital names are extracted from `hospital_names` with this indexing number (e.g. `hospital_names[[2]]`)  
+
+```{r, eval=F}
+hospital_names <- unique(linelist$hospital)
+
+for (i in seq_along(hospital_names)) {
+     outbreak_i <- incidence2::incidence(
+                    linelist %>% filter(hospital == hospital_names[[i]]),
+                    date_index = date_onset,
+                    interval = "week", 
+                    groups = gender,
+                    na_as_group = TRUE
+     )
+     plot_i <- plot(outbreak_i,
+                    fill = "gender",
+                    color = "black",
+                    title = stringr::str_glue("Epidemic of cases admitted to {hospital_names[[i]]}"))
+     print(plot_i)
+}
+```
+
+
+### Tracking progress of a loop  
+
+In a loop with many iterations it can run for minutes or even hours. Thus, it can be helpful to print the progress to the R console.  
+Below, code is placed *within* the loop to print every 100th number.  
+
+```{r, eval=F}
+# loop with code to print progress every 100 iterations
+for (row in 1:nrow(linelist)){
+
+  # print progress
+  if(row %% 100==0){
+    print(row)
+
+}
+```
+
+
+
+
+
+
+
+<!-- ======================================================= -->
+## **purrr** {.tabset .tabset-fade}
+
+TO DO - Under construction  
+
+To iterate a function over columns in a dataframe:  
+
+```{r, eval=F}
+linelist %>% 
+     select(c(wt_kg, ht_cm, ct_blood, temp, bmi, days_onset_hosp))
+```
+
+
+
+The [R for Data Science page on iteration](https://r4ds.had.co.nz/iteration.html#iteration)  
+
+A purrr [tutorial](https://jennybc.github.io/purrr-tutorial/index.html ) 
+
+
+
+
+
+
+
+
+
+<!-- ======================================================= -->
+## apply functions {.tabset .tabset-fade}
+
+
+
+
+<!-- ======================================================= -->
+## Resources {.tabset .tabset-fade}
+
 
 
 
