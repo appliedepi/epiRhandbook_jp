@@ -9,14 +9,20 @@ This page reviews how to group and aggregate data for descriptive analysis. It m
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade .tabset-pills}
 
-Before doing descriptive analyses, it will almost always be a necessary to first group your data and summarise it across these groups (whether it be by time period, place, or a relevant categorical variable) since most often summary statistics across these groups are more meaningful. Luckily, tidyverse makes this really easy through the `group_by` function.
+Grouping data is a core component of data management and analysis. Grouped data can be plotted, or summarised by group (whether by time period, place, or a relevant categorical variable). Functions from the **dplyr** package (part of the **tidyverse**) make grouping and subsequent operations quite easy.  
 
-This page will how to perform these grouping operations
+This page will how to perform these grouping operations using
 
-* Fast & easy using `group_by()` command in **dplyr** or
-* Base R `aggregate()` command 
-
-
+* `group_by()` command in **dplyr**  
+  * Grouping  
+  * Un-group  
+  * Summarise with statistics  
+  * Count and tally  
+  * Arranging grouped data  
+  * Filters applied to grouped data  
+  * Mutate columns within grouped data  
+  * Select columns within grouped data  
+* Base R `aggregate()` command as an alternative  
 
 
 
@@ -26,13 +32,14 @@ This page will how to perform these grouping operations
      
 **Load packages**  
      
-Ensure tidyverse is installed, which includes dplyr for group_by 
+Ensure **tidyverse** package is installed and loaded (includes **dplyr**).  
 
 ```{r}
 pacman::p_load(rio,       # to import data
                here,      # to locate files
-               tidyverse  # to clean, handle, and plot the data (includes dplyr!)
-)
+               tidyverse, # to clean, handle, and plot the data (includes dplyr)
+               janitor    # adding total rows and columns
+               )
 ```
 
 **Load data**  
@@ -58,20 +65,20 @@ DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(
 
 
 <!-- ======================================================= -->
-## `group_by()` {.tabset .tabset-fade .tabset-pills}
+## Grouping {.tabset .tabset-fade .tabset-pills}
      
-Grouping by one or more columns establishes that any subsequent calculations will be performed within the context of each unique group.  
+The function `group_by()` from **dplyr** groups the rows by the unique values in the specified columns. Each unique value contitutes a group (or unique combination of values, if multiple grouping columns are specified). Subsequent changes to the dataset or calculations can then be performed within the context of each unique group.  
 
-For example, to group by unique values in one column, `outcome`, we would run the code below, placing `outcome` within `group_by()`.  
+For example, the command below takes the linelist and groups the rows by unique values in column `outcome`, saving the output as a new dataframe `ll_by_outcome`. The column name is placed inside the parentheses of the function `group_by()`.  
 
 ```{r}
 ll_by_outcome <- linelist %>% 
   group_by(outcome)
 ```
 
-**Note that there is no perceptible change to the dataset** until a **dplyr** verb such as `mutate()` or `summarise()` is applied on the "grouped" dataframe.  
+**Note that there is no perceptible change to the dataset** after `group_by()`, *until* another **dplyr** verb such as `mutate()` or `summarise()` is applied on the "grouped" dataframe.  
 
-We can however "see" the groupings by printing. When you print a grouped dataframe, you will see it has been transformed into a `tibble` class object (LINK) which when printed displays which grouping columns have been applied and how many groups there are - written just above the header row.  
+You can however "see" the groupings by printing the dataframe. When you print a grouped dataframe, you will see it has been transformed into a `tibble` class object (LINK) which, when printed, displays which grouping columns have been applied and how many groups there are - written just above the header row.  
 
 ```{r}
 # print to see which groups are active
@@ -100,7 +107,7 @@ linelist %>%
 ```
 ### New columns  
 
-You can also create a new column *within* the group_by() statement. This is equivalent to calling `mutate()` before the `group_by()`.  
+You can also create a new grouping column *within* the group_by() statement. This is equivalent to calling `mutate()` before the `group_by()`. For a quick tabulation this style can be handy, but for more clarity in your code consider creating this column in it's own `mutate()` step and then piping to `group_by()`.
 
 ```{r}
 # group dat based on a binary column created *within* the group_by() command
@@ -112,7 +119,7 @@ linelist %>%
 
 ### Replace/add grouping columns  
 
-By default if you run `group_by()` on grouped data, the old groups will be removed and the new one(s) will apply. If however, you want to just add new groups to the existing ones, add the arguement `.add=TRUE`.  
+By default if you run `group_by()` on data that are already grouped, the old groups will be removed and the new one(s) will apply. If you want to add new groups to the existing ones, add the argument `.add=TRUE`.  
 
 ````{r, eval=F}
 # Grouped by outcome
@@ -286,6 +293,46 @@ linelist %>%
   count(outcome, gender) %>% 
   # produce counts of gender within each outcome group
   count(outcome, name = "number of genders per outcome" ) 
+```
+
+
+### Add totals  
+
+If you want to add total rows or column after using `tally()` or `count()`, consider using the **janitor** package, which offers functions like `adorn_totals()` and `adorn_percentages()`. There are many useful functions (search Help for details), here are a few of them:  
+
+* Use `adorn_totals()` to get totals - specify the argument `where = ` either "row" or "col" or `c("row", "col")`.  
+* Use `adorn_percentages()` to convert counts to proportions - specify the argument `denominator = ` either "row", "col", or "all".  
+* Use `adorn_pct_formatting()` to convert proportions to percentages (can specify number of `digits = `, whether to add "%" with `affix_sign =`, and specify specific column names to operate on)  
+* Use `adorn_ns()` to add back the underlying counts ("N"s) to a table whose proportions were calculated by `adorn_percentages()` - to display them together. Indicate `position = ` of the Ns as either "rear" or "front" of the proportions.  
+
+
+To add totals:  
+
+```{r}
+linelist %>% 
+  count(outcome) %>% 
+  adorn_totals(where = "col")
+```
+
+To convert the numbers to proportions:  
+
+```{r}
+linelist %>% 
+  count(outcome) %>% 
+  adorn_totals(where = "row") %>%              # add total row
+  adorn_percentages(denominator = "col") %>%   # convert to proportions
+  adorn_rounding(digits = 2)                   # round the proportions
+```
+
+**janitor** functions can be use together, as below:  
+
+```{r}
+linelist %>% 
+  count(outcome) %>%              # produce the counts by unique outcome
+  adorn_totals(where = "row") %>% # add total row
+  adorn_percentages("col") %>%    # add proportion by column
+  adorn_pct_formatting() %>%      # proportion converted to percent
+  adorn_ns(position = "front")    # Add the underlying N, in front of the percentage
 ```
 
 
