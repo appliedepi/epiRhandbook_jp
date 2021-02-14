@@ -4,38 +4,57 @@
 
 ################################################################################
 
-# render **the WHOLE handbook** in "bs4 book" style
-# (for online viewing only - not a self-contained file)  
+# WHOLE HANDBOOK AS WEBSITE ("bs4 book" style)
+# for online viewing only - not available as a self-contained file  
 bookdown::render_book(
      output_format = 'bookdown::bs4_book',
      config_file = "_bookdown.yml")
 
 
-# render **ONLY SOME PAGES** in "bs4 book" style
-# (for online viewing only - not a self-contained file)
-# *** Edit which pages to include in "_small_bookdown.yml" ***
-# WHEN DONE: Navigate to the "preview" folder and open "index.html"
+# PREVIEW ONLY ONE OR SOME PAGES ("bs4 book" style)
+# Edit which pages to include in "_small_bookdown.yml"
+# To view, navigate to the "preview" folder and open "index.html"
 bookdown::render_book(
      output_format = 'bookdown::bs4_book',
      config_file = "_small_bookdown.yml")
 
 ################################################################################
 
-# to render the whole handbook, in "tabbed" style
-# (for offline viewing - can be saved as a self-contained file)
+# WHOLE HANDBOOK WITHOUT TABS (long html)
+# Available as a self-contained html file
+# Ctrl+f Search functionality spans whole book
+
+bookdown::render_book(
+        output_format = 'bookdown::html_document2',
+        config_file = "_offline_long.yml")
+
+
+################################################################################
+
+# WHOLE HANDBOOK AS TABBED HTML
+# for offline viewing - can be saved as a self-contained file
 rmarkdown::render_site(
      output_format = 'bookdown::html_document2')
 
-# render **only specific pages** in "tabbed" style 
-# (for offline viewing - can be saved as a self-contained file)
+# PREVIEW ONLY ONE OR SOME PAGES (tabbed html)
+# For offline viewing - can be saved as a self-contained file
 # Edit which pages are included in "_small_bookdown.yml"
-# WHEN DONE: Navigate to the root project folder and open "_main.html"
+# To view: navigate to the root project folder and open "_main.html"
 bookdown::render_book(
      output_format = 'bookdown::html_document2',
      config_file = "_small_bookdown.yml")
 
 
 ################################################################################
+
+# Render Long static pdf without tabs
+
+bookdown::render_book(
+        output_format = 'bookdown::html_document2',
+        config_file = "_pdf_long.yml")
+
+
+
 
 # render the contribution guide:  
 
