@@ -17,9 +17,9 @@ It is *not* intended as an overview of the methodologies and statistical methods
 underlying these tools, so please refer to the Resources tab for links to some
 great web pages covering this. Make sure you have an understanding of
 the methods before using these tools; this will ensure you can accurately
-interpret their outputs.
+interpret their results.
 
-Below is an example of one of the outputs we'll be producing in this section.
+Below is an example of one of the outputs we'll be in this section.
 
 ```{r out.width=c('25%', '25%'), fig.show='hold', echo=F}
 
@@ -27,7 +27,7 @@ Below is an example of one of the outputs we'll be producing in this section.
 pacman::p_load(tidyverse, EpiNow2, EpiEstim, here, epicontacts, rio, projections)
 
 ## load linelist
-linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
+linelist <- import(here::here("data", "linelist_cleaned.rds"))
 
 ## generate contacts
 contacts <- linelist %>%
@@ -125,7 +125,9 @@ pacman::p_load(
    epicontacts,  # Analysing transmission networks
    EpiNow2,      # Rt estimation
    EpiEstim,     # Rt estimation
-   projections   # Incidence projections
+   projections,  # Incidence projections
+   incidence,    # Handling incidence data
+   epitrix       # Useful epi functions
 )
 ```
 	
@@ -175,9 +177,12 @@ However, it also has two key disadvantages:
   (i.e. the distribution of delays between symptom onset of a primary and a
   secondary case), which may be the only distribution available to you.
 * **EpiNow2** is significantly slower than **EpiEstim**, anecdotally by a factor
-  of about 100. For example, estimating R<sub>t</sub> for the sample outbreak
-  considered in this section takes about 4 hours. This may be unfeasible if you
-  are regularly updating your R<sub>t</sub> estimates.
+  of about 100-1000! For example, estimating R<sub>t</sub> for the sample outbreak
+  considered in this section takes about four hours (this was run for a large
+  number of iterations to ensure high accuracy and could probably be reduced if
+  necessary, however the points stands that the algorithm is slow in
+  general). This may be unfeasible if you are regularly updating your
+  R<sub>t</sub> estimates.
   
 Which package you choose to use will therefore depend on the data, time and
 computational resources available to you.
@@ -217,12 +222,12 @@ incubation_period_lit <- list(
 )
 ```
 Note that **EpiNow2** requires these delay distributions to be provided on a **log**
-scale, hence `log` call around each value (except the `max` parameter which,
+scale, hence the `log` call around each value (except the `max` parameter which,
 confusingly, has to be provided on a natural scale). The `mean_sd` and `sd_sd`
 define the standard deviation of the mean and standard deviation estimates. As
 these are not known in this case, we choose the fairly arbitrary value of 0.1.
 
-For our analysis, we will instead estimate the incubation period distribution
+In this analysis, we instead estimate the incubation period distribution
 from the linelist itself using the function `bootstrapped_dist_fit`, which will
 fit a lognormal distribution to the observed delays between infection and onset
 in the linelist.
@@ -237,8 +242,8 @@ incubation_period <- bootstrapped_dist_fit(
 )
 ```
 
-The other distribution we require is the generation time. As we have estimates
-of both infection times and transmission links, we can also estimate this
+The other distribution we require is the generation time. As we have data on
+infection times __and__ transmission links, we can estimate this
 distribution from the linelist by calculating the delay between infection times
 of infector-infectee pairs. To do this, we use the handy `get_pairwise` function
 from the package **epicontacts**, which allows us to calculate pairwise
@@ -278,11 +283,12 @@ generation_time <- bootstrapped_dist_fit(
 
 #### Running **EpiNow2**
 
-Now, we just need to calculate daily incidence values from the linelist. Note
-that the column names must be `date` and `confirm`.
+Now we just need to calculate daily incidence from the linelist, which we can do
+easily with the **dplyr** functions `group_by()` and `n()`. Note
+that **EpiNow2** requires the column names to  be `date` and `confirm`.
 
 ```{r epidemic_models_cases, eval=F}
-## get incidence from onset date
+## get incidence from onset dates
 cases <- linelist %>%
   group_by(date = date_onset) %>%
   summarise(confirm = n())
@@ -298,10 +304,10 @@ the inputs:
   a file.
 * `verbose` specifies that we want a readout of the progress.
 * `horizon` indicates how many days we want to project future incidence for.
-* We pass additional arguments to `stan` specifying how how long we want to run
-  the inference for. Increasing `samples` and `chains` will give you a more
-  accurate estimate that better characterises uncertainty, however will take
-  longer to run.
+* We pass additional options to the `stan` argument to specify how how long
+  we want to run the inference for. Increasing `samples` and `chains` will give
+  you a more accurate estimate that better characterises uncertainty, however
+  will take longer to run.
 
 ```{r epidemic_models_run_epinow, eval=F}
 ## run epinow
@@ -318,14 +324,370 @@ epinow_res <- epinow(
 
 #### Analysing outputs
 
-Once the results are run, we can plot a summary very easily as follows:
+Once the code has finished running, we can plot a summary very easily as follows:
 
-```{r epidemic_models_plot_epinow, eval=T}
+```{r epidemic_models_plot_epinow, eval=T, fig.width = 12, fig.height = 12}
 ## plot summary figure
 plot(epinow_res)
 ```
 
+We can also look at various summary statistics:
+
+```{r epidemic_models_epinow_summary, eval=T}
+## summary table
+epinow_res$summary
+```
+
+For further analyses and custom plotting, you can access the summarised daily
+estimates via `$estimates$summarised`. We will convert this from the default
+`data.table` to a `tibble` for ease of use with **dplyr**.
+
+```{r epidemic_models_to_tibble, eval=F}
+## extract summary and convert to tibble
+estimates <- as_tibble(epinow_res$estimates$summarised)
+estimates
+```
+
+```{r epidemic_models_tibble_show, eval=T, echo = F}
+## show outputs
+estimates <- as_tibble(epinow_res$estimates$summarised)
+DT::datatable(
+  estimates,
+  rownames = FALSE,
+  filter = "top",
+  options = list(pageLength = 5, scrollX=T)
+)
+```
+
+As an example, let's make a plot of the doubling time and R<sub>t</sub>. We will
+only look at the first few months of the outbreak when R<sub>t</sub> is well
+above one, to avoid plotting extremely high doublings times.
+
+We use the formula `log(2)/growth_rate` to calculate the doubling time from the
+estimated growth rate.
+
+```{r epidemic_models_plot_epinow_cusotom, eval=T, fig.width = 12, fig.height = 8}
+
+## make wide df for median plotting
+df_wide <- estimates %>%
+  filter(
+    variable %in% c("growth_rate", "R"),
+    date < as.Date("2014-09-01")
+  ) %>%
+  ## convert growth rates to doubling times
+  mutate(
+    across(
+      c(median, lower_90:upper_90),
+      ~ case_when(
+        variable == "growth_rate" ~ log(2)/.x,
+        TRUE ~ .x
+      )
+    ),
+    ## rename variable to reflect transformation
+    variable = replace(variable, variable == "growth_rate", "doubling_time")
+  )
+
+## make long df for quantile plotting
+df_long <- df_wide %>%
+  ## here we match matching quantiles (e.g. lower_90 to upper_90)
+  pivot_longer(
+    lower_90:upper_90,
+    names_to = c(".value", "quantile"),
+    names_pattern = "(.+)_(.+)"
+  )
+
+## make plot
+ggplot() +
+  geom_ribbon(
+    data = df_long,
+    aes(x = date, ymin = lower, ymax = upper, alpha = quantile),
+    color = NA,
+    ) +
+  geom_line(
+    data = df_wide,
+    aes(x = date, y = median),
+    alpha = 0.2
+  ) +
+  ## use label_parsed to allow subscript label
+  facet_wrap(
+    ~ variable,
+    ncol = 1,
+    scales = "free_y",
+    labeller = as_labeller(c(R = "R[t]", doubling_time = "Doubling~time"), label_parsed),
+    strip.position = 'left'
+  ) +
+  ## manually define quantile transparency
+  scale_alpha_manual(values = c(`20` = 0.7, `50` = 0.4, `90` = 0.2)) +
+  labs(
+    x = NULL,
+    y = NULL,
+    alpha = "Quantile\nrange"
+  ) +
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b %d\n%Y"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = 'outside'
+  )
+
+```
+
+<!-- ======================================================= -->
 ### EpiEstim
+
+To run **EpiEstim**, we need to provide data on daily incidence and specify the
+serial interval (i.e. the distribution of delays between symptom onset of
+primary and secondary cases). 
+
+Incidence data can be provided as a vector, a dataframe or an `incidence`
+object from the **incidence** package, and you can even distinguish between imports
+and locally acquired infections; see the documentation at `?estimate_R` for
+further details. We will create an incidence object:
+
+```{r epidemic_models_epiestim_incidence, eval=T}
+## get incidence from onset date
+cases <- incidence(linelist$date_onset)
+```
+
+The package provides several options for specifying the serial interval, the
+details of which are provided in the documentation at `?estimate_R`. We will
+cover two of them here.
+
+#### Using serial interval estimates from the literature
+
+Using the option `method = "parametric_si"`, we can manually specify the mean and
+standard deviation of the serial interval in a `config` object created using the
+function `make_config`. We use a mean and standard deviation of 12.0 and 5.2, respectively, defined in
+[this paper](https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-014-0196-0):
+
+```{r epidemic_models_epiestim_config, eval=T}
+## make config
+config_lit <- make_config(
+  mean_si = 12.0,
+  std_si = 5.2
+)
+```
+
+We can then estimate R<sub>t</sub> with the `estimate_R` function:
+
+```{r epidemic_models_epiestim_lit, eval=T, warning = FALSE}
+epiestim_res_lit <- estimate_R(
+  incid = cases,
+  method = "parametric_si",
+  config = config_lit
+)
+```
+
+and plot a summary of the outputs:
+
+```{r epidemic_models_epiestim_lit_plot, eval=T, warning = FALSE}
+plot(epiestim_res_lit)
+```
+
+#### Using serial interval estimates from the data
+
+As we have data on dates of symptom onset __and__ transmission links, we can
+also estimate the incubatin period from the linelist by calculating the delay
+between onset dates of infector-infectee pairs. As we did in the **EpiNow2**
+section, we will use the `get_pairwise` function from the **epicontacts**
+package, which allows us to calculate pairwise differences of linelist
+properties between transmission pairs. We first create an epicontacts object
+(see Transmission chains chapter for further details):
+
+```{r epidemic_models_epicontacts_epiestim, eval=F}
+## generate contacts
+contacts <- linelist %>%
+  transmute(
+    from = infector,
+    to = case_id
+  ) %>%
+  drop_na()
+
+## generate epicontacts object
+epic <- make_epicontacts(
+  linelist = linelist,
+  contacts = contacts, 
+  directed = TRUE
+)
+```
+
+We then fit the difference in onset dates between transmission pairs, calculated
+using `get_pairwise`, to a gamma distribution. We use the handy `fit_disc_gamma`
+from the **epitrix** package for this fitting procedure, as we require a
+__discretised__ distribution.
+
+```{r epidemic_models_incubation_estimate_epiestim, eval=T, warning = FALSE}
+## estimate gamma incubation period
+incubation_period <- fit_disc_gamma(get_pairwise(epic, "date_onset"))
+```
+
+We then pass this information to the `config` object, run **EpiEstim**
+again and plot the results:
+
+```{r epidemic_models_epiestim_emp, eval=T, warning = FALSE}
+## make config
+config_emp <- make_config(
+  mean_si = incubation_period$mu,
+  std_si = incubation_period$sd
+)
+
+## run epiestim
+epiestim_res_emp <- estimate_R(
+  incid = cases,
+  method = "parametric_si",
+  config = config_emp
+)
+
+## plot outputs
+plot(epiestim_res_emp)
+```
+
+#### Specifying estimation time windows
+
+These default options will provide a weekly sliding estimate and might a
+warning that you are estimating R<sub>t</sub> too early in the outbreak for a
+precise estimate. You can change this by setting a later start date for the
+estimation as shown below. Unfortunately, **EpiEstim** only provides a very
+clunky way of specifying these estimations times, in that you have to provide a
+vector of __integers__ referring to the start and end dates for each time
+window.
+
+```{r epidemic_models_epiestim_config_late, eval=T}
+
+## define a vector of dates starting on June 1st
+start_dates <- seq.Date(
+  as.Date("2014-06-01"),
+  max(cases$dates) - 7,
+  by = 1
+) %>%
+  ## subtract the starting date to convert to numeric
+  `-`(min(cases$dates)) %>%
+  ## convert to integer
+  as.integer()
+
+## add six days for a one week sliding window
+end_dates <- start_dates + 6
+  
+## make config
+config_partial <- make_config(
+  mean_si = 12.0,
+  std_si = 5.2,
+  t_start = start_dates,
+  t_end = end_dates
+)
+```
+Now we re-run **EpiEstim** and can see that the estimates only start from June:
+
+```{r epidemic_models_epiestim_config_late_run, eval=T}
+
+## run epiestim
+epiestim_res_partial <- estimate_R(
+  incid = cases,
+  method = "parametric_si",
+  config = config_partial
+)
+
+## plot outputs
+plot(epiestim_res_partial)
+
+```
+
+#### Analysing outputs
+
+The main outputs can be access via `$R`. As an example, we will create a plot of
+R<sub>t</sub> and a measure of "transmission potential" given by the product of
+R<sub>t</sub> and the number of cases reported on that day; this represents the
+expected number of cases in the next generation of infection.
+
+```{r epidemic_models_epiestim_plot_full, eval=T, warning = FALSE, fig.width = 12, fig.height = 8}
+
+## make wide dataframe for median
+df_wide <- epiestim_res_lit$R %>%
+  rename_all(clean_labels) %>%
+  rename(
+    lower_95_r = quantile_0_025_r,
+    lower_90_r = quantile_0_05_r,
+    lower_50_r = quantile_0_25_r,
+    upper_50_r = quantile_0_75_r,
+    upper_90_r = quantile_0_95_r,
+    upper_95_r = quantile_0_975_r,
+    ) %>%
+  mutate(
+    ## extract the median date from t_start and t_end
+    dates = epiestim_res_emp$dates[round(map2_dbl(t_start, t_end, median))],
+    var = "R[t]"
+  ) %>%
+  ## merge in daily incidence data
+  left_join(as.data.frame(cases), "dates") %>%
+  ## calculate risk across all r estimates
+  mutate(
+    across(
+      lower_95_r:upper_95_r,
+      ~ .x*counts,
+      .names = "{str_replace(.col, '_r', '_risk')}"
+    )
+  ) %>%
+  ## seperate r estimates and risk estimates
+  pivot_longer(
+    contains("median"),
+    names_to = c(".value", "variable"),
+    names_pattern = "(.+)_(.+)"
+  ) %>%
+  ## assign factor levels
+  mutate(variable = factor(variable, c("risk", "r")))
+
+## make long dataframe from quantiles
+df_long <- df_wide %>%
+  select(-variable, -median) %>%
+  ## seperate r/risk estimates and quantile levels
+  pivot_longer(
+    contains(c("lower", "upper")),
+    names_to = c(".value", "quantile", "variable"),
+    names_pattern = "(.+)_(.+)_(.+)"
+  ) %>%
+  mutate(variable = factor(variable, c("risk", "r")))
+
+## make plot
+ggplot() +
+  geom_ribbon(
+    data = df_long,
+    aes(x = dates, ymin = lower, ymax = upper, alpha = quantile),
+    color = NA
+  ) +
+  geom_line(
+    data = df_wide,
+    aes(x = dates, y = median),
+    alpha = 0.2
+  ) +
+  ## use label_parsed to allow subscript label
+  facet_wrap(
+    ~ variable,
+    ncol = 1,
+    scales = "free_y",
+    labeller = as_labeller(c(r = "R[t]", risk = "Transmission~potential"), label_parsed),
+    strip.position = 'left'
+  ) +
+  ## manually define quantile transparency
+  scale_alpha_manual(values = c(`50` = 0.7, `90` = 0.4, `95` = 0.2)) +
+  labs(
+    x = NULL,
+    y = NULL,
+    alpha = "Quantile\nrange"
+  ) +
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b %d\n%Y"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = 'outside'
+  )
+  
+```
 
 <!-- ======================================================= -->
 ## Projecting incidence
@@ -336,6 +698,3 @@ plot(epinow_res)
 
 This tab should stay with the name "Resources".
 Links to other online tutorials or resources.
-
-
-
