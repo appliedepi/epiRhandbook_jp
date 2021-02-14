@@ -20,51 +20,267 @@ package to fit models that are more appropriate for infectious disease epidemiol
 <!-- ======================================================= -->
 ## Preparation {.tabset .tabset-fade .tabset-pills}
 
-Keep the title of this section as "Preparation".  
-Data preparation steps such as:  
+### Packages
 
-* Loading dataset  
-* Adding or changing variables  
-* melting, pivoting, grouping, etc.   
+This code chunk shows the loading of packages required for the analyses.
+
+```{r}
+pacman::p_load(rio,          # File import
+               here,         # File locator
+               tidyverse,    # data management + ggplot2 graphics
+               tsibble,      # handle time series datasets
+               slider,       # for calculating moving averages
+               imputeTS,     # for filling in missing values
+               forecast,     # fit sin and cosin terms to data
+               trending      # fit and assess models 
+               )
+``` 
+
+### Load data
+
+The example dataset used in this section:
+
+-   Weekly counts of campylobacter cases reported in Germany between 2001 and 2011. 
+
+This dataset is a reduced version of the dataset available in the [**surveillance**](https://cran.r-project.org/web/packages/surveillance/) package. 
+(for details load the surveillance package and see `?campyDE`)
+
+The dataset is imported using the `import()` function from the *rio* package. See the *page on importing data* for various ways to import data.
+
+```{r echo=F}
+# import the counts into R
+counts <- rio::import(here::here("data", "campylobacter_germany.xlsx"))
+
+```
+
+```{r eval=F}
+# import the linelist
+counts <- rio::import("campylobacter_germany.xlsx")
+```
+
+The first 10 rows of the counts are displayed below.
+
+```{r, message=FALSE, echo=F}
+# display the counts data as a table
+DT::datatable(head(counts, 10), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
+
+### Clean data
+
+The below makes sure that the date column is in the appropriate format. 
+For this tab we will be using the **tsibble** package and so the `yearweek` 
+function will be used to create a calendar week variable. There are several other
+ways of doing this (see **handling dates page** for details), however for 
+time series its best to keep within one framework. 
+
+```{r}
+
+## ensure the date column is in the appropriate format
+counts$date <- as.Date(counts$date)
+
+## create a calendar week variable 
+## fitting ISO definitons of weeks starting on a monday
+counts <- counts %>% 
+     mutate(epiweek = yearweek(date, week_start = 1))
+
+```
+
 
 <!-- ======================================================= -->
-### sub-tab 1 {.tabset .tabset-fade .tabset-pills}
+## Time series data {.tabset .tabset-fade .tabset-pills}
 
-Can be used to separate major steps of data preparation. Re-name as needed
+There are a number of different packages for structuring and handling time series
+data. As said, we will focus on the **tidyverts** family of packages and so will
+use the **tsibble** package to define our time series object. Having a data set
+defined as a time series object means it is much easier to structure our analysis. 
+
+To do this we use the `tsibble` function and specify the "index", i.e. the variable
+specifying the time unit of interest. In our case this is the *epiweek* variable. 
+
+If we had a data set with weekly counts by province, for example, we would also 
+be able to specify the grouping variable using the "key" argument. 
+This would allow us to do analysis for each group. 
+
+
+```{r}
+
+## define time series object 
+counts <- tsibble(counts, index = epiweek)
+
+```
+
+Looking at `class(counts)` tells you that on top of being a tidy data frame 
+("tbl_df", "tbl", "data.frame"), it has the additional properties of a time series
+data frame ("tbl_ts"). 
+
+You can take a quick look at your data by using ggplot2. We see from the plot that
+there is a clear seasonal pattern, and that there are no missings. However, there
+seems to be an issue with reporting at the beginning of each year; cases drop 
+in the last week of the year and then increase for the first week of the next year. 
+
+```{r}
+
+## plot a line graph of cases by week
+ggplot(counts, aes(x = epiweek, y = case)) + 
+     geom_line()
+
+```
+
+
+<span style="color: red;">**_DANGER:_** Most datasets aren't as clean as this example. 
+You will need to check for duplicates and missings as below. </span>
+
+<!-- ======================================================= -->
+### duplicates {.tabset .tabset-fade .tabset-pills}
+
+**tsibble** does not allow duplicate observations. So each row will need to be
+unique, or unique within the group (`key` variable). 
+The package has a few functions that help to identify duplicates. These include
+`are_duplicated` which gives you a TRUE/FALSE vector of whether the row is a 
+duplicate, and `duplicates` which gives you a data frame of the duplicated rows. 
+
+See **de-duplication page** for details of how to select rows you want. 
+
+```{r, eval = FALSE}
+
+## get a vector of TRUE/FALSE whether rows are duplicates
+are_duplicated(counts, index = epiweek) 
+
+## get a data frame of any duplicated rows 
+duplicates(counts, index = epiweek) 
+
+```
+
+<!-- ======================================================= -->
+### Missings {.tabset .tabset-fade .tabset-pills}
+
+We saw from our brief inspection above that there are no missings, but we also 
+saw there seems to be a problem with reporting delay around new year. 
+One way to address this problem could be to set these values to missing and then 
+to impute values. The simplest form of time series imputation is to draw
+a straight line between the last non-missing and the next non-missing value. 
+To do this we will use the **imputeTS** package function `na_interpolation`. 
+See **missing data page** for other options for imputation.  
+Another alternative would be to calculating a moving average, to try and smooth
+over these apparent reporting issues (see next section). 
+
+```{r}
+
+## create a variable with missings instead of weeks with reporting issues
+counts <- counts %>% 
+     mutate(case_miss = if_else(
+          ## if epiweek contains 52, 53, 1 or 2
+          str_detect(epiweek, "W51|W52|W53|W01|W02"), 
+          ## then set to missing 
+          NA_real_, 
+          ## otherwise keep the value in case
+          case
+     ))
+
+## alternatively interpolate missings by linear trend 
+## between two nearest adjacent points
+counts <- counts %>% 
+  mutate(case_int = na_interpolation(case_miss)
+         )
+
+## to check what values have been imputed compared to the original
+plotNA.imputations(counts$case_miss, counts$case_int)
+
+```
+
+
 
 
 <!-- ======================================================= -->
-### sub-tab 2 {.tabset .tabset-fade .tabset-pills}
-
-Can be used to separate major steps of data preparation. Re-name as needed.
+## Descriptive analysis {.tabset .tabset-fade .tabset-pills}
 
 
 
 <!-- ======================================================= -->
-## Option 1 {.tabset .tabset-fade .tabset-pills}
+### Moving averages {.tabset .tabset-fade .tabset-pills}
 
-This tab can be renamed. 
-This tab should demonstrate execution of the task using recommended package/approach. For example, using a package customized for this task where the execution is simple and fast but perhaps less customizable. For example using *incidence* package to create an epicurve.
+If data is very noisy (counts jumping up and down) then it can be helpful to 
+calculate a moving average. In the example below, for each week we calculate the 
+average number of cases from the four previous weeks. This smooths the data, to 
+make it more interpretable. In our case this does not really add much, so we will
+stick to the interpolated data for further analyis. 
+See the **moving averages** page for more detail. 
+
+```{r}
+
+## create a moving average variable (deals with missings)
+counts <- counts %>% 
+     ## create the ma_4w variable 
+     ## slide over each row of the case variable
+     mutate(ma_4wk = slide_dbl(case, 
+                               ## for each row calculate the name
+                               ~ mean(.x, na.rm = TRUE),
+                               ## use the four previous weeks
+                               .before = 4))
+
+## make a quick visualisation of the difference 
+ggplot(counts, aes(x = epiweek)) + 
+     geom_line(aes(y = case)) + 
+     geom_line(aes(y = ma_4wk), colour = "red")
+
+```
 
 
 <!-- ======================================================= -->
-### Option 1 sub-tab {.tabset .tabset-fade .tabset-pills}
+### Periodicity {.tabset .tabset-fade .tabset-pills}
 
-Sub-tabs if necessary. Re-name as needed.
+```{r}
 
+## x is a dataset
+## counts is variable with count data or rates within x 
+## start_week is the first week in your dataset
+## period is how many units in a year 
+## output is whether you want return spectral periodogram or the peak weeks
+  ## "periodogram" or "weeks"
+periodogram <- function(x, 
+                        counts, 
+                        start_week = c(2002, 1), 
+                        period = 52, 
+                        output = "weeks") {
+  
 
+    ## make sure is not a tsibble, filter to project and only keep columns of interest
+    prepare_data <- dplyr::as_tibble(x)
+    # prepare_data <- prepare_data[prepare_data[[strata]] == j, ]
+    prepare_data <- dplyr::select(prepare_data, {{counts}})
+    
+    ## create an intermediate "zoo" time series to be able to use with spec.pgram
+    zoo_cases <- zoo::zooreg(prepare_data, 
+                             start = start_week, frequency = period)
+    
+    ## get a spectral periodogram not using fast fourier transform 
+    periodo <- spec.pgram(zoo_cases, fast = FALSE, plot = FALSE)
+    
+    ## return the peak weeks 
+    periodo_weeks <- 1 / periodo$freq[order(-periodo$spec)] * period
+    
+    if (output == "weeks") {
+      periodo_weeks
+    } else {
+      periodo
+    }
+    
+}
 
-<!-- ======================================================= -->
-## Option 2 {.tabset .tabset-fade .tabset-pills}
+periodo <- periodogram(counts, 
+                       case_int, 
+                       start_week = c(2002, 1),
+                       output = "not weeks")
 
-This tab can be re-named. 
-This tab should demonstrate execution of the task a more standard/core package (e.g. ggplot2, or base R) that allows for more flexibility in the output or more package stability. For example, showing how to create an epicurve using *ggplot2*. 
+periodo <- data.frame(periodo$freq, periodo$spec)
 
+ggplot(data = periodo, 
+                aes(x = 1/(periodo.freq/52),  y = log(periodo.spec))) + 
+  geom_line() + 
+  labs(x = "Period (Weeks)", y = "Log(density)")
 
-<!-- ======================================================= -->
-### Option 2 sub-tab {.tabset .tabset-fade .tabset-pills}
+```
 
-Sub-tabs if necessary. Re-name as needed.
 
 
 
