@@ -24,14 +24,15 @@ package to fit models that are more appropriate for infectious disease epidemiol
 
 This code chunk shows the loading of packages required for the analyses.
 
-```{r}
+```{r load_packages}
 pacman::p_load(rio,          # File import
                here,         # File locator
                tidyverse,    # data management + ggplot2 graphics
                tsibble,      # handle time series datasets
                slider,       # for calculating moving averages
                imputeTS,     # for filling in missing values
-               forecast,     # fit sin and cosin terms to data
+               feasts,        # for time series decomposition and autocorrelation
+               forecast,     # fit sin and cosin terms to data (note: must load after fable)
                trending      # fit and assess models 
                )
 ``` 
@@ -47,20 +48,20 @@ This dataset is a reduced version of the dataset available in the [**surveillanc
 
 The dataset is imported using the `import()` function from the *rio* package. See the *page on importing data* for various ways to import data.
 
-```{r echo=F}
+```{r read_data_hide, echo=F}
 # import the counts into R
 counts <- rio::import(here::here("data", "campylobacter_germany.xlsx"))
 
 ```
 
-```{r eval=F}
+```{r read_data_show, eval=F}
 # import the linelist
 counts <- rio::import("campylobacter_germany.xlsx")
 ```
 
 The first 10 rows of the counts are displayed below.
 
-```{r, message=FALSE, echo=F}
+```{r inspect_data, message=FALSE, echo=F}
 # display the counts data as a table
 DT::datatable(head(counts, 10), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
 ```
@@ -73,7 +74,7 @@ function will be used to create a calendar week variable. There are several othe
 ways of doing this (see **handling dates page** for details), however for 
 time series its best to keep within one framework. 
 
-```{r}
+```{r clean_data}
 
 ## ensure the date column is in the appropriate format
 counts$date <- as.Date(counts$date)
@@ -102,7 +103,7 @@ be able to specify the grouping variable using the "key" argument.
 This would allow us to do analysis for each group. 
 
 
-```{r}
+```{r ts_object}
 
 ## define time series object 
 counts <- tsibble(counts, index = epiweek)
@@ -118,7 +119,7 @@ there is a clear seasonal pattern, and that there are no missings. However, ther
 seems to be an issue with reporting at the beginning of each year; cases drop 
 in the last week of the year and then increase for the first week of the next year. 
 
-```{r}
+```{r basic_plot}
 
 ## plot a line graph of cases by week
 ggplot(counts, aes(x = epiweek, y = case)) + 
@@ -141,7 +142,7 @@ duplicate, and `duplicates` which gives you a data frame of the duplicated rows.
 
 See **de-duplication page** for details of how to select rows you want. 
 
-```{r, eval = FALSE}
+```{r duplicates, eval = FALSE}
 
 ## get a vector of TRUE/FALSE whether rows are duplicates
 are_duplicated(counts, index = epiweek) 
@@ -164,7 +165,7 @@ See **missing data page** for other options for imputation.
 Another alternative would be to calculating a moving average, to try and smooth
 over these apparent reporting issues (see next section). 
 
-```{r}
+```{r missings}
 
 ## create a variable with missings instead of weeks with reporting issues
 counts <- counts %>% 
@@ -206,7 +207,7 @@ make it more interpretable. In our case this does not really add much, so we wil
 stick to the interpolated data for further analyis. 
 See the **moving averages** page for more detail. 
 
-```{r}
+```{r moving_averages}
 
 ## create a moving average variable (deals with missings)
 counts <- counts %>% 
@@ -229,7 +230,7 @@ ggplot(counts, aes(x = epiweek)) +
 <!-- ======================================================= -->
 ### Periodicity {.tabset .tabset-fade .tabset-pills}
 
-```{r}
+```{r periodogram}
 
 ## x is a dataset
 ## counts is variable with count data or rates within x 
@@ -267,19 +268,158 @@ periodogram <- function(x,
     
 }
 
+## get spectral periodogram for extracting weeks with the highest frequencies 
+## (checking of seasonality) 
 periodo <- periodogram(counts, 
                        case_int, 
                        start_week = c(2002, 1),
-                       output = "not weeks")
+                       output = "periodogram")
 
+## pull spectrum and frequence in to a dataframe for plotting
 periodo <- data.frame(periodo$freq, periodo$spec)
 
+## plot a periodogram showing the most frequently occuring periodicity 
 ggplot(data = periodo, 
                 aes(x = 1/(periodo.freq/52),  y = log(periodo.spec))) + 
   geom_line() + 
   labs(x = "Period (Weeks)", y = "Log(density)")
 
+
+## get a vector weeks in ascending order 
+peak_weeks <- periodogram(counts, 
+                          case_int, 
+                          start_week = c(2002, 1), 
+                          output = "weeks")
+
 ```
+
+<span style="color: black;">**_NOTE:_** It is possible to use the above weeks to add them to sin and cosine terms, however we will use a function to generate these terms (see regression section below) </span>
+
+<!-- ======================================================= -->
+### Decomposition {.tabset .tabset-fade .tabset-pills}
+
+Classical decomposition is used to break a time series down several parts, which
+when taken together make up for the pattern you see. 
+These different parts are the trend-cycle (the long-term direction of the data), 
+the seasonality (repeating patterns) and the random (what is left after removing 
+trend and season). 
+
+```{r decomposition}
+
+## decompose the counts dataset 
+counts %>% 
+  # using an additive classical decomposition model
+  model(classical_decomposition(case_int, type = "additive")) %>% 
+  ## extract the important information from the model
+  components() %>% 
+  ## generate a plot 
+  autoplot()
+
+```
+
+<!-- ======================================================= -->
+### Autocorrelation {.tabset .tabset-fade .tabset-pills}
+
+Autocorrelation tells you about the relation between the counts of each week 
+and the weeks before it (called lags). 
+Using the `ACF` function, we can produce a plot which shows us a number of lines 
+for the relation at different lags. Where the lag is 0 (x = 0), this line would 
+always be 1 as it shows the relation between an observation and itself (not shown here). 
+The first line shown here (x = 1) shows the relation between each observation 
+and the observation before it (lag of 1), the second shows the relation between 
+each observation and the observation before last (lag of 2) and so on until lag of
+52 which shows the relation between each observation and the observation from 1 
+year (52 weeks before). 
+Using the `PACF` function (for partial autocorrelation shows the same type of relation 
+but adjusted for all other weeks between. This is less informative for determining
+periodicity. 
+
+```{r autocorrelation}
+
+## using the counts dataset
+counts %>% 
+  ## calculate autocorrelation using a full years worth of lags
+  ACF(case_int, lag_max = 52) %>% 
+  ## show a plot
+  autoplot()
+
+## using the counts data set 
+counts %>% 
+  ## calculate the partial autocorrelation using a full years worth of lags
+  PACF(case_int, lag_max = 52) %>% 
+  ## show a plot
+  autoplot()
+
+```
+
+You can formally test the null hypothesis of independence in a time series (i.e. 
+that it is not autocorrelated) using the Ljung-Box test (in the **stats** package). 
+A significant p-value suggests that there is autocorrelation in the data.
+
+```{r ljung_box}
+
+## test for independance 
+Box.test(counts$case_int, type = "Ljung-Box")
+
+```
+
+
+<!-- ======================================================= -->
+## Fitting regressions {.tabset .tabset-fade .tabset-pills}
+
+It is possible to fit a large number of different regressions to a time series, 
+however, here we will demonstrate how to fit a negative binomial regression - as 
+this is often the most appropriate for counts data in infectious diseases. 
+
+<!-- ======================================================= -->
+### Fourier terms {.tabset .tabset-fade .tabset-pills}
+
+Fourier terms are the equivalent of sin and cosin curves. The difference is that 
+these are fit based on finding the most appropriate combination of curves to explain
+your data. 
+If only fitting one fourier term, this would be the equivalent of fitting a sin 
+and a cosin for your most frequently occurring lag seen in your periodogram (in our 
+case 52 weeks). We use the `fourier` function from the **forecast** package. 
+In the below code we assign using the `$`, as `fourier` returns two columns (one 
+for sin one for cosin) and so these are added to the dataset as a list, called 
+"fourier" - but this list can then be used as a normal variable in regression. 
+
+```{r fourier}
+
+## add in fourier terms using the epiweek and case_int variabless
+counts$fourier <- select(counts, epiweek, case_int) %>% 
+  fourier(K = 1)
+```
+
+<!-- ======================================================= -->
+### Negative binomial {.tabset .tabset-fade .tabset-pills}
+
+
+
+```{r nb_reg, warning = FALSE}
+
+model <- glm_nb_model(case_int ~
+               epiweek +
+               fourier)
+
+fitted_model <- fit(model, counts)
+
+observed <- predict(fitted_model)
+
+ggplot() + 
+  geom_line(data = observed, aes(x = epiweek, y = estimate), col = "Red") + 
+  geom_ribbon(data = observed, aes(x = epiweek, ymin = lower_pi, ymax = upper_pi), 
+              alpha = 0.25) + 
+  geom_line(data = counts, aes(x = epiweek, y = case_int), col = "black") + 
+  theme_classic()
+  
+
+
+
+```
+
+<!-- ======================================================= -->
+### Residuals {.tabset .tabset-fade .tabset-pills}
 
 
 
