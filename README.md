@@ -3,7 +3,7 @@
 ***Go to https://rbook4epis.netlify.app/ to see the latest version of the online handbook.***
 ***Go to https://nsbatra.github.io/Epi_R_handbook/pages/handbook_combined.html to see the latest version of the downloadable offline html handbook (with tabs).***
 
-***Download the contribution guide here:*** https://nsbatra.github.io/Epi_R_handbook/contribution_guide.html  
+***Download the contribution guide here:*** https://nsbatra.github.io/Epi_R_handbook/contribution_guide_05-02-2021.html  
 
 The problem:
 

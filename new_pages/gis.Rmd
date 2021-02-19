@@ -33,7 +33,6 @@ knitr::include_graphics(here::here("images", "gis_hf_catchment.png"))
 
 
 
-
 <!-- ======================================================= -->
 ## Preparation {.tabset .tabset-fade .tabset-pills}
 
@@ -52,13 +51,12 @@ pacman::p_load(rio,       # to import data
                )   
 ```
 
-
-
 **Sample case data**
 
 ```{r}
 # import aggregated case counts of disease X
 linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))  
+linelist <- linelist[sample(nrow(linelist), 1000),]
 
 # Create sf object
 linelist_sf <- 
@@ -68,8 +66,6 @@ linelist_sf <-
 ```
 
 
-
-
 **Sierra Leone: Admin boundary shapefiles**  
 Data downloaded from HDX:
 https://data.humdata.org/dataset/sierra-leone-all-ad-min-level-boundaries
@@ -77,11 +73,8 @@ https://data.humdata.org/dataset/sierra-leone-all-ad-min-level-boundaries
 ```{r}
 # ADM3 level
 sle_adm3 <- 
-  sf::read_sf(here::here("data/shp", "sle_adm3.shp")) %>% janitor::clean_names()
-
-# ADM4 level
-sle_adm4 <-
-  sf::read_sf(here::here("data/shp", "sle_adm4.shp")) %>% janitor::clean_names()
+  sf::read_sf(here::here("data/shp", "sle_adm3.shp")) %>% janitor::clean_names() %>%
+  filter(admin2name %in% c("Western Area Urban", "Western Area Rural"))
 
 ```
 
@@ -112,10 +105,6 @@ sle_hf <-
 ```
 
 
-
-
-
-
 <!-- ======================================================= -->
 ## Plotting coordinates {.tabset .tabset-fade .tabset-pills}
 
@@ -128,17 +117,21 @@ https://rstudio-pubs-static.s3.amazonaws.com/324400_69a673183ba449e9af4011b1eeb4
 
 
 ```{r}
-tmap_mode("view") # or "plot"
-tm_shape(linelist_sf) + tm_dots(size=0.1, col='blue') +
-tm_shape(sle_adm4) + tm_borders(col = "#686868", lwd = 2) +
-tm_shape(sle_adm3) + tm_borders(col = "#000000", lwd = 3)
+tmap_mode("plot") # or "plot"
+#tm_shape(sle_adm3, bbox = st_bbox(linelist_sf)) +
+tm_shape(sle_adm3, bbox = c(-13.3,8.43, -13.2,8.5)) +
+  tm_polygons(col = "#F7F7F7") +
+  tm_borders(col = "#000000", lwd = 2) +
+  tm_text("admin3name") +
+tm_shape(linelist_sf) + tm_dots(size=0.08, col='blue') 
+
 
 ```
 
 
 
 <!-- ======================================================= -->
-## Polygons and shapefiles {.tabset .tabset-fade .tabset-pills}
+## polygons and shapefiles {.tabset .tabset-fade .tabset-pills}
 
 Choropleth maps can be useful to visualize your data by pre-defined area usually by administrative unit or health area for outbreak response to be able to target resources for specific area high incidence rates for example.
 
@@ -151,58 +144,19 @@ https://r-spatial.github.io/sf/reference/geos_binary_pred.html
 
 
 **Spatial assign administrative units to cases**
-First spatially intersect our case locations (points) with the ADM4 boundaries (polygons)
+First spatially intersect our case locations (points) with the ADM3 boundaries (polygons)
 
 ```{r}
-case_adm <- 
+linelist_adm <- 
      linelist_sf %>%
-     sf::st_join(sle_adm4,   join = st_intersects) %>%
-     select(names(linelist_sf), admin4name, admin4pcod, admin3name, admin3pcod)
+     sf::st_join(sle_adm3,   join = st_intersects) %>%
+     select(names(linelist_sf), admin3name, admin3pcod)
 
-# Now you will see the ADM3-4 names attached to each case
-case_adm %>% select(case_id, admin4name, admin3name)
-
-```
-
-
-19 cases did not get assigned to any administrative unit as the polygons do not cover the areas or some points are located in the ocean.
-See red points in the map below.
-
-```{r}
-case_noadm <- 
-     case_adm %>% 
-     filter(is.na(admin3name)) %>%
-     select(names(linelist_sf))
-
-tmap_mode("view") # or "plot"
-tm_shape(linelist_sf) + tm_dots(size=0.1, col='blue') +
-tm_shape(case_noadm) + tm_dots(size=0.1, col='red') +
-tm_shape(sle_adm3) + tm_borders(col = "#000000", lwd = 3)
+# Now you will see the ADM3 names attached to each case
+linelist_adm %>% select(case_id, admin3name)
 
 ```
 
-
-We can assign these cases to their nearest ADM4 polygon this time instead of intersecting.
-
-```{r}
-case_noadm_nearest <-
-     case_noadm %>%
-     st_join(sle_adm4, join=st_nearest_feature) %>%
-     select(names(linelist_sf), admin4name, admin4pcod, admin3name, admin3pcod)
-
-case_noadm_nearest %>% select(case_id, admin4name, admin3name)
-
-```
-
-
-Merge all cases with the administrative units. 
-
-```{r}
-linelist_adm <-
-     case_adm %>% filter(!is.na(admin3name)) %>%
-     bind_rows(case_noadm_nearest)
-
-```
 
 
 Case counts by ADM3
@@ -270,7 +224,7 @@ tm_shape(case_adm3_sf) +
 tmap_mode("plot")
 tm_shape(case_adm3_sf) + 
         tm_polygons("case_10kpop",
-                    breaks=c(0, 10, 50, 100, 500),
+                    breaks=c(0, 10, 50, 100),
                     palette = "Purples"
                     ) +
         tm_text("admin3name")
@@ -284,7 +238,7 @@ We can also look at the combination of time and space by facetting the heatmaps.
 
 Set parameters for the basemap using the **OpenStreetMap** package.
 
-```{r message=FALSE, warning=FALSE}
+```{r}
 
 # Fit basemap by range of lat/long coordinates. Choose tile type
 map <- openmap(c(max(linelist$lat, na.rm=T), max(linelist$lon, na.rm=T)),  # limits of tile
@@ -299,54 +253,31 @@ map.latlon <- openproj(map, projection = "+proj=longlat +ellps=WGS84 +datum=WGS8
 ```
 
 
-**Cumulative heatmap**
-
-```{r}
-
-# Plot map. Must be autoplotted to work with ggplot
-OpenStreetMap::autoplot.OpenStreetMap(map.latlon)+
-        # Density tiles  
-        ggplot2::stat_density_2d(aes(x = lon,
-                                     y = lat,
-                                     fill = ..level..,
-                                     alpha=..level..),
-                                 bins = 10,
-                                 geom = "polygon",
-                                 contour_var = "count",
-                                 data = linelist %>% filter(date_onset>='2014-07-01' & date_onset<='2015-02-28'),
-                                 show.legend = F) +
-        #scale_fill_gradient(low = "black", high = "red")+
-        labs(x = "Longitude",
-             y = "Latitude",
-             title = "Distribution of simulated cases")
-
-```
-
 
 **Heatmap by month of onset**
 
 ```{r}
 # Extract month of onset
 linelist$date_onset_ym <- format(linelist$date_onset, "%Y-%m")
-
+ 
 # Simply facet above map by month of onset
 # Plot map. Must be autoplotted to work with ggplot
 OpenStreetMap::autoplot.OpenStreetMap(map.latlon)+
-        # Density tiles  
-        ggplot2::stat_density_2d(aes(x = lon,
-                                     y = lat,
-                                     fill = ..level..,
-                                     alpha=..level..),
-                                 bins = 10,
-                                 geom = "polygon",
-                                 contour_var = "count",
-                                 data = linelist %>% filter(date_onset>='2014-07-01' & date_onset<='2015-02-28'),
-                                 show.legend = F) +
-        #scale_fill_gradient(low = "black", high = "red")+
-        labs(x = "Longitude",
-             y = "Latitude",
-             title = "Distribution of simulated cases by month of onset") +
-        facet_wrap(~ date_onset_ym, ncol = 4)
+       # Density tiles  
+       ggplot2::stat_density_2d(aes(x = lon,
+                                    y = lat,
+                                    fill = ..level..,
+                                    alpha=..level..),
+                              bins = 10,
+                                geom = "polygon",
+                                contour_var = "count",
+                                data = linelist %>% filter(date_onset>='2014-08-01' & date_onset<='2015-01-31'),
+                                show.legend = F) +
+       #scale_fill_gradient(low = "black", high = "red")+
+       labs(x = "Longitude",
+            y = "Latitude",
+            title = "Distribution of simulated cases by month of onset") +
+       facet_wrap(~ date_onset_ym, ncol = 3)
 
 ```
 
@@ -385,10 +316,11 @@ hf_catchment
 
 Visualizing the results on the map
 
-```{r}
+```{r, fig.width = 5, fig.height = 3}
 tmap_mode("view")
-tm_shape(linelist_sf_hf) + tm_dots(size=0.1, col='name') +
-        tm_shape(sle_hf) + tm_dots(size=0.3, col='red') + tm_text("name")
+tm_shape(linelist_sf_hf) + tm_dots(size=0.08, col='name') +
+        tm_shape(sle_hf) + tm_dots(size=0.3, col='red') + tm_text("name") +
+tm_view(set.view = c(-13.2284,8.4699, 13), set.zoom.limits = c(13,14))
 ```
 
 
@@ -425,7 +357,7 @@ linelist_sf_hf_2k <-
 
 Count the results
 
-1225 out of 5888 cases (20.8%, shown in red dots in the map below) live more than 30 mins away from the nearest health facility)
+202 out of 1000 cases (20.2%, shown in red dots in the map below) live more than 30 mins away from the nearest health facility)
 
 ```{r}
 nrow(linelist_sf_hf_2k)
@@ -434,11 +366,12 @@ nrow(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),])
 
 Visualize the results
 
-```{r}
+```{r, fig.width = 5, fig.height = 3}
 tmap_mode("view")
 tm_shape(linelist_sf_hf) + tm_dots(size=0.08, col='name') +
         tm_shape(sle_hf_2k) + tm_borders(col = "red", lwd = 2) +
-        tm_shape(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),]) +tm_dots(size=0.1, col='red')
+        tm_shape(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),]) +tm_dots(size=0.1, col='red') +
+tm_view(set.view = c(-13.2284,8.4699, 13), set.zoom.limits = c(13,14))
 ```
 
 
@@ -453,6 +386,7 @@ https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html
 
 * ggmap: Spatial Visualization with ggplot2
 https://journal.r-project.org/archive/2013-1/kahle-wickham.pdf
+
 
 
 
