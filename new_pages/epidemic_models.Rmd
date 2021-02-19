@@ -5,7 +5,7 @@
 <!-- ======================================================= -->
 ## Overview {.tabset .tabset-fade .tabset-pills}
 
-There exists a growing body of tools for epidemic modelling that let us conduct
+There exists a growing body of tools for epidemic modelling that lets us conduct
 fairly complex analyses with minimal effort. This section will provide an
 overview on how to use these tools to:
 
@@ -15,13 +15,13 @@ overview on how to use these tools to:
 
 It is *not* intended as an overview of the methodologies and statistical methods
 underlying these tools, so please refer to the Resources tab for links to some
-great web pages covering this. Make sure you have an understanding of
+papers covering this. Make sure you have an understanding of
 the methods before using these tools; this will ensure you can accurately
 interpret their results.
 
-Below is an example of one of the outputs we'll be in this section.
+Below is an example of one of the outputs we'll be producing in this section.
 
-```{r out.width=c('25%', '25%'), fig.show='hold', echo=F}
+```{r out.width=c('100%', '100%'), fig.show='hold', echo=F, fig.width = 12, fig.height = 9}
 
 ## install and load packages
 pacman::p_load(tidyverse, EpiNow2, EpiEstim, here, epicontacts, rio, projections)
@@ -127,7 +127,8 @@ pacman::p_load(
    EpiEstim,     # Rt estimation
    projections,  # Incidence projections
    incidence,    # Handling incidence data
-   epitrix       # Useful epi functions
+   epitrix,      # Useful epi functions
+   distcrete     # Discrete delay distributions
 )
 ```
 	
@@ -401,12 +402,11 @@ ggplot() +
   geom_ribbon(
     data = df_long,
     aes(x = date, ymin = lower, ymax = upper, alpha = quantile),
-    color = NA,
-    ) +
+    color = NA
+  ) +
   geom_line(
     data = df_wide,
-    aes(x = date, y = median),
-    alpha = 0.2
+    aes(x = date, y = median)
   ) +
   ## use label_parsed to allow subscript label
   facet_wrap(
@@ -417,11 +417,14 @@ ggplot() +
     strip.position = 'left'
   ) +
   ## manually define quantile transparency
-  scale_alpha_manual(values = c(`20` = 0.7, `50` = 0.4, `90` = 0.2)) +
+  scale_alpha_manual(
+    values = c(`20` = 0.7, `50` = 0.4, `90` = 0.2),
+    labels = function(x) paste0(x, "%")
+  ) +
   labs(
     x = NULL,
     y = NULL,
-    alpha = "Quantile\nrange"
+    alpha = "Credibel\ninterval"
   ) +
   scale_x_date(
     date_breaks = "1 month",
@@ -489,8 +492,8 @@ plot(epiestim_res_lit)
 
 #### Using serial interval estimates from the data
 
-As we have data on dates of symptom onset __and__ transmission links, we can
-also estimate the incubatin period from the linelist by calculating the delay
+As we have data on dates of symptom onset _and_ transmission links, we can
+also estimate the serial interval from the linelist by calculating the delay
 between onset dates of infector-infectee pairs. As we did in the **EpiNow2**
 section, we will use the `get_pairwise` function from the **epicontacts**
 package, which allows us to calculate pairwise differences of linelist
@@ -517,11 +520,11 @@ epic <- make_epicontacts(
 We then fit the difference in onset dates between transmission pairs, calculated
 using `get_pairwise`, to a gamma distribution. We use the handy `fit_disc_gamma`
 from the **epitrix** package for this fitting procedure, as we require a
-__discretised__ distribution.
+_discretised_ distribution.
 
 ```{r epidemic_models_incubation_estimate_epiestim, eval=T, warning = FALSE}
-## estimate gamma incubation period
-incubation_period <- fit_disc_gamma(get_pairwise(epic, "date_onset"))
+## estimate gamma serial interval
+serial_interval <- fit_disc_gamma(get_pairwise(epic, "date_onset"))
 ```
 
 We then pass this information to the `config` object, run **EpiEstim**
@@ -530,8 +533,8 @@ again and plot the results:
 ```{r epidemic_models_epiestim_emp, eval=T, warning = FALSE}
 ## make config
 config_emp <- make_config(
-  mean_si = incubation_period$mu,
-  std_si = incubation_period$sd
+  mean_si = serial_interval$mu,
+  std_si = serial_interval$sd
 )
 
 ## run epiestim
@@ -671,11 +674,14 @@ ggplot() +
     strip.position = 'left'
   ) +
   ## manually define quantile transparency
-  scale_alpha_manual(values = c(`50` = 0.7, `90` = 0.4, `95` = 0.2)) +
+  scale_alpha_manual(
+    values = c(`50` = 0.7, `90` = 0.4, `95` = 0.2),
+    labels = function(x) paste0(x, "%")
+  ) +
   labs(
     x = NULL,
     y = NULL,
-    alpha = "Quantile\nrange"
+    alpha = "Credible\ninterval"
   ) +
   scale_x_date(
     date_breaks = "1 month",
@@ -690,11 +696,261 @@ ggplot() +
 ```
 
 <!-- ======================================================= -->
-## Projecting incidence
+## Projecting incidence {.tabset .tabset-fade .tabset-pills}
+
+### EpiNow2
+
+Besides estimating R<sub>t</sub>, **EpiNow2** also supports forecasting of
+R<sub>t</sub> and projections of case numbers by integration with the
+**EpiSoon** package under the hood. All you need to do is specify the `horizon`
+argument in your `epinow` function call, indicating how many days you want to
+project into the future; see the **EpiNow2** section under the "Estimating
+R<sub>t</sub>" for details on how to get **EpiNow2** up and running. In this
+section, we will just plot the outputs from that analysis, stored in the
+`epinow_res` object.
+
+```{r epidemic_models_episoon, eval=T, fig.width = 12, fig.height = 8, warning = FALSE}
+
+## define minimum date for plot
+min_date <- as.Date("2015-03-01")
+
+## extract summarised estimates
+estimates <-  as_tibble(epinow_res$estimates$summarised)
+
+## extract raw data on case incidence
+observations <- as_tibble(epinow_res$estimates$observations) %>%
+  filter(date > min_date)
+
+## extract forecasted estimates of case numbers
+df_wide <- estimates %>%
+  filter(
+    variable == "reported_cases",
+    type == "forecast",
+    date > min_date
+  )
+
+## convert to even longer format for quantile plotting
+df_long <- df_wide %>%
+  ## here we match matching quantiles (e.g. lower_90 to upper_90)
+  pivot_longer(
+    lower_90:upper_90,
+    names_to = c(".value", "quantile"),
+    names_pattern = "(.+)_(.+)"
+  )
+
+## make plot
+ggplot() +
+  geom_histogram(
+    data = observations,
+    aes(x = date, y = confirm),
+    stat = 'identity',
+    binwidth = 1
+  ) +
+  geom_ribbon(
+    data = df_long,
+    aes(x = date, ymin = lower, ymax = upper, alpha = quantile),
+    color = NA
+  ) +
+  geom_line(
+    data = df_wide,
+    aes(x = date, y = median)
+  ) +
+  geom_vline(xintercept = min(df_long$date), linetype = 2) +
+  ## manually define quantile transparency
+  scale_alpha_manual(
+    values = c(`20` = 0.7, `50` = 0.4, `90` = 0.2),
+    labels = function(x) paste0(x, "%")
+  ) +
+  labs(
+    x = NULL,
+    y = "Daily reported cases",
+    alpha = "Credible\ninterval"
+  ) +
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b %d\n%Y"
+  ) +
+  theme_minimal(base_size = 14)
+
+```
+
+### projections
+
+The **projections** package developed by RECON makes it very easy to make short
+term incidence forecasts, requiring only knowledge of the effective reproduction
+number R<sub>t</sub> and the serial interval. Here we will cover how to use
+serial interval estimates from the literature and how to use our own estimates
+them the linelist.
+
+#### Using serial interval estimates from the literature
+
+**projections** requires a discretised serial interval distribution of the class
+`distcrete` from the package **distcrete**. We will use a gamma distribution
+with a mean of 12.0 and and standard deviation of 5.2 defined in
+[this paper](https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-014-0196-0). To
+convert these values into the shape and scale parameters required for a gamma
+distribution, we will use the function `gamma_mucv2shapescale` from the
+**epitrix** package.
+
+```{r epidemic_models_projections_distcrete, eval=T}
+
+## get shape and scale parameters from the mean mu and the coefficient of
+## variation (e.g. the ratio of the standard deviation to the mean)
+shapescale <- epitrix::gamma_mucv2shapescale(mu = 12.0, cv = 5.2/12)
+
+## make distcrete object
+serial_interval_lit <- distcrete::distcrete(
+  name = "gamma",
+  interval = 1,
+  shape = shapescale$shape,
+  scale = shapescale$scale
+)
+
+```
+
+Here a quick check to make sure the serial interval looks correct. We
+access the density of the gamma distribution we have just defined by `$d`, which
+is equivalent to calling `dgamma`:
+
+```{r epidemic_models_projections_distcrete_plot, eval=T}
+
+## check to make sure the serial interval looks correct
+qplot(
+  x = 0:50, y = serial_interval_lit$d(0:50), geom = "area",
+  xlab = "Serial interval", ylab = "Density"
+)
+
+```
+
+#### Using serial interval estimates from the data
+
+As we have data on dates of symptom onset _and_ transmission links, we can
+also estimate the serial interval from the linelist by calculating the delay
+between onset dates of infector-infectee pairs. As we did in the **EpiNow2**
+section, we will use the `get_pairwise` function from the **epicontacts**
+package, which allows us to calculate pairwise differences of linelist
+properties between transmission pairs. We first create an epicontacts object
+(see Transmission chains chapter for further details):
+
+```{r epidemic_models_epicontacts_projections, eval=F}
+## generate contacts
+contacts <- linelist %>%
+  transmute(
+    from = infector,
+    to = case_id
+  ) %>%
+  drop_na()
+
+## generate epicontacts object
+epic <- make_epicontacts(
+  linelist = linelist,
+  contacts = contacts, 
+  directed = TRUE
+)
+```
+
+We then fit the difference in onset dates between transmission pairs, calculated
+using `get_pairwise`, to a gamma distribution. We use the handy `fit_disc_gamma`
+from the **epitrix** package for this fitting procedure, as we require a
+_discretised_ distribution.
+
+```{r epidemic_models_incubation_estimate_projections, eval=T, warning = FALSE}
+## estimate gamma serial interval
+serial_interval <- fit_disc_gamma(get_pairwise(epic, "date_onset"))
+
+## inspect estimate
+serial_interval[c("mu", "sd")]
+```
+
+#### Projecting incidence
+
+To project future incidence, we still need to provide historical incidence in
+the form of an `incidence` object, as well as a sample of plausible
+R<sub>t</sub> values. We will generate these values using the R<sub>t</sub>
+estimates generated by **EpiEstim** in the previous section (under "Estimating
+R<sub>t</sub>") and stored in the `epiestim_res_emp` object. In the code below,
+we extract the mean and standard deviation estimates of R<sub>t</sub> for the
+last time window of the outbreak (using the `tail` function to access the last
+element in a vector), and simulate 1000 values from a gamma distribution using
+`rgamma`. You can also provide your own vector of R<sub>t</sub> values that you
+want to use for forward projections.
+
+```{r epidemic_models_projection_setup, eval=T, warning = FALSE}
+
+## create incidence object from dates of onset
+inc <- incidence::incidence(linelist$date_onset)
+
+## extract plausible r values from most recent estimate
+mean_r <- tail(epiestim_res_emp$R$`Mean(R)`, 1)
+sd_r <- tail(epiestim_res_emp$R$`Std(R)`, 1)
+shapescale <- gamma_mucv2shapescale(mu = mean_r, cv = sd_r/mean_r)
+plausible_r <- rgamma(1000, shape = shapescale$shape, scale = shapescale$scale)
+
+## check distribution
+qplot(x = plausible_r, geom = "histogram", xlab = expression(R[t]), ylab = "Counts")
+
+```
+
+We then use the `project` function to make the actual forecast. We specify how
+many days we want to project for via the `n_days` arguments, and specify the
+number of simulations using the `n_sim` argument.
+
+```{r epidemic_models_make_projection, eval=T}
+
+## make projection
+proj <- project(
+  x = inc,
+  R = plausible_r,
+  si = serial_interval$distribution,
+  n_days = 21,
+  n_sim = 1000
+)
+
+```
+
+We can then handily plot the incidence and projections using the `plot` and
+`add_projections` functions. We can easily subset the `incidence` object to only
+show the most recent cases by using the square bracket operator.
+
+```{r epidemic_models_plot_projection, eval=T, fig.width = 12, fig.height = 8, warning = FALSE}
+
+## plot incidence and projections
+plot(inc[inc$dates > as.Date("2015-03-01")]) %>%
+  add_projections(proj)
+
+```
+
+You can also easily extract the raw estimates of daily case numbers by
+converting the output to a dataframe.
+
+```{r epidemic_models_projection_df, eval=F, warning = FALSE}
+## convert to data frame for raw data
+proj_df <- as.data.frame(proj)
+proj_df
+```
+
+```{r epidemic_models_projection_dt, eval=T, echo = F}
+
+## convert to data frame for raw data
+proj_df <- as.data.frame(proj)
+
+## data table output
+DT::datatable(
+  proj_df[1:11],
+  rownames = FALSE,
+  filter = "top",
+  options = list(pageLength = 10, scrollX=T)
+)
+
+```
 
 
 <!-- ======================================================= -->
 ## Resources {.tabset .tabset-fade .tabset-pills}
 
-This tab should stay with the name "Resources".
-Links to other online tutorials or resources.
+* [Here is the paper](https://www.sciencedirect.com/science/article/pii/S1755436519300350) describing
+  the methodology implemented in **EpiEstim**.
+* [Here is the paper](https://wellcomeopenresearch.org/articles/5-112/v1) describing
+  the methodology implemented in **EpiNow2**.
+* [Here is a paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008409) describing
+  various methodological and practical considerations for estimating R<sub>t</sub>.
