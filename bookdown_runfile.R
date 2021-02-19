@@ -3,15 +3,16 @@
 # See format and content choices below  
 
 ################################################################################
-
-# WHOLE HANDBOOK AS WEBSITE ("bs4 book" style)
+# BS4 BOOKDOWN STYLE ##
+#######################
+# WHOLE HANDBOOK
 # for online viewing only - not available as a self-contained file  
 bookdown::render_book(
      output_format = 'bookdown::bs4_book',
      config_file = "_bookdown.yml")
 
 
-# PREVIEW ONLY ONE OR SOME PAGES ("bs4 book" style)
+# PREVIEW ONLY ONE OR SOME PAGES
 # Edit which pages to include in "_small_bookdown.yml"
 # To view, navigate to the "preview" folder and open "index.html"
 bookdown::render_book(
