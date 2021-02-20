@@ -13,8 +13,8 @@ package to fit models that are more appropriate for infectious disease epidemiol
 2.  Descriptive analysis 
 3.  Fitting regressions
 4.  Relation of two time series 
-5.  Interrupted time series
-6.  Outbreak detection
+5.  Outbreak detection
+6.  Interrupted time series
 
 
 <!-- ======================================================= -->
@@ -201,8 +201,6 @@ temp_data <- as_tibble(data) %>%
             tp = as.numeric(mean(tp)))
 
 ```
-
-
 
 
 
@@ -514,7 +512,19 @@ counts$fourier <- select(counts, epiweek, case_int) %>%
 <!-- ======================================================= -->
 ### Negative binomial {.tabset .tabset-fade .tabset-pills}
 
+It is possible to fit regressions using base **stats** or **MASS**
+functions (e.g. `lm`, `glm` and `glm.nb`). However we will be using those from 
+the **trending** package, as this allows for calculating appropriate confidence
+and prediction intervals (which are otherwise not available). 
+The syntax is the same, and you specify an outcome variable then a tilda (~) 
+and then add your various exposure variables of interest separated by a plus (+). 
 
+The other difference is that we first define the model and then `fit` it to the 
+data. This is useful because it allows for comparing multiple different models 
+with the same syntax. 
+
+<span style="color: darkgreen;">**_TIP:_** For fitting more complex models such 
+as ARIMA or prophet, see the [**fable**](https://fable.tidyverts.org/index.html) package.</span>
 
 ```{r nb_reg, warning = FALSE}
 
@@ -534,14 +544,17 @@ fitted_model <- fit(model, counts)
 observed <- predict(fitted_model)
 
 ## plot your regression 
-ggplot() + 
+ggplot(data = observed, aes(x = epiweek)) + 
   ## add in a line for the model estimate
-  geom_line(data = observed, aes(x = epiweek, y = estimate), col = "Red") + 
+  geom_line(aes(y = estimate),
+            col = "Red") + 
   ## add in a band for the prediction intervals 
-  geom_ribbon(data = observed, aes(x = epiweek, ymin = lower_pi, ymax = upper_pi), 
+  geom_ribbon(aes(ymin = lower_pi, 
+                  ymax = upper_pi), 
               alpha = 0.25) + 
   ## add in a line for your observed case counts
-  geom_line(data = counts, aes(x = epiweek, y = case_int), col = "black") + 
+  geom_line(aes(y = case_int), 
+            col = "black") + 
   ## make a traditional plot (with black axes and white background)
   theme_classic()
 
@@ -551,27 +564,39 @@ ggplot() +
 <!-- ======================================================= -->
 ### Residuals {.tabset .tabset-fade .tabset-pills}
 
+To see how well our model fits the observed data we need to look at the residuals. 
+The residuals are the difference between the observed counts and the counts 
+estimated from the model. We could calculate this simply by using `case_int - estimate`, 
+but the `residuals` function extracts this directly from the regression for us.
+
+What we see from the below, is that we are not explaining all of the variation 
+that we could with the model. It might be that we should fit more fourier terms, 
+and address the amplitude. However for this example we will leave it as is. 
+The plots show that our model does worse in the peaks and troughs (when counts are
+at their highest and lowest) and that it might be more likely to underestimate 
+the observed counts. 
+
 ```{r}
 
 ## calculate the residuals 
 observed <- observed %>% 
-  mutate(resid = case_int - estimate)
+  mutate(resid = residuals(fitted_model$fitted_model, type = "response"))
 
 ## are the residuals fairly constant over time (if not: outbreaks? change in practice?)
-res_plot1 <- observed %>%
+observed %>%
   ggplot(aes(x = epiweek, y = resid)) +
   geom_line() +
   geom_point() + 
   labs(x = "epiweek", y = "Residuals")
 
 ## is there autocorelation in the residuals (is there a pattern to the error?)  
-res_plot2 <- observed %>% 
+observed %>% 
   as_tsibble(index = epiweek) %>% 
   ACF(resid, lag_max = 52) %>% 
   autoplot()
 
 ## are residuals normally distributed (are under or over estimating?)  
-res_plot3 <- observed %>%
+observed %>%
   ggplot(aes(x = resid)) +
   geom_histogram(binwidth = 100) +
   geom_rug() +
@@ -579,7 +604,7 @@ res_plot3 <- observed %>%
   
 ## compare observed counts to their residuals 
   ## should also be no pattern 
-res_plot4 <- observed %>%
+observed %>%
   ggplot(aes(x = estimate, y = resid)) +
   geom_point() +
   labs(x = "Fitted", y = "Residuals")
@@ -592,6 +617,214 @@ Box.test(observed$resid, type = "Ljung-Box")
 
 ```
 
+<!-- ======================================================= -->
+## Relation of two time series {.tabset .tabset-fade .tabset-pills}
+
+Here we look at using weather data (specifically the temperature) to explain 
+campylobacter case counts. 
+
+<!-- ======================================================= -->
+### Merging datasets {.tabset .tabset-fade .tabset-pills}
+
+We can join our datasets using the week variable. For more on merging see the 
+handbook section on [joining].
+
+```{r join}
+
+## left join so that we only have the rows already existing in counts
+## drop the date variable from temp_data (otherwise is duplicated)
+counts <- left_join(counts, 
+                    select(temp_data, -date),
+                    by = "epiweek")
+
+```
+
+<!-- ======================================================= -->
+### Descriptive analysis {.tabset .tabset-fade .tabset-pills}
+
+First plot your data to see if there is any obvious relation. 
+The plot below shows that there is a clear relation in the seasonality of the two
+variables, and that temperature might peak a few weeks before the case number.
+For more on pivoting data, see the handbook section on [cleaning data]. 
+
+```{r basic_plot_bivar}
+
+counts %>% 
+  ## keep the variables we are interested 
+  select(epiweek, case_int, t2m) %>% 
+  ## change your data in to long format
+  pivot_longer(
+    ## use epiweek as your key
+    !epiweek,
+    ## move column names to the new "measure" column
+    names_to = "measure", 
+    ## move cell values to the new "values" column
+    values_to = "value") %>% 
+  ## create a plot with the dataset above
+  ## plot epiweek on the x axis and values (counts/celsius) on the y 
+  ggplot(aes(x = epiweek, y = value)) + 
+    ## create a separate plot for temperate and case counts 
+    ## let them set their own y-axes
+    facet_grid(measure ~ ., scales = "free_y") +
+    ## plot both as a line
+    geom_line()
+
+```
+
+<!-- ======================================================= -->
+### Lags and cross-correlation {.tabset .tabset-fade .tabset-pills}
+
+To formally test which weeks are most highly related between cases and temperature. 
+We can use the cross-correlation function (`CCF`) from the **feasts** package. 
+You could also visualise (rather than using `arrange`) using the `autoplot` function. 
+
+```{r cross_correlation}
+
+counts %>% 
+  ## calculate cross-correlation between interpolated counts and temperature
+  CCF(case_int, t2m,
+      ## set the maximum lag to be 52 weeks
+      lag_max = 52, 
+      ## return the correlation coefficient 
+      type = "correlation") %>% 
+  ## arange in decending order of the correlation coefficient 
+  ## show the most associated lags
+  arrange(-ccf) %>% 
+  ## only show the top ten 
+  slice_head(n = 10)
+
+```
+
+We see from this that a lag of 4 weeks is most highly correlated, 
+so we make a lagged temperature variable to include in our regression. 
+
+```{r lag_tempvar}
+
+counts <- counts %>% 
+  ## create a new variable for temperature lagged by four weeks
+  mutate(t2m_lag4 = lag(t2m, n = 4))
+
+```
+
+
+<!-- ======================================================= -->
+### Negative binomial with two variables {.tabset .tabset-fade .tabset-pills}
+
+We fit a negative binomial regression as done previously. This time we add the 
+temperature variable lagged by four weeks. 
+
+```{r nb_reg_bivar, warning = FALSE}
+
+## define the model you want to fit (negative binomial) 
+model <- glm_nb_model(
+  ## set number of cases as outcome of interest
+  case_int ~
+    ## use epiweek to account for the trend
+    epiweek +
+    ## use the furier terms to account for seasonality
+    fourier + 
+    ## use the temperature lagged by four weeks 
+    t2m_lag4
+    )
+
+## fit your model using the counts dataset
+fitted_model <- fit(model, counts)
+
+## calculate confidence intervals and prediction intervals 
+observed <- predict(fitted_model)
+
+```
+
+
+To investigate the individual terms, we can pull the original negative binomial
+regression out of the **trending** format using `get_model` and pass this to the
+**broom** package `tidy` function to retrieve exponentiated estimates and associated
+confidence intervals. 
+What this shows us is that lagged temperature, after controlling for trend and seasonality, 
+is similar to the case counts (estimate ~ 1) and significantly associated. 
+This suggests that it might be a good variable for use in predicting future case
+numbers (as climate forecasts are readily available). 
+
+```{r results_nb_reg_bivar}
+
+fitted_model %>% 
+  ## extract original negative binomial regression
+  get_model() %>% 
+  ## get a tidy dataframe of results
+  tidy(exponentiate = TRUE, 
+       conf.int = TRUE)
+```
+
+A quick visual inspection of the model shows that it might do a better job of 
+estimating the observed case counts. 
+
+```{r plot_nb_reg_bivar}
+
+## plot your regression 
+ggplot(data = observed, aes(x = epiweek)) + 
+  ## add in a line for the model estimate
+  geom_line(aes(y = estimate),
+            col = "Red") + 
+  ## add in a band for the prediction intervals 
+  geom_ribbon(aes(ymin = lower_pi, 
+                  ymax = upper_pi), 
+              alpha = 0.25) + 
+  ## add in a line for your observed case counts
+  geom_line(aes(y = case_int), 
+            col = "black") + 
+  ## make a traditional plot (with black axes and white background)
+  theme_classic()
+
+
+```
+
+
+### Residuals {.tabset .tabset-fade .tabset-pills}
+
+We investigate the residuals again to see how well our model fits the observed data. 
+The results and interpretation here are similar to those of the previous regression, 
+so it may be more feasible to stick with the simpler model without temperature. 
+
+```{r}
+
+## calculate the residuals 
+observed <- observed %>% 
+  mutate(resid = case_int - estimate)
+
+## are the residuals fairly constant over time (if not: outbreaks? change in practice?)
+observed %>%
+  ggplot(aes(x = epiweek, y = resid)) +
+  geom_line() +
+  geom_point() + 
+  labs(x = "epiweek", y = "Residuals")
+
+## is there autocorelation in the residuals (is there a pattern to the error?)  
+observed %>% 
+  as_tsibble(index = epiweek) %>% 
+  ACF(resid, lag_max = 52) %>% 
+  autoplot()
+
+## are residuals normally distributed (are under or over estimating?)  
+observed %>%
+  ggplot(aes(x = resid)) +
+  geom_histogram(binwidth = 100) +
+  geom_rug() +
+  labs(y = "count") 
+  
+## compare observed counts to their residuals 
+  ## should also be no pattern 
+observed %>%
+  ggplot(aes(x = estimate, y = resid)) +
+  geom_point() +
+  labs(x = "Fitted", y = "Residuals")
+
+## formally test autocorrelation of the residuals
+## H0 is that residuals are from a white-noise series (i.e. random)
+## test for independence 
+## if p value significant then non-random
+Box.test(observed$resid, type = "Ljung-Box")
+
+```
 
 
 <!-- ======================================================= -->
