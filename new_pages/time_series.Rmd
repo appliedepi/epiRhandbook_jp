@@ -32,12 +32,13 @@ pacman::p_load(rio,          # File import
                slider,       # for calculating moving averages
                imputeTS,     # for filling in missing values
                feasts,       # for time series decomposition and autocorrelation
-               forecast,     # fit sin and cosin terms to data (note: must load after fable)
+               forecast,     # fit sin and cosin terms to data (note: must load after feasts)
                trending,     # fit and assess models 
                tmaptools,    # for getting geocoordinates (lon/lat) based on place names
                ecmwfr,       # for interacting with copernicus sateliate CDS API
                stars,        # for reading in .nc (climate data) files
-               units         # for defining units of measurement (climate data)
+               units,        # for defining units of measurement (climate data)
+               surveillance  # for aberration detection
                )
 ``` 
 
@@ -523,6 +524,11 @@ The other difference is that we first define the model and then `fit` it to the
 data. This is useful because it allows for comparing multiple different models 
 with the same syntax. 
 
+<span style="color: darkgreen;">**_TIP:_** If you wanted to use rates, rather than 
+counts you could include the population variable as a logarithmic offset term, by adding 
+`offset(log(population)`. You would then need to set population to be 1, before 
+using `predict` in order to produce a rate. </span>
+
 <span style="color: darkgreen;">**_TIP:_** For fitting more complex models such 
 as ARIMA or prophet, see the [**fable**](https://fable.tidyverts.org/index.html) package.</span>
 
@@ -609,7 +615,7 @@ observed %>%
   geom_point() +
   labs(x = "Fitted", y = "Residuals")
 
-## formally test autocorellation of the residuals
+## formally test autocorrelation of the residuals
 ## H0 is that residuals are from a white-noise series (i.e. random)
 ## test for independence 
 ## if p value significant then non-random
@@ -779,7 +785,7 @@ ggplot(data = observed, aes(x = epiweek)) +
 ```
 
 
-### Residuals {.tabset .tabset-fade .tabset-pills}
+#### Residuals {.tabset .tabset-fade .tabset-pills}
 
 We investigate the residuals again to see how well our model fits the observed data. 
 The results and interpretation here are similar to those of the previous regression, 
@@ -825,6 +831,176 @@ observed %>%
 Box.test(observed$resid, type = "Ljung-Box")
 
 ```
+
+<!-- ======================================================= -->
+## Outbreak detection {.tabset .tabset-fade .tabset-pills}
+
+We will demonstrate two (similar) methods of detecting outbreaks here. 
+The first builds on the sections above. 
+We use the **trending** package to fit regressions to previous years, and then
+predict what we expect to see in the following year. If observed counts are above
+what we expect, then it could suggest there is an outbreak. 
+The second method is based on similar principles but uses the **surveillance** package,
+which has a number of different algorithms for aberration detection.
+
+<!-- ======================================================= -->
+### `trending` {.tabset .tabset-fade .tabset-pills}
+
+For this method we define a baseline (which should usually be about 5 years of data). 
+We fit a regression to the baseline data, and then use that to predict the estimates
+for the next year. 
+
+<!-- ======================================================= -->
+#### Cut-off date {.tabset .tabset-fade .tabset-pills}
+
+It is easier to define your cut-off date in one place and then use this throughout
+the rest of your code. 
+Also define how many weeks are in your year of interest (the one you are going to
+be predicting). 
+
+```{r cut_off}
+
+## define a cut-off week 
+cut_off <- yearweek("2010-12-31")
+
+## get the year which want to predict for 
+## add one week to cut_off (to push in to next year) and change to only have Year
+pred_year <- format(cut_off + 1, format = "%Y") %>% 
+  ## change to numeric
+  as.numeric()
+
+## find how many weeks in year of interest
+num_weeks <- ifelse(
+  ## true/false of whether pred_year is a 53 week year
+  is_53weeks(pred_year),
+  ## if true then return 53 
+  53, 
+  ## otherwise return 52
+  52)
+
+
+```
+
+<!-- ======================================================= -->
+#### Fourier terms {.tabset .tabset-fade .tabset-pills}
+
+We need to redefine our fourier terms - as we want to fit them to the baseline 
+date only and then predict (extrapolate) those terms for the next year. 
+To do this we need to combine two output lists from the `fourier` function together; 
+the first one is for the baseline data, and the second one predicts for the 
+year of interest (by defining the `h` argument). 
+*N.b.* to bind rows we have to use `rbind` (rather than tidyverse `bind_rows`) as
+the fourier columns are a list (so not named individually). 
+
+```{r fourier_terms_pred}
+
+## define fourier terms (sincos) 
+counts <- counts %>% 
+  mutate(
+    ## combine fourier terms for weeks prior to  and after 2010 cut-off date
+    ## (nb. 2011 fourier terms are predicted)
+    fourier = rbind(
+      ## get fourier terms for previous years
+      fourier(
+        ## only keep the rows before 2011
+        filter(counts, 
+               epiweek <= cut_off), 
+        ## include one set of sin cos terms 
+        K = 1
+        ), 
+      ## predict the fourier terms for 2011 (using baseline data)
+      fourier(
+        ## only keep the rows before 2011
+        filter(counts, 
+               epiweek <= cut_off),
+        ## include one set of sin cos terms 
+        K = 1, 
+        ## predict 52 weeks ahead
+        h = num_weeks
+        )
+      )
+    )
+
+```
+
+<!-- ======================================================= -->
+#### Split data and fit regression {.tabset .tabset-fade .tabset-pills}
+
+We now have to split our dataset in to the baseline period and the prediction 
+period. 
+
+```{r}
+# split data for fitting and prediction
+dat <- counts %>% 
+  group_by(epiweek <= cut_off) %>%
+  group_split()
+
+## define the model you want to fit (negative binomial) 
+model <- glm_nb_model(
+  ## set number of cases as outcome of interest
+  case_int ~
+    ## use epiweek to account for the trend
+    epiweek +
+    ## use the furier terms to account for seasonality
+    fourier
+)
+
+# define which data to use for fitting and which for predicting
+fitting_data <- pluck(dat, 2)
+pred_data <- pluck(dat, 1) %>% 
+  select(case_int, epiweek, fourier)
+
+# fit model 
+fitted_model <- fit(model, fitting_data)
+
+# get confint and estimates for fitted data
+observed <- fitted_model %>% 
+  predict()
+
+# forecasst with data want to predict with 
+forecasts <- fitted_model %>% 
+  predict(pred_data)
+
+## combine baseline and predicted datasets
+observed <- bind_rows(observed, forecasts)
+
+## plot your regression 
+ggplot(data = observed, aes(x = epiweek)) + 
+  ## add in a line for the model estimate
+  geom_line(aes(y = estimate),
+            col = "grey") + 
+  ## add in a band for the prediction intervals 
+  geom_ribbon(aes(ymin = lower_pi, 
+                  ymax = upper_pi), 
+              alpha = 0.25) + 
+  ## add in a line for your observed case counts
+  geom_line(aes(y = case_int), 
+            col = "black") + 
+  ## plot in points for the observed counts above expected
+  geom_point(
+    data = filter(observed, case_int > upper_pi), 
+    aes(y = case_int), 
+    colour = "red", 
+    size = 2) + 
+  ## add vertical line and label to show where forecasting started
+  geom_vline(
+           xintercept = as.Date(cut_off), 
+           linetype = "dashed") + 
+  annotate(geom = "text", 
+           label = "Forecast", 
+           x = cut_off, 
+           y = max(observed$upper_pi) + 10, 
+           angle = 90, 
+           vjust = 1
+           ) + 
+  ## make a traditional plot (with black axes and white background)
+  theme_classic()
+```
+
+
+<!-- ======================================================= -->
+### `surveillance` {.tabset .tabset-fade .tabset-pills}
+
 
 
 <!-- ======================================================= -->
