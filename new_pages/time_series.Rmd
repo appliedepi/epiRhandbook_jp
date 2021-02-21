@@ -38,6 +38,7 @@ pacman::p_load(rio,          # File import
                ecmwfr,       # for interacting with copernicus sateliate CDS API
                stars,        # for reading in .nc (climate data) files
                units,        # for defining units of measurement (climate data)
+               yardstick,    # for looking at model accuracy
                surveillance  # for aberration detection
                )
 ``` 
@@ -169,7 +170,7 @@ for (i in 2002:2011) {
 
 ### Load climate data
 
-```{r}
+```{r read_climate, warning = FALSE, message = FALSE}
 
 ## define path to weather folder 
 file_paths <- list.files(
@@ -843,6 +844,8 @@ what we expect, then it could suggest there is an outbreak.
 The second method is based on similar principles but uses the **surveillance** package,
 which has a number of different algorithms for aberration detection.
 
+<span style="color: orange;">**_CAUTION:_** Normally, you are interested in the current year (where you only know counts up to the present week). So in this example we are pretending to be in week 52 of 2011.</span>
+
 <!-- ======================================================= -->
 ### `trending` {.tabset .tabset-fade .tabset-pills}
 
@@ -853,14 +856,19 @@ for the next year.
 <!-- ======================================================= -->
 #### Cut-off date {.tabset .tabset-fade .tabset-pills}
 
-It is easier to define your cut-off date in one place and then use this throughout
-the rest of your code. 
-Also define how many weeks are in your year of interest (the one you are going to
+It is easier to define your dates in one place and then use these throughout the
+rest of your code. 
+Here we define a start date (when our observations started) and a cut-off date 
+(the end of our baseline period - and when the period we want to predict for starts). 
+We also define how many weeks are in your year of interest (the one you are going to
 be predicting). 
 
 ```{r cut_off}
 
-## define a cut-off week 
+## define start date (when observations began)
+start_date <- min(counts$epiweek)
+
+## define a cut-off week (end of baseline, start of prediction period)
 cut_off <- yearweek("2010-12-31")
 
 ## get the year which want to predict for 
@@ -877,7 +885,6 @@ num_weeks <- ifelse(
   53, 
   ## otherwise return 52
   52)
-
 
 ```
 
@@ -927,9 +934,15 @@ counts <- counts %>%
 #### Split data and fit regression {.tabset .tabset-fade .tabset-pills}
 
 We now have to split our dataset in to the baseline period and the prediction 
-period. 
+period. This is done using the **dplyr** `group_split` function after `group_by`, 
+and will create a list with two data frames, one for before your cut-off and one 
+for after. 
+We then use the **purrr** package `pluck` function to pull the datasets out of the
+list (equivalent of using square brackets, e.g. `dat[[1]]`), and can then fit 
+our model to the baseline data, and then use the `predict` function for our data
+of interest after the cut-off. 
 
-```{r}
+```{r forecast_regression, warning = FALSE}
 # split data for fitting and prediction
 dat <- counts %>% 
   group_by(epiweek <= cut_off) %>%
@@ -957,12 +970,20 @@ fitted_model <- fit(model, fitting_data)
 observed <- fitted_model %>% 
   predict()
 
-# forecasst with data want to predict with 
+# forecast with data want to predict with 
 forecasts <- fitted_model %>% 
   predict(pred_data)
 
 ## combine baseline and predicted datasets
 observed <- bind_rows(observed, forecasts)
+
+```
+
+As previously, we can visualise our model with **ggplot**. We highlight alerts with
+red dots for observed counts above the 95% prediction interval. 
+This time we also add a vertical line to label when the forecast starts. 
+
+```{r forecast_plot}
 
 ## plot your regression 
 ggplot(data = observed, aes(x = epiweek)) + 
@@ -998,8 +1019,356 @@ ggplot(data = observed, aes(x = epiweek)) +
 ```
 
 
+
+<!-- ======================================================= -->
+#### prediction validation {.tabset .tabset-fade .tabset-pills}
+
+Beyond inspecting residuals, it is important to investigate how good your model is
+at predicting cases in the future. This gives you an idea of how reliable your 
+threshold alerts are. 
+The traditional way of validating is to see how well you can predict the latest 
+year before the present one (because you don't yet know the counts for the "current year"). 
+For example in our data set we would use the data from 2002 to 2009 to predict 2010, 
+and then see how accurate those predictions are. Then refit the model to include
+2010 data and use that to predict 2011 counts. 
+As can be seen in the figure below by *Hyndman et al* in "Forecasting principles 
+and practice". 
+
+![](`r "https://otexts.com/fpp3/fpp_files/figure-html/traintest-1.png"`)
+
+The downside of this is that you are not using all the data available to you, and 
+it is not the final model that you are using for prediction. 
+
+An alternative is to use a method called cross-validation. In this scenario you 
+roll over all of the data available to fit multiple models to predict one year ahead. 
+You use more and more data in each model, as seen in the figure below from the 
+same *Hyndman et al* text. 
+For example, the first model uses 2002 to predict 2003, the second uses 2002 and 
+2003 to predict 2004, and so on. 
+![](`r "https://otexts.com/fpp2/fpp_files/figure-html/cv1-1.png"`)
+
+In the below we use **purrr** package `map` function to loop over each dataset. 
+We then put estimates in one data set and merge with the original case counts, 
+to use the **yardstick** package to compute measures of accuracy. 
+We compute four measures including: Root mean squared error (RMSE), Mean absolute error	
+(MAE), Mean absolute scaled error (MASE), Mean absolute percent error (MAPE).
+
+```{r cross_validation, warning = FALSE}
+
+## Cross validation: predicting week(s) ahead based on sliding window
+
+## expand your data by rolling over in 52 week windows (before + after) 
+## to predict 52 week ahead
+## (creates longer and longer chains of observations - keeps older data)
+
+## define window want to roll over
+roll_window <- 52
+
+## define weeks ahead want to predict 
+weeks_ahead <- 52
+
+## create a data set of repeating, increasingly long data
+## label each data set with a unique id
+## only use cases before year of interest (i.e. 2011)
+case_roll <- counts %>% 
+  filter(epiweek < cut_off) %>% 
+  ## only keep the week and case counts variables
+  select(epiweek, case_int) %>% 
+    ## drop the last x observations 
+    ## depending on how many weeks ahead forecasting 
+    ## (otherwise will be an actual forecast to "unknown")
+    slice(1:(n() - weeks_ahead)) %>%
+    as_tsibble(index = epiweek) %>% 
+    ## roll over each week in x after windows to create grouping ID 
+    ## depending on what rolling window specify
+    stretch_tsibble(.init = roll_window, .step = 1) %>% 
+  ## drop the first couple - as have no "before" cases
+  filter(.id > roll_window)
+
+
+## for each of the unique data sets run the code below
+forecasts <- purrr::map(unique(case_roll$.id), 
+                        function(i) {
+  
+  ## only keep the current fold being fit 
+  mini_data <- filter(case_roll, .id == i) %>% 
+    as_tibble()
+  
+  ## create an empty data set for forecasting on 
+  forecast_data <- tibble(
+    epiweek = seq(max(mini_data$epiweek) + 1,
+                  max(mini_data$epiweek) + weeks_ahead,
+                  by = 1),
+    case_int = rep.int(NA, weeks_ahead),
+    .id = rep.int(i, weeks_ahead)
+  )
+  
+  ## add the forecast data to the original 
+  mini_data <- bind_rows(mini_data, forecast_data)
+  
+  ## define the cut off based on latest non missing count data 
+  cv_cut_off <- mini_data %>% 
+    ## only keep non-missing rows
+    filter(!is.na(case_int)) %>% 
+    ## get the latest week
+    summarise(max(epiweek)) %>% 
+    ## extract so is not in a dataframe
+    pull()
+  
+  ## make mini_data back in to a tsibble
+  mini_data <- tsibble(mini_data, index = epiweek)
+  
+  ## define fourier terms (sincos) 
+  mini_data <- mini_data %>% 
+    mutate(
+    ## combine fourier terms for weeks prior to  and after cut-off date
+    fourier = rbind(
+      ## get fourier terms for previous years
+      forecast::fourier(
+        ## only keep the rows before cut-off
+        filter(mini_data, 
+               epiweek <= cv_cut_off), 
+        ## include one set of sin cos terms 
+        K = 1
+        ), 
+      ## predict the fourier terms for following year (using baseline data)
+      fourier(
+        ## only keep the rows before cut-off
+        filter(mini_data, 
+               epiweek <= cv_cut_off),
+        ## include one set of sin cos terms 
+        K = 1, 
+        ## predict 52 weeks ahead
+        h = weeks_ahead
+        )
+      )
+    )
+  
+  
+  # split data for fitting and prediction
+  dat <- mini_data %>% 
+    group_by(epiweek <= cv_cut_off) %>%
+    group_split()
+
+  ## define the model you want to fit (negative binomial) 
+  model <- glm_nb_model(
+    ## set number of cases as outcome of interest
+    case_int ~
+      ## use epiweek to account for the trend
+      epiweek +
+      ## use the furier terms to account for seasonality
+      fourier
+  )
+
+  # define which data to use for fitting and which for predicting
+  fitting_data <- pluck(dat, 2)
+  pred_data <- pluck(dat, 1)
+  
+  # fit model 
+  fitted_model <- fit(model, fitting_data)
+  
+  # forecast with data want to predict with 
+  forecasts <- fitted_model %>% 
+    predict(pred_data) %>% 
+    ## only keep the week and the forecast estimate
+    select(epiweek, estimate)
+    
+  }
+  )
+
+## make the list in to a data frame with all the forecasts
+forecasts <- bind_rows(forecasts)
+
+## join the forecasts with the observed
+forecasts <- left_join(forecasts, 
+                       select(counts, epiweek, case_int),
+                       by = "epiweek")
+
+## using {yardstick} compute metrics
+  ## RMSE: Root mean squared error
+  ## MAE:  Mean absolute error	
+  ## MASE: Mean absolute scaled error
+  ## MAPE: Mean absolute percent error
+model_metrics <- bind_rows(
+  ## in your forcasted dataset compare the observed to the predicted
+  rmse(forecasts, case_int, estimate), 
+  mae( forecasts, case_int, estimate),
+  mase(forecasts, case_int, estimate),
+  mape(forecasts, case_int, estimate),
+  ) %>% 
+  ## only keep the metric type and its output
+  select(Metric  = .metric, 
+         Measure = .estimate) %>% 
+  ## make in to wide format so can bind rows after
+  pivot_wider(names_from = Metric, values_from = Measure)
+
+## return model metrics 
+model_metrics
+
+```
+
+
 <!-- ======================================================= -->
 ### `surveillance` {.tabset .tabset-fade .tabset-pills}
+
+In this section we use the **surveillance** package to create alert thresholds 
+based on outbreak detection algorithms. There are several different methods 
+available in the package, however we will focus on two options here. 
+For details, see these papers on the [application](https://cran.r-project.org/web/packages/surveillance/vignettes/monitoringCounts.pdf)
+and [theory](https://cran.r-project.org/web/packages/surveillance/vignettes/glrnb.pdf)
+of the alogirthms used. 
+
+The first option uses the improved Farrington method. This fits a negative 
+binomial glm (including trend) and down-weights past outbreaks (outliers) to 
+create a threshold level. 
+
+The second option use the glrnb method. This also fits a negative binomial glm 
+but includes trend and fourier terms (so is favoured here). The regression is used
+to calculate the "control mean" (~fitted values) - it then uses a computed 
+generalized likelihood ratio statistic to assess if there is shift in the mean 
+for each week. Note that the threshold for each week takes in to account previous
+weeks so if there is a sustained shift an alarm will be triggered. 
+(Also note that after each alarm the algorithm is reset)
+
+In order to work with the **surveillance** package, we first need to define a 
+"surveillance time series" object (using the `sts` function) to fit within the 
+framework. 
+
+```{r surveillance_obj}
+
+## define surveillance time series object
+## nb. you can include a denominator with the population object (see ?sts)
+counts_sts <- sts(observed = counts$case_int,
+                  start = c(
+                    ## subset to only keep the year from start_date 
+                    as.numeric(str_sub(start_date, 1, 4)), 
+                    ## subset to only keep the week from start_date
+                    as.numeric(str_sub(start_date, 7, 8))), 
+                  ## define the type of data (in this case weekly)
+                  freq = 52)
+
+## define the week range that you want to include (ie. prediction period)
+## nb. the sts object only counts observations without assigning a week or 
+## year identifier to them - so we use our data to define the appropriate observations
+weekrange <- cut_off - start_date
+
+```
+
+<!-- ======================================================= -->
+#### Farrington method {.tabset .tabset-fade .tabset-pills}
+
+We then define each of our parameters for the Farrington method in a `list`. 
+Then we run the algorithm using `farringtonFlexible` and then we can extract the 
+threshold for an alert using `farringtonmethod@upperbound`to include this in our 
+dataset. It is also possible to extract a TRUE/FALSE for each week if it triggered 
+an alert (was above the threshold) using `farringtonmethod@alarm`. 
+
+```{r farrington}
+
+## define control
+ctrl <- list(
+  ## define what time period that want threshold for (i.e. 2011)
+  range = which(counts_sts@epoch > weekrange),
+  b = 9, ## how many years backwards for baseline
+  w = 2, ## rolling window size in weeks
+  weightsThreshold = 2.58, ## reweighting past outbreaks (improved noufaily method - original suggests 1)
+  ## pastWeeksNotIncluded = 3, ## use all weeks available (noufaily suggests drop 26)
+  trend = TRUE,
+  pThresholdTrend = 1, ## 0.05 normally, however 1 is advised in the improved method (i.e. always keep)
+  thresholdMethod = "nbPlugin",
+  populationOffset = TRUE
+  )
+
+## apply farrington flexible method
+farringtonmethod <- farringtonFlexible(counts_sts, ctrl)
+
+## create a new variable in the original dataset called threshold
+## containing the upper bound from farrington 
+## nb. this is only for the weeks in 2011 (so need to subset rows)
+counts[which(counts$epiweek >= cut_off),
+              "threshold"] <- farringtonmethod@upperbound
+```
+
+We can then visualise the results in ggplot as done previously. 
+
+```{r plot_farrington}
+
+ggplot(counts, aes(x = epiweek)) + 
+  ## add in observed case counts as a line
+  geom_line(aes(y = case_int, colour = "Observed")) + 
+  ## add in upper bound of aberration algorithm
+  geom_line(aes(y = threshold, colour = "Alert threshold"), 
+            linetype = "dashed", 
+            size = 1.5) +
+  ## define colours
+  scale_colour_manual(values = c("Observed" = "black", 
+                                 "Alert threshold" = "red")) + 
+  ## make a traditional plot (with black axes and white background)
+  theme_classic() + 
+  ## remove title of legend 
+  theme(legend.title = element_blank())
+
+```
+
+<!-- ======================================================= -->
+#### GLRNB method {.tabset .tabset-fade .tabset-pills}
+
+Similarly for the GLRNB method we define each of our parameters for the in a `list`, 
+then fit the algorithm and extract the upper bounds.
+
+<span style="color: orange;">**_CAUTION:_** This method uses "brute force" (similar to bootstrapping) for calculating thresholds, so can take a long time!</span>
+
+See the [GLRNB vignette](https://cran.r-project.org/web/packages/surveillance/vignettes/glrnb.pdf) 
+for details. 
+
+```{r glrnb, warning = FALSE}
+
+## define control options
+ctrl <- list(
+  ## define what time period that want threshold for (i.e. 2020)
+  range = which(counts_sts@epoch > weekrange),
+  mu0 = list(S = 1,    ## number of fourier terms (harmonics) to include
+  trend = TRUE,   ## whether to include trend or not
+  refit = FALSE), ## whether to refit model after each alarm
+  ## cARL = threshold for GLR statistic (arbitrary)
+     ## 3 ~ middle ground for minimising false positives
+     ## 1 fits to the 99%PI of glm.nb - with changes after peaks (threshold lowered for alert)
+   c.ARL = 2,
+   # theta = log(1.5), ## equates to a 50% increase in cases in an outbreak
+   ret = "cases"     ## return threshold upperbound as case counts
+  )
+
+## apply the glrnb method
+glrnbmethod <- glrnb(counts_sts, control = ctrl, verbose = FALSE)
+
+## create a new variable in the original dataset called threshold
+## containing the upper bound from glrnb 
+## nb. this is only for the weeks in 2011 (so need to subset rows)
+counts[which(counts$epiweek >= cut_off),
+              "threshold_glrnb"] <- glrnbmethod@upperbound
+
+```
+
+Visualise the outputs as previously. 
+
+```{r plot_glrnb}
+
+ggplot(counts, aes(x = epiweek)) + 
+  ## add in observed case counts as a line
+  geom_line(aes(y = case_int, colour = "Observed")) + 
+  ## add in upper bound of aberration algorithm
+  geom_line(aes(y = threshold_glrnb, colour = "Alert threshold"), 
+            linetype = "dashed", 
+            size = 1.5) +
+  ## define colours
+  scale_colour_manual(values = c("Observed" = "black", 
+                                 "Alert threshold" = "red")) + 
+  ## make a traditional plot (with black axes and white background)
+  theme_classic() + 
+  ## remove title of legend 
+  theme(legend.title = element_blank())
+
+```
 
 
 
