@@ -1010,7 +1010,7 @@ ggplot(data = observed, aes(x = epiweek)) +
   annotate(geom = "text", 
            label = "Forecast", 
            x = cut_off, 
-           y = max(observed$upper_pi) + 10, 
+           y = max(observed$upper_pi), 
            angle = 90, 
            vjust = 1
            ) + 
@@ -1370,13 +1370,167 @@ ggplot(counts, aes(x = epiweek)) +
 
 ```
 
+<!-- ======================================================= -->
+## Interrupted timeseries {.tabset .tabset-fade .tabset-pills}
+
+Interrupted timeseries (also called segmented regression or intervention analysis), 
+is often used in assessing the impact of vaccines on the incidence of disease. 
+But it can be used for assessing impact of a wide range of interventions or introductions. 
+For example changes in hospital procedures or the introduction of a new disease 
+strain to a population. 
+In this example we will pretend that a new strain of Campylobacter was introduced
+to Germany at the end of 2008, and see if that affects the number of cases. 
+We will use negative binomial regression again. The regression this time will be 
+split in to two parts, one before the intervention (or introduction of new strain here) 
+and one after (the pre and post-periods). This allows us to calculate an incidence rate ratio comparing the
+two time periods. Explaining the equation might make this clearer (if not then just
+ignore!). 
+
+The negative binomial regression can be defined as follows: 
+
+$$\log(Y_t)= β_0 + β_1 \times t+ β_2 \times δ(t-t_0) + β_3\times(t-t_0 )^+ + log(pop_t) + e_t$$
+
+Where:
+$Y_t$is the number of cases observed at time $t$  
+$pop_t$ is the population size in 100,000s at time $t$ (not used here)  
+$t_0$ is the last year of the of the pre-period (including transition time if any)  
+$δ(x$ is the indicator function (it is 0 if x≤0 and 1 if x>0)  
+$(x)^+$ is the cut off operator (it is x if x>0 and 0 otherwise)  
+$e_t$ denotes the residual 
+Additional terms trend and season can be added as needed. 
+
+$β_2 \times δ(t-t_0) + β_3\times(t-t_0 )^+$ is the generalised linear 
+part of the post-period and is zero in the pre-period. 
+This means that the $β_2$ and $β_3$ estimates are the effects of the intervention. 
+
+We need to re-calculate the fourier terms without forecasting here, as we will use
+all the data available to us (i.e. retrospectively). Additionally we need to calculate
+the extra terms needed for the regression. 
+
+```{r define_terms_interrupted}
+
+## add in fourier terms using the epiweek and case_int variabless
+counts$fourier <- select(counts, epiweek, case_int) %>% 
+  as_tsibble(index = epiweek) %>% 
+  fourier(K = 1)
+
+## define intervention week 
+intervention_week <- yearweek("2008-12-31")
+
+## define variables for regression 
+counts <- counts %>% 
+  mutate(
+    ## corresponds to t in the formula
+      ## count of weeks (could probably also just use straight epiweeks var)
+    # linear = row_number(epiweek), 
+    ## corresponds to delta(t-t0) in the formula
+      ## pre or post intervention period
+    intervention = as.numeric(epiweek >= intervention_week), 
+    ## corresponds to (t-t0)^+ in the formula
+      ## count of weeks post intervention
+      ## (choose the larger number between 0 and whatever comes from calculation)
+    time_post = pmax(0, epiweek - intervention_week + 1))
+
+```
+
+We then use these terms to fit a negative binomial regression, and produce a 
+table with percentage change. What this example shows is that there was no 
+significant change. 
+
+```{r interrupted_regression, warning = FALSE}
+
+
+## define the model you want to fit (negative binomial) 
+model <- glm_nb_model(
+  ## set number of cases as outcome of interest
+  case_int ~
+    ## use epiweek to account for the trend
+    epiweek +
+    ## use the furier terms to account for seasonality
+    fourier + 
+    ## add in whether in the pre- or post-period 
+    intervention + 
+    ## add in the time post intervention 
+    time_post
+    )
+
+## fit your model using the counts dataset
+fitted_model <- fit(model, counts)
+
+## calculate confidence intervals and prediction intervals 
+observed <- predict(fitted_model)
+
+
+
+## show estimates and percentage change in a table
+fitted_model %>% 
+  ## extract original negative binomial regression
+  get_model() %>% 
+  ## get a tidy dataframe of results
+  tidy(exponentiate = TRUE, 
+       conf.int = TRUE) %>% 
+  ## only keep the intervention value 
+  filter(term == "intervention") %>% 
+  ## change the IRR to percentage change for estimate and CIs 
+  mutate(
+    ## for each of the columns of interest - create a new column
+    across(
+      all_of(c("estimate", "conf.low", "conf.high")), 
+      ## apply the formula to calculate percentage change
+            .f = function(i) 100 * (i - 1), 
+      ## add a suffix to new column names with "_perc"
+      .names = "{.col}_perc")
+    ) %>% 
+  ## only keep (and rename) certain columns 
+  select("IRR" = estimate, 
+         "95%CI low" = conf.low, 
+         "95%CI high" = conf.high,
+         "Percentage change" = estimate_perc, 
+         "95%CI low (perc)" = conf.low_perc, 
+         "95%CI high (perc)" = conf.high_perc,
+         "p-value" = p.value)
+```
+
+As previously we can visualise the outputs of the regression. 
+
+```{r plot_interrupted}
+
+ggplot(observed, aes(x = epiweek)) + 
+  ## add in observed case counts as a line
+  geom_line(aes(y = case_int, colour = "Observed")) + 
+  ## add in a line for the model estimate
+  geom_line(aes(y = estimate, col = "Estimate")) + 
+  ## add in a band for the prediction intervals 
+  geom_ribbon(aes(ymin = lower_pi, 
+                  ymax = upper_pi), 
+              alpha = 0.25) + 
+  ## add vertical line and label to show where forecasting started
+  geom_vline(
+           xintercept = as.Date(intervention_week), 
+           linetype = "dashed") + 
+  annotate(geom = "text", 
+           label = "Intervention", 
+           x = intervention_week, 
+           y = max(observed$upper_pi), 
+           angle = 90, 
+           vjust = 1
+           ) + 
+  ## define colours
+  scale_colour_manual(values = c("Observed" = "black", 
+                                 "Estimate" = "red")) + 
+  ## make a traditional plot (with black axes and white background)
+  theme_classic()
+
+```
 
 
 <!-- ======================================================= -->
 ## Resources {.tabset .tabset-fade .tabset-pills}
 
-This tab should stay with the name "Resources".
-Links to other online tutorials or resources.
+[forecasting: principles and practice textbook](https://otexts.com/fpp3/)  
+[EPIET timeseries analysis case studies](https://github.com/EPIET/TimeSeriesAnalysis)  
+[Penn State course](https://online.stat.psu.edu/stat510/lesson/1) 
+[Surveillance package manuscript](https://www.jstatsoft.org/article/view/v070i10)
 
 
 
