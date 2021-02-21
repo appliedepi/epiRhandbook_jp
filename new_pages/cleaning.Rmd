@@ -152,7 +152,7 @@ names(linelist_raw)
 Note: For a column name that include spaces, surround the name with back-ticks, for example: linelist$\`infection date\`. note that on your keyboard, the back-tick (`) is different from the single quotation mark (').  
 
 
-### Automatic name cleaning {-}  
+### Automatic cleaning {-}  
 
 The function `clean_names()` from the package **janitor** standardizes column names and makes them unique by doing the following:  
 
@@ -231,7 +231,7 @@ linelist_raw %>%
 
 
 
-### Other name challenges {-}  
+### Other challenges {-}  
 
 
 #### Empty Excel column names {-} 
@@ -280,7 +280,7 @@ Use `select()` to select the columns you want to retain, and their order in the 
 names(linelist)
 ```
 
-### Keep columns  
+### Keep columns {-}  
 
 **Select only the columns you want to remain**  
 
@@ -296,7 +296,7 @@ linelist %>%
 
 
 
-### Helper functions  
+### Helper functions {-}  
 
 Helper functions and operators exist to make it easy to specify columns.  
 
@@ -362,7 +362,7 @@ linelist %>%
 
 
 
-### Remove columns  
+### Remove columns {-} 
 
 **Indicate which columns to remove** by placing a minus symbol "-" in front of the column name (e.g. `select(-outcome)`), or a vector of column names (as below). All other columns will be retained. 
 
@@ -372,7 +372,7 @@ linelist %>%
   names()
 ```
 
-### Standalone  
+### Standalone {-}
 
 `select()` can also be used as an independent command (not in a pipe chain). In this case, the first argument is the original dataframe to be operated upon.  
 
@@ -386,7 +386,7 @@ names(linelist_age)
 
 
 
-**Add to the pipe chain**  
+#### Add to the pipe chain {-}  
 
 In the `linelist_raw`, there are a few columns we do not need: `row_num`, `merged_header`, and `x28`. Remove them by adding a `select()` command to the cleaning pipe chain:  
 
@@ -569,21 +569,7 @@ Dates can be especially difficult! The date values must all be in the same forma
 
 
 
-
-### Using **base** R {-}  
-
-To define a new column (or re-define a column) using **base** R, just use the assignment operator as below.
-Remember that when using **base** R you must specify the dataframe before writing the column name (e.g. `dataframe$column`). Here are two dummy examples:  
-
-```{r, eval=F}
-linelist$old_var <- linelist$old_var + 7
-linelist$new_var <- linelist$old_var + linelist$age
-```
-
-
-
-
-### Mutate on grouped values {-}  
+### Grouped data {-}  
 
 If your dataframe is already *grouped* (see page on [Grouping data]), `mutate()` may behave differently than if the dataframe is not grouped. Any summarizing functions, like `mean()`, `median()`, `max()`, etc. will be based on only the grouped rows, not all the rows.     
 
@@ -601,6 +587,137 @@ linelist %>%
 ```
 
 Read more about using mutate on grouped dataframes in this [tidyverse mutate documentation](https://dplyr.tidyverse.org/reference/mutate.html).  
+
+
+
+### Across columns {-}
+
+
+Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple variables at once using the `across()` function from the package **dplyr** (contained within **tidyverse** package).  
+
+`across()` can be used with any **dplyr** verb, but commonly with as `mutate()`, `filter()`, or `summarise()`. 
+`across()` allows you to specify which columns you want a function to apply to. To specify the columns, you can name them indvidually, or use helped functions.  
+
+Here the transformation `as.character()` is applied to specific columns named within `across()`. Note that functions in `across()` are written *without* their parentheses ( )    
+
+```{r, eval=F}
+linelist <- linelist %>% 
+  mutate(across(c(temp, ht_cm, wt_kg), as.character))
+```
+
+There are helpers available to assist you in specifying columns:  
+
+* `everything()`  - all other columns not mentioned  
+* `last_col()`    - the last column  
+* `where()`       - applies a function to all columns and selects those which are TRUE  
+* `starts_with()` - matches to a specified prefix. Example: `select(starts_with("date"))`
+* `ends_with()`   - matches to a specified suffix. Example: `select(ends_with("_end"))`  
+* `contains()`    - columns containing a character string. Example: `select(contains("time"))` 
+* `matches()`     - to apply a regular expression (regex). Example: `select(contains("[pt]al"))`  
+* `num_range()`   - 
+* `any_of()`      - matches if column is named. Useful if the name might not exist. Example: `any_of(date_onset, date_death, cardiac_arrest)`  
+
+Here is an example of how one would change **all columns** to character class:  
+
+```{r, eval=F}
+#to change all columns to character class
+linelist <- linelist %>% 
+  mutate(across(everything(), as.character))
+```
+
+Columns where the name contains the string "date" (note placement of commas and parentheses):  
+
+```{r, eval=F}
+#to change all columns to character class
+linelist <- linelist %>% 
+  mutate(across(contains("date"), as.character))
+```
+
+Below, we want to mutate the columns where they are class POSIXct (a datetime class that shows timestamps) - where the function `is.POSIXct()` evaluates to `TRUE`. Then we want to apply the function `is.Date()` to of these column to convert them to class Date.  
+
+```{r, eval=F}
+linelist <- linelist %>% 
+  mutate(across(where(lubridate::is.POSIXct), as.Date))
+```
+
+* Note that within `across()` we also use the function `where()`  
+* Note that is.POSIXct is from the package **lubridate**. Other similar functions (`is.character()`, `is.numeric()`, and `is.logical()`) are from **base R**  
+
+
+
+Here are a few online resources on using `across()`: [creator Hadley Wickham's thoughts/rationale](https://www.tidyverse.org/blog/2020/04/dplyr-1-0-0-colwise/)
+
+
+
+
+### `coalesce()` {-}  
+
+This **dplyr** function finds the first non-missing value at each position. 
+
+Say you have two vectors, one for village of detection and another for village of residence. You can use coalesce to pick the first non-missing value for each index:  
+
+```{r}
+village_detection <- c("a", "b", NA,  NA)
+village_residence <- c("a", "c", "a", "d")
+
+coalesce(village_detection, village_residence)
+```
+
+If you provide dataframe columns, for each row it will fill the value with the first non-missing value in the columns you provided.
+
+```{r, eval=F}
+linelist <- linelist %>% 
+  mutate(village = coalesce(village_detection, village_residence))
+```
+
+For more complicated row-wise calculations, see the section on Row-wise calculations.  
+
+
+
+### Cumulative math {-}
+
+If you a column to reflect the cumulative sum/mean/min/max etc as assessed down the rows of a dataframe, use the following functions:  
+
+`cumsum()` returns the cumulative sum, as shown below:  
+
+```{r}
+sum(c(2,4,15,10))     # returns only one number
+cumsum(c(2,4,15,10))  # returns the cumulative sum at each step
+```
+
+This can be used in a dataframe when making a new column. For example, to calculate the cumulative number of cases per day in an outbreak, consider code like this:  
+
+```{r}
+cumulative_case_counts <- linelist %>% 
+  count(date_onset) %>%           # count of rows per day   
+  mutate(                         
+    cumulative_cases = cumsum(n)  # new column of the cumulative sum at that row
+    )
+```
+
+Below the first 10 rows:  
+
+```{r}
+head(cumulative_case_counts, 10)
+```
+
+See the page on [Epidemic curves] for how to plot cumulative incidence with the epicurve.  
+
+See also:  
+cumsum(), cummean(), cummin(), cummax(), cumany(), cumall()  
+
+
+
+
+### Using **base** R {-}  
+
+To define a new column (or re-define a column) using **base** R, just use the assignment operator as below.
+Remember that when using **base** R you must specify the dataframe before writing the column name (e.g. `dataframe$column`). Here are two dummy examples:  
+
+```{r, eval=F}
+linelist$old_var <- linelist$old_var + 7
+linelist$new_var <- linelist$old_var + linelist$age
+```
 
 
 
@@ -658,7 +775,7 @@ Here are a few scenarios where you need to re-code (change) values:
 
 
 
-### Re-code specific values {-}  
+### Specific values {-}  
 
 To change values manually you can use the `recode()` function within the `mutate()` function. 
 
@@ -710,7 +827,7 @@ table(linelist$hospital, useNA = "always")
 
 
 
-### Re-code missing values {-} 
+### Missing values {-} 
 
 **dplyr** offers two special function for handling missing values:  
 
@@ -748,7 +865,7 @@ linelist <- linelist %>%
 
 
 
-### Re-code by logic {-}
+### By logic {-}
 
 Below is demonstrated how to re-code values in a column using logic and conditions:  
 
@@ -757,7 +874,7 @@ Below is demonstrated how to re-code values in a column using logic and conditio
 
 
 
-### Re-code with simple logic {-}  
+### Simple logic {-}  
 
 
 #### `replace()` {-}  
@@ -816,7 +933,7 @@ Outside of the context of a dataframe, if you want to have an object used in you
 
 
 
-### Re-code with complex logic {-}  
+### Complex logic {-}  
 
 Use **dplyr**'s `case_when()` if you need to use complex logic statements to re-code values. There are important differences from `recode()` in syntax and logic order!  
 
@@ -842,7 +959,7 @@ linelist <- linelist %>%
 
 
 
-### Re-code with a cleaning dictionary {-}
+### Cleaning dictionary {-}
 
 Use the package **linelist** to clean a linelist with a *cleaning dictionary*.  
 
@@ -899,66 +1016,7 @@ See this [online reference for the linelist package](https://www.repidemicsconso
 
 
 
-## Other transformations  
-
-### `coalesce()` {-}  
-
-This **dplyr** function finds the first non-missing value at each position. 
-
-Say you have two vectors, one for village of detection and another for village of residence. You can use coalesce to pick the first non-missing value for each index:  
-
-```{r}
-village_detection <- c("a", "b", NA,  NA)
-village_residence <- c("a", "c", "a", "d")
-
-coalesce(village_detection, village_residence)
-```
-
-If you provide dataframe columns, for each row it will fill the value with the first non-missing value in the columns you provided.
-
-```{r, eval=F}
-linelist <- linelist %>% 
-  mutate(village = coalesce(village_detection, village_residence))
-```
-
-
-### Cumulative mathematics {-}
-
-If you a column to reflect the cumulative sum/mean/min/max etc as assessed down the rows of a dataframe, use the following functions:  
-
-`cumsum()` returns the cumulative sum, as shown below:  
-
-```{r}
-sum(c(2,4,15,10))     # returns only one number
-cumsum(c(2,4,15,10))  # returns the cumulative sum at each step
-```
-
-This can be used in a dataframe when making a new column. For example, to calculate the cumulative number of cases per day in an outbreak, consider code like this:  
-
-```{r}
-cumulative_case_counts <- linelist %>% 
-  count(date_onset) %>%           # count of rows per day   
-  mutate(                         
-    cumulative_cases = cumsum(n)  # new column of the cumulative sum at that row
-    )
-```
-
-Below the first 10 rows:  
-
-```{r}
-head(cumulative_case_counts, 10)
-```
-
-See the page on [Epidemic curves] for how to plot cumulative incidence with the epicurve.  
-
-See also:  
-cumsum(), cummean(), cummin(), cummax(), cumany(), cumall()  
-
-
-
-
-
-### Add to pipe chain {-}  
+#### Add to pipe chain {-}  
 
 **Below, some new columns and column transformations are added to the pipe chain.**  
 
@@ -1148,7 +1206,7 @@ See the function's Help page for more details (enter `?age_categories` in the R 
 
 
 <!-- ======================================================= -->
-### `cut()` {#cut}
+### `cut()` {-}
 
 You can also use the **base** R function `cut()`, which creates categories from a numeric column. The differences from `age_categories()` are:  
 
@@ -1595,7 +1653,7 @@ Multiple statements can be included within one filter command (separated by comm
 
 
 
-### Filter stand-alone command  
+### Standalone {-}  
 
 Filtering can also be done as a stand-alone command (not part of a pipe chain). Like other **dplyr** verbs, in this case the first argument must be the dataset itself.  
 
@@ -1618,7 +1676,7 @@ linelist <- linelist[!is.na(case_id), ]
 
 
 
-### Filter to quickly review observations  
+### Quickly review records {-} 
 
 This **base** R syntax can be handy when you want to quickly view a subset of rows and columns. Use the **base** R `View()` command (note the capital "V") around the [] subset you want to see. The result will appear as a dataframe in your RStudio viewer panel. For example, if I want to review onset and hospitalization dates of 3 specific cases:  
 
@@ -1646,7 +1704,7 @@ View(linelist %>%
 
 
 
-### Add to pipe chain  
+#### Add to pipe chain {-}  
 
 
 ```{r}
@@ -1746,67 +1804,6 @@ linelist <- linelist %>%
 
 
 
-
-
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-## Transformations across multiple columns
-
-
-Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple variables at once using the `across()` function from the package **dplyr** (contained within **tidyverse** package).  
-
-`across()` can be used with any **dplyr** verb, but commonly with as `mutate()`, `filter()`, or `summarise()`. 
-`across()` allows you to specify which columns you want a function to apply to. To specify the columns, you can name them indvidually, or use helped functions.  
-
-Here the transformation `as.character()` is applied to specific columns named within `across()`. Note that functions in `across()` are written *without* their parentheses ( )    
-
-```{r, eval=F}
-linelist <- linelist %>% 
-  mutate(across(c(temp, ht_cm, wt_kg), as.character))
-```
-
-There are helpers available to assist you in specifying columns:  
-
-* `everything()`  - all other columns not mentioned  
-* `last_col()`    - the last column  
-* `where()`       - applies a function to all columns and selects those which are TRUE  
-* `starts_with()` - matches to a specified prefix. Example: `select(starts_with("date"))`
-* `ends_with()`   - matches to a specified suffix. Example: `select(ends_with("_end"))`  
-* `contains()`    - columns containing a character string. Example: `select(contains("time"))` 
-* `matches()`     - to apply a regular expression (regex). Example: `select(contains("[pt]al"))`  
-* `num_range()`   - 
-* `any_of()`      - matches if column is named. Useful if the name might not exist. Example: `any_of(date_onset, date_death, cardiac_arrest)`  
-
-Here is an example of how one would change **all columns** to character class:  
-
-```{r, eval=F}
-#to change all columns to character class
-linelist <- linelist %>% 
-  mutate(across(everything(), as.character))
-```
-
-Columns where the name contains the string "date" (note placement of commas and parentheses):  
-
-```{r, eval=F}
-#to change all columns to character class
-linelist <- linelist %>% 
-  mutate(across(contains("date"), as.character))
-```
-
-Below, we want to mutate the columns where they are class POSIXct (a datetime class that shows timestamps) - where the function `is.POSIXct()` evaluates to `TRUE`. Then we want to apply the function `is.Date()` to of these column to convert them to class Date.  
-
-```{r, eval=F}
-linelist <- linelist %>% 
-  mutate(across(where(lubridate::is.POSIXct), as.Date))
-```
-
-* Note that within `across()` we also use the function `where()`  
-* Note that is.POSIXct is from the package **lubridate**. Other similar functions (`is.character()`, `is.numeric()`, and `is.logical()`) are from **base R**  
-
-
-
-Here are a few online resources on using `across()`: [creator Hadley Wickham's thoughts/rationale](https://www.tidyverse.org/blog/2020/04/dplyr-1-0-0-colwise/)
 
 
 
