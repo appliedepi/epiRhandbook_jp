@@ -213,7 +213,7 @@ table(is.na(evd$age), is.na(evd$gender))
 # ONSET MISSING
 ###############
 # random indices to convert to missing:
-to_NA_onset <- round(rnorm(n=round(nrow(evd)*.05),  # 5% of entries
+to_NA_onset <- round(rnorm(n=round(nrow(evd)*.08),  # 10% of entries
                          mean=nrow(evd)*.4,    # mean **earlier** in the outbreak 
                          sd=1000))
 to_NA_onset <- to_NA_sym[to_NA_onset < nrow(evd) & to_NA_onset > 0] # ensure indices are in appropriate range

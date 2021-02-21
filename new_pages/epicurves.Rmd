@@ -1928,6 +1928,77 @@ See the handbook page on ggplot tips for details on how to make a second axis.
 
 
 
+
+## Cumulative Incidence {-}
+
+
+If beginning with a case linelist, create a new column containing the cumulative number of cases per day in an outbreak using `cumsum()` from **base** R:    
+
+```{r}
+cumulative_case_counts <- linelist %>% 
+  count(date_onset) %>%                # count of rows per day   
+  mutate(                         
+    cumulative_cases = cumsum(n)       # new column of the cumulative number of rows at each date
+    )
+
+cumulative_case_counts
+```
+
+This cumulative column can then be plotted:
+
+```{r}
+plot_cumulative <- ggplot()+
+  geom_line(
+    data = cumulative_case_counts,
+    aes(x = date_onset, y = cumulative_cases),
+    size = 2,
+    color = "blue")
+
+plot_cumulative
+```
+
+
+It can also be overlaid onto the epicurve, with dual-axis:
+
+```{r}
+pacman::p_load(cowplot)
+
+plot_cases <- ggplot()+
+  geom_histogram(          
+    data = linelist,
+    aes(x = date_onset),
+    binwidth = 1)+
+  labs(
+    y = "Daily cases",
+    x = "Date of symptom onset"
+  )+
+  theme_cowplot()
+
+
+plot_cumulative <- ggplot()+
+  geom_line(
+    data = cumulative_case_counts,
+    aes(x = date_onset, y = cumulative_cases),
+    size = 2,
+    color = "blue")+
+  scale_y_continuous(
+    position = "right")+
+  labs(x = "",
+       y = "Cumulative cases")+
+  theme_cowplot()+
+  theme(
+    axis.line.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.ticks = element_blank())
+```
+
+```{r}
+aligned_plots <- align_plots(plot_cases, plot_cumulative, align="hv", axis="tblr")
+ggdraw(aligned_plots[[1]]) + draw_plot(aligned_plots[[2]])
+```
+
+
 <!-- ======================================================= -->
 ## Resources {.tabset .tabset-fade}
 
