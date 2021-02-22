@@ -5,9 +5,9 @@
 <!-- ======================================================= -->
 ## Overview
 
-Working with dates in `R` is notoriously difficult when compared to other object classes. `R` often interprets dates as character objects - this means they cannot be used for general date operations such as making time series and calculating time intervals. To make matters more difficult, there are many date formats, some of which can be confused for other formats. Luckily, dates can be wrangled easily with practice, and with a set of helpful packages.
+Working with dates in R is notoriously difficult when compared to other object classes. R often interprets dates as character objects - this means they cannot be used for general date operations such as making time series and calculating time intervals. To make matters more difficult, there are many date formats, some of which can be confused for other formats. Luckily, dates can be wrangled easily with practice, and with a set of helpful packages.
 
-Dates in `R` are their own class of object - the `Date` class. It should be noted that there is also a class that stores objects with date *and* time. Date time objects are formally referred to as  and/or `POSIXt`, `POSIXct`, and/or `POSIXlt` classes (the difference isn't important). These objects are informally referred to as *datetime* classes.
+Dates in R are their own class of object - the `Date` class. It should be noted that there is also a class that stores objects with date *and* time. Date time objects are formally referred to as  and/or `POSIXt`, `POSIXct`, and/or `POSIXlt` classes (the difference isn't important). These objects are informally referred to as *datetime* classes.
 
 You can get the system date or system datetime by doing the following:
 
@@ -20,9 +20,9 @@ Sys.time()
 
 ```
 
-* It is important to make R recognize when a variable contains dates.  
+* It is important to make R recognize when a column contains dates.  
 * Dates are an object class and can be tricky to work with.  
-* Here we present several ways to convert date variables to Date class.  
+* Here we present several ways to convert date columns to Date class.  
 
 
 <!-- ======================================================= -->
@@ -30,7 +30,7 @@ Sys.time()
 
 The following packages are recommended for working with dates:  
 
-```{r dates_packages}
+```{r dates_packages, warning=F, message=F}
 # Checks if package is installed, installs if necessary, and loads package for current session
 
 pacman::p_load(aweek,      # flexibly converts dates to weeks, and vis-versa
@@ -44,21 +44,28 @@ pacman::p_load(aweek,      # flexibly converts dates to weeks, and vis-versa
 
 
 <!-- ======================================================= -->
-## Converting objects to Date class
+## Convert to Date class
 
-The standard, **base** R function to convert an object or variable to class Date is `as.Date()` (note capitalization).  
+### `as.Date()` {-}  
 
-`as.Date()` requires that the user *specify the ***existing*** format of the date*, so it can understand, convert, and store each element (day, month, year, etc.) correctly. [Read more online about `as.Date()`](https://www.stat.berkeley.edu/~s133/dates.html).  
+The standard, **base** R function to convert an object or column to class Date is `as.Date()` (note capitalization).  
 
-**If used on a variable, `as.Date()` therefore requires that all the character date values be in the same format before converting.** If your data are messy, try cleaning them or consider using `guess_dates()` from the **linelist** package.  
+`as.Date()` requires that the user *specify the **existing** format of the date*, so it can understand, convert, and store each element (day, month, year, etc.) correctly. [Read more online about `as.Date()`](https://www.stat.berkeley.edu/~s133/dates.html).  
 
-It can be easiest to first convert the variable to character class, and then convert to date class:  
+**If used on a column, `as.Date()` therefore requires that all the character date values be in the same format before converting.** If your data are messy, try cleaning them manually or consider using `guess_dates()` from the **linelist** package.  
 
-  1. Turn the variable into character values using the function `as.character()`
+It can be easiest to first convert the column to character class, and then convert to date class:  
+
+  1. Turn the column into character values using the function `as.character()`
 ```{r eval=F}
-linelist_cleaned$date_of_onset <- as.character(linelist_cleaned$date_of_onset)
+# With pipes
+linelist <- linelist %>% 
+  mutate(date_onset = as.character(date_onset))
+
+# In base R
+linelist$date_onset <- as.character(linelist$date_onset)
 ```
-  2. Convert the variable from character values into date values, using the function `as.Date()`  
+  2. Convert the column from character values into date values, using the function `as.Date()`  
   (note the capital "D")  
   + Within the `as.Date()` function, you must use the `format=` argument to tell R the *current* format of the date components - which characters refer to the month, the day, and the year, and how they are separated. If your values are already in one of R's standard date formats (YYYY-MM-DD or YYYY/MM/DD) the `format=` argument is not necessary.  
     
@@ -73,31 +80,55 @@ linelist_cleaned$date_of_onset <- as.character(linelist_cleaned$date_of_onset)
          %Y = 4-digit year  (e.g. 1989)  
 
 For example, if your character dates are in the format DD/MM/YYYY, like "24/04/1968", then your command to turn the values into dates will be as below. **Putting the format in quotation marks is necessary.**  
+
 ```{r eval=F}
-linelist_cleaned$date_of_onset <- as.Date(linelist_cleaned$date_of_onset, format = "%d/%m/%Y")
+# Using pipes
+linelist <- linelist %>% 
+  mutate(date_onset = as.Date(date_of_onset, format = "%d/%m/%Y"))
+
+# Using base R
+linelist$date_onset <- as.Date(linelist$date_of_onset, format = "%d/%m/%Y"))
 ```
+
 <span style="color: darkgreen;">**_TIP:_** The `format =` argument is *not* telling R the format you want the dates to be, but rather how to identify the date parts as they are *before* you run the command.</span>  
 
 <span style="color: darkgreen;">**_TIP:_**Be sure that in the `format =` argument you use the *date-part separator* (e.g. /, -, or space) that is present in your dates.</span>  
 
+Once the values are in class Date, R will by default display them in the standard format, which is YYYY-MM-DD.
 
-Conveting character objects to dates can be made *far* easier by using the lubridate package. The `lubridate` package is a `tidyverse` package designed to make working with dates and time more simple and consistent than in base R. For these reasons, `lubridate` is often considered the gold-standard package for dates and time, and is recommended whenever working with them.
 
-The `lubridate` package provides a number of different helper functions designed to convert character objects to dates in an intuitive, and more lenient way than specifying the format in `as.Date()`. These functions are specific to the rough date format, but allow for a variety of separators, and synonyms for dates (e.g. 01 vs Jan vs January) - they are named after abbreviations of date formats. 
+
+### **lubridate** {-}  
+
+Conveting character objects to dates can be made *far* easier by using the **lubridate** package. This is a `tidyverse` package designed to make working with dates and time more simple and consistent than in base R. For these reasons, **lubridate** is often considered the gold-standard package for dates and time, and is recommended whenever working with them.
+
+The **lubridate** package provides several different helper functions designed to convert character objects to dates in an intuitive, and more lenient way than specifying the format in `as.Date()`. These functions are specific to the rough date format, but allow for a variety of separators, and synonyms for dates (e.g. 01 vs Jan vs January) - they are named after abbreviations of date formats. 
 
 
 ```{r, eval = T}
-# load packages 
-library(lubridate)
+# install/load lubridate 
+pacman::p_load(lubridate)
+```
 
+The `ymd()` function flexibly converts date values supplied as **year, then month, then day**.  
+
+```{r}
 # read date in year-month-day format
 ymd("2020-10-11")
 ymd("20201011")
+```
 
+The `mdy()` function flexibly converts date values supplied as **month, then day, then year**.  
+
+```{r}
 # read date in month-day-year format
 mdy("10/11/2020")
 mdy("Oct 11 20")
+```
 
+The `dmy()` function flexibly converts date values supplied as **day, then month, then year**.  
+
+```{r}
 # read date in day-month-year format
 dmy("11 10 2020")
 dmy("11 October 2020")
@@ -109,128 +140,176 @@ dmy("11 October 2020")
 <!-- linelist_cleaned$date_of_onset <- as.Date(as.character(linelist_cleaned$date_of_onset), format = "%d/%m/%Y") -->
 <!-- ``` -->
 
-If using [piping](#piping) and the tidyverse, the converting a character column to dates might look like this:  
+If using [piping](#piping) and the tidyverse, the converting a character column to dates with lubridate might look like this:  
 
 ```{r, eval=F}
-linelist_cleaned <- linelist_cleaned %>%
-  mutate(date_of_onset = lubridate::dmy(date_of_onset))
+linelist <- linelist %>%
+  mutate(date_onset = lubridate::dmy(date_onset))
 ```
 
-Once complete, you can run a command to verify the class of the variable
+Once complete, you can run a command to verify the class of the column
 ```{r, eval=F}
-# Check the class of the variable
-class(linelist_cleaned$date_of_onset)  
+# Check the class of the column
+class(linelist$date_onset)  
 ```
 
 Once the values are in class Date, R will by default display them in the standard format, which is YYYY-MM-DD.
 
+
+
+
 <!-- ======================================================= -->
-## Converting to `datetime` classes
+## Convert to `datetime` classes
 
-As previously mentioned, R also supports a `datetime` class - a variable that contains date **and** time information. As with the `Date` class, these often need to be converted from `character` objects to `datetime` objects. 
+As previously mentioned, R also supports a `datetime` class - a column that contains date **and** time information. As with the `Date` class, these often need to be converted from `character` objects to `datetime` objects. 
 
-A standard `datetime` object is formatted with the date first, which is followed by a time component - for example  _01 Jan 2020, 16:30_. As with dates, there are many ways this can be formatted, and there are numerous levels of precision (hours, minutes, seconds) that can be supplied. Luckily, lubridate helper functions also exist to help convert these strings to `datetime` objects. These functions are the same as the date helper functions, with `_h` (only hours supplied), `_hm` (hours and minutes supplied), or `_hms` (hours, minutes, and seconds supplied) appended to the end (e.g. `dmy_hms()`). These can be used as shown:
+A standard `datetime` object is formatted with the date first, which is followed by a time component - for example  _01 Jan 2020, 16:30_. As with dates, there are many ways this can be formatted, and there are numerous levels of precision (hours, minutes, seconds) that can be supplied.  
 
-```{r, eval = TRUE}
+Luckily, **lubridate** helper functions also exist to help convert these strings to `datetime` objects. These functions are extensions of the date helper functions, with `_h` (only hours supplied), `_hm` (hours and minutes supplied), or `_hms` (hours, minutes, and seconds supplied) appended to the end (e.g. `dmy_hms()`). These can be used as shown:
 
-# convert datetime with only hours to datetime object
+Convert datetime with only hours to datetime object  
+
+```{r}
 ymd_h("2020-01-01 16hrs")
 ymd_h("2020-01-01 4PM")
+```
 
+Convert datetime with hours and minutes to datetime object  
 
-# convert datetime with hours and minutes to datetime object
+```{r}
 dmy_hm("Jan 1st 2020 16:20")
+```
 
-# convert datetime with hours, minutes, and seconds to datetime object
+Convert datetime with hours, minutes, and seconds to datetime object  
+
+```{r}
 mdy_hms("01 January 20, 16:20:40")
-# you can supply time zone but it is ignored
+```
+
+You can supply time zone but it is ignored. See section later in this page on time zones.  
+
+```{r}
 mdy_hms("01 January 20, 16:20:40 PST")
 
 ```
 
-When working with a linelist, time and date columns can be combined to create a datetime column using these functions:
+When working with a dataframe, time and date columns can be combined to create a datetime column using `str_glue()` from **stringr** package and an appropriate **lubridate** function:
 
 ```{r, eval = FALSE}
-# time_admission is a variable in hours:minutes
-linelist_cleaned <- linelist_cleaned %>%
-  # assume that when time of admission is not given, it the median admission time
+# packages
+pacman::p_load(tidyverse, lubridate, stringr)
+
+# time_admission is a column in hours:minutes
+linelist <- linelist %>%
+  
+  # when time of admission is not given, assign the median admission time
   mutate(
     time_admission_clean = ifelse(
       is.na(time_admission),
       median(time_admission),
       time_admission
   ) %>%
-  # use paste0 to combine two columns to create a character vector, and use ymd_hm() to convert to datetime
+  
+    # use str_glue() to combine two columns to create a character column
+    # and then use ymd_hm() to convert to datetime
   mutate(
-    date_time_of_admission = paste0(
-      date_hospitalisation, time_admission_clean, sep = " "
-    ) %>% ymd_hm()
+    date_time_of_admission = str_glue("{date_hospitalisation} {time_admission_clean}") %>% 
+      ymd_hm()
   )
 
 ```
+
+
 <!-- ======================================================= -->
-## lubridate  
+## Working with dates   
 
 `lubridate` can also be used for a variety of other functions, such as **extracting aspects of a date/datetime**, **performing date arithmetic**, or **calculating date intervals**
 
+Here we define a date to use for the examples:  
+
 ```{r, eval = T}
-  # extract the month from this date
+# create object of class Date
+example_date <- ymd("2020-03-01")
+```
+
+
+```{r}
+# extract the month and year from this date
+month(example_date)  # month number
+year(example_date)   # year
+day(example_date)    # day (number)
+wday(example_date)   # day number of the week (1-7)
+```
+
+You can also extract time components from a `datetime` object or column. This can be useful if you want to view the distribution of admission times.  
+
+```{r, eval=F}
+example_datetime <- ymd_hm("2020-03-01 14:45")
+
+hour(example_datetime)     # extract hour
+minute(example_datetime)   # extract minute
+second(example_datetime)   # extract second
+```
+
+
+You can retrieve epiweeks with `epiweek()` from **lubridate**:  
+
+```{r}
+# get the epiweek of this date (this will be expanded later)
+epiweek(example_date)
+```
+
+### Date math {-}  
+
+```{r}
+# add 3 days to this date
+example_date + days(3)
   
-  example_date <- ymd("2020-03-01")
-  
-  # extract the month and year from this date
-  month(example_date)
-  year(example_date)
-  
-  # get the epiweek of this date (this will be expanded later)
-  epiweek(example_date)
-  # get the day of the week for this date (this will be expanded later)
-  wday(example_date)
-  
-  # add 3 days to this date
-  example_date + days(3)
-  
-  # add 7 weeks and subtract two days from this date
-  example_date + weeks(7) - days(2)
-  
-  
-  # find the interval between this date and Feb 20 2020 
-  
-  example_date - ymd("2020-02-20")
-  
+# add 7 weeks and subtract two days from this date
+example_date + weeks(7) - days(2)
+```
+
+### Date intervals {-}  
+
+```{r}
+# find the interval between this date and Feb 20 2020 
+example_date - ymd("2020-02-20")
 ```
 
 This can all be brought together to work with data - for example:
 
 ```{r, eval = F}
-library(lubridate)
+pacman::p_load(lubridate, tidyverse)   # load packages
 
-linelist_cleaned <- linelist_cleaned %>%
-    # convert date of onset from character to date objects by specifying dmy format
-    mutate(date_of_onset = dmy(date_of_onset),
-           date_of_hospitalisation = dmy(date_of_hospitalisation)) %>%
-    # filter out all cases without onset in march
-    filter(month(date_of_onset) == 3) %>%
-    # find the difference in days between onset and hospitalisation
-    mutate(onset_to_hosp_days = date_of_hospitalisation - date_of_onset)
-
+linelist <- linelist %>%
+  
+  # convert date of onset from character to date objects by specifying dmy format
+  mutate(date_onset = dmy(date_onset),
+         date_hospitalisation = dmy(date_hospitalisation)) %>%
+  
+  # filter out all cases without onset in march
+  filter(month(date_onset) == 3) %>%
+    
+  # find the difference in days between onset and hospitalisation
+  mutate(onset_to_hosp_days = date_hospitalisation - date_of_onset)
 ```
 
 
 
 <!-- ======================================================= -->
-## `guess_dates()` 
+## Messy dates  
 
-**The function `guess_dates()` attempts to read a "messy" date variable containing dates in many different formats and convert the dates to a standard format.** You can [read more online about `guess_dates()`](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html), which is in the **linelist** package.
+The function `guess_dates()` from the **linelist** package attempts to read a "messy" date column containing dates in many different formats and convert the dates to a standard format. You can [read more online about `guess_dates()`](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html). If `guess_dates()` is not yet available on CRAN for R 4.0.2, try install via `pacman::p_load_gh("reconhub/linelist")`.
 
->**For example:** `guess_dates` would see the following dates "03 Jan 2018", "07/03/1982", and "08/20/85" and convert them in the class Date to: 2018-01-03, 1982-03-07, and 1985-08-20.  
+For example `guess_dates` would see a vector of the following character dates "03 Jan 2018", "07/03/1982", and "08/20/85" and convert them to class Date as: `2018-01-03`, `1982-03-07`, and `1985-08-20`.  
 
-```{r, eval = F}
-linelist::guess_dates(c("03 Jan 2018", "07/03/1982", "08/20/85")) # guess_dates() not yet available on CRAN for R 4.0.2
-                                                                  # try install via devtools::install_github("reconhub/linelist")
+```{r, eval = T}
+linelist::guess_dates(c("03 Jan 2018",
+                        "07/03/1982",
+                        "08/20/85"))
 ```
 
-*Some optional arguments for `guess_dates()` that you might include are:*  
+Some optional arguments for `guess_dates()` that you might include are:  
 
 * `error_tolerance` - The proportion of entries which cannot be identified as dates to be tolerated (defaults to 0.1 or 10%)
 * `last_date` - the last valid date (defaults to current date)  
@@ -238,11 +317,13 @@ linelist::guess_dates(c("03 Jan 2018", "07/03/1982", "08/20/85")) # guess_dates(
 
 
 ```{r eval = FALSE}
-# An example using guess_dates on the variable dtdeath
-data_cleaned <- data %>% 
+# An example using guess_dates on the column dater_onset
+linelist <- linelist %>%                 # the dataset is called linelist
   mutate(
-    dtdeath = linelist::guess_dates(
-      dtdeath, error_tolerance = 0.1, first_date = "2016-01-01"
+    date_onset = linelist::guess_dates(  # the guess_dates() from package "linelist"
+      date_onset,
+      error_tolerance = 0.1,
+      first_date = "2016-01-01"
     )
 ```
 
@@ -250,9 +331,9 @@ data_cleaned <- data %>%
 <!-- ======================================================= -->
 ## Excel Dates
 
-Excel stores dates as the number of days since December 30, 1899. If the dataset you imported from Excel shows dates as numbers or characters like "41369"... use the `as.Date()` or `as_date()` function to convert, but **instead of supplying a format as above, supply an origin date**. This will not work if the excel date is read as a character type, so be sure to ensure the date is a numeric class (or convert it to one)!
+Excel stores dates as the number of days since December 30, 1899. If the dataset you imported from Excel shows dates as numbers or characters like "41369"... use the `as.Date()` or **lubridate**'s `as_date()` function to convert, but **instead of supplying a format as above, supply an origin date**. This will not work if the excel date is read as a character type, so be sure to ensure the date is a numeric class (or convert it to one)!
 
-<span style="color: black;">**_NOTE:_** You should provide the origin date in R's default date format (`"YYYY-MM-DD"`).</span>
+<span style="color: black;">**_NOTE:_** You should provide the origin date in R's default date format ("YYYY-MM-DD").</span>
 
 
 ```{r, eval = FALSE}
@@ -261,14 +342,16 @@ library(dplyr)
 
 # An example of providing the Excel 'origin date' when converting Excel number dates
 data_cleaned <- data %>% 
-  mutate(date_of_onset = as_date(as.double(date_of_onset), origin = "1899-12-30"))
+  mutate(date_onset = as_date(as.double(date_onset), origin = "1899-12-30")) # convert to numeric, then convert to date
 ```
 
 
 <!-- ======================================================= -->
-## How dates are displayed  
+## Date display  
 
-Once dates are the correct class, you often want them to display differently (e.g. in a plot, graph, or table). For example, to display as "Monday 05 Jan" instead of 2018-01-05. You can do this with the function `format()`, which works in a similar way as `as.Date()`. Read more [in this online tutorial](https://www.statmethods.net/input/dates.html). Remember that the output from `format()` is a character type, so is generally used for display purposes only!
+Once dates are the correct class, you often want them to display differently (e.g. in a plot, graph, or table). For example, to display as "Monday 05 Jan" instead of 2018-01-05. You can do this with the **base** R function `format()`, which works in a similar way as `as.Date()`. Read more [in this online tutorial](https://www.statmethods.net/input/dates.html).  
+
+Remember that the output from `format()` is a character type, so is generally used for display purposes only!
 
 %d = Day # (of the month e.g. 16, 17, 18...)
 %a = abbreviated weekday (Mon, Tues, Wed, etc.)  
@@ -301,19 +384,19 @@ paste0(
 ```
 
 <!-- ======================================================= -->
-## Calculating distance between dates
+## Calculate distance between dates
 
 The difference between dates can be calculated by:  
   
   
-1. Correctly formating *both* date variable as class date (see instructions above)  
-2. Creating a new variable that is defined as one date variable subtracted from the other
+1. Correctly formating *both* date column as class date (see instructions above)  
+2. Creating a new column that is defined as one date column subtracted from the other
 3. Converting the result to numeric class (default is class "datediff"). This ensures that subsequent mathematical calculations can be performed.  
 
 
 ```{r, eval = TRUE}
 
-# define variables as date classes
+# define columns as date classes
 date_of_onset <- ymd("2020-03-16")
 date_lab_confirmation <- ymd("2020-03-20")
 
@@ -347,7 +430,7 @@ med_days_outcome <- median(linelist_delay$dats_onset_to_outcome, na.rm = T)
 
 When data is present in different time time zones, it can often be important to standardise this data in a unified time zone. This can present a further challenge, as the time zone component of data must be coded manually in most cases.
 
-In R, each *datetime* object has a timezone component. By default, all datetime objects will carry the local time zone for the computer being used - this is generally specific to a *location* rather than a named timezone, as time zones will often change in locations due to daylight savings time. It is not possible to accurately compensate for time zones without a time component of a date, as the event a date variable represents cannot be attributed to a specific time, and therefore time shifts measured in hours cannot be reasonably accounted for.
+In R, each *datetime* object has a timezone component. By default, all datetime objects will carry the local time zone for the computer being used - this is generally specific to a *location* rather than a named timezone, as time zones will often change in locations due to daylight savings time. It is not possible to accurately compensate for time zones without a time component of a date, as the event a date column represents cannot be attributed to a specific time, and therefore time shifts measured in hours cannot be reasonably accounted for.
 
 To deal with time zones, there are a number of helper functions in lubridate that can be used to change the time zone of a datetime object from the local time zone to a different time zone. Time zones are set by attributing a valid tz database time zone to the datetime object. A list of these can be found here - if the location you are using data from is not on this list, nearby large cities in the time zone are available and serve the same purpose. 
 
@@ -355,14 +438,14 @@ https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 
 ```{r}
-# assign the current time to a variable
+# assign the current time to a column
 time_now <- Sys.time()
 time_now
 
-# use with_tz() to assign a new timezone to the variable, while CHANGING the clock time
+# use with_tz() to assign a new timezone to the column, while CHANGING the clock time
 time_london_real <- with_tz(time_now, "Europe/London")
 
-# use force_tz() to assign a new timezone to the variable, while KEEPING the clock time
+# use force_tz() to assign a new timezone to the column, while KEEPING the clock time
 time_london_local <- force_tz(time_now, "Europe/London")
 
 
@@ -375,8 +458,8 @@ time_london_real - time_london_local
 This may seem largely abstract, and is often not needed if the user isn't working across time zones. One simple example of its implementation is:
 
 ```{r, eval = FALSE}
-# TODO add when time variable is here
-# set the time variable to time zone for ebola outbreak 
+# TODO add when time column is here
+# set the time column to time zone for ebola outbreak 
 
 # "Africa/Lubumbashi" is the time zone for eastern DRC/Kivu Nord
 
@@ -428,7 +511,7 @@ You can also use the package **aweek** to set epidemiological weeks. You can rea
 <!-- ======================================================= -->
 ## Dates in Epicurves 
 
-See the section on [epicurves](#epicurves).
+See the section on [Epidemic curves].
 
 
 <!-- ======================================================= -->
@@ -486,9 +569,16 @@ You can read more about `lead()` and `lag()` in the documentation [here](https:/
 <!-- ======================================================= -->
 ## Dates miscellaneous  
 
-* `Sys.Date( )` returns the current date of your computer  
-* `Sys.Time()` returns the current time of your computer
-* `date()` returns the current date and time.  
+* `Sys.Date( )` from **base** R returns the current date of your computer  
+* `Sys.Time()` from **base** R returns the current time of your computer
+* `date()` from **lubridate** returns the current date and time.  
 
+<!-- ======================================================= -->
+## Resources  
+
+**lubridate** [tidyverse page](https://lubridate.tidyverse.org/)  
+**lubridate** RStudio [cheatsheet](https://rawgit.com/rstudio/cheatsheets/master/lubridate.pdf)  
+R for Data Science page on [dates and times](https://r4ds.had.co.nz/dates-and-times.html)  
+[Online tutorial](https://www.statmethods.net/input/dates.html)
 
 
