@@ -1,9 +1,9 @@
 
-# Joining & matching datasets {.tabset .tabset-fade}  
+# Joining data { }  
 
 
 <!-- ======================================================= -->
-## Overview {.tabset .tabset-fadehosp_info}
+## Overview { hosp_info}
 
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
@@ -14,13 +14,37 @@ This page describes common "joins" and also probabilistic matching between dataf
 
 
 <!-- ======================================================= -->
-## Preparation {.tabset .tabset-fade}
+## Preparation { }
 
+**Load packages**
+
+```{r}
+pacman::p_load(
+  rio,            # import/export
+  here,           # relative filepaths
+  tidyverse,      # data management/viz
+  RecordLinkage,  # probabilistic matches
+  fastLink        # probabilistic matches
+)
+```
 Because traditional joins (non-probabilistic) can be very specific, requiring exact string matches, you may need to do cleaning on the datasets *prior to* the join (e.g. change spellings, change case to all lower or upper).  
 
 
+**Load data**  
+
+
+Load the data  
+
+```{r, echo=F}
+linelist <- rio::import(here("data", "linelist_cleaned.rds"))
+```
+
+```{r, eval=F}
+linelist <- rio::import("linelist_cleaned.csv")
+```
+
 <!-- ======================================================= -->
-### Datasets {.tabset .tabset-fade}
+### Datasets { }
 In the joining examples, we'll use the following datasets:  
 
 1) A "miniature" version of the `linelist`, containing only the columns `case_id`, `date_onset`, and `hospital`, and only the first 10 rows  
@@ -63,7 +87,7 @@ DT::datatable(hosp_info, rownames = FALSE, options = list(pageLength = nrow(hosp
 
 
 <!-- ======================================================= -->
-### Pre-cleaning {.tabset .tabset-fade}
+### Pre-cleaning { }
 
 Because traditional (non-probabilistic) joins are case-sensitive and require exact string matches, we will clean-up the `hosp_info` dataset prior to the joins.  
 
@@ -120,7 +144,7 @@ If you need to convert to all values UPPER or lower case, use these functions fr
 
 
 <!-- ======================================================= -->
-## **dplyr** joins {.tabset .tabset-fade}
+## **dplyr** joins { }
 
 **dplyr** offers several different joins. Below they are described, with some simple use cases. Many thanks to [https://github.com/gadenbuie](https://github.com/gadenbuie/tidyexplain/tree/master/images) for the moving images!  
 
@@ -128,7 +152,7 @@ If you need to convert to all values UPPER or lower case, use these functions fr
 
 
 <!-- ======================================================= -->
-### General syntax {.tabset .tabset-fade}
+### General syntax { }
 
 
 **General function structure**  
@@ -409,20 +433,303 @@ To see the `hosp_info` records that were excluded in the inner join, we could al
 
 
 <!-- ======================================================= -->
-## Probabalistic matching {.tabset .tabset-fade}
+## Probabalistic matching { }
 
-rowmatcher
-other options (finlay?)
+Under construction - TBD
+
+If you do not have a unique identifier common across datasets to join on, consider using a probabilistic matching algorithm. This would find matches between records based on similarity (e.g. Jaro–Winkler string distance, or numeric distance).  Below is a simple example using the package **fastLink** .  
+
+**Load packages**  
+
+```{r}
+pacman::p_load(
+               tidyverse,      # data manipulation and visualization
+               fastLink        # record matching
+               )
+```
+
+
+
+```{r, echo=F}
+# make datasets
+
+cases <- tribble(
+  ~gender, ~first,      ~middle,     ~last,        ~yr,   ~mon, ~day, ~district,
+  "M",     "Amir",      NA,          "Khan",       1989,  11,   22,   "River",
+  "M",     "Anthony",   "B.",        "Smith",      1970, 09, 19,      "River", 
+  "F",     "Marialisa", "Contreras", "Rodrigues",  1972, 04, 15,      "River",
+  "F",     "Elizabeth", "Casteel",   "Chase",      1954, 03, 03,      "City",
+  "M",     "Jose",      "Sanchez",   "Lopez",      1996, 01, 06,      "City",
+  "F",     "Cassidy",   "Jones",      "Davis",     1980, 07, 20,      "City",
+  "M",     "Michael",   "Murphy",     "O'Calaghan",1969, 04, 12,      "Rural", 
+  "M",     "Oliver",    "Laurent",    "De Bordow" , 1971, 02, 04,     "River",
+  "F",      "Blessing",  NA,          "Adebayo",   1955,  02, 14,     "Rural"
+)
+
+results <- tribble(
+  ~gender,  ~first,     ~middle,     ~last,          ~yr, ~mon, ~day, ~district, ~result,
+  "M",      "Amir",     NA,          "Khan",         1989, 11,   22,  "River", "positive",
+  "M",      "Tony",   "B",         "Smith",          1970, 09,   19,  "River", "positive",
+  "F",      "Maria",    "Contreras", "Rodriguez",    1972, 04,   15,  "Cty",   "negative",
+  "F",      "Betty",    "Castel",   "Chase",        1954,  03,   30,  "City",  "positive",
+  "F",      "Andrea",   NA,          "Kumaraswamy",  2001, 01,   05,  "Rural", "positive",      
+  "F",      "Caroline", NA,          "Wang",         1988, 12,   11,  "Rural", "negative",
+  "F",      "Trang",    NA,          "Nguyen",       1981, 06,   10,  "Rural", "positive",
+  "M",      "Olivier" , "Laurent",   "De Bordeaux",  NA,   NA,   NA,  "River", "positive",
+  "M",      "Mike",     "Murphy",    "O'Callaghan",  1969, 04,   12,  "Rural", "negative",
+  "F",      "Cassidy",  "Jones",     "Davis",        1980, 07,   02,  "City",  "positive",
+  "M",      "Mohammad", NA,          "Ali",          1942, 01,   17,  "City",  "negative",
+  NA,       "Jose",     "Sanchez",   "Lopez",        1995, 01,   06,  "City",  "negative",
+  "M",      "Abubakar", NA,          "Abullahi",     1960, 01,   01,  "River", "positive",
+  "F",      "Maria",    "Salinas",   "Contreras",    1955, 03,   03,  "River", "positive"
+  )
+
+```
+
+Here are two small example datasets that we will use to demonstrate the probabilistic matching:  
+
+**The `cases` dataset has 9 records** of patients who are awaiting test results.  
+
+```{r message=FALSE, echo=F}
+# display the hospital data as a table
+DT::datatable(cases, rownames = FALSE, options = list(pageLength = nrow(cases), scrollX=T))
+```
+
+
+
+**The `test_results` dataset** has 14 records and contains the column `result`, which we want to add to the records in `cases` based on probabilistic matching of records.  
+
+```{r message=FALSE, echo=F}
+# display the hospital data as a table
+DT::datatable(results, rownames = FALSE, options = list(pageLength = nrow(results), scrollX=T))
+```
+
+### Probabilistic matching  
+
+The `fastLink()` function from the **fastLink** package can be used to apply a matching algorithm. Here is the basic informaton. You can read more detail by entering `?fastLink` in your console.  
+
+* Define the two dataframes for comparison as `dfA = ` and `dfB = `  
+* In `varnames = ` give all column names to be used for matching. They must all exist in both `dfA` and `dfB`.  
+* In `stringdist.match = ` give columns from those in `varnames` to be evaluated on string "distance".  
+* In `numeric.match = ` give columns from those in `varnames` to be evaluated on numeric distance.  
+* Missing values are ignored  
+* By default, each row in either dataframe is matched to at most one row in the other dataframe. If you want to see all the evaluated matches, set `dedupe.matches = FALSE`. The deduplication is done using Winkler's linear assignment solution.  
+
+*Tip: split one date column into three separate numeric columns using `day()`, `month()`, and `year()` from **lubridate** package*  
+
+The default threshold for matches is 0.94 (`threshold.match = `) but you can adjust it higher or lower. If you define the threshold, consider that higher thresholds could yield more false-negatives (rows that do not match which actually should match) and likewise a lower threshold could yield more false-positive matches.  
+
+Below, the data are matched on string distance across the name and district columns, and on numeric distance for year, month, and day of birth. A match threshold of 95% probability is set.  
+
+
+```{r, message=F, warning=F}
+fl_output <- fastLink::fastLink(
+  dfA = cases,
+  dfB = results,
+  varnames = c("gender", "first", "middle", "last", "yr", "mon", "day", "district"),
+  stringdist.match = c("first", "middle", "last", "district"),
+  numeric.match = c("yr", "mon", "day"),
+  threshold.match = 0.95)
+```
+
+**Review matches**  
+
+We defined the object returned from `fastLink()` as `fl_output`. It is of class `list`, and it actually contains several dataframes within it, detailing the results of the matching. One of these dataframes is `matches`, which contains the most likely matches across `cases` and `results`. You can access this "matches" dataframe with `fl_output$matches`. Below, it is saved as `my_matches` for ease of accessing later.    
+
+When `my_matches` is printed, you see two column vectors: the pairs of row numbers/indices (also called "rownames") in `cases` ("inds.a") and in `results` ("inds.b") representing the best matches. If a row number from a datafrane is missing, then no match was found in the other at the specified match threshold.    
+
+```{r}
+# print matches
+my_matches <- fl_output$matches
+my_matches
+```
+
+Things to note:  
+
+* Matches occurred despite slight differences in name spelling and dates of birth:  
+  * "Tony" matched to "Anthony"  
+  * "Maria" matched to "Marialisa"  
+  * "Betty" matched to "Elizabeth"  
+  * "Olivier Laurent De Bordeaux" matched to "Oliver Laurent De Bordow" (missing date of birth ignored)  
+* One row from `cases` (for "Blessing Adebayo", row 9) had no good match in `results`, so it is not present in `my_matches`.  
+
+
+
+
+**Join based on the probabilistic matches**  
+
+To use these matches to join `results` to `cases`, one strategy is:  
+
+1) Use `left_join()` to join `my_matches` to `cases` (matching rownames in `cases` to "inds.a" in `my_matches`)  
+2) Then use another `left_join()` to join `results` to `cases` (matching the newly-acquired "inds.b" in `cases` to rownames in `results``)  
+
+Before the joins, we should clean the three datasets:  
+
+* Both `dfA` and `dfB` should have their row numbers ("rowname") converted to a proper column  
+* Both the columns in `my_matches` are converted to class character, so they can be joined to the character rownames  
+
+```{r}
+# Clean data prior to joining
+#############################
+
+# convert cases rownames to a column 
+cases_clean <- cases %>% rownames_to_column()
+
+# convert test_results rownames to a column
+results_clean <- results %>% rownames_to_column()  
+
+# convert all columns in matches dataset to character, so they can be joined to the rownames
+matches_clean <- my_matches %>%
+  mutate(across(everything(), as.character))
+
+
+
+# Join matches to dfA, then add dfB
+###################################
+# column "inds.b" is added to dfA
+complete <- left_join(cases_clean, matches_clean, by = c("rowname" = "inds.a"))
+
+# column(s) from dfB are added 
+complete <- left_join(complete, results_clean, by = c("inds.b" = "rowname"))
+```
+
+As performed using the code above, the resulting dataframe `complete` will contain *all* columns from both `cases` and `results`. Many will be appended with suffixes ".x" and ".y", because the column names would otherwise be duplicated.  
+
+```{r message=FALSE, echo=F}
+DT::datatable(complete, rownames = FALSE, options = list(pageLength = nrow(complete), scrollX=T))
+```
+
+Alternatively, to achieve only the "original" 9 records in `cases` with the new column(s) from `results`, use `select()` on `results` before the joins, so that it contains only rownames and the columns that you want to add to `cases` (e.g. the column `result`).  
+
+```{r}
+cases_clean <- cases %>% rownames_to_column()
+
+results_clean <- results %>%
+  rownames_to_column() %>% 
+  select(rowname, result)    # select only certain columns 
+
+matches_clean <- my_matches %>%
+  mutate(across(everything(), as.character))
+
+# joins
+complete <- left_join(cases_clean, matches_clean, by = c("rowname" = "inds.a"))
+complete <- left_join(complete, results_clean, by = c("inds.b" = "rowname"))
+```
+
+
+```{r message=FALSE, echo=F}
+DT::datatable(complete, rownames = FALSE, options = list(pageLength = nrow(complete), scrollX=T))
+```
+
+
+If you want to subset either dataset to only the rows that matched, you can use the codes below:  
+
+```{r}
+cases_matched <- cases[my_matches$inds.a,]  # Rows in cases that matched to a row in results
+results_matched <- results[my_matches$inds.b,]  # Rows in results that matched to a row in cases
+```
+
+Or, to see only the rows that did **not** match:  
+
+```{r}
+cases_not_matched <- cases[!rownames(cases) %in% my_matches$inds.a,]  # Rows in cases that did NOT match to a row in results
+results_not_matched <- results[!rownames(results) %in% my_matches$inds.b,]  # Rows in results that did NOT match to a row in cases
+```
+
+
+### Probabilistic deduplication  
+
+Probabilistic matching can be used to deduplicate a dataset as well. See the page on deduplication for other methods of deduplication.  
+
+Here we began with the `cases` dataset, but are now calling it `cases_dup`, as it has 2 additional rows that could be duplicates of previous rows:
+See "Tony" with "Anthony", and "Marialisa Rodrigues" with "Maria Rodriguez".  
+
+```{r, echo=F}
+## Add duplicates
+#cases_dup <- rbind(cases, cases[sample(1:nrow(cases), 3, replace = FALSE),])
+
+cases_dup <- tribble(
+  ~gender, ~first,      ~middle,     ~last,        ~yr,   ~mon, ~day, ~district,
+  "M",     "Amir",      NA,          "Khan",       1989,  11,   22,   "River",
+  "M",     "Anthony",   "B.",        "Smith",      1970, 09, 19,      "River", 
+  "F",     "Marialisa", "Contreras", "Rodrigues",  1972, 04, 15,      "River",
+  "F",     "Elizabeth", "Casteel",   "Chase",      1954, 03, 03,      "City",
+  "M",     "Jose",      "Sanchez",   "Lopez",      1996, 01, 06,      "City",
+  "F",     "Cassidy",   "Jones",      "Davis",     1980, 07, 20,      "City",
+  "M",     "Michael",   "Murphy",     "O'Calaghan",1969, 04, 12,      "Rural", 
+  "M",     "Oliver",    "Laurent",    "De Bordow" , 1971, 02, 04,     "River",
+  "F",      "Blessing",  NA,          "Adebayo",   1955,  02, 14,     "Rural",
+  
+  "M",     "Tony",   "B.",        "Smith",         1970, 09, 19,      "River", 
+  "F",     "Maria",  "Contreras", "Rodriguez",     1972, 04, 15,      "River",
+)
+
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(cases_dup, rownames = FALSE, options = list(pageLength = nrow(cases_dup)))
+```
+
+
+Run the same `fastLink()` command as before, but compare the `cases_dup` dataframe to itself. When the two dataframes provided are identical, the function assumes you want to de-duplicate.  
+
+```{r, message = F, warning = F}
+## Run fastLink on the same dataset
+dedupe_output <- fastLink(
+  dfA = cases_dup,
+  dfB = cases_dup,
+  varnames = c("gender", "first", "middle", "last", "yr", "mon", "day", "district"),
+  stringdist.match = c("first", "middle", "last", "district"),
+  numeric.match = c("yr", "mon", "day")
+)
+```
+
+`fl.out` must be of class `fastLink.dedupe`, or in other words, the result of either `fastLink()`.  
+
+Now, you can review the potential duplicates with `getMatches()`. Provide the dataframe as both `dfA = ` and `dfB = `, and provide the output of the `fastLink()` function as `fl.out = `.  
+
+```{r}
+## Run getMatches()
+cases_dedupe <- getMatches(
+  dfA = cases_dup,
+  dfB = cases_dup,
+  fl.out = dedupe_output)
+```
+
+See the right-most column, which indicates the duplicate IDs - the final two rows are identified as being likely duplicates of rows 2 and 3.  
+
+```{r message=FALSE, echo=F}
+DT::datatable(cases_dedupe, rownames = FALSE, options = list(pageLength = nrow(cases_dedupe)))
+```
+
+To return the row numbers of rows which are likely duplicates, you can count the number of rows per unique value in the `dedupe.ids` column, and then filter to keep only those with more than one row. In this case this leaves rows 2 and 3.  
+
+```{r}
+cases_dedupe %>% 
+  count(dedupe.ids) %>% 
+  filter(n > 1)
+```
+
+To inspect the whole rows of the likely duplicates, put the row number in this command:  
+
+```{r}
+# displays row 2 and all likely duplicates of it
+cases_dedupe[cases_dedupe$dedupe.ids == 2,]   
+```
+
 
 
 
 
 <!-- ======================================================= -->
-## Resources {.tabset .tabset-fade}
+## Resources { }
 
 The [dplyr page on joins](https://dplyr.tidyverse.org/reference/join.html)  
 
+See this vignette on [fastLink](https://github.com/kosukeimai/fastLink) at the package's Github page  
+Publication describing methodolgy of [fastLink](https://imai.fas.harvard.edu/research/files/linkage.pdf)  
 
+Publication describing [RecordLinkage package](https://journal.r-project.org/archive/2010/RJ-2010-017/RJ-2010-017.pdf)
 
 
 

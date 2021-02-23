@@ -10,6 +10,7 @@ rm(list = ls(all = TRUE))
 filter <- dplyr::filter
 select <- dplyr::select
 summarise <- dplyr::summarise
+summary <- base::summary
 
 #load core packages
 pacman::p_load(
