@@ -30,7 +30,6 @@ linelist <- import(here("data", "linelist_cleaned.rds"))
 ```
 
 ```{r eval=F}
-# fake import the linelist
 linelist <- rio::import("linelist_cleaned.xlsx")
 ```
 
@@ -38,7 +37,7 @@ The first 50 rows are displayed:
 
 ```{r, message=FALSE, echo=F}
 # display the linelist data as a table
-DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T) )
 ```
 
 
@@ -49,9 +48,9 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 As an epidemiologist, it is a common need to repeat analyses on sub-groups (e.g. jurisdictions or sub-populations). Iterating with a *for loop* is one method to automate this process.  
 
-For example, let's say we are making epidemic curves. We can make an epidemic curve (LINK) of all the cases:  
+For example, let's say we are making epidemic curves. We can make an [Epidemic curve] of all the cases:  
 
-```{r}
+```{r, warning=F, message=F}
 # create 'incidence' object
 outbreak <- incidence2::incidence(   
      linelist,                       # dataframe
@@ -68,15 +67,17 @@ plot(outbreak,                       # name of incidence object
      )
 ```
 
-To produce a separate plot for each hospital's cases, we can put this code within a *for loop*. The elementary syntax is: `for (item in vector) {do something}`.  
+To produce a separate plot for each hospital's cases, we can put this code within a *for loop*. The elementary syntax is: `for (item in vector) {do something}`. Note the parentheses and the curly brackets.  
 
 * The "item" can be any word you wish. Keep it short. Often "i" is used.  
 * The word "in" is special and must be present.  
 * The vector can be character, as in this example, but is more often numeric (`c(1,2,3,4,5...)`) so that it can be used with index brackets `[[x]]` to extract and save. See subsequent example below.  
 
-First, we save a named vector of the unique hospital names, `hospital_names`. The *for loop* will run once for each of these names (`for (hosp in hospital_names) {` and each time the current hospital name will be represented as "hosp" for use within the loop.  
+First, we save a named vector of the unique hospital names, `hospital_names`. The *for loop* will run once for each of these names (`for (hosp in hospital_names)`). Each iteration of the *for loop*, the current hospital name from the vector will be represented as "hosp" for use within the loop.  
 
-* In the loop, a `filter()` is applied to `linelist`, such that column `hospital` must equal the current value of `hosp`  
+Within the loop, you can write R code as normal, but use the special term (`hosp` in this case) knowing that its value will be changing. In this loop:  
+
+* A `filter()` is applied to `linelist`, such that column `hospital` must equal the current value of `hosp`  
 * The incidence object is created on the filtered linelist  
 * The plot for the current hospital is created, with an auto-adjusting title  
 * The plot for the current hospital is temporarily saved and then printed  
@@ -111,11 +112,9 @@ for (hosp in hospital_names) {
 } # end the for loop when it has been run for every hospital in hospital_names 
 ```
 
-When "i" is a number:  
+### Numeric indexing {-} 
 
-**What is "i"?**  
-
-Often in loops it is useful to have the iterating "item" be a number - this allows indexing `[[x]]` to assign or extract. This is often written "i".  
+What is "i"? Often in loops it is useful to have the iterating "item" be a number - this allows indexing `[[x]]` to assign or extract. The number is often represented by "i".  
 
 Here is the above *for loop*, but written so that the vector is numeric `c(1,2,3,4,5,6)` and the hospital names are extracted from `hospital_names` with this indexing number (e.g. `hospital_names[[2]]`)  
 
@@ -139,7 +138,7 @@ for (i in seq_along(hospital_names)) {
 ```
 
 
-### Tracking progress of a loop  
+### Tracking progress of a loop {-} 
 
 In a loop with many iterations it can run for minutes or even hours. Thus, it can be helpful to print the progress to the R console.  
 Below, code is placed *within* the loop to print every 100th number.  
