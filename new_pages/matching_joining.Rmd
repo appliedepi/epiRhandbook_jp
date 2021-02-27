@@ -1,11 +1,6 @@
 
 # Joining data { }  
 
-
-<!-- ======================================================= -->
-## Overview { hosp_info}
-
-
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "left-join.gif"))
 ```
@@ -16,7 +11,7 @@ This page describes common "joins" and also probabilistic matching between dataf
 <!-- ======================================================= -->
 ## Preparation { }
 
-**Load packages**
+### Load packages {-}
 
 ```{r}
 pacman::p_load(
@@ -30,50 +25,55 @@ pacman::p_load(
 Because traditional joins (non-probabilistic) can be very specific, requiring exact string matches, you may need to do cleaning on the datasets *prior to* the join (e.g. change spellings, change case to all lower or upper).  
 
 
-**Load data**  
+### Load data {-}  
 
+This page uses the `linelist` dataframe and small other example datasets as needed.
 
-Load the data  
 
 ```{r, echo=F}
 linelist <- rio::import(here("data", "linelist_cleaned.rds"))
 ```
 
-```{r, eval=F}
-linelist <- rio::import("linelist_cleaned.csv")
-```
+
+
 
 <!-- ======================================================= -->
 ### Datasets { }
+
 In the joining examples, we'll use the following datasets:  
 
 1) A "miniature" version of the `linelist`, containing only the columns `case_id`, `date_onset`, and `hospital`, and only the first 10 rows  
 2) A separate dataframe named `hosp_info`, which contains more details about each hospital  
+3) Two separate small dataframes for the probabilistic matching section  
 
 
-**"miniature" linelist**  
+#### "Miniature" linelist {-}  
 
-Below is the miniature linelist used for demonstration purposes:  
+Below is the the miniature linelist, which contains only 10 rows and only columns `case_id`, `date_onset`, and `hospital`.  
 
 ```{r}
 linelist_mini <- linelist %>%                 # start with original linelist
   select(case_id, date_onset, hospital) %>%   # select columns
-  head(10)                                    # keep only the first 10 rows
+  head(10)                                    # only take the first 10 rows
 ```
 
 ```{r message=FALSE, echo=F}
-DT::datatable(linelist_mini, rownames = FALSE, options = list(pageLength = nrow(linelist_mini)))
+DT::datatable(linelist_mini, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-**Hospital Information dataframe**  
+
+
+
+#### Hospital information dataframe {-}  
 
 Below is the separate dataframe with additional information about each hospital.  
 
-```{r, echo = F}
+```{r}
+# Make the hospital information dataframe
 hosp_info = data.frame(
   hosp_name     = c("central hospital", "military", "military", "port", "St. Mark's", "ignace", "sisters"),
   catchment_pop = c(1950280, 40500, 10000, 50280, 12000, 5000, 4200),
-  level  = c("Tertiary", "Secondary", "Primary", "Secondary", "Secondary", "Primary", "Primary")
+  level         = c("Tertiary", "Secondary", "Primary", "Secondary", "Secondary", "Primary", "Primary")
 )
 ```
 
@@ -87,7 +87,7 @@ DT::datatable(hosp_info, rownames = FALSE, options = list(pageLength = nrow(hosp
 
 
 <!-- ======================================================= -->
-### Pre-cleaning { }
+### Pre-cleaning {-}
 
 Because traditional (non-probabilistic) joins are case-sensitive and require exact string matches, we will clean-up the `hosp_info` dataset prior to the joins.  
 
@@ -111,7 +111,7 @@ unique(hosp_info$hosp_name)
 
 **Align matching values**  
 
-We begin by cleaning the values in `hosp_name`. We use logic to code the values in the new column using `case_when()` (LINK). We correct the hospital names that exist in both dataframes, and leave the others as they are (see `TRUE ~ hosp_name`).   
+We begin by cleaning the values in `hosp_name`. We use logic to code the values in the new column using `case_when()` (read more about `case_when()` in the [Cleaning data] page). We correct the hospital names that exist in both dataframes, and leave the others as they are (`TRUE ~ hosp_name`).   
 
 <span style="color: orange;">**_CAUTION:_** Typically, one should create a new column (e.g. `hosp_name_clean`), but for ease of demonstration we show modification of the old column</span>
 
@@ -134,7 +134,7 @@ We now see that the hospital names that appear in both dataframe are aligned. Th
 unique(hosp_info$hosp_name)
 ```
 
-If you need to convert to all values UPPER or lower case, use these functions from **stringr**, as shown in the page on characters/strings (LINK).  
+If you need to convert all values to UPPER or lower case, use these functions from **stringr**, as shown in the page on [Characters and strings].  
 
 `str_to_upper()`  
 `str_to_upper()`  
@@ -146,32 +146,30 @@ If you need to convert to all values UPPER or lower case, use these functions fr
 <!-- ======================================================= -->
 ## **dplyr** joins { }
 
-**dplyr** offers several different joins. Below they are described, with some simple use cases. Many thanks to [https://github.com/gadenbuie](https://github.com/gadenbuie/tidyexplain/tree/master/images) for the moving images!  
+The **dplyr** package offers several different joins. **dplyr** is included in the **tidyverse** package. These join functions are described below, with simple use cases. Many thanks to [https://github.com/gadenbuie](https://github.com/gadenbuie/tidyexplain/tree/master/images) for the moving images!  
 
 
 
 
 <!-- ======================================================= -->
-### General syntax { }
+### General syntax {-}
 
 
 **General function structure**  
 
 Any of these join commands can be run independently, like below.  
 
-An object is being created, or re-defined: dataframe 2 is being joined to dataframe 1, on the basis of matches between the "ID" column in `df1` and "identifier" column in `df2`. Because this example uses `left_join()`, any rows in `df2` that do not match to `df1` will be dropped.     
+An object is being created, or re-defined: dataframe 2 (`df2`) is being joined to dataframe 1 (`df1`), on the basis of matches between the column "ID" in `df1` and the column "identifier" in `df2`. Because this example uses `left_join()`, any rows in `df2` that do not match to a row in `df1` will be dropped.     
 
 ```{r, eval=F}
 object <- left_join(df1, df2, by = c("ID" = "identifier"))
 ```
 
-The join commands can also be run within a pipe chain. The first dataframe `df1` is known to be the dataframe that is being passed through the pipes. An example is shown below, in context with some additional non-important `mutate()` and `filter()` commands before the join.  
+The join commands can also be run within a pipe chain. The first dataframe `df1` is the dataframe that is being passed through the pipes. `df2` is joined to it with the `left_join()` command. An example is shown below.  
 
 ```{r eval=F}
 object <- df1 %>%
-  filter(var1 == 2) %>%        # for demonstration only
-  mutate(lag = day + 7) %>%    # for demonstration only
-  left_join(df1, by = c("ID" = "identifier"))  # join df2 to df1
+  left_join(df2, by = c("ID" = "identifier"))  # join df2 to df1
 ```
 
 **Join columns (`by = `)**  
@@ -187,14 +185,12 @@ You must specify the columns in each dataset in which the values must match, usi
 
 
 
-### 
-
 
 
 <!-- ======================================================= -->
-### Add columns: left & right joins  
+### Add columns: left & right joins {-}  
 
-**A left or right join is commonly used to add information to a dataframe** - new information is added only to rows that already exist in the baseline dataframe.  
+**A left or right join is commonly used to add information to a dataframe** - new information is added only to rows that already exist in the baseline (starting) dataframe.  
 
 These are common joins in epidemiological work - they are used to add information from one dataset into another. 
 
@@ -204,9 +200,10 @@ These are common joins in epidemiological work - they are used to add informatio
 * In a *right join*, the *second* (right) dataframe listed is the baseline  
 
 **All rows of the baseline dataframe are kept.** Information in the secondary dataframe is joined to the baseline dataframe *only if there is a match via the identifier column(s)*. In addition:  
+
 * Rows in the secondary dataframe that do not match are dropped.  
 * If there are many baseline rows that match to one row in the secondary dataframe (many-to-one), the baseline information is added to each matching baseline row.  
-* If a baseline row matches to multiple rows in the secondary dataframe (one-to-many), all combinations are given, meaning new rows may be added to your returned dataframe!  
+* If a baseline row matches to multiple rows in the secondary dataframe (one-to-many), all combinations are given, meaning *new rows may be added to your returned dataframe!*  
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "left-join.gif"))
@@ -217,8 +214,9 @@ knitr::include_graphics(here::here("images", "right-join.gif"))
 
 Below is the output of a `left_join()` of `hosp_info` (secondary dataframe)  *into* `linelist_mini` (baseline dataframe). Note the following:  
 
+* Two new columns, `catchment_pop` and `level` have been added on the left  
 * All original rows of the baseline dataframe `linelist_mini` are kept  
-* One original row of `linelist_mini` is duplicated ("Military Hospital") because it matched to *two* rows in the secondary dataframe, so both combinations are returned  
+* Any original rows of `linelist_mini` for "Military Hospital" are duplicated because it matched to *two* rows in the secondary dataframe, so both combinations are returned  
 * The join identifier column of the secondary dataset (`hosp_name`) has disappeared because it is redundant with the identifier column in the primary dataset (`hospital`)  
 * When a baseline row did not match to any secondary row (e.g. when `hospital` is "Other" or "Missing"), `NA` fills in the columns from the secondary dataframe  
 * Rows in the secondary dataframe with no match to the baseline dataframe ("sisters" and "ignace") were dropped  
@@ -265,7 +263,7 @@ right_join(hosp_info, linelist_mini, by = c("hosp_name" = "hospital")) %>%
 
 
 <!-- ======================================================= -->
-### Full join  
+### Full join {-} 
 
 **A full join is the most *inclusive* of the joins** - it returns all rows from both dataframes.  
 
@@ -283,7 +281,7 @@ knitr::include_graphics(here::here("images", "full-join.gif"))
 Below is the output of a `full_join()` of `hosp_info`  *into* `linelist_mini`. Note the following:  
 
 * All baseline rows (`linelist_mini`) are kept  
-* One baseline row is duplicated ("Military Hospital") because it matched to two secondary rows and both combinations are returned  
+* Any baseline rows for "Military Hospital" are duplicated because they match to two secondary rows and both combinations are returned  
 * Only the identifier column from the baseline is kept (`hospital`)  
 * `NA` fills in where baseline rows did not match to secondary rows (`hospital` was "Other" or "Missing"), or the opposite (where `hosp_name` was "ignace" or "sisters")  
 
@@ -304,7 +302,7 @@ linelist_mini %>%
 
 
 <!-- ======================================================= -->
-### Inner join  
+### Inner join {-} 
 
 **An inner join is the most *restrictive* of the joins** - it returns only rows with matches across both dataframes.  
 This means that your original dataset may reduce in number of rows. Adjustment of the "baseline" (first) dataframe will not impact which records are returned, but it will impact the column order, row order, and which identifier column is retained.   
@@ -348,7 +346,7 @@ linelist_mini %>%
 
 
 <!-- ======================================================= -->
-### Semi join  
+### Semi join {-} 
 
 A semi join is a "filtering join" which uses another dataset *not to add rows or columns, but to perform filtering*.  
 A **semi-join keeps all observations in dataframe 1 that have a match in dataframe 2** (but does not add new columns or duplicate any rows with multiple matches). Read more about filtering joins [here](https://towardsdatascience.com/level-up-with-semi-joins-in-r-a068426096e0).  
@@ -367,7 +365,7 @@ hosp_info %>%
 
 
 <!-- ======================================================= -->
-### Anti join  
+### Anti join {-} 
 
 **The anti join is a "filtering join" that returns rows in dataframe 1 that *do not* have a match in dataframe 2.**  
 
@@ -381,7 +379,7 @@ Common scenarios for an anti-join include identifying records not present in ano
 knitr::include_graphics(here::here("images", "anti-join.gif"))
 ```
 
-**Simple example**  
+**Simple `anti_join()` example**  
 
 For an example, let's find the `hosp_info` hospitals that do not have any cases present in `linelist_mini`. We list `hosp_info` first, as the baseline dataframe. The two hospitals which are not present in `linelist_mini` are returned.  
 
@@ -397,7 +395,7 @@ hosp_info %>%
 ```
 
 
-**Example 2**  
+**`anti_join()` example 2**  
 
 For another example, let us say we ran an `inner_join()` between `linelist_mini` and `hosp_info`. This returns only 8 of the original 11 `linelist_mini` records.  
 
@@ -435,22 +433,24 @@ To see the `hosp_info` records that were excluded in the inner join, we could al
 <!-- ======================================================= -->
 ## Probabalistic matching { }
 
-Under construction - TBD
-
 If you do not have a unique identifier common across datasets to join on, consider using a probabilistic matching algorithm. This would find matches between records based on similarity (e.g. Jaro–Winkler string distance, or numeric distance).  Below is a simple example using the package **fastLink** .  
 
 **Load packages**  
 
 ```{r}
 pacman::p_load(
-               tidyverse,      # data manipulation and visualization
-               fastLink        # record matching
-               )
+  tidyverse,      # data manipulation and visualization
+  fastLink        # record matching
+  )
 ```
 
 
+Here are two small example datasets that we will use to demonstrate the probabilistic matching (`cases` and `test_results`):  
 
-```{r, echo=F}
+Here is the code used to make the datasets:  
+
+
+```{r}
 # make datasets
 
 cases <- tribble(
@@ -486,7 +486,6 @@ results <- tribble(
 
 ```
 
-Here are two small example datasets that we will use to demonstrate the probabilistic matching:  
 
 **The `cases` dataset has 9 records** of patients who are awaiting test results.  
 
@@ -504,11 +503,11 @@ DT::datatable(cases, rownames = FALSE, options = list(pageLength = nrow(cases), 
 DT::datatable(results, rownames = FALSE, options = list(pageLength = nrow(results), scrollX=T))
 ```
 
-### Probabilistic matching  
+### Probabilistic matching {-}  
 
 The `fastLink()` function from the **fastLink** package can be used to apply a matching algorithm. Here is the basic informaton. You can read more detail by entering `?fastLink` in your console.  
 
-* Define the two dataframes for comparison as `dfA = ` and `dfB = `  
+* Define the two dataframes for comparison to arguments `dfA = ` and `dfB = `  
 * In `varnames = ` give all column names to be used for matching. They must all exist in both `dfA` and `dfB`.  
 * In `stringdist.match = ` give columns from those in `varnames` to be evaluated on string "distance".  
 * In `numeric.match = ` give columns from those in `varnames` to be evaluated on numeric distance.  
@@ -561,7 +560,7 @@ Things to note:
 To use these matches to join `results` to `cases`, one strategy is:  
 
 1) Use `left_join()` to join `my_matches` to `cases` (matching rownames in `cases` to "inds.a" in `my_matches`)  
-2) Then use another `left_join()` to join `results` to `cases` (matching the newly-acquired "inds.b" in `cases` to rownames in `results``)  
+2) Then use another `left_join()` to join `results` to `cases` (matching the newly-acquired "inds.b" in `cases` to rownames in `results`)  
 
 Before the joins, we should clean the three datasets:  
 
@@ -637,7 +636,7 @@ results_not_matched <- results[!rownames(results) %in% my_matches$inds.b,]  # Ro
 ```
 
 
-### Probabilistic deduplication  
+### Probabilistic deduplication {-}  
 
 Probabilistic matching can be used to deduplicate a dataset as well. See the page on deduplication for other methods of deduplication.  
 
@@ -727,6 +726,7 @@ cases_dedupe[cases_dedupe$dedupe.ids == 2,]
 The [dplyr page on joins](https://dplyr.tidyverse.org/reference/join.html)  
 
 See this vignette on [fastLink](https://github.com/kosukeimai/fastLink) at the package's Github page  
+
 Publication describing methodolgy of [fastLink](https://imai.fas.harvard.edu/research/files/linkage.pdf)  
 
 Publication describing [RecordLinkage package](https://journal.r-project.org/archive/2010/RJ-2010-017/RJ-2010-017.pdf)
