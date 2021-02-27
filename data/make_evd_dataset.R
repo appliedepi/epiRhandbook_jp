@@ -426,7 +426,11 @@ duplicate_rownums <- round(rnorm(n=round(nrow(evd)*.02),  # 2% of entries
                                  mean=nrow(evd)*.5,    # mean middle of the outbreak 
                                  sd=1000))
 hist(duplicate_rownums)
-evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
+dups <- evd[duplicate_rownums, ] %>% 
+        mutate(case_id = " ")
+        
+        
+evd <- rbind(evd, dups) #rbind the same rows
 
 ### Add merged column header cells !!!
 # DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
