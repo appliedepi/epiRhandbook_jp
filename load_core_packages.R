@@ -6,5 +6,6 @@ pacman::p_load(
      here,
      DT,
      stringr,
-     lubridate
+     lubridate,
+     patchwork
 )

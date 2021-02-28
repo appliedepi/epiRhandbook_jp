@@ -1,6 +1,6 @@
 # modify the ebola_sim linelist from outbreaks package
 ######################################################
-pacman::p_load(tidyverse, rio, here, incidence, outbreaks)
+pacman::p_load(tidyverse, rio, here, incidence, outbreaks, lubridate)
 
 # parts of evd
 evd_sim    <- outbreaks::ebola_sim$linelist
@@ -22,25 +22,152 @@ plot(epicurve_weekly)
 #####################################
 
 # Make age for males
-ages_m <- round(abs(rnorm(n = nrow(evd %>% filter(gender == "m")), mean = 15, sd = 15)))
+ages_m <- round(abs(rnorm(n = nrow(evd %>% filter(gender == "m")), mean = 15, sd = 20)))
 hist(ages_m)
+
 
 # make ages for females
 ages_f <- round(abs(rnorm(n = nrow(evd %>% filter(gender == "f")), mean = 5, sd = 15)))
 hist(ages_f)
 
+ages_m_in <- ages_m[ages_m < 2]
+ages_m_ch <- ages_m[ages_m >= 2 & ages_m <= 5]
+ages_m_tn <- ages_m[ages_m > 5 & ages_m < 15]
+ages_m_ad <- ages_m[ages_m >= 15]
 
-# add age (split database by gender, add ages, then re-join)
-evd_m <- evd %>% filter(gender == "m") %>% 
-     mutate(age = ages_m)
+ages_f_in <- ages_f[ages_f < 2]
+ages_f_ch <- ages_f[ages_f >= 2 & ages_f <= 5]
+ages_f_tn <- ages_f[ages_f > 5 & ages_f < 15]
+ages_f_ad <- ages_f[ages_f >= 15]
 
-evd_f <- evd %>% filter(gender == "f") %>% 
-     mutate(age = ages_f)
+ages_m <- c(ages_m_in, ages_m_ch, ages_m_tn, ages_m_ad)
+ages_f <- c(ages_f_in, ages_f_ch, ages_f_tn, ages_f_ad)
 
-evd <- bind_rows(evd_m, evd_f)
+ages <- c(ages_m, ages_f)
+
+library(faux)
+
+# make weights
+wt_m_in <- rnorm_pre(ages_m_in, mu = 15, sd = 3, r = 0.7)
+wt_m_ch <- rnorm_pre(ages_m_ch, mu = 40, sd = 10, r = 0.8)
+wt_m_tn <- rnorm_pre(ages_m_tn, mu = 55, sd = 10, r = 0.8)
+wt_m_ad <- rnorm_pre(ages_m_ad, mu = 70, sd = 10, r = 0.8)
+
+wt_f_in <- rnorm_pre(ages_f_in, mu = 13, sd = 10, r = 0.8)
+wt_f_ch <- rnorm_pre(ages_f_ch, mu = 35, sd = 10, r = 0.8)
+wt_f_tn <- rnorm_pre(ages_f_tn, mu = 45, sd = 10, r = 0.8)
+wt_f_ad <- rnorm_pre(ages_f_ad, mu = 60, sd = 10, r = 0.8)
+
+wt_kg_m <- c(wt_m_in, wt_m_ch, wt_m_tn, wt_m_ad)
+plot(ages_m, wt_kg_m)
+
+wt_kg_f <- c(wt_f_in, wt_f_ch, wt_f_tn, wt_f_ad)
+plot(ages_f, wt_kg_f)
+
+wt_kg <- c(wt_kg_m, wt_kg_f)
+plot(ages, wt_kg)
+cor(ages, wt_kg)
+
+
+# make heights
+ht_m_in <- rnorm_pre(ages_m_in, mu = 40, sd = 8, r = 0.7)
+ht_m_ch <- rnorm_pre(ages_m_ch, mu = 70, sd = 15, r = 0.8)
+ht_m_tn <- rnorm_pre(ages_m_tn, mu = 130, sd = 20, r = 0.8)
+ht_m_ad <- rnorm_pre(ages_m_ad, mu = 170, sd = 30, r = 0.8)
+
+ht_f_in <- rnorm_pre(ages_f_in, mu = 30, sd = 10, r = 0.8)
+ht_f_ch <- rnorm_pre(ages_f_ch, mu = 60, sd = 15, r = 0.8)
+ht_f_tn <- rnorm_pre(ages_f_tn, mu = 110, sd = 20, r = 0.8)
+ht_f_ad <- rnorm_pre(ages_f_ad, mu = 150, sd = 30, r = 0.8)
+
+ht_cm_m <- c(ht_m_in, ht_m_ch, ht_m_tn, ht_m_ad)
+plot(ages_m, ht_cm_m)
+
+ht_cm_f <- c(ht_f_in, ht_f_ch, ht_f_tn, ht_f_ad)
+plot(ages_f, ht_cm_f)
+
+ht_cm   <- c(ht_cm_m, ht_cm_f)
+plot(ages, ht_cm)
+cor(ages, ht_cm)
+
+demographics <- data.frame(
+        evd$gen
+)
+
+# add age (split database by gender, add demographics, then re-join)
+evd_m <- evd %>% filter(gender == "m")
+evd_m <- evd_m[sample(nrow(evd_m)),]
+evd_m <- evd_m %>% 
+     mutate(age = ages_m,
+            wt_kg = wt_kg_m,
+            ht_cm = ht_cm_m)
+
+evd_f <- evd %>% filter(gender == "f")
+evd_f <- evd_f[sample(nrow(evd_f)),]
+evd_f <- evd_f %>% 
+     mutate(age = ages_f,
+            wt_kg = wt_kg_f,
+            ht_cm = ht_cm_f)
+
+evd <- bind_rows(evd_m, evd_f) %>% 
+        arrange(date_of_onset)
+
+# run tests
+t.test(data = evd, age ~ gender)
+cor(evd$age, evd$ht_cm)
+plot(evd$age, evd$ht_cm)
+
+t.test(data = evd, wt_kg ~ gender)
+cor(evd$age, evd$wt_kg)
+plot(evd$age, evd$wt_kg)
+
+ggplot(data = evd)+
+        geom_point(aes(x = age, y = wt_kg, color = gender))+
+        facet_wrap(~gender)
+
+
+
+# ADD CT VALUE
+##############
+# add delay
+evd <- evd %>%
+        # difference in days between onset and hospitalisation
+        mutate(onset_to_hosp_days = as.numeric(date_of_hospitalisation - date_of_onset)) %>% 
+        mutate(delay_short_long   = ifelse(onset_to_hosp_days <= mean(onset_to_hosp_days, na.rm=T), "short", "long"))
+
+table(evd$delay_short_long)
+
+hist(evd$onset_to_hosp_days, breaks = 30)
+
+
+# Make CT for short delay
+ct_short <- round(abs(rnorm(n = nrow(evd %>% filter(delay_short_long == "short")), mean = 22, sd = 1)))
+hist(ct_short)
+
+# make CT for long delay
+ct_long <- round(abs(rnorm(n = nrow(evd %>% filter(delay_short_long == "long")), mean = 19, sd = 1)))
+hist(ct_long)
+
+
+# add CT (split database by delay, add ages, then re-join)
+evd_ct_short <- evd %>% filter(delay_short_long == "short") %>% 
+        mutate(ct_blood = ct_short)
+
+evd_ct_long <- evd %>% filter(delay_short_long == "long") %>% 
+        mutate(ct_blood = ct_long)
+
+evd <- bind_rows(evd_ct_short, evd_ct_long)
 
 # run t-test
-t.test(data = evd, age ~gender)
+t.test(data = evd, ct_blood ~ delay_short_long)
+ggplot(data = evd,
+       mapping = aes(y = ct_blood, x = onset_to_hosp_days))+
+        geom_density_2d()+
+        ggtitle("D) SCATTER PLOT made using ggplot()")
+
+
+
+
 
 # add years/months column
 #########################
@@ -86,7 +213,7 @@ table(is.na(evd$age), is.na(evd$gender))
 # ONSET MISSING
 ###############
 # random indices to convert to missing:
-to_NA_onset <- round(rnorm(n=round(nrow(evd)*.05),  # 5% of entries
+to_NA_onset <- round(rnorm(n=round(nrow(evd)*.08),  # 10% of entries
                          mean=nrow(evd)*.4,    # mean **earlier** in the outbreak 
                          sd=1000))
 to_NA_onset <- to_NA_sym[to_NA_onset < nrow(evd) & to_NA_onset > 0] # ensure indices are in appropriate range
@@ -118,6 +245,49 @@ evd$aches[to_NA_sym] <- NA
 evd$vomit[to_NA_sym] <- NA
 
 
+
+
+# add temperature
+#################
+# Make temp for no fever
+temp_normal <- abs(rnorm(n = nrow(evd %>% filter(fever == "no" | is.na(fever))), mean = 37, sd = 0.5))
+temp_normal <- temp_normal[temp_normal < 38 & temp_normal > 35]    # ensure appropriate range
+temp_normal <- c(temp_normal, rep(NA,    # fill in with NA to get right length
+                                  (nrow(evd %>% filter(fever == "no" | is.na(fever))) - length(temp_normal))
+                                  )
+)
+hist(temp_normal)
+
+# make temp for fever
+temp_fever <- abs(rnorm(n = nrow(evd %>% filter(fever == "yes")), mean = 39, sd = 0.5))
+temp_fever <- temp_fever[temp_fever < 41 & temp_fever > 38]    # ensure appropriate range
+temp_fever <- c(temp_fever, rep(NA,    # fill in with NA to get right length
+                                  (nrow(evd %>% filter(fever == "yes")) - length(temp_fever))
+)
+)
+
+hist(temp_fever)
+
+
+# add temp (split database by delay, add ages, then re-join)
+evd_temp_norm <- evd %>% filter(fever == "no" | is.na(fever)) %>% 
+        mutate(temp = temp_normal)
+
+evd_temp_fv <- evd %>% filter(fever == "yes") %>% 
+        mutate(temp = temp_fever)
+
+evd <- bind_rows(evd_temp_norm, evd_temp_fv)
+
+# run t-test
+t.test(data = evd, temp ~ fever)
+ggplot(data = evd,
+       mapping = aes(y = temp, x = temp))+
+        geom_density_2d()+
+        ggtitle("D) SCATTER PLOT made using ggplot()")
+
+table(evd$fever)
+
+
 ### Add 3 blank rows to bottom (to be filtered out)
 ###################################################
 evd[nrow(evd)+1,] <- NA
@@ -126,7 +296,7 @@ evd[nrow(evd)+1,] <- NA
 
 ### ADD ROWS TO BE FILTERED OUT (from another outbreak years before)
 ###############################
-outbreak2_rownums <- round(rnorm(n=round(nrow(evd)*.10),  # 5% of entries
+outbreak2_rownums <- round(rnorm(n=round(nrow(evd)*.10)+1,  # 5% of entries
                                  mean=nrow(evd)*.5,    # mean middle of the outbreak 
                                  sd=1000))
 
@@ -188,7 +358,7 @@ evd <- evd %>%
 # CLASSES
 ##########
 evd$`date onset` <- as.character(evd$`date onset`)
-evd$`date onset`[1] <- "15th April 2014"
+#evd$`date onset`[1] <- "15th April 2014"
 class(evd$`date onset`)
 
 evd$age <- as.character(evd$age)
@@ -256,15 +426,32 @@ duplicate_rownums <- round(rnorm(n=round(nrow(evd)*.02),  # 2% of entries
                                  mean=nrow(evd)*.5,    # mean middle of the outbreak 
                                  sd=1000))
 hist(duplicate_rownums)
-evd <- rbind(evd, evd[duplicate_rownums, ]) #rbind the same rows
+dups <- evd[duplicate_rownums, ] %>% 
+        mutate(case_id = " ")
+        
+        
+evd <- rbind(evd, dups) #rbind the same rows
 
 ### Add merged column header cells !!!
 # DO THIS IN EXCEL AFTER EXPORTING. Add two extra columns and merge the column names. They will be removed in the cleaning page. 
 # "Merged header" and then underneath two columns each saying "this is under a merged header"
 
+
+
+# round weight and height and temp values
+evd <- evd %>% 
+        mutate(wt_kg = round(wt_kg),
+               ht_cm = round(ht_cm),
+               temp  = round(temp,1))
+
+
+# remove other columns
+evd <- select(evd, case_id:age, age_unit, everything()) %>% 
+        select(-onset_to_hosp_days, -delay_short_long)
+head(evd, 10)
+
 # export
 rio::export(evd, here::here("data", "linelist_raw.xlsx"))
-
 
 
 #################################################################################

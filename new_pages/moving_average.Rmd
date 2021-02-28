@@ -1,0 +1,284 @@
+
+# Moving averages { }  
+
+```{r, out.width=c("50%"), echo=F}
+knitr::include_graphics(here::here("images", "moving_avg_epicurve.png"))
+```
+
+<!-- ======================================================= -->
+## Overview {  }
+
+This page will cover two methods to calculate and visualize moving averages:  
+
+1) Calculate, then display  
+2) Calculate within a `ggplot()` command  
+
+
+
+<!-- ======================================================= -->
+## Preparation {  }
+
+**Load packages**  
+
+```{r}
+pacman::p_load(
+  tidyverse,      # for data management and viz
+  slider,         # for calculating moving averages
+  tidyquant       # for calculating moving averages within ggplot
+)
+```
+
+
+<!-- ======================================================= -->
+## Calculate-then-display {  }
+
+Use the package **slider** to calculate a moving average in a dataframe prior to plotting.  
+
+The **slider()** package provides several "sliding window" functions to compute rolling averages, cumulative sums, rolling regressions, etc. It treats a dataframe as a vector of rows, allowing iteration row-wise over a dataframe.   
+
+Here are some of the common functions:  
+
+* `slide_dbl()` - iterates through a numeric column performing an operation using a sliding window  
+  * `slide_sum()` - rolling sum shortcut  
+  * `slide_mean()` - rolling average shortcut  
+* `slide_index_dbl()` - applies the rolling window using a separate index column (useful if using dates or there are missing rows)  
+
+
+**Core arguments**  
+
+* `.x`, the first argument by default, is the vector to iterate over and to apply the function to  
+* `.f`, the second argument by default, either:  
+  * A function, written without parentheses, like `mean`, or  
+  * A formula, which will be converted into a function. For example `~ .x - mean(.x)` will return the result of the current value minus the mean of the window's value  
+  
+* For more details see this [reference material](https://davisvaughan.github.io/slider/reference/slide.html)
+
+
+
+**Window size**  
+
+Specify the size of the window by using either `.before`, `.after`, or both arguments:   
+
+* `.before = ` - Provide an integer  
+* `.after = ` - Provide an integer  
+* `.complete = ` - Set this to `TRUE` if you only want calculation performed on complete windows  
+
+For example, to achieve a 7-day window including the current value and the six previous, use `.before = 6`. To achieve a "centered" window provide the same number to both `.before = ` and `.after = `.    
+
+**Expanding window**  
+
+To achieve *cumulative* operations, set the `.before = ` argument to `Inf`. This will conduct the operation on the current value and all coming before.  
+
+
+
+
+### Rolling operations {-}  
+
+Use `slide_dbl()`, which is made specifically to slide across a numeric vector.  
+
+To calculate the rolling mean of delay from onset to hospital admission (`days_onset_hosp` column):  
+
+```{r}
+rolled <- linelist %>%
+  
+  select(                             # select only some columns, for visibility
+    case_id,                     
+    date_onset,
+    days_onset_hosp) %>% 
+  
+  mutate(
+    delay_roll = slider::slide_dbl(   # define column delay_roll 
+      .x        = days_onset_hosp,    # apply function to delays column
+      .f        = mean,               # use mean()
+      .before   = 2,                  # use value and 2 previous values
+      .complete = TRUE))              # only use windows that have all three values present
+
+```
+
+```{r, echo = F}
+DT::datatable(rolled, rownames = FALSE, options = list(pageLength = 15, scrollX=T) )
+```
+
+
+
+**Grouped data**  
+
+You will see differences if your data are grouped and you have set `.compete = TRUE` (windows with missing values are not calculated). As on ungrouped data, when `.complete = TRUE`, the first rows will not return a value until the window is complete. However the change between groups acts as a hard barrier and these empty rows will re-occur. See handbook page on [Grouping data]).  
+
+```{r}
+grouped_roll <- linelist %>%
+  
+  select(                             # select only some columns, for visibility
+    case_id,                     
+    date_onset,
+    days_onset_hosp) %>%  
+  
+  group_by(                           # group by month of onset 
+    month = lubridate::month(date_onset)) %>%
+  
+  mutate(                             # rolling mean, as before  
+    delay_roll_month = slider::slide_dbl(
+      .x = days_onset_hosp,
+      .f = mean,
+      .before = 2,
+      .complete = TRUE
+      )
+    )
+```
+
+You see the difference below from above when the month of June begins:  
+
+```{r, echo=F}
+DT::datatable(grouped_roll, rownames = FALSE, options = list(pageLength = 15, scrollX=T) )
+```
+
+<span style="color: red;">**_DANGER:_** If you get an error saying *"slide() was deprecated in tsibble 0.9.0 and is now defunct. Please use slider::slide() instead."*, it means that the `slide()` function from the **tsibble** package is masking the `slide()` function from **slider** package. Fix this by specifying the package in the command, such as `slider::slide_dbl()`.</span>
+
+
+
+### Indexed rolling  {-}  
+
+Often when conducting rolling operations *by date* (common with epidemiological linelists), we can encounter problems like:  
+
+* Dates are missing from the dataframe, but should be included in a window  
+
+To solve this, use `slide_index()` from **slider**. It uses a separate column as an *index* for the rolling window. If this column is a date, it will know which dates are not present in the data and account for them. Below is an example to return a 7-day rolloing average of new cases reported per day:  
+
+* First we count the number of cases reported each day with `count()` from **dplyr** (see page on [Grouping data]).  
+
+```{r}
+# make dataset of daily counts and 7-day moving average
+counts_7day <- linelist %>% 
+  
+  # get counts
+  count(
+    date_onset,        # count rows per unique onset_date
+    name = "new_cases" # name of new column
+    ) %>%
+  
+  # remove counts with missing onset_date
+  filter(!is.na(date_onset))
+```
+
+The new dataset now looks like this. Note how some days are not present (no cases on those days). A simple `slide_dbl()` would incorrectly include the first seven rows in the first window.    
+
+```{r, echo=F}
+DT::datatable(counts_7day, rownames = FALSE, options = list(pageLength = 6, scrollX=T) )
+```
+
+We use the function `slide_index()` specifically because we recognize that *there are missing days* in the above dataframe, and they must be accounted for when creating windows of time. We set our "index" column (`.i` argument) as the column `date_onset`. Because `date_onset` is a column of class Date, the function accounts for the days that do not appear in the dataframe. For the arguments `.before` and `.after` we can use integers, or use **lubridate** functions like `days()` and `months()`.  
+
+```{r}
+## calculate 7-day rolling average, accounting for missing days
+rolling <- counts_7day %>% 
+  mutate(
+    avg_7day = slider::slide_index_dbl(  # create new column
+        new_cases,                       # calculate avg based on value in new_cases column
+        .i = date_onset,                 # index column is date_onset, so non-present dates are included in 7day window 
+        .f = ~mean(.x, na.rm = TRUE),    # function is mean() with missing values removed
+        .before = days(6),               # window is the day and 6-days before
+        .complete = TRUE))               # fills in first days with NA
+```
+
+You can see below that the time windows account for days that do not appear in the data.  
+
+```{r, echo=F}
+DT::datatable(rolling, rownames = FALSE, options = list(pageLength = 6, scrollX=T) )
+```
+
+We can now plot the linelist, with the 7-day moving average overlaid. If needed, see the page on [ggplot tips].    
+
+```{r, warning = F, message=F}
+ggplot(data = rolling, aes(x = date_onset))+
+  geom_histogram(         # plot histogram of daily cases
+    aes(y = new_cases),
+    fill   ="#92a8d1",    # bar color
+    stat   = "identity",  # height = value
+    colour = "#92a8d1")+  # color around bars
+  geom_line(              # overlay line
+    aes(y = avg_7day),    # use 7-day average column
+    color="red",         
+    size = 1) +           # line thickness  
+  scale_x_date(           # x-axis by months
+    date_breaks = "1 month",
+    date_labels = '%d/%m',
+    expand = c(0,0)) +
+  scale_y_continuous(
+    expand = c(0,0),
+    limits = c(0, NA)) + 
+  labs(
+    x="",
+    y ="Number of confirmed cases")+ 
+  theme_minimal() 
+```
+
+
+
+If you rolling average by months, you can use **lubridate** to group the data by month, and then apply `slide_index_dbl()` as below shown for a three-month rolling average:  
+
+```{r}
+ll_months <- linelist %>%
+  mutate(
+    month_onset = floor_date(date_onset, "month")) %>% 
+  count(month_onset) %>% 
+  filter(!is.na(month_onset)) %>% 
+  mutate(
+    monthly_roll = slider::slide_index_dbl(
+      n,                                # calculate avg based on value in new_cases column
+      .i = month_onset,                 # index column is date_onset, so non-present dates are included in 7day window 
+      .f = ~mean(.x, na.rm = TRUE),     # function is mean() with missing values removed
+      .before = months(2),              # window is the day and 6-days before
+      .complete = TRUE))                # fills in first days with NA
+  
+```
+
+
+
+
+<!-- ======================================================= -->
+## Calculate within `ggplot()`) {  }
+
+The package **tidyquant** offers another approach to calculating moving averages - this time from *within* a `ggplot()` command itself.  
+
+Below the `linelist` data are counted by date of onset, and this is plotted as a faded line (`alpha` < 1). Overlaid on top is a line created with `geom_ma()`, with a window of 7 days (`n = 7`) with specified color and thickness.  
+
+By default `geom_ma()` uses a simple moving average (`ma_fun = "SMA"`), but other types can be specified, such as:  
+
+* "EMA" - exponential moving average (more weight to recent observations)  
+* "WMA" - weighted moving average (`wts` are used to weight observations in the moving average)  
+* Others can be found in the function documentation  
+
+```{r}
+linelist %>% 
+  count(date_onset) %>%                 # count cases per day
+  filter(!is.na(date_onset)) %>%        # remove cases missing onset date
+  ggplot(aes(x = date_onset, y = n))+   # start ggplot
+    geom_line(                          # plot raw values
+      size = 1,
+      alpha = 0.2                       # semi-transparent line
+      )+             
+    tidyquant::geom_ma(                 # plot moving average
+      n = 7,           
+      size = 1,
+      color = "blue")+ 
+  theme_minimal()                       # simple background
+```
+
+See this [vignette](https://cran.r-project.org/web/packages/tidyquant/vignettes/TQ04-charting-with-tidyquant.html) for more details on the options available within **tidyquant**.  
+
+<!-- ======================================================= -->
+## Resources {  }
+
+
+See the helpful online [vignette for the **slider** package](https://cran.r-project.org/web/packages/slider/vignettes/slider.html)  
+
+The **slider** [github page](https://github.com/DavisVaughan/slider)
+
+A **slider** [vignette](https://davisvaughan.github.io/slider/articles/slider.html)  
+
+[tidyquant vignette](https://cran.r-project.org/web/packages/tidyquant/vignettes/TQ04-charting-with-tidyquant.html)
+
+If your use case requires that you “skip over” weekends and even holidays, you might like **almanac** package.
+
+
+

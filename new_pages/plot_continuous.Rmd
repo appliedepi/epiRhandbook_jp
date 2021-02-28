@@ -1,0 +1,267 @@
+
+# Plot continuous data { }  
+
+For appropriate plotting of continuous data, e.g. age, clinical measurements, distance, etc. 
+
+<!-- ======================================================= -->
+## Overview {  }
+<h2> Overview </h2>
+
+As usual, R has built-in functions for quick visualisations, such as the `boxplot()` or `plot` functions. You can opt to install additional packages with more functionality - this is often recommended for presentation-ready visualisations. For this we recommend `ggplot2`. 
+
+Visualisations covered here include:
+
+* Plots for one continuous variable: 
+
+  * **Box plots** (also called box and whisker), in which the box represents the 25th, 50th, and 75th percentile of a continuous variable, and the line outside of this represent tail ends of distribution of the the continuous variable, and dots represent outliers.
+  * **Violin plots**, which are similar to histograms in that they show the distribution of a continuous variable based on the symettrical width of the 'violin'. 
+  * **Jitter plots**, which visualise the distribution of a continuous variable by showing all values as dots, rather than collectively as one larger shape. Each dot is 'jittered' so that they can all (mostly) be seen, even where two have the same value. 
+
+
+* **Scatter plots** for two continuous variables.
+
+```{r out.width=c('50%', '50%'), fig.show='hold', echo=F}
+
+# with the boxplot() function
+graphics::boxplot(age ~ outcome,
+                  data = linelist,
+                  col = c("gold", "darkgreen"),
+                  main = "A) BOX PLOT made using boxplot()")
+
+
+# with ggplot2  - boxplot
+ggplot(data = linelist,
+       mapping = aes(y = age, x = outcome))+
+  geom_boxplot(fill = "gold")+
+  ggtitle("B) BOX PLOT made using ggplot()")
+
+
+# with ggplot2 - violin plot
+ggplot(data = linelist,
+       mapping = aes(y = age, x = outcome))+
+  geom_violin(fill = "darkgreen")+
+  ggtitle("C) VIOLIN PLOT made using ggplot()")
+
+# with ggplot2 - scatter plot
+ggplot(data = linelist,
+       mapping = aes(y = age, x = age))+
+  geom_point()+
+  ggtitle("D) SCATTER PLOT made using ggplot()")
+
+
+
+```
+
+
+
+<!-- ======================================================= -->
+## Preparation {  }
+<h2> Preparation </h2>
+
+Preparation includes loading the relevant packages, namely `ggplot2`, (```install.packages("ggplot2")``` if needed), and ensuring your data is the correct class and format. For the examples in this section, we use the simulated Ebola linelist, focusing on the continuous variables `age`, `ct_blood` (CT values), and `days_onset_hosp` (difference between onset date and hospitalisation).
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+
+linelist <- linelist %>% 
+  mutate(age = as.numeric(age)) # Converting age to numeric value if needed
+```
+
+<!-- ======================================================= -->
+## Plotting with base graphics {  }
+<h2> In-built graphics package </h2>
+
+**Plotting one continuous variable**
+
+The in-built graphics package comes with the boxplot() function, allowing straight-forward visualisation of a continuous variable for the whole dataset (A below) or within different groups (B and C below). Note how with C,  ```outcome``` and ```gender``` are written as ```outcome*gender``` such that the boxplots are for the four combinations of the two columns. 
+
+```{r, fig.show='hold', out.width=c('33%', '33%', '33%')}
+
+# For total population
+graphics::boxplot(linelist$age,
+                  main = "A) One boxplot() for total dataset") # Plot title
+
+
+# By subgroup
+graphics::boxplot(age ~ outcome,
+                  data = linelist, # Here 'data' is specified so no need to write 'linelist$age' in line above.
+                  main = "B) boxplot() by subgroup")
+
+# By crossed subgroups
+graphics::boxplot(age ~ outcome*gender,
+                  data = linelist, # Here 'data' is specified so no need to write 'linelist$age' in line above.
+                  main = "C) boxplot() by crossed groups")
+
+```
+
+Some further options with `boxplot()` shown below are:  
+
+* Boxplot width proportional to sample size (A)
+* Violin plots, with notched representing the median and x around it (B)
+* Horizontal (C)  
+
+
+```{r, out.width=c('33%', '33%', '33%'), fig.show='hold'}
+
+# Varying width by sample size 
+graphics::boxplot(linelist$age ~ linelist$outcome,
+                  varwidth = TRUE, # width varying by sample size
+                  main="A) Proportional boxplot() widths")
+
+                  
+# Notched (violin plot), and varying width
+boxplot(age ~ outcome,
+        data=linelist,
+        notch=TRUE,      # notch at median
+        main="B) Notched boxplot()",
+        col=(c("gold","darkgreen")),
+        xlab="Suppliment and Dose")
+
+# Horizontal
+boxplot(age ~ outcome,
+        data=linelist,
+        horizontal=TRUE,  # flip to horizontal
+        col=(c("gold","darkgreen")),
+        main="C) Horizontal boxplot()",
+        xlab="Suppliment and Dose")
+```
+
+**Plotting two continuous variables**
+
+Using base R, we can visualise the relationship between two continuous variables with the `plot` function.
+
+We see that higher CT values are associated with a smaller time difference between onset date and hospitalisation. Note that the points look aligned as they are rounded values.
+
+
+```{r}
+plot(linelist$days_onset_hosp, linelist$ct_blood)
+```
+
+<!-- ======================================================= -->
+## Plotting with ggplot {  }
+<h2> Plotting with ggplot() </h2>
+
+**Code syntax**
+
+Ggplot has extensive functionality, and the same code syntax can be used for many different plot types.
+
+A basic breakdown of the ggplot code is as follows:
+
+
+```
+ggplot(data = linelist)+  
+  geom_XXXX(aes(x = col1, y = col2),
+       fill = "color") 
+```
+
+* ```ggplot()``` starts off the function. You can specify the data and aesthetics (see next point) within the ggplot bracket, unless you are combining different data sources or plot types into one
+* ```aes()``` stands for 'aesthetics', and is where the columns used for the visualisation are specified. For instance ```aes(x = col1, y = col2)``` to specify the data used for the x and y values (where y is the continuous variable in these examples).
+* ```fill``` specifies the colour of the boxplot areas. One could also write ```color``` to specify outline or point colour. 
+* ```geom_XXX``` specifies what type of plot. Options include:
+  * `geom_boxplot()` for a boxplot
+  * `geom_violin()` for a violin plot
+  * `geom_jitter()` for a jitter plot
+  * `geom_point()` for a scatter plot
+
+For more see section on [ggplot tips](#ggplottips)). 
+
+**Plotting one continuous variable**
+
+Below is code for creating **box plots**, to show the distribution of CT values of Ebola patients in an entire dataset and by sub group. Note that for the subgroup breakdowns, the 'NA' values are also removed using dplyr, otherwise ggplot plots the age distribution for 'NA' as a separate boxplot. 
+
+```{r, out.width=c('50%', '50%'), fig.show='hold'}
+# A) Simple boxplot of one numeric variable
+ggplot(data = linelist, aes(y = ct_blood))+  # only y variable given (no x variable)
+  geom_boxplot()+
+  ggtitle("A) Simple ggplot() boxplot")
+
+# B) Box plot by group
+ggplot(data = linelist %>% filter(!is.na(outcome)), 
+       aes(y = ct_blood,         # numeric variable
+           x = outcome)) +      # group variable
+  geom_boxplot(fill = "gold")+   # create the boxplot and specify colour
+  ggtitle("B) ggplot() boxplot by gender")      # main title
+```
+
+Below is code for creating **violin plots** (`geom_violin`) and **jitter plots** (`geom_jitter`) to show age distributions. One can specify that the 'fill' or 'color'is also determined by the data, thereby inserting these options within the `aes` bracket.
+
+```{r, out.width=c('50%', '50%'), fig.show='hold'}
+
+# A) Violin plot by group
+ggplot(data = linelist %>% filter(!is.na(outcome)), 
+       aes(y = age,         # numeric variable
+           x = outcome,      # group variable
+           fill = outcome))+ # fill variable (color of boxes)
+  geom_violin()+                            # create the violin plot
+  ggtitle("A) ggplot() violin plot by gender")      # main title
+
+
+# B) Jitter plot by group
+ggplot(data = linelist %>% filter(!is.na(outcome)), 
+       aes(y = age,         # numeric variable
+           x = outcome,      # group variable
+           color = outcome))+ # Color variable
+  geom_jitter()+                            # create the violin plot
+  ggtitle("B) ggplot() violin plot by gender")      # main title
+
+
+```
+
+To examine further subgroups, one can 'facet' the graph. This means the plot will be recreased within specified subgroups. One can use:
+
+* `facet_wrap()` - this will recreate the sub-graphs and present them alphabetically (typically, unless stated otherwise). You can invoke certain options to determine the look of the facets, e.g. `nrow=1` or `ncol=1` to control the number of rows or columns that the faceted plots are arranged within. See plot A below.
+* `facet_grid()` - this is suited to seeing subgroups for particular combinations of discrete variables. See plot B  below.
+
+```{r, out.width=c('50%', '50%'), fig.show='hold'}
+# A) Facet by one variable
+ggplot(data = linelist %>% filter(!is.na(gender) & !is.na(outcome)), # filter retains non-missing gender/outcome
+       aes(y = age, x = outcome, fill=outcome))+
+  geom_boxplot()+
+  ggtitle("A) A ggplot() boxplot by gender and outcome")+
+  facet_wrap(~gender, nrow = 1)
+
+# B) Facet across two variables
+ggplot(data = linelist %>% filter(!is.na(gender) & !is.na(outcome)), # filter retains non-missing gender/outcome
+       aes(y = age))+
+  geom_boxplot()+
+  ggtitle("A) A ggplot() boxplot by gender and outcome")+
+  facet_grid(outcome~gender)
+```
+
+To turn the plot horizontal, flip the coordinates with ```coord_flip```. 
+
+```{r, out.width=c('100%'), fig.show='hold'}
+# By subgroup
+ggplot(data = linelist %>% filter(!is.na(gender) & !is.na(outcome)), # filter retains non-missing gender/outcome
+       aes(y = age, x = outcome, fill=outcome))+
+  geom_boxplot()+
+  ggtitle("B) A horizontal ggplot() boxplot by gender and outcome")+
+  facet_wrap(gender~., ncol=1) + 
+  coord_flip()
+```
+
+**Plotting two continuous variables**
+
+Following similar syntax, ```geom_point``` will allow one to plot two continuous variables against eachother in a **scatter plot**. Here we again use ```facet_grid``` to show the relationship between two continuous variables in the linelist. We see that higher CT values are associated with a smaller time difference between onset date and hospitalisation. 
+
+```{r, out.width=c('100%'), fig.show='hold'}
+# By subgroup
+ggplot(data = linelist %>% filter(!is.na(gender) & !is.na(outcome)), # filter retains non-missing gender/outcome
+       aes(y = days_onset_hosp, x = ct_blood))+
+  geom_point()+
+  ggtitle("A horizontal ggplot() boxplot by gender and outcome")+
+  facet_grid(gender~outcome) 
+```
+
+
+<!-- ======================================================= -->
+## Resources {  }
+<h2> Resources </h2>
+
+There is a huge amount of help online, especially with ggplot. see:
+
+* http://r-statistics.co/ggplot2-cheatsheet.html
+* https://biostats.w.uib.no/the-ggplot2-cheat-sheet-by-rstudio/
+

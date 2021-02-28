@@ -1,0 +1,443 @@
+
+# Missing data { }
+
+```{r, out.width=c("50%"), echo=F}
+knitr::include_graphics(here::here("images", "missingness.png"))
+knitr::include_graphics(here::here("images", "missingness_overview.png"))
+```
+
+<!-- ======================================================= -->
+## Overview { }
+
+This page will cover:  
+
+1) Useful functions for assessing missingness  
+2) Assess missingness in a dataframe  
+3) Filter out rows with missingness  
+3) Plotting missingness over time  
+4) Handling how `NA` is displayed in plots  
+5) Imputation  
+
+
+
+
+<!-- ======================================================= -->
+## Preparation { }
+
+**Load packages**  
+
+```{r}
+pacman::p_load(
+  rio,           # import/export
+  tidyverse,     # data mgmt and viz
+  naniar         # assess and visualize missingness
+)
+```
+
+**Load data**  
+
+```{r, echo=F}
+linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
+```
+
+
+```{r, eval=F}
+linelist <- rio::import("linelist_cleaned.rds")
+```
+
+
+
+<!-- ======================================================= -->
+## Useful functions { }
+
+The following are useful **base** R functions when assessing or handling missing values:  
+
+
+**`is.na()` and `!is.na()`**  
+
+Use `is.na()`to identify missing values, or use its opposite (with `!` in front) to identify non-missing values. These both return a logical value (`TRUE` or `FALSE`). Remember that you can `sum()` the resulting vector to count the number `TRUE`, e.g. `sum(is.na(linelist$date_outcome))`.    
+
+```{r}
+my_vector <- c(1, 4, 56, NA, 5, NA, 22)
+is.na(my_vector)
+!is.na(my_vector)
+sum(is.na(my_vector))
+```
+
+
+**`na.omit()`**  
+
+This function, if applied to a dataframe, will remove rows with *any* missing values. It is also from **base** R.  
+If applied to a vector, it will remove `NA` values from the vector it is applied to. For example:  
+
+```{r}
+sum(na.omit(my_vector))
+```
+
+
+**`na.rm = TRUE`**  
+
+In R, most mathematical functions will by default *include* `NA` in calculations, *which results in the function returning `NA`*. This is designed intentionally, in order to make you aware that you have missing data.  
+
+You can avoid this by removing missing values from the calculation, by including the argument `na.rm = TRUE` (na.rm stands for "remove `NA`").  
+
+```{r}
+mean(my_vector)
+
+mean(my_vector, na.rm = TRUE)
+```
+
+
+
+<!-- ======================================================= -->
+## Assess missingness in a dataframe { }
+
+You can use the package **naniar** to assess and visualize missingness in the dataframe `linelist`.  
+
+```{r}
+# install and/or load package
+pacman::p_load(naniar)
+```
+
+### Statistics {-}
+
+To find the percent of all values that are missing use `pct_miss()`. Use `n_miss()` to get the number of missing values.  
+
+```{r}
+pct_miss(linelist)
+```
+
+The two functions below return the percent of rows with any missing value, or that are entirely complete, respectively. Reember that `NA` means missing, and that ``""` or `" "` will register as non-missing.  
+
+```{r}
+pct_miss_case(linelist)   # also see n_complete() for counts
+
+pct_complete_case(linelist) # see n_complete
+```
+
+
+
+### Visualizing missingness {-}  
+
+The `gg_miss_var()` function will show you the number of missing values in each column. You can add a bare column name to the argument `facet = ` if desired to see the plot by groups. By default, counts are shown instead of percents (`show_pct = FALSE`). You can also add labs as a normal ggplot with `+labs()`.  
+
+
+```{r}
+gg_miss_var(linelist, show_pct = TRUE)
+```
+
+You can use `vis_miss()` to visualize the dataframe as a heatmap, showing whether each value is missing or not. As usual, you can also `select()` certain columns from the dataframe and the provide that to the function.    
+
+```{r}
+vis_miss(linelist)
+```
+
+
+### Explore and visualize missingness relationships {-} 
+
+How do you visualize something that is not there??? By default, ggplot removes points with missing values from plots.  
+
+**naniar** offers a solution via `geom_miss_point()`. When creating a scatterplot of two columns, records with one of the values missing and the other present are shown by setting the missing values to 10% lower than the lowest value in the column, and coloring them distinctly.  
+
+In the scatterplot below, the red dots are records where the value for one column is present but the value for the other column is missing.  
+
+
+```{r}
+ggplot(
+  linelist, 
+  aes(x = age_years,             
+      y = temp)) +     # column to show missingness
+  geom_miss_point()
+```
+
+To assess missingness in the dataframe *stratified by another column*, consider `gg_miss_fct()`, which returns a heatmap of percent missingness in the dataframe by a factor/categorical (or date) column:  
+
+```{r}
+gg_miss_fct(linelist, age_cat5)
+```
+
+
+This function can also be used with a date column to see missingness over time:  
+
+```{r}
+gg_miss_fct(linelist, date_onset)
+```
+
+
+
+
+### "Shadow" columns {-}
+
+Another way to visualize missingness in one column by values in a second column is using the "shadow" that **naniar** can create. `bind_shadow()` creates a binary `NA`/not `NA` column for every existing column, and binds all these new columns to the original dataset with the appendix "_NA". This doubles the number of columns - see below:  
+
+
+```{r}
+shadowed_linelist <- linelist %>% 
+  bind_shadow()
+
+names(shadowed_linelist)
+```
+
+These "shadow" columns can be used to plot the density of proportion of values that are missing, by any another column X. For example, the plot below shows the proportion of records missing `days_onset_hosp` (number of days from symptom onset to hospitalisation), by that record's value in `date_hospitalisation`. Essentially, you are plotting the density of the x-axis column, but stratifying the results (`color = `) by a shadow column of interest. This analysis works best if the x-axis is a numeric or date column.  
+
+
+```{r, message = F}
+ggplot(
+  shadowed_linelist,                   # dataframe with shadow columns
+  aes(x = date_hospitalisation,        # numeric or date column
+      colour = age_years_NA)) +        # shadow column of interest
+  geom_density()                       # plots the density curves
+```
+
+You can also use these "shadow" columns to stratify a statistical summary, as shown below:
+
+```{r}
+linelist %>%
+  bind_shadow() %>%                # create the shows cols
+  group_by(date_outcome_NA) %>%    # shadow col for stratifying
+  summarise_at(.vars = c("age_years"),                        # variable of interest for calculations
+               .funs = c("mean", "sd", "var", "min", "max"),  # stats to calculate
+               na.rm = TRUE)       # other arguments for the stat calculations
+```
+
+
+An alternative way to plot the proportion of values in one column, including missingness, is given below. It does *not* involve **naniar**. This example shows percent of weekly observations that are missing in a column):  
+
+1) Aggregate the data into a useful time unit (days, weeks, etc.), summarizing the proportion of observations with `NA` (and any other values of interest)  
+2) Plot the proportion missing as a line using `ggplot()`  
+
+Below, we take the linelist, add a new column for week, group the data by week, and then calculate the percent of that week's records where the value is missing. (note: if you want % of 7 days the calculation would be slightly different).  
+
+```{r}
+outcome_missing <- linelist %>%
+  mutate(week = lubridate::floor_date(date_onset, "week")) %>%   # create new week column
+  group_by(week) %>%                                             # group the rows by week
+  summarize(                                                     # summarize each week
+    n_obs = n(),                                                     # number of records
+    
+    outcome_missing = sum(is.na(outcome) | outcome == ""),       # number of records missing the value
+    outcome_p_miss  = outcome_missing / n_obs,                   # proportion of records missing the value
+  
+    outcome_dead    = sum(outcome == "Death", na.rm=T),          # number of records as dead
+    outcome_p_dead  = outcome_dead / n_obs) %>%                  # proportion of records as dead
+  
+  tidyr::pivot_longer(-week, names_to = "statistic") %>%         # pivot all columns except week, to long format for ggplot
+  filter(stringr::str_detect(statistic, "_p_"))                  # keep only the proportion values
+```
+
+Then we plot the proportion missing as a line, by week
+
+```{r, message=F, warning=F}
+ggplot(data = outcome_missing)+
+    geom_line(
+      aes(x = week, y = value, group = statistic, color = statistic),
+      size = 2,
+      stat = "identity")+
+    labs(title = "Weekly outcomes",
+         x = "Week",
+         y = "Proportion of weekly records") + 
+     scale_color_discrete(
+       name = "",
+       labels = c("Died", "Missing outcome"))+
+    scale_y_continuous(breaks = c(seq(0,1,0.1)))+
+  theme_minimal()+
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+
+
+<!-- ======================================================= -->
+## Filter out rows with missing values { }
+
+To quickly remove rows with missing values, use the **dplyr** function `drop_na()`.  
+
+The original `linelist` has `r `nrow(linelist)` rows. The adjusted number of rows is shown below:  
+
+```{r}
+linelist %>% 
+  drop_na() %>%     # remove rows with ANY missing values
+  nrow()
+```
+
+You can specify to drop rows with missingness in certain columns:  
+
+```{r}
+linelist %>% 
+  drop_na(date_onset) %>% # remove rows missing date_onset 
+  nrow()
+```
+
+Multiple columns can be specified one after the other, or using this standard syntax:  
+
+```{r}
+linelist %>% 
+  drop_na(contains("date")) %>% # remove rows missing values in any "date" column 
+  nrow()
+```
+
+
+
+<!-- ======================================================= -->
+## Handling `NA` in `ggplot()` { }
+
+It is often wise to report the number of values excluded from a plot in a caption. Below is an example:  
+
+In `ggplot()`, you can add `labs()` and within it a `caption = `. In the caption, you can use `str_glue()` from **stringr** package to paste values together into a sentence dynamically so they will adjust to the data. An example is below:  
+
+* Note the use of `\n` for a new line.  
+* Note that if multiple column would contribute to values not being plotted (e.g. age or sex if those are reflected in the plot), then you must filter on those columns as well to correctly calculate the number not shown.  
+
+```{r, eval=F}
+labs(
+  title = "",
+  y = "",
+  x = "",
+  caption  = stringr::str_glue(
+  "n = {nrow(central_data)} from Central Hospital;
+  {nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown."))  
+```
+
+Sometimes, it can be easier to save the string as an object in commands prior to the `ggplot()` command, and simply reference the named string object within the `str_glue()`.  
+
+
+<!-- ======================================================= -->
+## `NA` in factors { }
+
+If your column of interest is a factor, use `fct_explicit_na()` from the **forcats** package to convert `NA` values to a character value. By default the character value is "(Missing)" but this can be adjusted via the `na_level =` arguement.   
+
+```{r}
+pacman::p_load(forcats)   # load package
+
+linelist <- linelist %>% 
+  mutate(gender = fct_explicit_na(gender, na_level = "Missing"))
+
+levels(linelist$gender)
+```
+
+
+
+<!-- ======================================================= -->
+## Imputation { }
+
+
+Sometimes, when analyzing your data, it will be important to "fill in the gaps" and impute missing data While you can always simply analyze a dataset after removing all missing values, this can cause problems in many ways. Here are two examples: 
+
+1) By removing all observations with missing values or variables with a large amount of missing data, you might reduce your power or ability to do some types of analysis. For example, as we discovered earlier, only a small fraction of the observations in our linelist dataset have no missing data across all of our variables. If we removed the majority of our dataset we'd be losing a lot of information! And, most of our variables have some amount of missing data--for most analysis it's probably not reasonable to drop every variable that has a lot of missing data either.
+
+2) Depending on why your data is missing, analysis of only non-missing data might lead to biased or misleading results. For example, as we learned earlier we are missing data for some patients about whether they've had some important symptoms like fever or cough. But, as one possibility, maybe that information wasn't recorded for people that just obviously weren't very sick. In that case, if we just removed these observations we'd be excluding some of the healthiest people in our dataset and that might really bias any results.
+
+It's important to think about why your data might be missing in addition to seeing how much is missing. Doing this can help you decide how important it might be to impute missing data, and also which method of imputing missing data might be best in your situation.
+
+### Types of missing data
+
+Here are three general types of missing data:
+
+1) **Missing Completely at Random** (MCAR). This means that there is no relationship between the probability of data being missing and any of the other variables in your data. The probability of being missing is the same for all cases This is a rare situation. But, if you have strong reason to believe your data is MCAR analyzing only non-missing data without imputing won't bias your results (although you may lose some power). [TODO: consider discussing statistical tests for MCAR]
+
+2) **Missing at Random** (MAR). This name is actually a bit misleading as MAR means that your data is missing in a systematic, predictable way based on the other information you have. For example, maybe every observation in our dataset with a missing value for fever was actually not recorded because every patient with chills and and aches was just assumed to have a fever so their temperature was never taken. If true, we could easily predict that every missing observation with chills and aches has a fever as well and use this information to impute our missing data. In practice, this is more of a spectrum. Maybe if a patient had both chills and aches they were more likely to have a fever as well if they didn't have their temperature taken, but not always. This is still predictable even if it isn't perfectly predictable. This is a common type of missing data 
+
+3) **Missing not at Random** (MNAR). Sometimes, this is also called **Not Missing at Random** (NMAR). This assumes that the probability of a value being missing is NOT systematic or predictable using the other information we have but also isn't missing randomly. In this situation data is missing for unknown reasons or for reasons you don't have any information about. For example, in our dataset maybe information on age is missing because some very elderly patients either don't know or refuse to say how old they are. In this situation, missing data on age is related to the value itself (and thus isn't random) and isn't predictable based on the other information we have. MNAR is complex and often the best way of dealing with this is to try to collect more data or information about why the data is missing rather than attempt to impute it. 
+
+In general, imputing MCAR data is often fairly simple, while MNAR is very challenging if not impossible. Many of the common data imputation methods assume MAR. 
+
+### Useful packages
+
+Some useful packages for imputing missing data are Mmisc, missForest (which uses random forests to impute missing data), and mice (Multivariate Imputation by Chained Equations). For this section we'll just use the mice package, which implements a variety of techniques. The maintainer of the mice package has published an online book about imputing missing data that goes into more detail here (https://stefvanbuuren.name/fimd/).  
+
+Here is the code to load the mice package:
+
+```{r}
+pacman::p_load(mice)
+```
+
+### Mean Imputation
+
+Sometimes if you are doing a simple analysis or you have strong reason to think you can assume MCAR, you can simply set missing numerical values to the mean of that variable. Perhaps we can assume that missing temperature measurements in our dataset were either MCAR or were just normal values. Here is the code to create a new variable that replaces missing temperature values with the mean temperature value in our dataset. However, in many situations replacing data with the mean can lead to bias, so be careful.
+
+```{r}
+linelist <- linelist %>%
+  mutate(temp_replace_na_with_mean = replace_na(temp, mean(temp, na.rm = T)))
+```
+
+You could also do a similar process for replacing categorical data with a specific value. For our dataset, imagine you knew that all observations with a missing value for their outcome (which can be "Death" or "Recover") were actually people that died (note: this is not actually true for this dataset):
+
+```{r}
+linelist <- linelist %>%
+  mutate(outcome_replace_na_with_death = replace_na(outcome, "Death"))
+```
+
+### Regression imputation
+
+A somewhat more advanced method is to use some sort of statistical model to predict what a missing value is likely to be and replace it with the predicted value. Here is an example of creating predicted values for all the observations where temperature is missing, but age and fever are not, using simple linear regression using fever status and age in years as predictors. In practice you'd want to use a better model than this sort of simple approach.
+
+```{r, warning=F, message=F}
+simple_temperature_model_fit <- lm(temp ~ fever + age_years, data = linelist)
+
+#using our simple temperature model to predict values just for the observations where temp is missing
+predictions_for_missing_temps <- predict(simple_temperature_model_fit,
+                                        newdata = linelist %>% filter(is.na(temp))) 
+```
+
+Or, using the same modeling approach through the mice package to create imputed values for the missing temperature observations:
+
+```{r}
+model_dataset <- linelist %>%
+  select(temp, fever, age_years)  
+
+temp_imputed <- mice(model_dataset,
+                            method = "norm.predict",
+                            seed = 1,
+                            m = 1,
+                            print = F)
+
+temp_imputed_values <- temp_imputed$imp$temp
+
+```
+
+
+This is the same type of approach by some more advanced methods like using the missForest package to replace missing data with predicted values. In that case, the prediction model is a random forest instead of a linear regression. You can use other types of models to do this as well. However, while this approach works well under MCAR you should be a bit careful if you believe MAR or MNAR more accurately describes your situation. The quality of your imputation will depend on how good your prediction model is and even with a very good model the variability of your imputed data may be underestimated. 
+
+### LOCF and BOCF
+
+Last observation carried forward (LOCF) and baseline observation carried forward (BOCF) are  imputation methods for time series/longitudinal data. The idea is to take the previous observed value as a replacement for the missing data. When multiple values are missing in succession, the method searches for the last observed value.
+
+[TO BE COMPLETED]
+
+### Multiple Imputation
+
+The online book we mentioned earlier by the author of the mice package (https://stefvanbuuren.name/fimd/) contains a detailed explanation of multiple imputation and why you'd want to use it. But, here is a basic explanation of the method:
+
+When you do multiple imputation, you create multiple datasets with the missing values imputed to plausible data values (depending on your research data you might want to create more or less of these imputed datasets, but the mice package sets the default number to 5). The difference is that rather than a single, specific value each imputed value is drawn from an estimated distribution (so it includes some randomness). As a result, each of these datasets will have slightly different different imputed values (however, the non-missing data will be the same in each of these imputed datasets). You still use some sort of predictive model to do the imputation in each of these new datasets (mice has many options for prediction methods including *Predictive Mean Matching*, *logistic regression*, and *random forest*) but the mice package can take care of many of the modeling details. 
+
+Then, once you have created these new imputed datasets, you can apply then apply whatever statistical model or analysis you were planning to do for each of these new imputed datasets and pool the results of these models together. This works very well to reduce bias in both MCAR and many MAR settings and often results in more accurate standard error estimates.
+
+Here is an example of applying the Multiple Imputation process to predict temperature in our linelist dataset using a age and fever status (our simplified model_dataset from above):
+[Note from Daniel: this is not a very good model example and I'll change it later]
+
+```{r}
+# imputing missing values for all variables in our model_dataset, and creating 10 new imputed datasets
+multiple_imputation = mice(
+  model_dataset,
+  seed = 1,
+  m = 10,
+  print = FALSE) 
+
+model_fit <- with(multiple_imputation, lm(temp ~ age_years + fever))
+
+base::summary(mice::pool(model_fit))
+```
+
+Here we used the mice default method of imputation, which is Predictive Mean Matching. We then used these imputed datasets to separately estimate and then pool results from simple linear regressions on each of these datasets. There are many details we've glossed over and many settings you can adjust during the Multiple Imputation process while using the mice package. For example, you won't always have numerical data and might need to use other imputation methods (you can still use the mice package for many other types of data and methods). But, for a more robust analysis when missing data is a significant concern, Multiple Imputation is good solution that isn't always much more work than doing a complete case analysis. 
+
+
+
+
+
+<!-- ======================================================= -->
+## Resources { }
+
+Vignette on the [naniar package](https://cran.r-project.org/web/packages/naniar/vignettes/getting-started-w-naniar.html)
+
+Gallery of [missing value visualizations](https://cran.r-project.org/web/packages/naniar/vignettes/naniar-visualisation.html)
