@@ -1,0 +1,339 @@
+
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- ======================================================= -->
+# Pivoting data {}
+
+When manipulating data, *pivoting* can be understood to refer to one of two processes:  
+
+1. the creation of *pivot tables*, which are tables "... of statistics that summarize the data of a more extensive table (such as from a database, spreadsheet, or business intelligence program). This summary might include sums, averages, or other statistics, which the pivot table groups together in a meaningful way... They arrange and rearrange (or "pivot") statistics in order to draw attention to useful information. This leads to finding figures and facts quickly making them integral to data analysis." see [wiki](https://en.wikipedia.org/wiki/Pivot_table#).  
+2. The conversion of a table from **long** to **wide** format, or vice versa. 
+
+**In this page, we will focus on the latter definition.** The former is a crucial step in data analysis, and is covered elsewhere in the [Grouping data] and [Descriptive statistics] pages. 
+
+
+
+<!-- ======================================================= -->
+## Wide-to-long {}
+
+Transforming a dataset from wide to long ([image source](https://d33wubrfki0l68.cloudfront.net/3aea19108d39606bbe49981acda07696c0c7fcd8/2de65/images/tidy-9.png))
+
+```{r, warning=F, message=F, echo=F}
+knitr::include_graphics(here::here("images", "pivot_longer.png"))
+```
+
+
+<!-- ======================================================= -->
+### Data {-}
+
+Data are often entered and stored in a format that might be useful for presentation, but not for analysis. Let us take the `count_data` dataset as an example, which is stored in a "wide" format, which means that each column is a variable and each row an observation. This is useful for presenting the information in a table or for entering data (e.g. in Excel) from case report forms. However, these typically needs to be transformed to "long" format in order to analyse and visualise.
+
+
+```{r, echo=F}
+count_data <- rio::import(here::here("data", "facility_count_data.rds"))
+```
+
+```{r, eval=F}
+count_data <- import("facility_count_data.rds")
+```
+
+
+```{r, echo=F}
+DT::datatable(count_data, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
+```
+
+Each observation in this dataset refers to the malaria counts at one of 65 facilities on a given date, ranging from `r count_data$data_date %>% min()` to `r count_data$data_date %>% max()`. These facilties are located in one `Province` (North) and four `District`s (Spring, Bolo, Dingo, and Barnard). The dataset provides the overall counts of malaria, as well as age-specific counts in each of three age groups - <4 years, 5-14 years, and 15 years and older.
+
+Visualising the overall malaria counts over time poses no difficulty with the data in it's current format:
+
+```{r, warning=F, message=F}
+ggplot(count_data) +
+  geom_col(aes(x = data_date, y = malaria_tot))
+```
+
+However, what if we wanted to display the relative contributions of each age group to this total count? In this case, we need to ensure that the variable of interest (age group), appears in the dataset in a single column that can be passed to `{ggplot2}`'s "aesthetics" (`aes()`) function.
+
+---
+**Consider also using the common problem whereby data are stored with dates as the columns, as in the example dataset `tidyr::table4a`**
+
+```{r}
+tidyr::table4a
+```
+
+
+<!-- ======================================================= -->
+### `pivot_longer()` {-}
+
+First, let's begin by loading our packages and converting `count_data` to a tibble for easy printing:
+
+```{r, warning=F, message=F}
+pacman::p_load(tidyverse)
+
+# Convert count_data to `tibble` for better printing
+count_data <- 
+  count_data %>% 
+  as_tibble() 
+
+count_data
+```
+
+Next, we want to use `{tidyr}`'s `pivot_longer()` function to convert the wide dataset to a long format, converting the four columns with data on malaria counts to two new columns: one which captures the variable *name* and one which captures the *values* from the cells. Since these four variables all begin with the prefix `malaria_`, we can make use of the handy function `starts_with()`. 
+
+```{r}
+df_long <- 
+  count_data %>% 
+  pivot_longer(
+    cols = starts_with("malaria_")
+  )
+
+df_long
+```
+
+However, we could also have specified the columns by position: 
+
+```{r}
+count_data %>% 
+  pivot_longer(
+    cols = 6:9
+  )
+```
+
+or by named range:
+
+```{r}
+count_data %>% 
+  pivot_longer(
+    cols = `malaria_rdt_0-4`:malaria_tot
+  )
+```
+
+Notice that the newly created dataframe (`df_long`) has more rows (12,152 vs 3,038); it has become *longer*. In fact, it is precisely four times as long, because each row in the original dataset now represents four rows in df_long, one for each of the malaria count observations (<4y, 5-14y, 15y+, and total).
+
+In addition to becoming longer, the new dataset has fewer columns (8 vs 10), as the data previously stored in four columns (those beginning with the prefix `malaria_`) is now stored in two. These two columns are given the default names of `name` and `value`, but we can override these defaults to provide more meaningful names, which can help remember what is stored within, using the `names_to` and `values_to` arguments. Let's use the names `age_group` and `count`:
+
+```{r}
+df_long <- 
+  count_data %>% 
+  pivot_longer(
+    cols = starts_with("malaria_"),
+    names_to = "age_group",
+    values_to = "counts"
+  )
+
+df_long
+```
+
+We can now pass this new dataset to `{ggplot2}` to display the malaria counts by age group:
+
+```{r, warning=F, message=F}
+ggplot(df_long) +
+  geom_col(
+    aes(x = data_date, y = counts, fill = age_group)
+  )
+```
+
+Have a look at the plot - what is wrong here? We have encountered a common problem - we have also included the total counts from the `malaria_tot` column, so the magnitude of each bar in the plot is twice as high as it should be. 
+
+We can handle this in a number of ways. We could simply filter it from the dataset we pass to `{ggplot2}`:
+
+```{r, warning=F, message=F}
+df_long %>% 
+  filter(age_group != "malaria_tot") %>% 
+  ggplot() +
+  geom_col(
+    aes(x = data_date, y = counts, fill = age_group)
+  )
+```
+
+Alternatively, we could have excluded this variable when we ran `pivot_longer`, thereby maintaining it in the dataset as a separate variable:
+
+```{r, warning=F, message=F}
+count_data %>% 
+  pivot_longer(
+    cols = `malaria_rdt_0-4`:malaria_rdt_15,
+    names_to = "age_group",
+    values_to = "counts"
+  ) %>% 
+  ggplot() +
+  geom_col(
+    aes(x = data_date, y = counts, fill = age_group)
+  )
+```
+
+
+
+<!-- ======================================================= -->
+## Long-to-wide {}
+
+Transforming a dataset from long to wide ([image source](https://d33wubrfki0l68.cloudfront.net/8350f0dda414629b9d6c354f87acf5c5f722be43/bcb84/images/tidy-8.png))
+
+```{r, warning=F, message=F, echo=F}
+knitr::include_graphics(here::here("images", "pivot_wider.png"))
+```
+
+
+
+In some instances, we may wish to convert a dataset to a wider format. For this, we can use the `pivot_wider()` function.
+
+A typical use case is when we want to transform the results of an analysis into a format which is more digestible for the reader. Typically, we are transforming a dataset in which the observations are spread over multiple rows to one in which each observation occupies a single row.
+
+This introduces the useful topic of "tidy data", in which each variable has it's own column, each observation has it's own row, and each value has it's own cell. More about this topic can be found here https://r4ds.had.co.nz/tidy-data.html. 
+
+### Data {-}
+
+Let us use the `linelist` dataset. Suppose that we want to know the counts of individuals in the different age groups, by sex:
+
+```{r}
+linelist <- 
+  linelist %>% 
+  as_tibble()
+  
+df_wide <- 
+  linelist %>% 
+  count(age_cat, gender)
+```
+
+This gives us a long dataset that is great for visualisation, but not ideal for presentation in a table:
+
+```{r}
+ggplot(df_wide) +
+  geom_col(aes(x = age_cat, y = n, fill = gender))
+```
+
+### Pivot wider {-}  
+
+Therefore, we can use `pivot_wider()` to put this into a better format for inclusion as tables in our reports. The argument `names_from` specifies the column *from* which to generate the new column *names*, while the argument `values_from` specifies the column *from* which to take the *values* to populate the cells:
+
+```{r}
+table_wide <- 
+  df_wide %>% 
+  pivot_wider(
+    names_from = gender,
+    values_from = n
+  )
+
+table_wide
+```
+
+This table is much nicer for inclusion in our reports:
+
+```{r}
+table_wide %>% 
+  janitor::adorn_totals(c("row", "col")) %>% # adds a total row and column
+  knitr::kable() %>% 
+  kableExtra::row_spec(row = 9, bold = TRUE) %>% 
+  kableExtra::column_spec(column = 5, bold = TRUE) 
+```
+
+
+<!-- ======================================================= -->
+## Fill {}
+
+Filling in missing data
+
+<!-- ======================================================= -->
+### Data {-}
+
+In some situations after a `pivot`, and more commonly after a `bind`, we are left with gaps in some cells that we would like to fill. For example, take two datasets, each with observations for the measurement number, the name of the facility, and the case count at that time. However, the second dataset also has a variable `Year`. When we perform a `bind_rows()` to join the two datasets together, the `Year` variable is filled with `NA` for those rows where there was no prior information (i.e. the first dataset):
+
+
+```{r}
+df1 <- 
+  tibble::tribble(
+       ~Measurement, ~Facility, ~Cases,
+                  1,  "Hosp 1",     66,
+                  2,  "Hosp 1",     26,
+                  3,  "Hosp 1",      8,
+                  1,  "Hosp 2",     71,
+                  2,  "Hosp 2",     62,
+                  3,  "Hosp 2",     70,
+                  1,  "Hosp 3",     47,
+                  2,  "Hosp 3",     70,
+                  3,  "Hosp 3",     38,
+       )
+
+df1 
+
+df2 <- 
+  tibble::tribble(
+    ~Year, ~Measurement, ~Facility, ~Cases,
+     2000,            1,  "Hosp 4",     82,
+     2001,            2,  "Hosp 4",     87,
+     2002,            3,  "Hosp 4",     46
+  )
+
+df2
+
+df_combined <- 
+  bind_rows(df1, df2) %>% 
+  arrange(Measurement, Facility)
+
+df_combined
+
+```
+
+<!-- ======================================================= -->
+### `fill()` {-}
+
+In this case, `Year` is a useful variable to include, particularly if we want to explore trends over time. Therefore, we use `fill()` to *fill* in those empty cells, by specifying the column to fill and the direction (in this case **up**):
+
+```{r}
+df_combined %>% 
+  fill(Year, .direction = "up")
+```
+
+We can rearrange the data so that we would need to fill in a downward direction:
+
+```{r}
+df_combined <- 
+  df_combined %>% 
+  arrange(Measurement, desc(Facility))
+
+df_combined
+
+df_combined <- 
+  df_combined %>% 
+  fill(Year, .direction = "down")
+
+df_combined
+```
+
+This dataset is now useful for plotting:
+
+```{r}
+ggplot(df_combined) +
+  aes(Year, Cases, fill = Facility) +
+  geom_col()
+```
+
+But less useful for presenting in a table, so let's practice converting this long, untidy dataframe into a wider, tidy dataframe:
+
+```{r}
+df_combined %>% 
+  pivot_wider(
+    id_cols = c(Facility, Year, Cases),
+    names_from = "Year",
+    values_from = "Cases"
+  ) %>% 
+  arrange(Facility) %>% 
+  janitor::adorn_totals(c("row", "col")) %>% 
+  knitr::kable() %>% 
+  kableExtra::row_spec(row = 5, bold = TRUE) %>% 
+  kableExtra::column_spec(column = 5, bold = TRUE) 
+```
+
+N.B. In this case, we had to specify to only include the three variables `Facility`, `Year`, and `Cases` as the additional variable `Measurement` would interfere with the creation of the table:
+
+```{r}
+df_combined %>% 
+  pivot_wider(
+    names_from = "Year",
+    values_from = "Cases"
+  ) %>% 
+  knitr::kable()
+```
+
+## Resources  
+
+Here is a helpful [tutorial](https://datacarpentry.org/r-socialsci/03-dplyr-tidyr/index.html)
+
