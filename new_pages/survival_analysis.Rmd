@@ -21,7 +21,7 @@ It is usually expressed through the **_survival probability_** which is the prob
 **_Censoring_**: Censoring occurs when at the end of follow-up, some of the individuals have not had the event of interest, and thus their true time to event is unknown. We will mostly focus on right censoring here but for more details on censoring and survival analysis in general, you can see references. 
 
 
-```{r eval=F, out.width = "80%", out.height="80%", fig.align = "center"}
+```{r echo=F, eval=F, out.width = "80%", out.height="80%", fig.align = "center"}
  
 #Add a figure from the following chunks for the last version of the page
 #do not forget to save the output figure in "images"
@@ -62,18 +62,19 @@ This page explores survival analyses using the linelist used in most of the prev
 
 We start by loading the linelist as you have done previously using the `rio::import()` function.
 
-```{r }
-
-# import linelist using the "here" function
-
+```{r echo=F}
+# import linelist
 linelist_case_data <- rio::import(here::here("data", "linelist_cleaned.rds"))
-
 ```
 
+```{r eval=F}
+# import linelist
+linelist_case_data <- rio::import("linelist_cleaned.xlsx")
+```
 
 ### Data management and transformation {-}
 
-In short survival data can be described as having the following three characteristics:
+In short, survival data can be described as having the following three characteristics:
 
 1) the dependent variable or response is the waiting time until the occurrence of a well-defined event,
 2) observations are censored, in the sense that for some units the event of interest has not occurred at the time the data are analyzed, and 
@@ -94,34 +95,33 @@ We define:
 We then create from the var `age_cat` another variable `age_cat_small` that indicates reduces the categories of the age groups to 3.
 
 ```{r }
-
 #create a new data called linelist_surv from the linelist_case_data
 
 linelist_surv <-  linelist_case_data %>% 
-  
-  
-  dplyr::filter(date_outcome > date_onset) %>% #remove observations with wrong or missing dates of onset or date of outcome
+     
+  dplyr::filter(
+       # remove observations with wrong or missing dates of onset or date of outcome
+       date_outcome > date_onset) %>% 
   
   dplyr::mutate(
-                  event = ifelse(is.na(outcome) | outcome == "Recover", 0, 1), #create the event var which is 1 if the patient died and 0 if he was right censored
+       # create the event var which is 1 if the patient died and 0 if he was right censored
+       event = ifelse(is.na(outcome) | outcome == "Recover", 0, 1), 
     
-                   futime = as.double(date_outcome - date_onset), #create the var on the follow-up time in days
+       # create the var on the follow-up time in days
+       futime = as.double(date_outcome - date_onset), 
     
-                   age_cat_small = dplyr::case_when( #create a new age category variable with only 3 strata levels
-                     
-                      age_years < 5  ~ "0-4",
-                      age_years >= 5 & age_years < 20 ~ "5-19",
-                      age_years >= 20   ~ "20+"
-                      ),
-    
-                  age_cat_small = factor( #previous step created the var as character, encode it as factor and precise the levels. Note that the NA values remain NA's and are not put in a level "unknown" for example since in the next analyses they have to be removed.
-                    
-                      age_cat_small, 
-                      levels = c("0-4", "5-19", "20+")),
-
-    )
-
-
+       # create a new age category variable with only 3 strata levels
+       age_cat_small = dplyr::case_when( 
+            age_years < 5  ~ "0-4",
+            age_years >= 5 & age_years < 20 ~ "5-19",
+            age_years >= 20   ~ "20+"),
+       
+       # previous step created age_cat_small var as character.
+       # now convert it to factor and specify the levels.
+       # Note that the NA values remain NA's and are not put in a level "unknown" for example,
+       # since in the next analyses they have to be removed.
+       age_cat_small = factor(age_cat_small,
+                              levels = c("0-4", "5-19", "20+")))
 ```
 
 
@@ -131,20 +131,22 @@ linelist_surv <-  linelist_case_data %>%
 
 summary(linelist_surv$futime)
 
-#cross tabulate the new event var and the outcome var from which it was created to make sure the code did what it was intended to
+# cross tabulate the new event var and the outcome var from which it was created
+# to make sure the code did what it was intended to
 with(linelist_surv, 
      table(outcome, event, useNA = "ifany")
      )
 
 
-#cross tabulate the new age_cat_small var and the age_cat var from which it was created to make sure the code did what it was intended to
+# cross tabulate the new age_cat_small var and the age_cat var from which it was created,
+# to make sure the code did what it was intended to
 
 with(linelist_surv, 
      table(age_cat_small, age_cat, useNA = "ifany")
      ) 
 
 
-#print the 10 first observations of the linelist_surv data looking at specific variables (including those newly created)
+# print the 10 first observations of the linelist_surv data looking at specific variables (including those newly created)
 
 head(linelist_surv[,c("case_id", "age_cat_small", "date_onset","date_outcome","outcome","event","futime")], 10)
 
@@ -379,7 +381,7 @@ We find back the p-value that was found in the previous step.
 
 <span style="color: orange;">**_CAUTION:_** **survminer** functions require since the latest versions, specifying again the data used to fit the survival object. Remember doing this to avoid non-specific error messages. </span>
 
-```{r}
+```{r, warning=F, message=F}
 
 survminer::ggsurvplot(
   
