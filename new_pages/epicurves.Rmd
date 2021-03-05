@@ -53,7 +53,22 @@ plot(gender_outbreak_central,
            caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; Case onsets range from {format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')} to {format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')}\n{nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown"))      
 ``` 
 
+An epidemic curve (also known as an "epi curve") is a core epidemiological chart typically used to visualize the temporal pattern of illness onset among a cluster or epidemic of cases.  
 
+Analysis of the epicurve can reveal temporal trends, outliers, the magnitude of the outbreak, the most likely time period of exposure, time intervals between case generations, and can even help identify the mode of transmission of an unidentified disease (e.g. point source, continuous common source, person-to-person propogation). One online lesson on interpretation of epi curves can be found at the website of the [US CDC](https://www.cdc.gov/training/quicklearns/epimode/index.html).    
+
+In this page we demonstrate two approaches to producing epicurves in R:  
+
+* The **incidence** package, which can produce an epi curve with fast and simple commands  
+* The **ggplot2** package, which allows for advanced customizability via more complex commands  
+
+The combination of these packages is also addressed, as are specific use-cases such as:  
+
+* Plotting aggregated count data  
+* Faceting or producing small-multiples  
+* Applying moving averages  
+* Showing which data are "tentative" or subject to reporting delays  
+* Overlaying cumulative case incidence using a second axis  
 
 <!-- ======================================================= -->
 ## Preparation
@@ -64,15 +79,16 @@ plot(gender_outbreak_central,
 This code chunk shows the loading of packages required for the analyses. 
 
 ```{r message=F, warning=F}
-pacman::p_load(rio,          # file import/export
-               here,         # relative filepaths 
-               lubridate,    # working with dates/epiweeks
-               aweek,        # alternative package for working with dates/epiweeks
-               incidence,    # epicurves of linelist data
-               stringr,      # search and manipulate character strings
-               forcats,      # working with factors
-               RColorBrewer, # Color palettes from colorbrewer2.org
-               tidyverse     # data management + ggplot2 graphics
+pacman::p_load(
+  rio,          # file import/export
+  here,         # relative filepaths 
+  lubridate,    # working with dates/epiweeks
+  aweek,        # alternative package for working with dates/epiweeks
+  incidence,    # epicurves of linelist data
+  stringr,      # search and manipulate character strings
+  forcats,      # working with factors
+  RColorBrewer, # Color palettes from colorbrewer2.org
+  tidyverse     # data management + ggplot2 graphics
 ) 
 ```
 
@@ -84,9 +100,8 @@ Two example datasets are used in this section:
 * Linelist of individual cases from a simulated epidemic  
 * Aggregated counts by hospital from the same simulated epidemic  
 
-The dataset is imported using the `import()` function from the *rio* package. See the page on [Import and export] for various ways to import data. The linelist and aggregated versions of the data are displayed below.
+The datasets are imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data. The linelist and aggregated counts are displayed below.
 
-For most of this document, the *linelist dataset* will be used. The aggregated counts dataset will be used at the end.  
 
 ```{r, echo=F, message=F}
 # import the linelist into R
@@ -104,12 +119,6 @@ count_data <- linelist %>%
 linelist <- rio::import("linelist_cleaned.xlsx")
 ```
 
-
-
-
-
-
-Review the two datasets and notice the differences  
 
 
 
@@ -153,7 +162,9 @@ data_date <- as.Date("2015-05-15")
 
 Verify that each relevant date column is class Date and has an appropriate range of values. 
 
-You can do this one-by-one using `hist()` for histograms, or `range()` with `na.rm=TRUE`. An alternative is to use a *for loop* to print a histogram for each pre-defined date column.  
+You can do this one-by-one using `hist()` for histograms, or `range()` with `na.rm=TRUE`.  
+
+An alternative is to use a *for loop* to print a histogram for each pre-defined date column.  
 
 ```{r, out.width = c('50%', '50%', '50%'), fig.show='hold'}
 # create character vector of column names 
@@ -172,13 +183,11 @@ for (Col in DateCols) {     # open loop. iterate for each name in vector DateCol
 <!-- ======================================================= -->
 ## Epicurves with `incidence` package { }
 
-Below are tabs on making quick epicurves using the **incidence** package  
+Below we demonstrate how to make epicurves using the **incidence** package.  
 
-<span style="color: orange;">**_CAUTION:_** **incidence** expects data to be in a "linelist" format of one row per case (not aggregated). If your data is aggregated counts, read the section on aggregated data using **ggplot2**.</span>
+<span style="color: orange;">**_CAUTION:_** The **incidence** package currently expects data to be in a "linelist" format of one row per case (not aggregated counts). If your data is aggregated counts, read the section on aggregated data using **ggplot2**.</span>
 
-<span style="color: darkgreen;">**_TIP:_** The documentation for plotting an **incidence** object can be accessed by entering `?plot.incidence` in your R console.</span>
-
-For further information see this [incidence package vignette](https://cran.r-project.org/web/packages/incidence/vignettes/customize_plot.html#example-data-simulated-ebola-outbreak).  
+The documentation for plotting an **incidence** object can be accessed by entering `?plot.incidence` in your R console. For further information see this [incidence package vignette](https://cran.r-project.org/web/packages/incidence/vignettes/customize_plot.html#example-data-simulated-ebola-outbreak).  
 
 
 
@@ -202,9 +211,9 @@ For further information see this [incidence package vignette](https://cran.r-pro
 # load incidence package
 pacman::p_load(incidence)
 
-# create the incidence object aggregating case-rows by day
-epi_day   <- incidence(linelist$date_onset,  # the linelist date column of interest
-                       interval = "day")     # the time interval
+# create the incidence object, aggregating cases by day
+epi_day <- incidence(linelist$date_onset,  # the dataset and date column of interest
+                     interval = "day")     # the time interval
 
 # plot the incidence object
 plot(epi_day)
@@ -214,20 +223,22 @@ plot(epi_day)
 ### Change time interval of case aggregation {-}  
 
 
-The `interval` argument defines how the observations are grouped into vertical bars. Some options are listed below (a full list originates from the package **aweek**):  
+The `interval` argument of `incidence()` defines how the observations are grouped into vertical bars. Some options are given below:  
 
-* "week" (Monday start day is default)  
-* "2 weeks" (or 3, 4, 5...)  
-* "Sunday week"  
-* "2 Sunday weeks" (or 3, 4, 5...)  
-* "MMWRweek" (starts on Sunday - see US CDC)  
-* "month" (1st of month)  
-* "quarter" (1st of month of quarter)
-* "2 months" (or 3, 4, 5...)  
-* "year" (1st day of calendar year)  
+Argument option | Further explanation 
+------------------- | ------------------------------------ |
+"week" | note: Monday start day is default
+"2 weeks" | or 3, 4, 5...
+"Sunday week" | weeks beginning on Sundays
+"2 Sunday weeks" | or 3, 4, 5...
+"MMWRweek" | week starts on Sundays - see US CDC
+"month" | 1st of month
+"quarter" | 1st of month of quarter
+"2 months" | or 3, 4, 5...
+"year" | 1st day of calendar year
 
-Below are examples of how different intervals look when applied to the linelist.  
-Format and frequency of the date *labels* on the x-axis are the defaults for the specified interval.  
+
+Below are examples of how different intervals look when applied to the linelist. The format and frequency of the date *labels* on the x-axis are the defaults for the specified interval.  
 
 ```{r incidence, out.width=c('50%', '50%', '50%', '50%'), fig.show='hold', warning=F, message=F}
 # Create the incidence objects (with different intervals)
@@ -249,7 +260,7 @@ epi_month   <- incidence(linelist$date_onset, interval = "month")
 ############################
 plot(epi_wk)+     labs(title = "Monday weeks")
 plot(epi_Sun_wk)+ labs(title = "Sunday weeks")
-plot(epi_3wk)+    labs(title = "Every 3 Monday weeks")
+plot(epi_3wk)+    labs(title = "3 (Monday) weeks")
 plot(epi_month)+  labs(title = "Months")
 ```
 
@@ -264,7 +275,7 @@ plot(epi_month)+  labs(title = "Months")
 To plot the epicurve of a subset of data:  
 
 1) Filter the linelist data  
-2) Feed the filtered data to the `incidence()` command  
+2) Provide the filtered data to the `incidence()` command  
 3) Plot the incidence object
 
 The example below uses data filtered to show only cases at Central Hospital.  
@@ -285,20 +296,21 @@ plot(central_outbreak) + labs(title = "Weekly case incidence at Central Hospital
 
 ### Modifications with `plot()` {-} 
 
-An incidence plot can be modified via these arguments *within the `plot()` function*.  
+An epicurve produced by **incidence** can be modified via these arguments *within the `plot()` function*.  
 
-* `show_cases = ` - If TRUE, each case is shows as a box. Best on smaller outbreaks.  
-* `color = ` - Color of case bars/boxes  
-* `border = ` - Color of line around boxes, if `show_cases = TRUE`  
-* `alpha = ` - Transparency of case bars/boxes (1 is fully opaque, 0 is fully transparent)  
-* `xlab = ` - Title of x-axis (axis labels can also be applied using `labs()` from ggplot)  
-* `ylab = ` - Title of y-axis; defaults to user-defined incidence time interval  
-* `labels_week = ` - Logical, indicate whether x-axis labels are in week or date format, absent other modifications
-* `n_breaks = ` - Number of x-axis label breaks, absent other modifications  
-* `first_date` & `last_date` - Dates used to limit the date axis of the plot  
+* `show_cases = ` Logical; if TRUE, each case is shows as a box. Displays best on smaller outbreaks.  
+* `color = ` Color of case bars/boxes  
+* `border = ` Color of line around boxes, if `show_cases = TRUE`  
+* `alpha = ` Transparency of case bars/boxes (1 is fully opaque, 0 is fully transparent)  
+* `xlab = ` Title of x-axis  
+* `ylab = ` Title of y-axis - defaults to user-defined incidence time interval  
+* `labels_week = ` Logical; whether x-axis labels are in week format (YYYY-Www) or date format (YYYY-MM-DD), absent other modifications
+* `n_breaks = ` Number of x-axis label breaks, absent other modifications  
+* `first_date` & `last_date` Dates used to limit the date axis of the plot  
 
 Type `?plot.incidence` in the R console for more details on each. Below is an example using some of the above arguments.  
-To further adjust aesthetics, see the section on using `ggplot()` and apply those `theme()` arguments to the **incidence** plot.  
+
+To further adjust plot appearance, see the section on using `ggplot()` to apply `theme()` arguments to the **incidence** plot.  
 
 
 
@@ -314,7 +326,7 @@ central_outbreak <- incidence(central_data$date_onset, interval = "week")
 plot(central_outbreak,
      xlab = "Week of onset",
      ylab = "Week of onset",
-     show_cases = TRUE,
+     show_cases = TRUE,       # show each case as an individual box
      alpha = 0.5,
      color = "darkblue",
      border = "white")
@@ -324,7 +336,7 @@ plot(central_outbreak,
 
 ### Modifications with ggplot2 {-}
 
-You can add traditional **ggplot2** modifications to the incidence plot by adding a `+` after the close of the incidence `plot()` function, as demonstrated below:  
+You can add **ggplot2** modifications to the incidence plot by adding a `+` after the close of the incidence `plot()` function, as demonstrated below. See the **ggplot2** section and page on [ggplot tips] for more options.  
 
 ```{r, warning=F, message=F}
 # filter the linelist
@@ -343,21 +355,30 @@ plot(central_outbreak,         # plot with incidence package and arguments
      color = "darkblue",
      border = "black")+
   
-  # Add some modifications using ggplot() functions
-  scale_x_date(
+  # Add modifications using ggplot() functions
+  ############################################
+  scale_x_date(            # convert to ggplot date scale (changes default label format)
     expand = c(0,0))+      # remove excess space on left and right
+  
   scale_y_continuous(
     expand = c(0,0))+      # remove excess space below 0 on y-axis
+  
   labs(
     title = "Incidence plot with ggplot() modifications",
-    caption = "This is the caption for this plot")+
+    caption = stringr::str_glue(                            # dynamic caption - see page on characters and strings
+      "n = {central_cases} from Central Hospital
+      Case onsets range from {earliest_date} to {latest_date}. {missing_onset} cases are missing date of onset and not shown",
+      central_cases = nrow(central_data),
+      earliest_date = format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y'),
+      latest_date = format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y'),      
+      missing_onset = nrow(central_data %>% filter(is.na(date_onset)))))+
+  
   theme_classic()+         # simplify background
+  
   theme(
-    axis.title = element_text(size = 12,         # axis titles larger and bold
-                              face = "bold"),
-    axis.text = element_text(size = 10,          # axis test bold
-                             face = "bold"),
-    plot.caption = element_text(hjust = 0)       # move caption to left
+    axis.title = element_text(size = 12, face = "bold"), # axis titles larger and bold
+    axis.text = element_text(size = 10, face = "bold"),  # axis text size and bold
+    plot.caption = element_text(hjust = 0)               # move caption to left
   )
   
 ```
@@ -366,18 +387,29 @@ plot(central_outbreak,         # plot with incidence package and arguments
 
 
 
+### Group and color by values {-}
+
+To color cases by a value, provide the column to the `groups =` argument in the `incidence()` command.  
+
+In the example below the cases in the whole outbreak are colored by their age category. Note the use of `incidence()` argument `na_as_group = `. If `TRUE` (by default), missing values (`NA`) will form their own group. To adjust the legend title, add the **ggplot2** function `labs()` as shown in the second plot, specifying a label for `fill =`.  
+
+```{r, message=F, warning=F, out.width = c('50%', '50%'), fig.show='hold'}
+# Create incidence object, with data grouped by age category
+age_outbreak <- incidence(linelist$date_onset,            # date of onset for x-axis
+                               interval = "week",         # Monday weekly aggregation of cases
+                               groups = linelist$age_cat, # color by age_cat value
+                               na_as_group = TRUE)        # missing values assigned their own group
 
 
-### Change legend {-}  
+# plot the grouped incidence object
+plot(age_outbreak)
 
-Add **ggplot2** commands to the incidence plot, such as:  
+# plot the grouped incidence object, specifying legend title
+plot(age_outbreak)+
+  labs(fill = "Age category")
+```
 
-* `theme(legend.position = "top")` (or "bottom", "left", "right")
-* `theme(legend.direction = "horizontal")`  
-* `theme(legend.title = element_blank())` to have no title  
-* `guides(fill = guide_legend(reverse = TRUE))` to reverse order of the legend  
 
-See the page of [ggplot tips] for more details on working with legends.  
 
 
 ### Change colors  {-}  
@@ -403,7 +435,7 @@ plot(hosp_outbreak, color = c("darkgreen", "darkblue", "purple", "grey", "yellow
 
 Use the argument `col_pal` in `plot()` to change the color palette to one of the default **base** R palettes (do *not* put the name of the palette in quotes).  
 
-Alternatively, adjust the palette with **ggplot2** scales - see the [ggplot tips] page for details.  
+Alternatively, adjust the palette with **ggplot2** "fill" scales - see the [ggplot tips] page for details.  
 
 ```{r out.width = c('50%', '50%'), fig.show='hold', warning = F, message = F}
 # Create incidence object, with data grouped by age category
@@ -421,129 +453,44 @@ plot(age_outbreak, col_pal = rainbow)
 
 
 
-
-### Show individual cases {-}
-
-**To show boxes around each individual case, use the argument `show_cases = TRUE` in the `plot()` function.**  
-
-Boxes around each case can be more reader-friendly, if the outbreak is of a small size. Boxes can be applied when the interval is days, weeks, or any other time period.  The code below creates the *weekly* epicurve for a smaller outbreak (only cases from Central Hospital), with boxes around each case.  
-
-```{r, warning=F, message=F}
-# create filtered dataset for Central Hospital
-central_data  <- linelist %>% 
-  filter(hospital == "Central Hospital")
-
-# create incidence object (weekly)
-central_outbreak <- incidence(central_data$date_onset, interval = "Monday week")
-
-# plot outbreak
-plot(central_outbreak,
-     show_cases = T)                 # show boxes around individual cases
-```
-
-The same epicurve showing individual cases, but with other aesthetic modifications using **ggplot2**:  
-
-```{r, warning=F, message=F}
-# add plot() arguments and ggplot() commands
-plot(central_outbreak,
-     show_cases = T,                 # show boxes around each individual case
-     color = "lightblue",            # color inside boxes
-     border = "darkblue",            # color of border around boxes
-     alpha = 0.5)+                   # transparency
-  
-  ### ggplot() commands added to the plot
-  
-  # scale modifications
-  scale_x_date(
-    expand            = c(0,0),         # remove excess x-axis space below and after case bars
-    date_breaks       = "4 weeks",      # labels appear every 4 Monday weeks
-    date_minor_breaks = "week",         # vertical lines appear every Monday week
-    date_labels       = "%d\n%b'%y")+   # date labels format 
-  
-  scale_y_continuous(
-    expand = c(0,0))+             # remove excess space under 0 on y-axis
-
-  # aesthetic themes
-  theme_minimal()+                # simplify background
-  
-  theme(
-    axis.title = element_text(size = 12, face = "bold"),       # axis title format
-    plot.caption = element_text(face = "italic", hjust = 0))+  # caption format and left-align
-  
-  # plot labels
-  labs(x = "Week of symptom onset (Monday weeks)", 
-       y = "Weekly reported cases", 
-       title = "Weekly case incidence at Central Hospital",
-       #subtitle = "",
-       caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; Case onsets range from {format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')} to {format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')}\n{nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown"))
-```
-
-
-
-
-
-### Group and color by values {-}
-
-To color cases by a value, provide the column to the `groups =` argument in the `incidence()` command.  
-
-In the example below the cases are colored by their age category. Note the use of `incidence()` argument `na_as_group = `. If `TRUE` (by default), missing values (`NA`) will form their own group.  
-
-```{r, message=F, warning=F}
-# Create incidence object, with data grouped by age category
-age_outbreak <- incidence(linelist$date_onset,            # date of onset for x-axis
-                               interval = "week",         # Monday weekly aggregation of cases
-                               groups = linelist$age_cat, # color by age_cat value
-                               na_as_group = TRUE)        # missing values assigned their own group
-
-
-# plot the grouped incidence object
-plot(age_outbreak) 
-```
-
-To adjust the legend title, add the **ggplot2** function `labs()` as shown below, specifying a label for `fill =`.  
-
-```{r}
-# plot the grouped incidence object
-plot(age_outbreak)+
-  labs(fill = "Age category")
-```
-
-
-
-
-
-
-
-
 ### Adjust level order {-}  
 
 To adjust the order of group appearance (on plot and in legend), the grouping column must be class Factor. See the page on [Factors] for more information.  
 
-Below is an epicurve by gender, and the objective is to show Missing on top, Male in the middle, and Female on the bottom - but to have the Legend in the reverse order so that Missing is on the bottom.  
+Below is an epicurve by gender, and the objective is to show "Missing" on the top  of the epicurve, "Male" in the middle, and "Female" on the bottom - but to have the Legend in the reverse order so that Missing is on the bottom of the legend.  
 
-* First, the dataset is defined and gender is re-defined as a factor  
-* The order of levels of gender are defined with `NA` first, so it appears on the top of the bars  
-* More appropriate labels are defined for each factor level - these appear in the legend  
-* The argument `exclude = NULL` in `factor()` is necessary to adjust the order of `NA`, which is excluded by default.  
-* Title of legend adjusted using `fill = ` in `labs()`
+First, let's see the plot with the default ordering:  
 
-```{r, message=F, warning=F, out.width = c('50%', '50%'), fig.show='hold'}
+```{r, message=F, warning=F}
 # ORIGINAL - hospital NOT as factor
 ###################################
 
-# create weekly incidence object, grouped by hospital
+# create weekly incidence object, rows grouped by hospital and week
 hospital_outbreak <- incidence(
   linelist$date_onset, 
   interval = "week", 
   groups = linelist$hospital)
 
-# plot
+# plot incidence object
 plot(hospital_outbreak,
      show_cases = FALSE)+
   labs(title = "ORIGINAL - hospital not a factor")
+```
 
+Now, to make some changes to the levels we can do the following:  
 
+* The package **forcats** is loaded, to work with factors  
+* A dataset for plotting is defined in which:  
+  * the `gender` column is re-defined as a factor with `as_factor()`  
+  * missing values (`NA`) are converted to "Missing" with `fct_explicit_na()`  
+  * low-count groups are combined into "Other", we leave the top 3 with `fct_lump()`  
+  * the order of levels are defined with "Other" and "Missing" first, so they appears at the top of the bars  
+* The incidence object is created and plotted as before  
+  * Specify colors so that "Missing" is grey, change background to white  
+  * The order of the legend is reversed using `guides()` from **ggplot2**  
+  
 
+```{r, message=F, warning=F}
 # MODIFIED - hospital as factor
 ###############################
 
@@ -552,36 +499,50 @@ pacman::p_load(forcats)
 
 # Convert hospital column to factor and adjust levels
 plot_data <- linelist %>% 
-  mutate(hospital = factor(hospital)) %>%                       # define as factor
-  mutate(hospital = fct_explicit_na(hospital, "Missing")) %>%   # convert NA to "Missing" 
-  mutate(hospital = fct_lump(hospital, n = 3)) %>%              # Keep 3 most frequent hospitals, with remaining combined into "Other" 
-  mutate(hospital = fct_relevel(hospital, c("Other", "Missing"))) # Set "Other" and "Missing" as top levels
+  mutate(hospital = as_factor(hospital)) %>%                      # define as factor
+  mutate(hospital = fct_explicit_na(hospital, "Missing")) %>%     # convert NA to "Missing" 
+  mutate(hospital = fct_lump(hospital, n = 3)) %>%                # Keep 3 most frequent hospitals, with remaining combined into "Other" 
+  mutate(hospital = fct_relevel(hospital, c("Missing", "Other"))) # Set "Missing" and "Other" as top levels
 
 
-# Create weekly incidence object, grouped by hospital
+# Create weekly incidence object, grouped by hospital and week
 hospital_outbreak_mod <- incidence(
   plot_data$date_onset, 
   interval = "week", 
   groups = plot_data$hospital)
 
-# plot
+# plot incidence object
 plot(hospital_outbreak_mod,
-     show_cases = FALSE)+                       # do NOT show box around each case
-  
+     show_cases = FALSE,    # do NOT show box around each case
+     color = c("grey", "beige", "darkgreen", "brown"))+   # specify colors                      
   
   # ggplot modifications     
-  guides(
-    fill = guide_legend(reverse = TRUE))+       # reverse order of legend only   
+  guides(fill = guide_legend(reverse = TRUE))+  # reverse order of legend only
+  
+  theme_classic()+
 
   # labels added via ggplot
   labs(
       title = "MODIFIED - hospital as factor",   # plot title
-      subtitle = "Other & Missing at top of epicurve and bottom of legend\nand fewer categories",
+      subtitle = "Other & Missing at top of epicurve and bottom of legend and fewer categories",
       y = "Weekly case incidence",               # y axis title  
       x = "Week of symptom onset",               # x axis title
       fill = "Hospital")                         # title of legend     
 ```
 
+
+
+### Change legend {-}  
+
+Add **ggplot2** commands to the incidence plot, such as:  
+
+* `labs(fill = "Legend title")` to change the legend title  
+* `theme(legend.title = element_blank())` to remove the legend title  
+* `theme(legend.position = "top")` (or "bottom", "left", "right")
+* `theme(legend.direction = "horizontal")`  
+* `guides(fill = guide_legend(reverse = TRUE))` to reverse order of the legend  
+
+See the page of [ggplot tips] for more details on working with legends.  
 
 
 
@@ -591,40 +552,40 @@ plot(hospital_outbreak_mod,
 
 
 #### Modify the bars {-}
-The aggregation of data into bars occurs when you set the `interval =` when creating the incidence object. The options for `interval` come from the package **aweek** and include options like "day", "Monday week", "Sunday week", "month", "2 weeks", etc, as described in an earlier section.  
+The aggregation of data into bars occurs when you set the `interval =` when creating the incidence object. The options for `interval` include options like "day", "Monday week", "Sunday week", "month", "2 weeks", etc, as described in an earlier section.  
 
 
 #### Modify date-axis labels (frequency & format) {-}  
 
 If working with the **incidence** package, you have several options to make modifications to the date-axis labels:  
 
-1) Use the **incidence** package functions `scale_x_date()` and `make_breaks()`  
-2) Use the **ggplot2** function `scale_x_date()` and its argument such as `date_breaks` and date_labels`  
+1) Add **incidence** package functions `scale_x_incidence()` and `make_breaks()`  
+2) Add the **ggplot2** function `scale_x_date()` and arguments such as `date_breaks = ` and `date_labels = `  
 3) Use a combination of the above  
 
 
 #### Option 1: Add `scale_x_incidence()` only {-}  
 
-Add `scale_x_incidence()` from the **incidence** package:  
+`scale_x_incidence()` is from the **incidence** package.  
 
-* **Advantages**: Short code. Auto-adjusts weekly labels to interval of incidence object (Monday, Sunday weeks, etc.)  
+* **Advantages**: Short code. Auto-adjusts weekly labels to the interval of incidence object (Monday, Sunday weeks, etc.)  
 * **Disadvantages**: Cannot make *fine* adjustments to label format, nor to minor vertical grid-lines between labels  
-
-Syntax: provide the name of the incidence object to ensure labels align with specified interval (e.g. Sunday or Monday weeks)  
+* **Syntax**: Provide the name of the incidence object to ensure date labels align with specified interval (e.g. Sunday or Monday weeks)  
 
 Optional arguments:  
 
-* Use `n_breaks = ` to specify the number of date labels, which start from the *interval* of the first case  
-    + Tip: for breaks every nth week, use `n_breaks = nrow(i)/n` (where "i" is the incidence object name and "n" is a number)  
+* Use `n_breaks = ` to specify the number of date labels, which start from the beginning of the *interval* of the first case  
+    + Tip: for breaks every nth interval, use `n_breaks = nrow(i)/n` (where "i" is the incidence object name and "n" is a number)  
 * Use `labels_week = ` to adjust whether labels are formatted as weeks (YYYY-Www) or dates (YYYY-MM-DD)  
     + One vertical gridline will appear per date label  
 
 Other notes:  
 
 * If the interval is "month", `n_breaks` and `labels_week` will behave differently  
-* Adding **ggplot2**'s `scale_x_date()` to the plot will remove any labels created by `scale_x_incidence`  
-* Note that in plot below the first label is 27 April 2014, the Sunday before the first case (May 1) (aligns with Sunday weeks of the incidence object)  
-* Type `?scale_x_incidence` into the R console to see more information.  
+* Adding **ggplot2**'s `scale_x_date()` to the plot will remove any labels created by `scale_x_incidence`
+* Type `?scale_x_incidence` into the R console to see more information  
+
+See how in the plot below (with Sunday week interval), the first date label is 27 April 2014, which is the Sunday before the first case on May 1  
 
 ```{r, warning=F, message=F}
 # create weekly incidence object (Sunday weeks)
@@ -642,15 +603,20 @@ plot(outbreak)+
 #### Option 2: `scale_x_date()` and `make_breaks()` {-}  
 
 Add `scale_x_date()` from **ggplot2**, but also leverage `make_breaks()` from **incidence**:  
-* **Advantages**: Best of both worlds: weekly labels auto-aligned to incidence interval, *and* you can make detailed adjustments to label format
-* **Disadvantages**: *If* minor grid-lines on Sunday-week date labels are desired, they are not auto-aligned  
 
-Syntax: After creating the incidence object, use `make_breaks()` to define date label breaks. `make_breaks()` is similar to `scale_x_incidence()` (described above). Provide the incidence object name and optionally `n_breaks` as described before.  
+* **Advantages**: Best of both worlds: weekly labels auto-aligned to incidence interval, *and* you can make detailed adjustments to label format  
+* **Disadvantages**: *If* your want minor grid-lines on Sunday-week date labels, they are not auto-aligned, see Option 3  
 
-Lastly, add `scale_x_date()` to the incidence plot and use the following arguments:  
-  + `breaks =` provide the breaks vector you created with `make_breaks()`, by accessing the `$breaks` vector (see example below)
-  + `date_labels =` you can make fine adjustments to date label format (e.g. "%d %b") (use "\n" for new line)  
-  + `date_minor_breaks = ` You can set this to weeks and it will 
+Steps:  
+
+1) Creating the incidence object  
+2) Make a vector of date breaks using `make_breaks()`, which is similar to `scale_x_incidence()`. Provide the incidence object name and optionally `n_breaks` as described above.  
+3) Add `scale_x_date()` to the incidence plot and use the following arguments:  
+* `breaks =` provide the breaks vector you created with `make_breaks()`, by accessing the `$breaks` vector (see example below)  
+* `date_labels =` you can make fine adjustments to date label format (e.g. "%d %b") (use "\n" for new line)  
+* `date_minor_breaks = ` Sets frequency of minor gridlines, e.g. "weeks". If using Sunday weeks and you want minor gridlines see Option 3.  
+
+Note how in the example below, the incidence object interval is Monday weeks, and the first date label is 28 April, the Monday before the first case reported 1 May.  
 
 ```{r, warning=F, message=F}
 # Break modification using scale_x_date() and make_breaks()
@@ -663,9 +629,10 @@ my_labels <-  make_breaks(outbreak, n_breaks = nrow(outbreak)/6) # breaks every 
 
 # plot
 plot(outbreak)+
-  scale_x_date(breaks      = my_labels$breaks, # use $breaks from the make_breaks() output
-               date_labels = "%d %b\n%Y",      # detailed adjustment to date label format
-               date_minor_breaks = "weeks")    # vertical lines for each week (only works for Monday week incidence objects)  
+  scale_x_date(
+    breaks            = my_labels$breaks, # use $breaks on the make_breaks() output
+    date_labels       = "%d %b\n%Y",      # detailed adjustment to date label format
+    date_minor_breaks = "weeks")          # vertical lines each week (only works for Monday week incidence objects)  
 ```
 
 
@@ -679,17 +646,11 @@ Add only `scale_x_date()` from **ggplot2** to the incidence plot:
 * **Disadvantages**: More code required, more opportunity to make mistakes  
 
 Syntax:  
-If your incidence intervals are days or **Monday weeks**, (easy!):  
+
+If your incidence intervals are **days** or **Monday weeks** it's easy!:  
 
 * Provide an interval for date labels to `date_breaks = ` (e.g. "day", "week", "2 weeks", "month", "year")
-* Provide an interval to `date_minor_breaks = ` for vertical lines between the primary date labels  
-
-If your incidence intervals are **Sunday weeks**, it is more complex - see below for a Sunday week example  
-
-* Provide a sequence of Sunday dates to `breaks = ` and to `minor_breaks = `  
-* Use `date_labels = ` for formatting (see Dates page for tips)  
-* Add the argument `expand = c(0,0)` to start labels at the first incidence bar. Otherwise, the first label will shift depending on your specified label interval.   
- 
+* Provide an interval for minor vertical grid lines interval to `date_minor_breaks = `  
 
 ```{r, warning=F, message=F}
 # Date break modification using scale_x_date() only
@@ -706,12 +667,18 @@ plot(outbreak)+
                date_labels       = "%d\n%b\n'%y")  # date labels format 
 ```
 
+If your incidence intervals are **Sunday weeks**, the code required is more complex - see below for a Sunday week example  
+
+* Provide a sequence of Sunday dates to `breaks = ` and to `minor_breaks = `  
+* Use `date_labels = ` for formatting (see Dates page for tips)  
+* Add the argument `expand = c(0,0)` to start labels at the first incidence bar. Otherwise, the first label will shift depending on your specified label interval.   
+ 
 
 
 #### A Sunday week example {-}  
 
 If you want a plot of Sunday weeks and also finely-adjusted label formats, you might find this code example helpful.  
-Here is an example of producing a weekly epicurve using **incidence** for Sunday weeks, with finely-adjusted date labels through `scale_x_date()`:  
+Here is an example of producing a weekly epicurve using **incidence** for Sunday weeks, with finely-adjusted date labels through **ggplot2**'s `scale_x_date()`:  
 
 ```{r, message=F, warning=F}
 # load packages
@@ -766,6 +733,17 @@ plot(central_outbreak)+
 ```
 
 
+
+
+### Facets/small multiples {-}  
+
+To facet the plot by a variable (make "small multiples"), you must do this via **ggplot2**. See the section on facets.  
+
+
+
+
+### Other tips  
+
 <span style="color: red;">**_DANGER:_** Be cautious if a static y-axis scale (e.g. 0 to 30 by 5: `seq(0, 30, 5)`). Static numbers can cut-off your data if the data changes!.</span>
 
 
@@ -776,22 +754,11 @@ Note: if using aggregated counts (for example an epiweek x-axis) your x-axis may
 
 
 
-### Facets/small multiples {-}  
-
-To facet the plot by a variable (make "small multiples"), you must do this via **ggplot2**. See the section on facets.  
-
-
-
-
-
-
-
-
 
 <!-- ======================================================= -->
 ## Epicurves with ggplot2 { }
 
-Using the **ggplot2** package alone to create an epicurve is also possible. It can offer more customizeable plots, but can also involve more code and potential for error:  
+Using the **ggplot2** package alone to create an epicurve can offer more customizable plots, but also involves more code and potential for error:  
 
 Unlike using **incidence** package, you must manually control the aggregation of the data (into weeks, months, etc) *and* the labels on the date axis. If not carefully managed, this can lead to headaches.  
 
@@ -819,28 +786,43 @@ library(tidyverse)
 
 To produce an epicurve with `ggplot()` there are three main elements:  
 
-* A histogram, to aggregate the linelisted cases into "bins" and display bars of the counts per bin (potentially by grouped values)  
-* Scales for the axes and their associated labels (see tab on modifications)
-* Aesthetic themes for the plot, including titles, labels, captions, etc.
+* A histogram, to aggregate the linelisted cases into "bins" and display bars reflecting the counts per bin  
+* Scales for the axes and their associated labels  
+* Themes for the plot appearance, including titles, labels, captions, etc.
 
-Below is perhaps the most simple code to produce daily and weekly epicurves. Axis scales and labels use default options.    
+#### Simplest examples {-}  
+
+Below is perhaps the most simple code to produce daily and weekly epicurves.  
 
 ``` {r ggplot_simple,  out.width = c('50%', '50%'), fig.show='hold', warning= F, message = F}
 # daily 
 ggplot(data = central_data, aes(x = date_onset)) +  # x column must be class Date
-  geom_histogram(binwidth = 1)+                     # date values binned by 1 day 
+  geom_histogram(binwidth = 1)+                     # cases binned by 1 day 
   labs(title = "Daily")
 
 # weekly
 ggplot(data = central_data, aes(x = date_onset)) +  
-  geom_histogram(binwidth = 7)+                     # date values binned each 7 days (arbitrary 7 days!) 
+  geom_histogram(binwidth = 7)+                     # cases binned each 7 days, beginning from first case (!) 
   labs(title = "Weekly")
 ```
 
 
 <span style="color: orange;">**_CAUTION:_** Using `binwidth = 7` starts the first bin at the first case, which could be any day of the week! To create specific Monday or Sunday weeks, see guidance below .</span>
 
-To create weekly epicurves where the bins begin on a specific day of the week (e.g. Monday or Sunday), specify the histogram `breaks = ` manually (not with `binwidth`). This can be done by creating a sequence of dates using `seq.Date()` function from **base** R, which expects `to`, `from`, and `by` arguments. You can start/end the sequence at a specific date (`as.Date("YYYY-MM-DD")`, or write flexible code to begin the sequence at a specific day of the week before the first case. An example of creating such weekly breaks is below:  
+#### Specify bin start dates {-}  
+
+To create weekly epicurves where the bins begin on a specific day of the week (e.g. Monday or Sunday), specify the histogram bin `breaks = ` manually (not with `binwidth`). This can be done by creating a **sequence of dates using the `seq.Date()` function** (**base** R):  
+
+This function expects `to = `, `from = `, and `by = ` arguments as shown below.
+
+```{r}
+seq.Date(
+  from = as.Date("2015-01-01"),
+  to = as.Date("2016-01-01"),
+  by = "months")
+```
+
+You can start/end the sequence at a specific date, as shown above, or you can write flexible code to begin the sequence at a specific day of the week *before the first case*. An example of creating such dynamic weekly breaks is below:  
 
 ```{r}
 # Sequence of dates from the Monday before the first case to the Monday after the last case, by week
@@ -853,11 +835,11 @@ Let's unpack the rather daunting code above:
 
 * The "from" value (earliest date of the sequence) is created as follows: the minimum date value (`min()` with `na.rm=TRUE`) in the column `date_onset` is fed to `floor_date()` from the **lubridate** package. `floor_date()` uses the specified arguments to return the start date of that "week", given that the start of each week is a Monday (`week_start = 1`).  
 * Likewise, the "to" value (end date of the sequence) is created using the inverse function `ceiling_date()` to return the Monday *after* the last case.  
-* The "by" argument can be set to any length of days, weeks, or months.   
+* The "by" argument of `seq.Date()` can be set to any number of days, weeks, or months.   
 
-Similar sequence of dates can be supplied to create the histogram breaks (the edges of the bars), and also the breaks for the date labels. Read more about the date labels in later sections. Defining your breaks like above will be necessary if your weekly bins are not by Monday weeks. 
+These sequences of dates can be used to create histogram bin breaks, but also the breaks for the date labels, which may be independent from the bins. Read more about the date labels in later sections.  
 
-Below is detailed example code to produce weekly epicurves for Monday weeks and for Sunday weeks. See the section on date axis modifications to learn the nuances of date-axis label management.  
+**Below are detailed example codes to produce weekly epicurves for Monday weeks and for Sunday weeks.**  
 
 
 
@@ -869,8 +851,8 @@ Below is detailed example code to produce weekly epicurves for Monday weeks and 
 Of note:  
 
 * The break points of the *histogram bins* are specified manually to begin the Monday (`week_start = 1`) before the earliest case and to end the Monday after the last case (see explanation above).  
-* The breaks for *date labels* on the x-axis are easy and use `date_breaks =` within `scale_x_date()` because we want Monday weeks. For Sunday weeks, use a different method.  
-* Minor vertical gridlines between date labels are made using `date_minor_breaks = ` within `scale_x_date()`, again because this plot is for Monday weeks. Sunday weeks use a different method.  
+* The breaks for *date labels* on the x-axis are easy and use `date_breaks =` within `scale_x_date()` because we want Monday weeks. For Sunday weeks, see next example.  
+* Minor vertical gridlines between date labels are made using `date_minor_breaks = ` within `scale_x_date()`. Again, Sunday week alignment would use a slightly different method.  
 * Adding `expand = c(0,0)` to the x and y scales removes excess space on each side of the axes, which also ensures the date labels begin at the first bar.  
 * Color and fill of the bars are defined in `geom_histogram()`  
 
@@ -881,12 +863,17 @@ ggplot(central_data, aes(x = date_onset)) +
   
   # make histogram: specify bin break points: starts the Monday before first case, end Monday after last case
   geom_histogram(
+    
+    # bars
+    color = "darkblue",   # color of lines around bars
+    fill = "lightblue",   # color of fill within bars
+  
     breaks = seq.Date(
       from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
       to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
-      by   = "7 days"), # bins are 7-days
-    color = "darkblue",   # color of lines around bars
-    fill = "lightblue") + # color of fill within bars
+      by   = "7 days")    # bins are 7-days
+  )+ 
+    
   
   # x-axis labels
   scale_x_date(
@@ -910,7 +897,7 @@ ggplot(central_data, aes(x = date_onset)) +
   # labels
   labs(
     title    = "Weekly incidence of cases (Monday weeks)",
-    subtitle = "Subtitle: Note alignment of bars, vertical lines, and axis labels on Mondays",
+    subtitle = "Note alignment of bars, vertical lines, and axis labels on Mondays",
     x        = "Week of symptom onset",
     y        = "Weekly incident cases reported",
     caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; Case onsets range from {format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')} to {format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')}\n{nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown"))
@@ -935,15 +922,19 @@ The below code achieves the same epicurve but uses *Sunday* weeks. Of note:
 ggplot(central_data, aes(x = date_onset)) + 
   
   # Histogram -
-  geom_histogram(                    
+  geom_histogram(
     
-    # manually specify bin break points: starts the Sunday before first case, end Sunday after last case
+    # bars
+    color = "darkblue",   # color of lines around bars
+    fill = "lightblue",   # color of fill within bars
+    
+    # manually specify bin break points: starts the Sunday before first case, ends Sunday after last case
     breaks = seq.Date(
       from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 7)),
       to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 7)),
-      by   = "7 days"), # bins are 7-days
-    color = "darkblue",   # color of lines around bars
-    fill = "lightblue") + # color of fill within bars
+      by   = "7 days")    # bins are 7-days
+    )+ 
+    
   
   # The labels on the x-axis
   scale_x_date(
@@ -979,7 +970,7 @@ ggplot(central_data, aes(x = date_onset)) +
   # labels
   labs(
     title    = "Weekly incidence of cases (Sunday weeks)",
-    subtitle = "Subtitle: Note alignment of bars, vertical lines, and axis labels on Sundays",
+    subtitle = "Note alignment of bars, vertical lines, and axis labels on Sundays",
     x        = "Week of symptom onset",
     y        = "Weekly incident cases reported",
     caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; Case onsets range from {format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')} to {format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')}\n{nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown"))
@@ -989,45 +980,78 @@ ggplot(central_data, aes(x = date_onset)) +
 
 ### Group/color by value {-}
 
-To designate a column containing groups, make the following changes. See the [ggplot tips] page for details.  
+The bars can be colored by group and "stacked". To designate the column containing values for the groups, make the following changes. See the [ggplot tips] page for details.  
 
-* Add the *aesthetics* argument `aes()` within the `geom_histogram()` (don't forget comma afterward) 
-* **Within `aes()`**, provide the grouping column name to `group = ` and `fill = ` (no quotes needed). `group` is necessary, while `fill` sets the color of the bar by group.  
-* Remove any `fill =` argument outside of the `aes()`, as it will override the one inside  
-* Arguments *inside* `aes()` will apply by group, whereas any *outside* will apply to all bars (e.g. you may want `color = ` outside, so each bar has the same color border)  
+* Add the *aesthetics* argument `aes()` within `geom_histogram()`  
+* **Within `aes()`**, provide the grouping column name to `group = ` and `fill = ` (no quotes needed).  
+* Remove any `fill =` argument *outside* of `aes()`, as it will override the one inside  
+* Arguments *inside* `aes()` will apply *by group*, whereas any *outside* will apply to all bars (e.g. you may want `color = ` outside, so each bar has the same color border)  
 
 ```{r, eval=F}
-geom_histogram(
-    aes(group = gender, fill = gender))
+geom_histogram(aes(group = gender, fill = gender), color = "black")
 ```
 
+Here it is applied in practice:  
 
+```{r, warning=F, message=F}
+ggplot(data = plot_data) + 
+  
+  # make histogram: specify bin break points: starts the Monday before first case, end Monday after last case
+  geom_histogram(
+    aes(x = date_onset,
+        group = hospital,
+        fill = hospital),
+    
+    # bin breaks defined for Monday weeks
+    breaks = seq.Date(
+      from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
+      to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
+      by   = "7 days"),
+    
+    # Color around bars
+    color = "black")
+```
 
 
 ### Adjust colors {-}  
 
-* To adjust the colors via a pre-defined color scale, see the page on [ggplot tips].  
-* To *manually* set fill color for each group, use `scale_fill_manual()` (note `scale_color_manual()` is different!).
+* To *manually* set the fill for each group, use `scale_fill_manual()` (note: `scale_color_manual()` is different!).
   * Use the `values = ` argument to apply a vector of colors.  
-  * Use `na.value = ` to specify a color for missing values.  
-  * ! While you *can* use the `labels = ` argument in `scale_fill_manual()` to change the legend labels - it is easy to accidentally give labels in the incorrect order and have an incorrect legend! So, it is recommended to instead convert the group column to class Factor and adjust labels as described in the [Factors] page.  
+  * Use `na.value = ` to specify a color for `NA` values.  
+  * To change the text of legend labels you *can* use the `labels = ` argument in `scale_fill_manual()`, but it is dangerously easy to accidentally give colors incorrect legend text! Instead, it is recommended to change legend text by converting the grouping column to class Factor and adjusting its labels as described in the [Factors] page and briefly below.  
+* To adjust the colors via a pre-defined color scale, see the page on [ggplot tips].  
 
-
+```{r, warning=F, message=F}
+ggplot(data = plot_data)+ 
+  
+  # make histogram: specify bin break points: starts the Monday before first case, end Monday after last case
+  geom_histogram(
+    aes(x = date_onset,
+        group = hospital,
+        fill = hospital),
+    
+    # bin breaks defined for Monday weeks
+    breaks = seq.Date(
+      from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
+      to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
+      by   = "7 days"),
+    
+    # Color around bars
+    color = "black")+
+  
+  # manual specification of colors
+  scale_fill_manual(
+    values = c("grey", "black", "orange", "purple")) # specify fill colors ("values") - attention to order!
+```
 
 
 
 
 ### Adjust level order {-}  
 
-Stacking order, and the labels for each group in the legend, is best adjusted by classifying the group column as class Factor. You can then designate the levels and their labels, and the order (which is reflected in stack order). See the page on [Factors] or [ggplot tips] for details. One example given below:  
+Stacking order, and the labels for each group in the legend, is best adjusted by classifying the group column as class Factor. You can then designate the levels and their labels, and the order (which is reflected in stack order). See the page on [Factors] or [ggplot tips] for details.  
 
-
-Step 1: Before making the ggplot, convert the grouping column to class Factor using `factor()` from **base** R.  
-
-```{r, eval=F}
-plot_data <- linelist %>% 
-  mutate(hospital = factor(hospital))
-```
+Before making the plot, convert the grouping column to class Factor using `as_factor()` from the **forcats** package. Then you can make other adjustments to the levels, as detailed in the page on [Factors].  
 
 ```{r}
 # load forcats package for working with factors
@@ -1035,25 +1059,30 @@ pacman::p_load(forcats)
 
 # Convert hospital column to factor and adjust levels
 plot_data <- linelist %>% 
-  mutate(hospital = factor(hospital)) %>%                       # define as factor
-  mutate(hospital = fct_explicit_na(hospital, "Missing")) %>%   # convert NA to "Missing" 
-  mutate(hospital = fct_lump(hospital, n = 3)) %>%              # Keep 3 most frequent hospitals, with remaining combined into "Other" 
-  mutate(hospital = fct_relevel(hospital, c("Other", "Missing"))) # Set "Other" and "Missing" as top levels
+  mutate(hospital = as_factor(hospital)) %>%                      # define as factor
+  mutate(hospital = fct_explicit_na(hospital, "Missing")) %>%     # convert NA to "Missing" 
+  mutate(hospital = fct_lump(hospital, n = 3)) %>%                # Keep 3 most frequent hospitals, with remaining combined into "Other" 
+  mutate(hospital = fct_relevel(hospital, c("Missing", "Other"))) # Set "Missing" and "Other" as top levels to appear on epicurve top
+
+levels(plot_data$hospital)
 ```
 
+In the below plot, the only differences from previous is that column `hospital` has been consolidated as above, and we use `guides()` to reverse the legend order, so that "Missing" is on the bottom of the legend.  
 
 ```{r, warning=F, message=F}
-ggplot(plot_data,
-       aes(x = date_onset,
-           group = hospital,
-           fill = hospital)) + 
+ggplot(plot_data) + 
   
   # make histogram: specify bin break points: starts the Monday before first case, end Monday after last case
   geom_histogram(
+    aes(x = date_onset,
+        group = hospital,
+        fill = hospital),
+    
     breaks = seq.Date(
       from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
       to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
       by   = "7 days"),
+    
     color = "black")+  
     
   # x-axis labels
@@ -1097,9 +1126,10 @@ ggplot(plot_data,
 
 Read more about legends in the [ggplot tips] page. Here are a few highlights:  
 
+* `labs(fill = "Legend title")` to edit the legend title  
+* `theme(legend.title = element_blank())` to have no title  
 * `theme(legend.position = "top")` (or "bottom", "left", "right")
 * `theme(legend.direction = "horizontal")`  
-* `theme(legend.title = element_blank())` to have no title  
 * `guides(fill = guide_legend(reverse = TRUE))` to reverse order of the legend  
 
 
@@ -1110,34 +1140,25 @@ Read more about legends in the [ggplot tips] page. Here are a few highlights:
 
 ### Bars side-by-side {-}  
 
-Side-by-side display of group bars (as opposed to stacked) is specified within `geom_histogram()` with `position = "dodge"` (outside of `aes()`).  
+Side-by-side display of group bars (as opposed to stacked) is specified within `geom_histogram()` with `position = "dodge"` (place this outside of `aes()`).  
 
-If there are more than two value groups, these can become difficult to read. Consider instead using a faceted plot (small multiples). To improve readability in this example, missing gender values are removed and only Central Hospital cases are shown.  
+If there are more than two value groups, these can become difficult to read. Consider instead using a faceted plot (small multiples). To improve readability in this example, missing gender values could be removed.  
 
 ```{r, warning=F, message=F}
-########################
-# bin break points for histogram defined here for clarity
-# starts the Monday before first case, end Monday after last case
-bin_breaks = seq.Date(from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
-                      to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
-                      by   = "7 days") # bins are 7-days
-
-# New dataset without rows missing gender
-central_data_dodge <- linelist %>% 
-  filter(hospital == "Central Hospital") %>%      # Only rows from Central Hospital, for clarity
-  filter(!is.na(gender)) %>%                      # remove rows missing gender
-  mutate(gender = factor(gender),                 # Set Gender as factor and adjust value labels
-         gender = fct_recode(gender,
-                            "Female" = "f",
-                            "Male" = "m")) 
-
-# make plot
-###########
-ggplot(central_data_dodge, aes(x = date_onset)) + 
+ggplot(central_data)+ 
     geom_histogram(
-        aes(group = gender, fill = gender),    # arguments inside aes() apply by group
-        color = "black",                       # arguments outside aes() apply to all data
-        breaks = bin_breaks,                   # see breaks defined above
+        aes(
+          x = date_onset,
+          group = gender,   # values grouped and colored by gender
+          fill = gender),
+        
+        # bins start the Monday before first case, end Monday after last case
+        breaks = seq.Date(
+          from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
+          to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
+          by   = "7 days"), # bins are 7-days
+        
+        color = "black",                       # bar edge color
         position = "dodge")+                   # side-by-side bars
                       
   
@@ -1148,10 +1169,11 @@ ggplot(central_data_dodge, aes(x = date_onset)) +
                date_labels       = "%d\n%b\n'%y")+ # date labels format
   
   # y-axis
-  scale_y_continuous(expand = c(0,0))+                   # removes excess y-axis space between bottom of bars and the labels
+  scale_y_continuous(expand = c(0,0))+             # removes excess y-axis space between bottom of bars and the labels
   
   #scale of colors and legend labels
-  scale_fill_manual(values = c("brown", "orange"))+     # specify fill colors ("values") - attention to order!
+  scale_fill_manual(values = c("brown", "orange"),  # specify fill colors ("values") - attention to order!
+                    na.value = "grey" )+     
 
   # aesthetic themes
   theme_minimal()+                                               # a set of themes to simplify plot
@@ -1169,56 +1191,53 @@ ggplot(central_data_dodge, aes(x = date_onset)) +
 
 
 
+### Axis limits {-}  
+
+You can set maximum and minimum date values using `limits = c()` within `scale_x_date()`. For example:  
+
+```{r eval=F}
+scale_x_date(limits = c(as.Date("2014-04-01"), NA)) # sets a minimum date but leaves the maximum open.  
+```
+
+Likewise, if you want to the x-axis to extend to a specific date (e.g. current date), even if no new cases have been reported, you can use:  
+
+```{r eval=F}
+scale_x_date(limits = c(NA, Sys.Date()) # ensures date axis will extend until current date  
+```
+
+<span style="color: orange;">**_CAUTION:_** Caution using limits! They remove all data outside the limits, which can impact y-axis max/min, modeling, and other statistics. Strongly consider instead using limits by adding `coord_cartesian( xlim= c(), ylim=c() )` to your plot, which acts as a "zoom" without removing data. </span>
+
+<span style="color: red;">**_DANGER:_** Be cautious setting the y-axis scale breaks or limits (e.g. 0 to 30 by 5: `seq(0, 30, 5)`). Such static numbers can cut-off your plot too short if the data changes to exceed the limit!.</span>
+
 
 
 ### Date-axis labels/gridlines {-} 
 
-<span style="color: darkgreen;">**_TIP:_** Remember that date-axis **labels** are independent from the aggregation of the data into bars</span>
+<span style="color: darkgreen;">**_TIP:_** Remember that date-axis **labels** are independent from the aggregation of the data into bars, but visually it can be important to align bins, date labels, and vertical grid lines.</span>
 
-To **modify the aggregation of data into bins/bars**, do **one** of the following:  
+To **modify the date labels and grid lines**, use `scale_x_date()` in one of these ways:  
 
-* Specify a `binwidth =` within `geom_histogram()` - for a column of class Date, the given number is interpreted in days  
-* Specify `breaks = ` as a sequence of bin break-point dates  
-* Group the rows into aggregated counts (by week, month, etc.) prior to plotting and feed the aggregated counts to `ggplot()` (see later section on aggregated data).  
-
-
-To **modify the date labels**, use `scale_x_date()` in one of these ways:  
-
-* If your histogram bins are days, Monday weeks, months, or years:  
+* **If your histogram bins are days, Monday weeks, months, or years**:  
   * Use `date_breaks = ` to specify label frequency (e.g. "day", "week", "3 weeks", "month", or "year")
   * Use `date_minor_breaks = ` to specify frequency of minor vertical gridlines between date labels  
   * Add `expand = c(0,0)` to begin the labels at the first bar (otherwise, first label will shift forward depending on specified frequency)  
   * Use `date_labels = ` to specify format of date labels - see the Dates page for tips (use `\n` for a new line)  
-* If your histogram bins are Sunday weeks:  
+* **If your histogram bins are Sunday weeks**:  
   * Use `breaks = ` and `minor_breaks = ` by providing a sequence of date breaks for each
   * You can still use `date_labels = ` and `expand` for formatting as described above  
 
+Some notes:  
 
-To **create a sequence of dates**  
-You can use `seq.Date()` from **base** R. You can start/end the sequence at a specific date (`as.Date("YYYY-MM-DD")`, or write flexible code to begin the sequence at a specific day of the week before the first case. An example of creating such flexible breaks is below.  
-
-See the opening **ggplot2** section above for a detailed explanation.
-
-```{r, eval=F}
-seq.Date(from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
-         to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
-         by   = "7 days")
-```  
-
-If using aggregated counts (for example an epiweek x-axis) your x-axis may not be Date class and may require use `scale_x_discrete()` instead of `scale_x_date()` - see ggplot tips page for more details.  
-
-Set maximum and minimum date values using `limits = c()` within `scale_x_date()`. E.g. `scale_x_date(limits = c(as.Date("2014-04-01), NA))` sets a minimum but leaves the maximum open.  
-
-<span style="color: orange;">**_CAUTION:_** Caution using limits! They remove all data outside the limits, which can impact y-axis max/min, modeling, and other statistics. Strongly consider instead using limits by adding `coord_cartesian()` to your plot, which acts as a "zoom" without removing data. </span>
-
-<span style="color: red;">**_DANGER:_** Be cautious setting the y-axis scale breaks (e.g. 0 to 30 by 5: `seq(0, 30, 5)`). Static numbers can cut-off your data if the data changes!.</span>
-
-See [this page](https://rdrr.io/r/base/strptime.html) or the [Working with dates] page for tips on creating date labels.  
+* See the opening ggplot section for instructions on how to create a sequence of dates using `seq.Date()`.  
+* If using aggregated counts (for example an "epiweek" x-axis) your x-axis may not be Date class, and may require use `scale_x_discrete()` instead of `scale_x_date()` - see [ggplot tips] page for more details.  
+* See [this page](https://rdrr.io/r/base/strptime.html) or the [Working with dates] page for tips on creating date labels.  
 
 
-**Below is a demonstration of some plots where the bins and the plot labels/gridlines are aligned and not aligned:**  
-Click "Code" to see the code  
 
+
+#### Demonstrations {-}
+
+Below is a demonstration of plots where the bins and the plot labels/grid lines are aligned and not aligned:  
 
 ```{r fig.show='hold', class.source = 'fold-hide', warning=F, message=F}
 # 7-day binwidth defaults
@@ -1328,17 +1347,6 @@ ggplot(central_data, aes(x = date_onset)) +
   labs(title = "ALIGNED Sundays",
        subtitle = "7-day bins manually set to begin Sunday before first case (27 Apr)\nDate labels and gridlines manually set to Sundays as well")
 
-
-
-# Check values of bars by creating dataframe of grouped values
-# central_tab <- central_data %>% 
-#   mutate(week = aweek::date2week(date_onset, floor_day = TRUE, factor = TRUE)) %>% 
-#   group_by(week, .drop=F) %>%
-#   summarize(n = n()) %>% 
-#   mutate(groups_3wk = 1:(nrow(central_tab)+1) %/% 3) %>% 
-#   group_by(groups_3wk) %>% 
-#   summarize(n = n())
-
 ```
 
 
@@ -1350,13 +1358,15 @@ As with other ggplots, you can create facetted plots ("small multiples"). As exp
 * `facet_wrap()`
 * `facet_grid()`
 
+### `facet_wrap()` {-}  
+
 For epicurves, `facet_wrap()` is typically easiest as it is likely that you only need to facet on one column. The general syntax is `facet_wrap(rows ~ cols)`, where to the left of the tilde (~) is the name of a column to be spread across the "rows" of the facetted plot, and to the right of the tilde is the name of a column to be spread across the "columns" of the facetted plot. 
 
 Most simply, just use one column name, to the right of the tilde: `facet_wrap(~age_cat)`.  
 
 
 **Free axes**  
-You will need to decide whether the scales (`scales = `) of the axes for each facet are "fixed" to the same dimensions (default), or "free" (meaning they will change based on the data within the facet). You can also specify "free_x" or "free_y" to release in only one dimension.  
+You will need to decide whether the scales of the axes for each facet are "fixed" to the same dimensions (default), or "free" (meaning they will change based on the data within the facet). Do this with the `scales = ` argument within `facet_wrap()` by specifying "free_x" or "free_y", or "free".  
 
 
 **Number of cols and rows of facets**  
@@ -1378,7 +1388,7 @@ Font size and face, strip color, etc. can be modified through `theme()` with arg
 **Strip labels**  
 Labels of the facet plots can be modified through the "labels" of the column as a factor, or by the use of a "labeller".  
 
-Make a labeller like this, using the function `as_labeller()` from **ggplot2**:  
+Make a labeller like this, using the function `as_labeller()` from **ggplot2**. Then provide the labeller to the `labeller = ` argument of `facet_wrap()` as shown below.  
 
 ```{r, class.source = 'fold-show'}
 my_labels <- as_labeller(c(
@@ -1398,12 +1408,20 @@ my_labels <- as_labeller(c(
 ```{r, warning=F, message=F}
 # make plot
 ###########
-ggplot(central_data, aes(x = date_onset)) + 
+ggplot(central_data) + 
   
   geom_histogram(
-        aes(group = age_cat, fill = age_cat),    # arguments inside aes() apply by group
+        aes(
+          x = date_onset,
+          group = age_cat,
+          fill = age_cat),    # arguments inside aes() apply by group
         color = "black",                       # arguments outside aes() apply to all data
-        breaks = bin_breaks)+                  # see breaks defined above
+        
+        # histogram breaks set to 7 days beginning Monday before first case
+        breaks = seq.Date(
+          from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
+          to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
+          by   = "7 days"))+
                       
     
   
@@ -1446,7 +1464,7 @@ See this [link](https://ggplot2.tidyverse.org/reference/labellers.html) for more
 
 ### Total epidemic in facet background {-}
 
-Add a separate `geom_histogram()` command *before* the current one. Specify that the data used is the data *without* the column used for faceting (use `select()`). Then, specify a color like "grey" and a degree of transparency to make it appear in the background.  
+To show the total epidemic in the background of each facet, add a separate `geom_histogram()` command *before* the current one. Specify that the data used in this histogram is your data *without* the column used for faceting (use `select()`). Then, specify a color like "grey" and a degree of transparency to make it appear in the background.  
 
 ```{r, eval=F}
 geom_histogram(data = select(central_data, -age_cat), color = "grey", alpha = 0.5)+
@@ -1468,8 +1486,13 @@ ggplot(central_data, aes(x = date_onset)) +
   geom_histogram(
     aes(group = age_cat, fill = age_cat),  # arguments inside aes() apply by group
     color = "black",                       # arguments outside aes() apply to all data
-    breaks = bin_breaks)+                  # see breaks defined above
-                      
+    
+    # histogram breaks set to 7 days beginning Monday before first case
+    breaks = seq.Date(
+          from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
+          to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
+          by   = "7 days"))+                  
+  
   # Labels on x-axis
   scale_x_date(
     expand            = c(0,0),         # remove excess x-axis space below and after case bars
@@ -1506,9 +1529,9 @@ ggplot(central_data, aes(x = date_onset)) +
     caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; Case onsets range from {format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')} to {format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')}\n{nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown"))
 ```
 
-### One facet box with ALL data {-}  
+### One facet with ALL data {-}  
 
-To do this, you duplicate all the data (double the number of rows in the dataset) and in the faceted column have a new value (e.g. "all") which indicates all the duplicated rows. A helper function is below that enables this:  
+If you want to have one facet box that contains all the data, complete the following steps. To do this, duplicate the entire dataset so that the number of rows doubles. There will also be a new column, in this case called `facet`. In this column, the duplicated rows will have the value "all", and in the original rows will be the value of the faceting column - thus you have created a new column to facet on in which one of the unique values contains all the data from the original dataset. A "helper" function `CreateAllFacet()` below assist with this:  
 
 ```{r}
 # Define helper function
@@ -1523,11 +1546,18 @@ CreateAllFacet <- function(df, col){
      
      return(merged)
 }
+```
 
-# Create dataset that is duplicated, to show "all zones" as another facet level
+Now apply the helper function to the dataset, on column `age_cat`:  
+
+```{r}
+# Create dataset that is duplicated and with new column "facet" to show "all" age categories as another facet level
 central_data2 <- CreateAllFacet(central_data, col = "age_cat") %>%
-  mutate(facet = factor(facet,
-                        levels = c("all", "0-4", "5-9", "10-14", "15-19", "20-29", "30-49", "50-69", "70+")))
+  mutate(
+    facet = factor(facet,
+                  levels = c("all", "0-4", "5-9",
+                             "10-14", "15-19", "20-29",
+                             "30-49", "50-69", "70+")))
 
 # check
 table(central_data2$facet, useNA = "always")
@@ -1537,7 +1567,7 @@ Notable changes to the `ggplot()` command are:
 
 * The data used is now central_data2 (double the rows, with new column "facet")
 * Labeller will need to be updated, if used  
-* To achieve vertically stacked facets: the facet column is moved to rows side of equation and on right is replaced by "." (`facet_wrap(facet~.)`), and `ncol = 1`. You may also need to adjust the width and height of the saved png plot image (see `ggsave()` in [ggplot tips]).  
+* Optional: to achieve vertically stacked facets: the facet column is moved to rows side of equation and on right is replaced by "." (`facet_wrap(facet~.)`), and `ncol = 1`. You may also need to adjust the width and height of the saved png plot image (see `ggsave()` in [ggplot tips]).  
 
 ```{r, fig.height=12, fig.width=5, warning=F, message=F}
 ggplot(central_data2, aes(x = date_onset)) + 
@@ -1546,7 +1576,12 @@ ggplot(central_data2, aes(x = date_onset)) +
   geom_histogram(
         aes(group = age_cat, fill = age_cat),  # arguments inside aes() apply by group
         color = "black",                       # arguments outside aes() apply to all data
-        breaks = bin_breaks)+                  # see breaks defined above
+        
+        # histogram breaks set to 7 days beginning Monday before first case
+        breaks = seq.Date(
+          from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)),
+          to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)),
+          by   = "7 days"))+
                       
   # Labels on x-axis
   scale_x_date(expand            = c(0,0),         # remove excess x-axis space below and after case bars
@@ -1587,17 +1622,12 @@ ggplot(central_data2, aes(x = date_onset)) +
 
 ## Moving averages
 
-Add a moving averages to a `ggplot()` epicurve in one of two ways:  
-
-1)  Plot the pre-calculated moving average:  
-      + Aggregate the data as necessary (daily, weekly, etc.)  
-      + Calculate the moving average  
-      + Add the moving average to the ggplot (e.g. with `geom_line()`)  
-2) Calculate on-the-fly within the `ggplot()` command  
-
-See the page on [Moving averages] for more details. Brief examples are provided below.  
-
-
+See the page on [Moving averages] for detailed description and several options. Below is one option for calculating moving averages with the package **slider**.  
+* Plot the pre-calculated moving average:  
+* Aggregate the data as necessary (daily, weekly, etc.)  
+* Calculate the moving average  
+* Add the moving average to the ggplot (e.g. with `geom_line()`)  
+  
 
 ### **Using slider**  
 
@@ -1655,56 +1685,6 @@ ggplot(data = ll_counts_7day, aes(x = date_onset)) +
     theme(legend.title = element_blank())  # removes title of legend
 ```
 
-##### **Using tidyquant**  
-
-Using the **tidyquant** package to calculate the moving average on-the-fly (within `ggplot()`).  
-
-This option is more difficult to modify than pre-calculating the moving average. By default,`geom_ma()` uses the Simple Moving Average (SMA) (`TRR::SMA()`). See documentation by entering `?SMA` in your R console. Calculates the arithmetic mean over the past `n` observations. Also note how the moving average does not begin as early as the previous example.  
-
-
-```{r, warning=F, message=F}
-# load package
-pacman::p_load(tidyquant)
-
-# make daily count data
-#######################
-ll_counts_7day <- linelist %>% 
-  count(date_onset, name = "daily_cases")
-
-
-# plot
-######
-ggplot(data = ll_counts_7day,   # use daily count data
-       aes(x = date_onset,      # date x-axis
-           y = daily_cases))+   # counts
-  
-  # histogram in the background
-  geom_histogram(stat = "identity",    # height = value in the cell, not number of rows
-                 color = "#92a8d1",    # color of lines within histogram
-                 fill = "#92a8d1")+    # color of histogram
-  
-  # moving average line
-  tidyquant::geom_ma(n = 7,            # window width
-                     size = 2,         # line size
-                     color = "black",  # line color
-                     lty = "solid"     # line type ()
-                     )+
-     
-  # labels for x-axis
-  scale_x_date(date_breaks = "2 months",      # labels every 2 months 
-               date_minor_breaks = "1 month", # gridlines every month
-               date_labels = '%b\n%Y')+       #labeled by month with year below
-     
-  # Choose color palette (uses RColorBrewer package)
-  scale_fill_brewer(palette = "Pastel2")+ 
-  
-  theme_minimal()+
-  
-  labs(x = "Date of onset", 
-       y = "Daily case incidence",
-       title = "Daily case incidence, with 7-day moving average")
-```
-
 
 ## Tentative data  
 
@@ -1712,7 +1692,7 @@ ggplot(data = ll_counts_7day,   # use daily count data
 The most recent data shown in epicurves should often be marked as tentative, or subject to reporting delays. This can be done in by adding a vertical line and/or rectangle over a specified number of days. Here are two options:  
 
 1) Use `annotate()`:  
-    + **Pros:** Transparency of rectangle is easy. **Cons:** Items will not appear in legend.  
+    + **Pros:** Transparency of rectangle is easy to adjust. **Cons:** Items will not appear in legend.  
     + For a line use `annotate(geom = "segment")`. Provide `x`, `xend`, `y`, and `yend`. Adjust size, linetype (`lty`), and color.  
     + For a rectangle use `annotate(geom = "rect")`. Provide xmin/xmax/ymin/ymax. Adjust color and alpha.  
 2) Use `geom_segment()` and `geom_rect()`:  

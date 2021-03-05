@@ -22,7 +22,8 @@ The package we recommend for importing data is: **rio**. **rio** utilizes the fi
 
 The alternative to using **rio** would be to use functions from many other packages that are specific to a type of file (e.g. `read.csv()`, `read.xlsx()`, etc.). These alternatives can be difficult to remember, whereas using `import()` from **rio** is relatively easy.  
 
-Below is a table, taken from the **rio** online [vignette](https://cran.r-project.org/web/packages/rio/vignettes/rio.html). It shows for each type of data: the file extension that is expected, the packages it uses to import or export the data (so you can look up specific arguments, if needed), and whether this functionality is included in the default installed version of **rio**.  
+Below is a table, taken from the **rio** online [vignette](https://cran.r-project.org/web/packages/rio/vignettes/rio.html). It shows for each type of data: the file extension that is expected, the packages it uses to import or export the data (so you can look up specific arguments, if needed), and whether this functionality is included in the default version when you install **rio**. 
+You can read more about the **rio** package [in this online vignette](https://rdrr.io/cran/rio/f/vignettes/rio.Rmd)  
 
 
 Format                     | Typical Extension | Import Package    | Export Package     | Installed by Default
@@ -62,60 +63,68 @@ YAML | .yml | yaml | yaml	| No
 Clipboard	default is tsv | |  clipr | clipr | No
 
 
-You can read more about the **rio** package [in this online vignette](https://rdrr.io/cran/rio/f/vignettes/rio.Rmd)
 
 
 
 <!-- ======================================================= -->
-## Relative filepaths (`here()`) {#here}
+## File paths  
 
-*Relative filepaths* differ from static filepaths in that they are *relative from a specific directory location*.  
-For example:  
+When importing or exporting data, you must provide a file path. You can do this one of two ways:  
 
-* **A static filepath**: `import("C:/Users/nsbatra/My Documents/R files/epiproject/data/linelists/ebola_linelist.xlsx")`  
-  * Specific fixed path
-  * Useful if calling a file in a distant directory, or if multiple users are running a script hosted on a network drive
-* **A relative filepath**: `import(here("data", "linelists", "ebola_linelist.xlsx"))`  
-  * Path is given in relation to a directory  
-  * Best if working within an R project  
+1) Providing the "full"/"absolute" file path  
+2) Provide a "relative" file path - the location *relative to* a project root directory  
 
 
-The package **here** can be used, often in conjunction with **rio** for importing or exporting. **here** locates files on your computer via *relative pathways*, usually within the context of [R projects]. Relative pathways are relative from a designated folder location, so that pathways listed in R code will not break when the script is run on a different computer.
 
-This code chunk shows the loading of packages for importing data. 
+### "Absolute" file paths {-}  
 
-```{r import_packages}
-# Checks if package is installed, installs if necessary, and loads package for current session
-pacman::p_load(rio, here)
+This is an example of a full file path, provided to `import()` like this in quotes:  
+
+```{r, eval=F}
+import("C:/Users/Pierre/My Documents/epiproject/data/linelists/ebola_linelist.xlsx")
 ```
 
-Use the package **here** and its function `here()` to implement relative pathways.
-
-`here()` works best within [R projects](#rprojects). When the **here** package is first loaded, it places a small file called "here" in the root-level folder of your R project as a "benchmark" or "anchor" for all other files in the project.  
-
-Thus, in your script, if you want to import or reference a file saved in your R project’s folders, you use the function `here()` to tell R where the file is ***in relation to that benchmark***. These relative filepaths can be used for both importing and exporting/saving data.  
+Full file paths are helpful if loading data from a distant folder, but **this absolute filepath can break if the script is run on a different computer.**  
 
 
-If you are unsure where “here” is set to, run the function `here()` with the empty brackets:
 
-```{r import_here, eval=F}
-# This command tells you the folder path that "here" is set to 
-here::here()
+
+### "Relative" file paths {-}
+
+Below, the file location is given *relative to* an R project root directory (e.g. the R project is in the "epiproject" folder from the above full file path)
+
+```{r, eval=F}
+import(here("data", "linelists", "ebola_linelist.xlsx"))
 ```
 
-Below is an example of importing the file “linelist.xlsx” which is located in the benchmark “here” folder. All you have to do is provide the name of the file in quotes (with the appropriate ending).
+The package **here** and its function `here()` locate files on your computer in relation to the root directory of an R project. See the page on [R projects] for more informaton on how they work togther. This is how `here()` works:  
 
-```{r import_here_one, eval=F}
+* When the **here** package is first loaded, it places a small file called "here" in the root-level folder of your R project as a "benchmark" or "anchor" for all other files in the project.  
+* In your script, if you want to import or reference a file saved in your R project’s folders, you use the function `here()` to tell R where the file is located *in relation to that anchor*. `here()` can be used for both importing and exporting.  
+
+If you are unsure where “here” root is set to, run the function `here()` with the empty brackets:
+
+```{r, eval=F}
+# load the package
+p_load(here)
+
+# return the folder path that "here" is set to 
+here()
+```
+
+Below is an example of importing the file “linelist.xlsx” which is located in the anchor “here” folder. In this case, all you have to do is provide the name of the file in quotes with the file extension.
+
+```{r, eval=F}
 linelist <- import(here("linelist_raw.xlsx"))
 ```
 
-If the file is within a subfolder - let’s say a “data” folder - write these folder names in quotes, separated by commas, as below:
+If the file is within a subfolder - let’s say a "linelist" folder within a “data” folder - write these folder names in quotes, separated by commas, as below:
 
-```{r import_here_mutiple, eval=F}
-linelist <- import(here("data", "linelist.xlsx"))
+```{r, eval=F}
+linelist <- import(here("data", "linelists", "ebola_linelist.xlsx"))
 ```
 
-Using the `here()` command produces a character filepath, which is then processed by the `import()` function.
+Using the `here()` command produces a character file path, which is then processed by the `import()` function.
 
 ```{r}
 # the filepath
@@ -123,44 +132,38 @@ here("data", "linelist.xlsx")
 ```
 
 
-```{r, eval=F}
-# the filepath is given to the import() function
-linelist <- import(here("data", "linelist.xlsx"))
-```
 
 
 
 <!-- ======================================================= -->
 ## Importing {}
 
-When you import a dataset, you are doing the following:  
+When you import a dataset, you are generally doing the following:  
 
-1. Creating a new, named data frame object in your R environment  
-2. *Defining the new object* **as** *the imported dataset*  
+1. Creating a new, named object in your R environment of class "data frame"  
+2. Defining that new object as the imported dataset  
 
 
 <!-- ======================================================= -->
 ### Import from filepath {-}  
 
-The function `import()` (from the package **rio**) accepts a filepath within quotation marks. A few things to note:  
+As described above, the function `import()` from the package **rio** accepts a file path within quotation marks. A few things to note:  
 
 * Slashes must be forward slashes, as in the code shown. This is *NOT* the default for Windows filepaths.  
-* Filepaths that begin with double slashes (e.g. "//...") will likely **not be recognized by R** and will produce an error. Consider moving these files to a "named" or "lettered" drive that begins with a letter (e.g. "J:" or "C:"). See the section on using Network Drive for more details on this issue.  
-* Do not worry about slash direction if using relative filepaths with **here** 
+* File paths that begin with double slashes (e.g. "//...") will likely **not be recognized by R** and will produce an error. Consider moving these files to a "named" or "lettered" drive that begins with a letter (e.g. "J:" or "C:"). See the section on using Network Drive for more details on this issue.  
+* Do not worry about slash direction if using relative file paths with **here** 
 
-With absolute filepath:  
+With absolute file path:  
 
 ```{r eval=F}
-# Absolute pathway
-p_load(rio)                                                      
+# Absolute file path
 my_data <- import("C:/Users/Timothy/Documents/cancer project/data/clean/survival_data.xlsx")
 ```
 
-With relative filepath:  
+With relative file path:  
 
 ```{r eval=F}
-# Absolute pathway
-p_load(rio)                                                 
+# Absolute file path
 my_data <- import(here("data", "clean", "survival_data.xlsx")
 ```
 
@@ -173,7 +176,7 @@ my_data <- import(here("data", "clean", "survival_data.xlsx")
 If importing a specific **sheet** from an Excel file, include the sheet name in the `which = ` argument of `import()`. For example:  
 
 ```{r eval=F}
-my_data <- rio::import("my_excel_file.xlsx", which = "Sheetname")
+my_data <- import("my_excel_file.xlsx", which = "Sheetname")
 ```
 
 If using the `here()` method to provide a relative pathway to `import()`, you can still indicate a specific sheet by adding the `which = ` argument after the closing parenthese of the `here()` function.  
@@ -262,7 +265,7 @@ Unfortunately `skip = ` only accepts one integer value, *not* a range (e.g. "2:1
 
 
 
-### Removing a second header row  
+### Remove second header row {-}  
 
 Your data may have a *second* row of data, for example if it is a "data dictionary" row (see example below). 
 
@@ -381,7 +384,7 @@ names(df) <- paste(names(df), df[1, ], sep = "_")
 <!-- ======================================================= -->
 ## Manual data entry {}
 
-### Entry by columns  
+### Entry by columns {-}  
 
 Since a data frame is a combination of vertical vectors (columns), R by default expects manual entry of data to also be in vertical vectors (columns). 
 
@@ -408,7 +411,7 @@ DT::datatable(manual_entry_cols)
 ```
 
 
-### Entry by rows  
+### Entry by rows {-}  
 
 Use the `tribble` function from the **tibble** package from the tidverse ([onlinetibble reference](https://tibble.tidyverse.org/reference/tribble.html)).  
   
@@ -435,7 +438,7 @@ DT::datatable(manual_entry_rows)
 
 
 
-### Pasting from clipboard  
+### Pasting from clipboard {-}  
 
 
 If you copy data from elsewhere and have it on your clipboard, you can try the following command to convert those data into an R data frame:  
@@ -454,11 +457,13 @@ manual_entry_clipboard <- read.table(file = "clipboard",
 
 `.Rdata` files store R objects, and can actually store multiple R objects within one file, for example multiple dataframes, model results, lists, etc. This can be very useful to consolidate or share your data.  
 
+In the below example, multiple R objects are stored within the exported file "my_objects.Rdata":  
+
 ```{r, eval=F}
 rio::export(my_list, my_dataframe, my_vector, "my_objects.Rdata")
 ```
 
-If you have a list and you want it to be imported with the original structure (e.g. list of lists), use `import_list()`:  
+If you are trying to import a list, and you want it to be imported with the original structure (e.g. a list of lists), use `import_list()` from **rio**:  
 
 ```{r, eval=F}
 rio::import_list("my_list_of_lists.Rdata")
