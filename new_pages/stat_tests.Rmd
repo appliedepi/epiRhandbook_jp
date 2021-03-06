@@ -1,4 +1,4 @@
-# Simple statistical tests { }
+# Univariate and multivariate regression { }
 
 <!-- ======================================================= -->
 
@@ -19,30 +19,27 @@ ratios)
 ## Preparation {  }
 
 
-### Packages
+### Packages {-}
 
 This code chunk shows the loading of packages required for the analyses.
 
 ```{r}
-pacman::p_load(rio,          # File import
-               here,         # File locator
-               tidyverse,    # data management + ggplot2 graphics, 
-               stringr,      # manipulate text strings 
-               purrr,        # loop over objects in a tidy way
-               gtsummary,    # summary statistics and tests 
-               broom,        # tidy up results from regressions
-               parameters,   # alternative to tidy up results from regressions
-               see           # alternative to visualise forest plots
-               )
+pacman::p_load(
+  rio,          # File import
+  here,         # File locator
+  tidyverse,    # data management + ggplot2 graphics, 
+  stringr,      # manipulate text strings 
+  purrr,        # loop over objects in a tidy way
+  gtsummary,    # summary statistics and tests 
+  broom,        # tidy up results from regressions
+  parameters,   # alternative to tidy up results from regressions
+  see           # alternative to visualise forest plots
+  )
 ```
 
-### Load data
+### Load data {-}
 
-The example dataset used in this section:
-
--   Linelist of individual cases from a simulated epidemic
-
-The dataset is imported using the `import()` function from the *rio* package. See the *page on importing data* for various ways to import data.
+The example dataset used in this section is a linelist of individual cases from a simulated epidemic. The dataset is imported using the `import()` function from the *rio* package. See the page on [Import and export] for various ways to import data.
 
 ```{r echo=F}
 # import the linelist into R
@@ -62,21 +59,25 @@ The first 50 rows of the linelist are displayed below.
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T) )
 ```
 
-### Clean data
+### Clean data {-}
 
 ```{r}
 
 ## make sure that age variable is numeric 
 linelist <- linelist %>% 
   mutate(age = as.numeric(age))
+```
 
+```{r}
 ## define variables of interest 
 explanatory_vars <- c("gender", "fever", "chills", "cough", "aches", "vomit")
+```
 
-## make dichotomous variables in to 0/1 
+```{r}
+## convert dichotomous variables to 0/1 
 linelist <- linelist %>% 
   mutate(
-    ## for each of the variables listed
+    ## for each of the variables listed and "outcome"
     across(
       all_of(c(explanatory_vars, "outcome")), 
       ## recode male, yes and death to 1; female, no and recover to 0
@@ -84,10 +85,12 @@ linelist <- linelist %>%
            ~case_when(
              . %in% c("m", "yes", "Death")   ~ 1,
              . %in% c("f", "no",  "Recover") ~ 0, 
-             TRUE ~ NA_real_
+             TRUE                            ~ NA_real_
            ))
   )
+```
 
+```{r}
 ## add in age_category to the explanatory vars 
 explanatory_vars <- c(explanatory_vars, "age_cat")
 
@@ -97,17 +100,20 @@ linelist <- linelist %>%
 
 ```
 
+
+
+
 <!-- ======================================================= -->
 
 ## Univariate {  }
 
 There are two options for doing univariate analysis. 
-You can use the `gtsummary` package or you can use the individual regression 
-functions available in `base` together with the `broom` package. 
+You can use the **gtsummary** package or you can use the individual regression 
+functions available in **base** together with the **broom** package. 
 
 <!-- ======================================================= -->
 
-### `gtsummary` package {  }
+### **gtsummary** package {-}
 
 ```{r odds_gt}
 
@@ -133,12 +139,12 @@ univ_tab
 
 <!-- ======================================================= -->
 
-### `base` {  }
+### **base** R {-}
 
 Using the `glm` function from the **stats** package (part of base R), you can 
 produce odds ratios. 
 
-For a single exposure variable, pass the names to `glm` and then use `tidy` from 
+For a single exposure variable, pass the names to `glm()` and then use `tidy()` from 
 the **broom** package to get the exponentiated odds ratio estimates and confidence
 intervals. Here we demonstrate how to combine model outputs with a table of 
 counts. 
@@ -177,7 +183,7 @@ linelist %>%
 
 To run over several exposure variables to produce univariate odds ratios (i.e. 
 not controlling for each other), you can pass a vector of variable names to the 
-`map` function in the **purrr** package. This will loop over each of the variables
+`map()` function in the **purrr** package. This will loop over each of the variables
 running regressions for each one. 
 
 ```{r odds_base_multiple}
@@ -244,28 +250,28 @@ univ_tab_base <- map(explanatory_vars,
 
 ## Stratified {  }
 
-Stratified analysis is currently still being worked on for `gtsummary`, 
+Stratified analysis is currently still being worked on for **gtsummary**, 
 this page will be updated in due course. 
 
 
 <!-- ======================================================= -->
 
-### `gtsummary` package {  }
+### **gtsummary** package {-}
 
 TODO
 
 <!-- ======================================================= -->
 
-### `base` {  }
+### **base** R {-}
 
 TODO
 
 <!-- ======================================================= -->
 
-## Multivariable {  }
+## Multivariable {-}
 
 For multivariable analysis you can use a combination there is not much difference 
-between using `gtsummary` or `broom` to present the data. 
+between using **gtsummary** or **broom** to present the data. 
 The workflow is the same for both, as below, and only the last step of pulling a 
 table together is different. 
 
@@ -292,7 +298,7 @@ final_mv_reg <- mv_reg %>%
 
 <!-- ======================================================= -->
 
-### `gtsummary` package {  }
+### **gtsummary** package {-}
 
 The `gtsummary` package provides the `tbl_regression` function, which will 
 take the outputs from a regression (`glm` in this case) and produce an easy 
@@ -314,7 +320,7 @@ tbl_merge(
 
 <!-- ======================================================= -->
 
-### `base` {  }
+### **base** {-}
 
 ```{r mv_regression_base}
 
@@ -354,7 +360,7 @@ package called
 
 <!-- ======================================================= -->
 
-### `ggplot2` package {  }
+### **ggplot2** package {-}
 
 ```{r ggplot_forest}
 
@@ -375,7 +381,7 @@ mv_tab_base %>%
 
 <!-- ======================================================= -->
 
-### `easystats` packages {  }
+### **easystats** packages {-}
 
 The alternative if you do not want to decide all of the different things required
 for a `ggplot`, is to use a combination of `easystats` packages. 
