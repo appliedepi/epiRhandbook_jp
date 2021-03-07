@@ -12,7 +12,10 @@ Example:
 
 **Table of Ebola patients with outcome information: Number, proportion, and CT values of cases who recovered and died**
 
-```{r echo=FALSE, fig.show='hold', out.width=c('50%', '50%')}
+```{r echo=FALSE, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
+
+linelist <- rio::import(here::here("data", "linelist_cleaned.rds")) 
+
 library(flextable)
 library(dplyr)
 library(tidyr)
@@ -65,7 +68,7 @@ Using packages discussed in other sections such as `gtsummary` and `dplyr`, crea
 
 Here we create a simple summary table of patient outcomes using the Ebola linelist. We are interested in knowing the number and proportion of patients that recover or died, as well as their median CT values, by hospital of admission. 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 table <- linelist %>% 
   group_by(hospital, outcome) %>% 
@@ -79,6 +82,7 @@ table <- linelist %>%
   select(hospital, `N known`, `N_Recover`, `Prop_Recover`, ct_value_Recover,
          `N_Death`, `Prop_Death`, ct_value_Death) # Re-order columns 
 
+
 table
 
 ```
@@ -86,7 +90,7 @@ table
 Load, and install if necessary, `flextable`, which we will use to convert the above table into a fully formatted and presentable table. 
 
 ```{r}
-library(flextable)
+pacman::p_load(flextable)
 
 ```
 
@@ -138,7 +142,7 @@ ftable %>% autofit()
 
 However, this might not always be appropriate, especially if there are very long values within cells, meaning the table might not fit on the page. 
 
-Instead, we can specify widths. It can take some playing around to know what width value to put. In the example below, we give specify different widths to columns 1, 2, and columns 4 to 7. 
+Instead, we can specify widths. It can take some playing around to know what width value to put. In the example below, we specify different widths for column 1, column 2, and columns 4 to 8. 
 
 ```{r}
 
@@ -159,8 +163,16 @@ First we can add an extra header layer for clarity. We do this with the `add_hea
 
 ```{r}
 ftable <- ftable %>% 
-  add_header_row( values = c("Hospital", "Total cases with known outcome", "Recovered", "", "", "Died", "", ""), top = T) %>% 
-    set_header_labels(hospital = "",
+  add_header_row( values = c("Hospital", 
+                             "Total cases with known outcome", 
+                             "Recovered", 
+                             "",
+                             "",
+                             "Died", # This and the next two columns will be one value ' died
+                             "",     # As merging will keep the first column, next two are blank
+                             ""), 
+                  top = T) %>% # New header goes on top of existing header row
+    set_header_labels(hospital = "", # Rename the columns in original header row
                     `N known` = "",                  
                     N_Recover = "Total",
                     Prop_Recover = "% of cases",
@@ -168,7 +180,7 @@ ftable <- ftable %>%
                     N_Death = "Total",
                     Prop_Death = "% of cases",
                      ct_value_Death = "Median CT values")  %>% 
-  merge_at(i = 1, j = 3:5, part = "header") %>% 
+  merge_at(i = 1, j = 3:5, part = "header") %>% # Horizontally merge columns in new header row
   merge_at(i = 1, j = 6:8, part = "header")  
 
 ftable
@@ -177,7 +189,7 @@ ftable
 
 **Formatting borders and background **
 
-Flextable has default borders that do not respond well to additional header levels. We start from scratch by removing the existing borders with `border_removal`. Then we add a black line to the bottom of the table using `hlinw`, by specifying the 5th row of the table body. Flextable will default add a line to the bottom of the row. In order to add black lines to the _top_ of sections, we need to use `hline_top`. 
+Flextable has default borders that do not respond well to additional header levels. We start from scratch by removing the existing borders with `border_remove`. Then we add a black line to the bottom of the table using `hlinw`, by specifying the 5th row of the table body. Flextable will default add a line to the bottom of the row. In order to add black lines to the _top_ of sections, we need to use `hline_top`. 
 
 We also use `fp_border` here, which actually applied the border. This is a function from the `officer` package.
 
@@ -186,7 +198,7 @@ We also use `fp_border` here, which actually applied the border. This is a funct
 library(officer)
 
 ftable <- ftable %>% 
-  border_remove() %>% 
+  border_remove() %>% # Remove existing borders 
   hline(part = "body", i=5, border = fp_border(color="black", width=2)) %>% 
   hline_top(part = "header", border = fp_border(color="black", width=2)) %>%
   hline_top(part = "body", border = fp_border(color="black", width=2)) 
@@ -202,7 +214,7 @@ We centre-align all columns aside from the left-most column with the hospital na
 
 ```{r}
 ftable <- ftable %>% 
-  flextable::align(align = "center", j = c(2:8), part = "all") 
+   flextable::align(align = "center", j = c(2:8), part = "all") 
 ftable
 ```
 
@@ -224,7 +236,8 @@ To distinguish the content of the table from the headers, we may want to add add
 
 ```{r}
 ftable <- ftable %>% 
-    bg(., part = "body", bg = "gray95")  
+    bg(part = "body", bg = "gray95")  
+
 ftable 
 ```
 
@@ -256,6 +269,10 @@ ftable %>%
 <!-- ======================================================= -->
 ## Saving your table {  }
 
+There are different ways the table can be integrated into your output. 
+
+**Save single table**
+
 You can export the tables to Word, PowerPoint or HTML or as an image (PNG) files. To do this, one of the following functions is used:
 
 * save_as_docx
@@ -264,7 +281,7 @@ You can export the tables to Word, PowerPoint or HTML or as an image (PNG) files
 * save_as_html
 
 For instance: 
-```{r}
+```{r message=FALSE, warning=FALSE}
 save_as_docx("my table" = ftable, path = "file.docx")
 # Edit the 'my table' as needed for the title of table. If not specified the whole file will be blank. 
 
@@ -279,6 +296,12 @@ If you want to view a 'live' versions of the flextable output in the intended do
 print(ftable, preview = "docx") # Word document example
 print(ftable, preview = "pptx") # Powerpoint example
 ```
+
+**Save table to R markdown document**
+
+This table can be integrated into your an automated document, an R markdown output, if the table object is called within the R markdown chunk. This means the table can be updated as part of a report where the data might change, so the numbers can be refreshed.
+
+See detail in the R markdown section of this handbook. 
 
 <!-- ======================================================= -->
 ## Resources {  }
