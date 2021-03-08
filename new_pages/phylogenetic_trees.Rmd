@@ -22,11 +22,11 @@ sample_data <- read.csv(here::here("data","sample_data_Shigella_tree.csv"),sep="
 
 
 ggtree(tree, layout="circular", branch.length='none') %<+% sample_data + # the %<+% is used to add your dataframe with sample data to the tree
-  aes(color=I(Source))+ # color the branches according to a variable in your dataframe
+  aes(color=I(Belgium))+ # color the branches according to a variable in your dataframe
   scale_color_manual(name = "Sample Origin", # name of your color scheme (will show up in the legend like this)
-                     breaks = c("NRC BEL", "NA"), # the different options in your variable
-                     labels = c("NRCSS Belgium", ""), # how you want the different options named in your legend, allows for formatting
-                     values= c("blue"), # the color you want to assign to the variable if its "nrc_bel"
+                     breaks = c("Yes", "No"), # the different options in your variable
+                     labels = c("NRCSS Belgium", "Other"), # how you want the different options named in your legend, allows for formatting
+                     values= c("blue", "grey"), # the color you want to assign to the variable if its "nrc_bel"
                      na.value="grey")+ # for the NA values we choose the color grey
   new_scale_color()+ # allows to add an additional color scheme for another variable
      geom_tippoint(aes(color=Continent), size=1.5)+ # color the tip point by continent, you may change shape adding "shape = "
@@ -76,6 +76,13 @@ sample_data <- read.csv(here::here("data","sample_data_Shigella_tree.csv"),sep="
 
 ```
 
+Below are the first 30 rows of these data:  
+
+```{r, echo=F}
+DT::datatable(head(sample_data,30), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+```
+
+
 We clean and inspect our data: In order to assign the correct sample data to the phylogenetic tree, the Sample_IDs in the sample_data file need to match the tip.labels in the tree file: 
 ```{r, phylogenetic_trees_inspect_sampledata}
 
@@ -120,15 +127,15 @@ ggtree(tree, layout="circular", branch.length = "none") # most simple circular t
 ### Simple tree with addition of sample data:
 The most easy annotation of your tree is the addition of the sample names at the tips, as well as coloring of tip points and if desired branches:
 
-```{r, phylogenetic_trees_adding_sampledata, fig.align='center'}
+```{r, phylogenetic_trees_adding_sampledata, out.width=c('120%'),fig.align='center', message=FALSE}
 
 # A: Plot Circular tree:
 ggtree(tree, layout="circular", branch.length='none') %<+% sample_data + # the %<+% is used to add your dataframe with sample data to the tree
-  aes(color=I(Source))+ # color the branches according to a variable in your dataframe
+  aes(color=I(Belgium))+ # color the branches according to a variable in your dataframe
   scale_color_manual(name = "Sample Origin", # name of your color scheme (will show up in the legend like this)
-                     breaks = c("NRC BEL", "NA"), # the different options in your variable
-                     labels = c("NRCSS Belgium", ""), # how you want the different options named in your legend, allows for formatting
-                     values= c("blue"), # the color you want to assign to the variable if its "nrc_bel"
+                     breaks = c("Yes", "No"), # the different options in your variable
+                     labels = c("NRCSS Belgium", "Other"), # how you want the different options named in your legend, allows for formatting
+                 values= c("blue", "grey"), # the color you want to assign to the variable if its "nrc_bel"
                      na.value="grey")+ # for the NA values we choose the color grey
   new_scale_color()+ # allows to add an additional color scheme for another variable
      geom_tippoint(aes(color=Continent), size=1.5)+ # color the tip point by continent, you may change shape adding "shape = "
@@ -164,7 +171,7 @@ Since the phylogenetic tree file is just the output of sequencing data analysis,
 ### Zooming in on one part of the tree:
 If you don't want to "cut" your tree, but only inspect part of it more closely you can zoom in to view a specific part:
 
-```{r, phylogenetic_trees_zoom_in, out.width=c('50%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_zoom_in, out.width=c('70%'), fig.show='hold', fig.align='center'}
 
 # First we plot the whole tree:
 p <- ggtree(tree,) %<+% sample_data +
@@ -175,7 +182,7 @@ p
 ```
 
 We want to zoom into the branch which is sticking out, after node number 452 to get a closer look:
-```{r phylogenetic_trees_zoom_in_452, out.width=c('50%'), fig.show='hold', fig.align='center'}
+```{r phylogenetic_trees_zoom_in_452, out.width=c('70%'), fig.show='hold', fig.align='center'}
 
 viewClade(p , node=452)
 
@@ -184,7 +191,7 @@ viewClade(p , node=452)
 ### Collapsing one part of the tree:
 The other way around we may want to ignore this branch which is sticking out and can do so by collapsing it at the node (indicated here by the blue square):
 
-```{r phylogenetic_trees_collapse_452, out.width=c('50%'), fig.show='hold', fig.align='center'}
+```{r phylogenetic_trees_collapse_452, out.width=c('70%'), fig.show='hold', fig.align='center'}
 #First we collapse at node 452
 p_collapsed <- collapse(p, node=452)
 
@@ -195,7 +202,7 @@ p_collapsed + geom_point2(aes(subset=(node == 452)), size=5, shape=23, fill="ste
 
 ### Subsetting a tree:
 If we want to make a more permanent change and create a new tree to work with we can subset part of it and even save it as new newick tree file.  
-```{r, phylogenetic_trees_subsetting, out.width=c('50%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_subsetting, out.width=c('70%'), fig.show='hold', fig.align='center'}
 
 # To do so you can add the node and tip labels to your tree to see which part you want to subset:
 ggtree(tree, branch.length='none', layout='circular') %<+% sample_data +
@@ -233,7 +240,7 @@ As mentioned before we cannot change the order of tips or nodes in the tree, as 
 
 First we plot our new subsetted tree with nodelabels to choose the node we want to manipulate:
 
-```{r, phylogenetic_trees_rotating_1, out.width=c('50%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_rotating_1, out.width=c('70%'), fig.show='hold', fig.align='center'}
 
 p <- ggtree(sub_tree2) +  geom_tiplab(size =4) +
   geom_text2(aes(subset=!isTip, label=node), size =5, color = "darkred", hjust =1, vjust =1) # labels all the nodes in the tree
@@ -242,19 +249,19 @@ p
 
 We choose to manipulate node number 39: we do so by applying **ggtree::rotate()** or **ggtree::fluip()** indirectly to node 36 so node 39 moves to the bottom and nodes 37 and 38 move to the top:
 
-```{r, phylogenetic_trees_rotating_2, out.width=c('50%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_rotating_2, out.width=c('70%'), fig.show='hold', fig.align='center'}
+
+p1 <- p + geom_hilight(39, "steelblue", extend =0.0015)+ # highlights the node 39 in blue
+   geom_hilight(37, "yellow", extend =0.0015)  + # highlights the node 37 in yellow
+  ggtitle("Original tree")
+
+# we want to rotate node 36 so node 39 is on the bottom and nodes 37 and 38 move to the top:
 # 
-# p1 <- p + geom_hilight(39, "steelblue", extend =0.0015)+ # highlights the node 39 in blue
-#    geom_hilight(37, "yellow", extend =0.0015)  + # highlights the node 37 in yellow
-#   ggtitle("Original tree")
-# 
-# # we want to rotate node 36 so node 39 is on the bottom and nodes 37 and 38 move to the top:
-# 
-# rotate(p1, 39) %>% rotate(37)+
-#   ggtitle("Rotated Node 36")
-# 
+rotate(p1, 39) %>% rotate(37)+
+  ggtitle("Rotated Node 36")
+
 # #or we can use the flip command to achieve the same thing:
-# flip(p1, 39, 37)
+flip(p1, 39, 37)
 
 ```
 
@@ -262,7 +269,7 @@ We choose to manipulate node number 39: we do so by applying **ggtree::rotate()*
 
 Lets say we are investigating the cluster of cases with clonal expansion which occured in 2017 and 2018 at node 39 in our sub-tree. We add the year of strain isolation as well as travel history and color by country to see origin of other closely related strains:
 
-```{r, phylogenetic_trees_inspect_subset_example, out.width=c('80%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_inspect_subset_example, out.width=c('80%'), fig.show='hold', fig.align='center', message = FALSE}
 
 # Add sample data:
 ggtree(sub_tree2) %<+% sample_data + 
@@ -330,10 +337,10 @@ rownames(MIC_Cip) <- sample_data$Sample_ID
 ```
 
 We create a first plot adding a binary heatmap for gender to the phylogenetic tree:
-```{r, phylogenetic_trees_sampledata_heatmap_gender, out.width=c('70%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_sampledata_heatmap_gender, out.width=c('70%'), fig.show='hold', fig.align='center', message = FALSE}
 
 # First we add gender:
-h1 <-  gheatmap(p, gender, offset = 10, width=0.10, color=NULL, # offset shifts the heatmap to the right, width defines the width of the heatmap column, color defines the boarder of the heatmap columns
+h1 <-  gheatmap(p, gender, offset = 12, width=0.10, color=NULL, # offset shifts the heatmap to the right, width defines the width of the heatmap column, color defines the boarder of the heatmap columns
          colnames = FALSE)+ # hides column names for the heatmap
   scale_fill_manual(name = "Gender", # define the coloring scheme and legend for gender
                     values = c("#00d1b1", "purple"),
@@ -348,13 +355,13 @@ h1
 ```
 
 Then we add information on ciprofloxacin resistance genes:
-```{r, phylogenetic_trees_sampledata_heatmap_cip_genes, out.width=c('80%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_sampledata_heatmap_cip_genes, out.width=c('70%'), fig.show='hold', fig.align='center', message = FALSE}
 
 # First we assigng a new color scheme to our existing plot, this enables us to define and change the colors for our second variable
 h2 <- h1 + new_scale_fill() 
 
 # then we combine these into a new plot:
-h3 <- gheatmap(h2, cipR,  offset = 12, width=0.10, # adds the second row of heatmap describing ciprofloxacin resistance genes
+h3 <- gheatmap(h2, cipR,  offset = 14, width=0.10, # adds the second row of heatmap describing ciprofloxacin resistance genes
                 colnames = FALSE)+
   scale_fill_manual(name = "Ciprofloxacin resistance \n conferring mutation",
                     values = c("#fe9698","#ea0c92"),
@@ -370,12 +377,12 @@ h3
 
 Next we add continuous data on actual resistance determined by the laboratory 
 as the minimum inhibitory concentration (MIC) of ciprofloxacin :
-```{r, phylogenetic_trees_sampledata_heatmap_cip_MIC, out.width=c('90%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_sampledata_heatmap_cip_MIC, out.width=c('70%'), fig.show='hold', fig.align='center', message = FALSE}
 # First we add the new coloring scheme:
 h4 <- h3 + new_scale_fill()
 
 # then we combine the two into a new plot:
-h5 <- gheatmap(h4, MIC_Cip,  offset = 14, width=0.10,
+h5 <- gheatmap(h4, MIC_Cip,  offset = 16, width=0.10,
                 colnames = FALSE)+
   scale_fill_continuous(name = "MIC for ciprofloxacin",
                       low = "yellow", high = "red",
@@ -391,7 +398,7 @@ h5
 ```
 
 We can do the same exercise for a linear tree:
-```{r, phylogenetic_trees_sampledata_heatmap_linear, out.width=c('80%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_sampledata_heatmap_linear, out.width=c('80%'), fig.show='hold', fig.align='center', message = FALSE}
 # B: Lineartree:
 p <- ggtree(sub_tree2) %<+% sample_data +
   geom_tiplab(size =3) + # labels the tips
