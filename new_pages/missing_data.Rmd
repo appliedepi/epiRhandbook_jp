@@ -6,17 +6,14 @@ knitr::include_graphics(here::here("images", "missingness.png"))
 knitr::include_graphics(here::here("images", "missingness_overview.png"))
 ```
 
-<!-- ======================================================= -->
-## Overview { }
-
 This page will cover:  
 
 1) Useful functions for assessing missingness  
 2) Assess missingness in a dataframe  
-3) Filter out rows with missingness  
+3) How to filter out rows by missingness  
 3) Plotting missingness over time  
 4) Handling how `NA` is displayed in plots  
-5) Imputation  
+5) Missing value imputation  
 
 
 
@@ -42,9 +39,96 @@ linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
 
 
 ```{r, eval=F}
-linelist <- rio::import("linelist_cleaned.rds")
+linelist <- rio::import("linelist_cleaned.xlsx")
 ```
 
+The first 50 lines are viewable below.  
+
+```{r message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(head(linelist_raw,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+<!-- ======================================================= -->
+## `NA` { }
+
+**`NA`**  
+
+In R, missing values are represented by a reserved (special) value - `NA`. Note that this is typed *without* quotes. "NA" is different and is just a normal character value (also a Beatles lyric from the song Hey Jude).  
+
+Your data may have other ways of representing missingness, such as "99", or "Missing", or "Unknown" - you may even have empty character value "" which looks "blank", or a single space " ". Be aware of these and consider whether to convert them to `NA` during importation or data cleaning (e.g. with `na_if()`). You may also want to convert the other way - changing all `NA` to "Missing" or similar (e.g. with `replace_na()` or `fct_explicit_na()`)  
+
+When you apply mathematical functions such as `max()`, `min()`, `sum()` or `mean()`, any `NA` value present over-rides the calculation and `NA` is returned. You must specify the arguemnt `na.rm = TRUE` within the function to remove any `NA` values from the calculation. This default behavior is intentional, so that you are alerted if any of your data are missing.  
+
+If you want to assign a value as `NA`, for example if using `case_when()` (see [Cleaning data] page), there may be circumstances where `NA` is rejected because the column around it is of another class such as Character. The Right-Hand Side (RHS) values in a `case_when()` command must all be of the same class. Thus, if you have character outcomes on the RHS like "Confirmed", "Suspect", "Probable" and `NA` - you will get an error. Instead of `NA`, put "Missing", or else you must put `NA_character_`. Likewise for integers, use `NA_integer_` instead of `NA`. `NA` should work for dates and logical. See the [R documentation on NA](https://stat.ethz.ch/R-manual/R-devel/library/base/html/NA.html) for more information.  
+
+* `NA`  
+* `NA_character_`  
+* `NA_integer_`  
+* `NA_real_`  
+* `NA_complex_`  
+
+
+**`NULL`**  
+
+`NULL` is another reserved value in R. It is the logical representation of a statement that is neither true nor false. It is returned by expressions or functions whose values are undefined. Generally do not assign NULL as a value, unless writing functions or perhaps writing Shiny to return `NULL` in specific scenarios. Null-ness can be assessed using `is.null()` and conversion can made with `as.null()`.  
+
+See this [blog post](https://www.r-bloggers.com/2010/04/r-na-vs-null/) on the difference between `NULL` and `NA`.  
+
+**`NaN`**  
+
+Impossible values are represented by the special value - `NaN`. An example of this is when you force R to divide 0 by 0. It has an infinite value. You can assess this with `is.nan()`. You may also encounter complementary functions include `is.infinite()` and `is.finite()`
+
+
+**`Inf`**  
+
+Say you have a column `z` that contains these values: `z <- c(1, 22, NA, Inf, NaN, 5)`  
+
+If you want to use `max()` on the column, you can use `na.rm = TRUE` as described above to remove the `NA` from the calculation, but the `Inf` and `NaN` remain and `Inf` will be returned. You can use brackets [ ] to subset the vector such that only finite values are used for the calculation: `max(z[is.finite(z)])`.  
+
+```{r, eval=F}
+z <- c(1, 22, NA, Inf, NaN, 5)
+max(z)                           # returns NA
+max(z, na.rm=T)                  # returns Inf
+max(z[is.finite(z)])             # returns 22
+```
+
+
+**Examples**  
+
+R command | Outcome
+----------|--------------
+`5 / 0` | `Inf`  
+`0 / 0` | `NaN`  
+`5 / NA` | `NA`  
+`5 / Inf | `0`  
+`NA - 5` | `NA`  
+`Inf / 5` | `Inf`  
+`class(NA)` | "logical"  
+`class(NaN)` | "numeric"  
+`class(Inf)` | "numeric"  
+`class(NULL)` | "NULL"  
+
+"NAs introduced by coercion" is a common warning message. This can happen if you attempt to make an illegal conversion.  
+
+```{r}
+as.numeric (c("10", "20", "thirty", "40"))
+```
+
+`NULL` is ignored in a vector.  
+
+```{r}
+my_vector <- c(25, NA, 10, NULL)  # define
+my_vector                         # print
+```
+
+
+Variance of one number results in `NA`.  
+
+```{r}
+var(22)
+```
 
 
 <!-- ======================================================= -->
