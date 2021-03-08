@@ -2,9 +2,10 @@
 # Iteration and loops { }  
 
 
+This page will introduce two approaches to iterative operations - using *for loops* and using the package **purrr**. Iterative operations help you perform repetitive tasks, reduce the chances of error, reduce code length, and maximize efficiency.  
 
-
-
+1) *for loops* are a common tool in programming languages, but less so in R because it relies more on functions (still worth understanding though!)  
+2) **purrr** operations can replace most *for loops* with more clear code  
 
 
 <!-- ======================================================= -->
@@ -37,7 +38,7 @@ The first 50 rows are displayed:
 
 ```{r, message=FALSE, echo=F}
 # display the linelist data as a table
-DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T) )
+DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
 
@@ -46,14 +47,179 @@ DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 
 <!-- ======================================================= -->
 ## *for loops* {  }
 
-As an epidemiologist, it is a common need to repeat analyses on sub-groups (e.g. jurisdictions or sub-populations). Iterating with a *for loop* is one method to automate this process.  
+As an epidemiologist, it is a common need to repeat analyses on sub-groups (e.g. jurisdictions or sub-populations). Iterating with a *for loop* is one method to automate this process.
 
-For example, let's say we are making epidemic curves. We can make an [Epidemic curve] of all the cases:  
+A *for loop* has three core parts:  
+
+1) The **container** for the results  
+2) The **sequence** of items to iterate through  
+3) The **operations** to conduct per item in the sequence  
+
+The basic syntax is: `for (item in sequence) {do operations using item}`. Note the parentheses and the curly brackets. The results could be printed to console, or stored in the container.   
+
+
+### Container {-}
+
+Sometimes the results of your *for loop* will be printed to the console or Plots pane. Other times, you will want to store the outputs in a container for later use. Such a container could be a vector, a data frame, or even a list.  
+
+It is most efficient to create the container for the results *before* even beginning the *for loop*. In practice, this means creating an empty vector, data frame, or list. These can be created with the functions `vector()` for vectors or lists, or with `matrix()` and `data.frame()` for a data frame. 
+
+**Empty vector**  
+Say you want to store the median delay-to-admission for each hospital in a new vector. Use `vector()` and specify the class as either "double" (to hold numbers), "character", or "logical". In this case we would use "double" and set the length to be the number of unique hospitals in the dataset (6).  
+
+```{r}
+delays <- vector(mode = "double",
+                 length = length(unique(linelist$hospital))) # this is the number of unique hospitals in the dataset
+```
+
+**Empty data frame**  
+
+You can make an empty data frame by specifying the number of rows and columns like this:  
+
+```{r, eval=F}
+delays <- data.frame(matrix(ncol = 2, nrow = 3))
+```
+
+
+**Empty list**  
+
+Say you want to store some plots created by a *for loop* in a list. You actually initialize the container using the same `vector()` command as above, but with `mode = "list"`. Specify the length however you wish.  
+
+```{r, eval=F}
+plots <- vector(mode = "list", length = 16)
+```
+
+
+
+
+
+### Sequence {-}  
+
+This is the "for" part of a *for loop* - the operations will run for each item in the sequence. The sequence can be a series of character values (e.g. of jurisdictions, diseases, etc), or R object names (e.g. column names or list element names), or the sequence can be a series of consecutive numbers (e.g. 1,2,3,4,5). Each approach has their own utilities, described below.  
+
+**Sequence of character values**  
+
+In this case, the loop is applied for each value in a character vector.  
+```{r}
+# make vector of the hospital names
+hospital_names <- unique(linelist$hospital)
+hospital_names # print
+```
+
+The value of the "item", whose value changes each iteration of the loop, proceeds through each value in the character vector. In this example, the term `hosp` represents a value from the vector `hospital_names`. For the first iteration of the loop the value would be "Port Hospital". TFor the second loop it would be "St. Mark's Maternity Hospital (SMMH)". And so on...  
+
+```{r, eval=F}
+# 'for loop'
+for (hosp in hospital_names){       # sequence
+  
+  # OPERATIONS HERE
+  
+}
+```
+
+**Sequence of names**  
+
+This is a variation on the character sequence above, in which the names of an existing R object are extracted and become the character vector. For example, the column names of a data frame. This is useful because you know the names are exact matches to the column names and thus can be used to *index* the R object within the *for loop*.  
+
+Below, the sequence is the `names()` (column names) of `linelist`. Inside the *for loop*, the column names are used to *index* (subset) `linelist` one-at-a-time. In this example, we demonstrate an *if* conditional statement as part of the operations code within the *for loop*. **If** the column of interest is class Numeric, then the mean of the column is printed to the console. If the column is not class Numeric then another statement is printed to the console.  
+
+*A note on indexing with column names* - whenever referencing the column itself (e.g. within `mean()`) *do not just write "col"! `col` is just the character column name! To refer to the entire column you use the column name as an *index* on `linelist` via `linelist[[col]]`.  
+
+```{r}
+for (col in names(linelist)){ 
+  
+  # if column is class Numeric, print the mean value
+  if(is.numeric(linelist[[col]])) {
+    print(mean(linelist[[col]], na.rm=T))     # don't forget to index with [[col]]
+    } else {        
+    print("Column not numeric")            # if column is not numeric, print this
+  }
+  
+}
+```
+
+**Sequence of numbers**  
+
+Use this approach if you plan to do more complicated operations or to store the results of the *for loop*. In this approach, the sequence is a series of consecutive numbers. Thus, the value of the "item" is not a character value (e.g. "Central Hospital" or "date_onset") but is a number. This is useful for looping through data frames, as you can use the numeric item inside the *for loop* to index the dataframe by *row number*.  
+
+For example, let's say that you want to loop over every row in your data frame and extract certain information. Your "items" would be numeric row numbers. The process could be explained as "for every item in a sequence of numbers from 1 to the total number of rows in my data frame, do X". The first iteration of the loop, `i` would be 1. For the second iteration, `i` would be 2, etc.    
+
+Whew, that was a mouthful of words! Here is what it looks like in code: `for (i in seq_len(nrow(linelist)) {}` where `i` represents the item and `seq_len()` produces a sequence of consecutive numbers from 1 to the number of rows in `linelist`. If using this approach on a named vector (not a data frame), use `seq_along()`, like `for (i in seq_along(hospital_names) {}`.  
+
+```{r, eval=F}
+for (i in seq_len(nrow(linelist)) {  # use on a data frame
+  # OPERATIONS HERE
+}  
+```
+
+```{r}
+seq_along(hospital_names)  # use on a named vector
+```
+
+
+
+
+
+
+### Operations  {-}  
+
+This is code within the *for loop*. You want this to run for each item in the *sequence*. Therefore, be careful that every part of your code that changes by the item is correctly coded such that it changes! Remember to use `[[ ]]` for indexing. For example, 
+
+Below, we use `seq_len()` on the linelist. The gender and age of each row is pasted together and stored the container character vector `cases_demographics`.  
+
+```{r, eval=F}
+# create container to store results - a character vector
+cases_demographics <- vector(mode = "character", length = nrow(linelist))
+
+# the for loop
+for (i in seq_len(nrow(linelist))){
+  
+  # OPERATIONS
+  # extract values from linelist for i using indexing
+  row_gender  <- linelist$gender[[i]]
+  row_age     <- linelist$age_years[[i]]    # don't forget to index!
+  
+  # store the gender-age in container
+  cases_demographics[i] <- str_c(row_gender, row_age, sep = ", ") 
+
+}  # end for loop
+
+# display first 10 rows of container
+head(cases_demographics, 10)
+```
+
+
+### Printing {-}  
+
+Note that to print from within a *for loop* you will likely need to explicitly wrap with the function `print()`.  
+
+In this example below, the sequence is an explicit character vector, which is used to subset the linelist by hospital.The results are not stored in a container, but rather print to console with the `print()` function.    
+
+```{r}
+for (hosp in hospital_names){ 
+  hospital_cases <- linelist %>% filter(hospital == hosp)
+  print(nrow(hospital_cases))
+}
+```
+
+
+### Testing your for loop {-}
+
+To test your loop, you can make a temporarily assignment of the item, such as `i <- 10` or `hosp <- "Central Hospital"` and run your operations code to see if the expected results are produced.  
+
+
+
+
+### Looping plots {-}
+
+To put all three components together (container, sequence, and operations) let's try to plot an epicurve for each hospital (see page on [Epidemic curves].  
+
+Of course, we can make an epicurve of all the cases using the **incidence2** package as below:  
 
 ```{r, warning=F, message=F}
 # create 'incidence' object
 outbreak <- incidence2::incidence(   
-     linelist,                       # dataframe
+     x = linelist,                   # dataframe - complete linelist
      date_index = date_onset,        # date column
      interval = "week",              # aggregate counts weekly
      groups = gender,                # group values by gender
@@ -67,15 +233,11 @@ plot(outbreak,                       # name of incidence object
      )
 ```
 
-To produce a separate plot for each hospital's cases, we can put this code within a *for loop*. The elementary syntax is: `for (item in vector) {do something}`. Note the parentheses and the curly brackets.  
-
-* The "item" can be any word you wish. Keep it short. Often "i" is used.  
-* The word "in" is special and must be present.  
-* The vector can be character, as in this example, but is more often numeric (`c(1,2,3,4,5...)`) so that it can be used with index brackets `[[x]]` to extract and save. See subsequent example below.  
+To produce a separate plot for each hospital's cases, we can put this epicurve code within a *for loop*. 
 
 First, we save a named vector of the unique hospital names, `hospital_names`. The *for loop* will run once for each of these names (`for (hosp in hospital_names)`). Each iteration of the *for loop*, the current hospital name from the vector will be represented as "hosp" for use within the loop.  
 
-Within the loop, you can write R code as normal, but use the special term (`hosp` in this case) knowing that its value will be changing. In this loop:  
+Within the loop, you can write R code as normal, but use the item (`hosp` in this case) knowing that its value will be changing. Within this loop:  
 
 * A `filter()` is applied to `linelist`, such that column `hospital` must equal the current value of `hosp`  
 * The incidence object is created on the filtered linelist  
@@ -83,7 +245,7 @@ Within the loop, you can write R code as normal, but use the special term (`hosp
 * The plot for the current hospital is temporarily saved and then printed  
 * The loop then moves onward to repeat with the next hospital in `hospital_names`  
 
-```{r, out.width='32%', message = F}
+```{r, out.width='50%', message = F}
 # make vector of the hospital names
 hospital_names <- unique(linelist$hospital)
 
@@ -92,7 +254,7 @@ for (hosp in hospital_names) {
      
      # create incidence object specific to the current hospital
      outbreak_hosp <- incidence2::incidence(
-                    linelist %>% filter(hospital == hosp),   # linelist is filtered to the current hospital
+                    x = linelist %>% filter(hospital == hosp),   # linelist is filtered to the current hospital
                     date_index = date_onset,
                     interval = "week", 
                     groups = gender,
@@ -112,43 +274,18 @@ for (hosp in hospital_names) {
 } # end the for loop when it has been run for every hospital in hospital_names 
 ```
 
-### Numeric indexing {-} 
-
-What is "i"? Often in loops it is useful to have the iterating "item" be a number - this allows indexing `[[x]]` to assign or extract. The number is often represented by "i".  
-
-Here is the above *for loop*, but written so that the vector is numeric `c(1,2,3,4,5,6)` and the hospital names are extracted from `hospital_names` with this indexing number (e.g. `hospital_names[[2]]`)  
-
-```{r, eval=F}
-hospital_names <- unique(linelist$hospital)
-
-for (i in seq_along(hospital_names)) {
-     outbreak_i <- incidence2::incidence(
-                    linelist %>% filter(hospital == hospital_names[[i]]),
-                    date_index = date_onset,
-                    interval = "week", 
-                    groups = gender,
-                    na_as_group = TRUE
-     )
-     plot_i <- plot(outbreak_i,
-                    fill = "gender",
-                    color = "black",
-                    title = stringr::str_glue("Epidemic of cases admitted to {hospital_names[[i]]}"))
-     print(plot_i)
-}
-```
 
 
 ### Tracking progress of a loop {-} 
 
-In a loop with many iterations it can run for minutes or even hours. Thus, it can be helpful to print the progress to the R console.  
-Below, code is placed *within* the loop to print every 100th number.  
+A loop with many iterations can run for many minutes or even hours. Thus, it can be helpful to print the progress to the R console. This code can be placed *within* the loop to print every 100th number.  
 
 ```{r, eval=F}
 # loop with code to print progress every 100 iterations
 for (row in 1:nrow(linelist)){
 
   # print progress
-  if(row %% 100==0){
+  if(row %% 100==0){    # The %% operator is the remainder
     print(row)
 
 }
@@ -163,31 +300,266 @@ for (row in 1:nrow(linelist)){
 <!-- ======================================================= -->
 ## **purrr** { }
 
-TO DO - Under construction  
+One approach to iterative operations is the **purrr** package. If you are using a *for loop*, you can probably do it with **purrr**! For example, applying a model to different datasets, producing plots or maps for various jurisdictions, or iterating data management tasks (across columns or subsets).  
 
-To iterate a function over columns in a dataframe:  
+Here is the **purrr** online [cheatsheet](https://raw.githubusercontent.com/rstudio/cheatsheets/master/pngs/thumbnails/purrr-cheatsheet-thumbs.png)  
 
-```{r, eval=F}
+### Load packages {-}  
+
+**purrr** is part of the **tidyverse**, so there is no need to install/load another package.  
+
+```{r}
+pacman::p_load(
+  rio,            # import/export
+  here,           # relative filepaths
+  tidyverse,      # data mgmt and viz
+  writexl,        # write Excel file with multiple sheets
+  readxl          # import Excel with multiple sheets
+  )
+```
+
+
+One core **purrr** function is `map()`, which "maps" (applies) a function to each input element. There are several variations on `map()` for specific use cases, as detailed below.  
+
+The key arguments are: 
+
+* `.x = ` this is the input - e.g. a vector, data frame, or list  
+* `.f = ` this is a function to apply to each element of the input  
+
+You will often encounter the syntax `.`, which is a placeholder for the primary input - it could be a vector in a dataframe, or an element in a list.  
+
+
+### Mapping a function across columns {-}  
+
+Below, we `map()` the function `t.test()` across numeric columns, comparing genders. Recall from the page on [Descriptive analysis] that `t.test()` can take inputs in a formula format, such as NUMERIC_COLUMN ~ BINARY COLUMN. In this example, we do the following:    
+
+* The numeric columns of interest are selected from `linelist`  
+* The function `t.test()` is supplied as the `.f` function mapped to each numeric column (note tilde `~` in front)  
+* Within the parentheses of `t.test()`:  
+  * the `.` represents the current column being mapped  
+  * the second `~` is part of the t-test equation  
+  * the `linelist$gender` is the binary column for t-test comparison, not is a separate column not included in `select()` so that it is not included on the left side of the t.test equation.  
+  
+The result is a list of t-test results - one element for each numeric column. The first one is shown for demonstration purposes.   
+
+```{r}
+# Results are saved as a list
+t.test_results <- linelist %>% 
+  select(age, wt_kg, ht_cm, ct_blood, temp) %>%  # keep only the numeric columns to map across
+  map(~t.test(. ~ linelist$gender))              # t.test function, with equation NUMERIC ~ CATEGORICAL
+
+t.test_results[[1]] # show first result 
+```
+
+If you wanted the p-values only, you can append `$p.value` on to the `t.test()` output.  
+
+```{r}
 linelist %>% 
-     select(c(wt_kg, ht_cm, ct_blood, temp, bmi, days_onset_hosp))
+  select(age, wt_kg, ht_cm, ct_blood, temp) %>% 
+  map(~t.test(. ~ linelist$gender)$p.value)
 ```
 
 
 
-The [R for Data Science page on iteration](https://r4ds.had.co.nz/iteration.html#iteration)  
+Remember that if you want to apply a function to only certain columns in a data frame, you can also use `mutate()` and `across()`, as explained in the [Grouping data] page. Below is an example of applying `as.character()` to only the "age" columns. Note the placement of the parentheses and commas.  
 
-A purrr [tutorial](https://jennybc.github.io/purrr-tutorial/index.html ) 
-
-
-
-
-
-
+```{r, eval=F}
+# convert columns with column name containing "age" to class Character
+linelist <- linelist %>% 
+  mutate(across(contains("age"), as.character))  
+```
 
 
 
-<!-- ======================================================= -->
-## apply functions { }
+
+### Custom functions {-}  
+
+While `t.test()` was an existing function, you will often want to create your own function to provide to `map()`. One example may be to iteratively plot (as demonstrated in the *for loop* section).  
+
+Let's say we want to create simple epicurves for each hospital. To do this using **purrr**, our `.f` function can be `ggplot()` and extensions with `+` as usual. The plots are stored in a list by `map()`. They can be extracted and plotted easily with the `ggarrange()` function from the **ggpubr** package ([documentation](https://rpkgs.datanovia.com/ggpubr/reference/ggarrange.html).  
+
+
+```{r, message = F, warning=F}
+
+# load package for plotting elements from list
+pacman::p_load(ggpubr)
+
+# map across the vector of 6 hospital "names" (created earlier)
+# use the ggplot function specified
+# output is a list with 6 ggplots
+
+my_plots <- map(.x = hospital_names,
+             .f = ~ggplot(data = linelist %>% filter(hospital == .x))+
+                    geom_histogram(aes(x = date_onset)) +
+                    labs(title = .x)
+)
+
+# print the ggplots (they are stored in a list)
+ggarrange(plotlist = my_plots, ncol = 2, nrow = 3)
+```
+
+If this code style looks too messy, you can achieve the same result by saving your specific `ggplot()` command as a custom user-defined function `make_epicurve())`. This function is then used within the `map()`. `.x` will be iteratively replaced by the hospital name, and used as `hosp_name` in the `make_epicurve()` function. See the page on [Writing functions].
+
+```{r, eval=F}
+make_epicurve <- function(hosp_name){
+  
+  ggplot(data = linelist %>% filter(hospital == hosp_name)) +
+    geom_histogram(aes(x = date_onset)) +
+    theme_classic()+
+    labs(title = hosp_name)
+  
+}
+```
+
+```{r, eval=F}
+# mapping
+my_plots <- map(hospital_names, ~make_epicurve(.x))
+
+# print the ggplots (they are stored in a list)
+ggarrange(plotlist = my_plots, ncol = 2, nrow = 3)
+```
+
+
+
+### Split and combine datasets {-}  
+
+#### Split dataset and export CSV files {-}  
+
+Here is a more complex **purrr** `map()` example. Let's say that we want to create a separate linelist for each hospital and export each as a separate CSV file. This is a task that would be arduous if done copy-paste by hand in Excel, and involve a lot of code if each `filter()` and `export()` was a distinct command (imagine if we wanted to make a linelist for each hospital-gender!).  
+
+Below, we do the following steps:  
+
+Use `group_split()` (from **dplyr**) to split the `linelist` by hospital of admission - the output is a list with one "element" per hospital subset (in this case, each element is a dataframe)  
+
+```{r}
+linelist_split <- linelist %>% 
+  group_split(hospital)
+```
+
+You can `View(linelsit_split)` and see that this list contains 6 dataframe each representing the cases from one hospital. 
+
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "purrr_linelist_split.png"))
+```
+
+However, note that the dataframes in the list do not have names! This is standard behavior of `map()`, but we want each to have a name, and to use that name when saving the CSV file. So, we use `pull()` (from **purrr**) to extract the 'hospital` column from each data frame in the list. Then, to be safe, we convert the values to character and then use `unique()` to get the name for the dataset.  
+
+
+```{r}
+names(linelist_split) <- linelist_split %>%
+  purrr::map(~pull(.,hospital)) %>% # Pull out Species variable
+  purrr::map(~as.character(.)) %>% # Convert factor to character
+  purrr::map(~unique(.))
+```
+
+We can now see that each of the list elements has a name. These names can be access via `names(linelist_split)`.  
+
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "purrr_linelist_split_named.png"))
+```
+
+```{r}
+names(linelist_split)
+```
+
+Lastly, we take the vector of names (shown above) and will use `map()` to iterate through them, applying `export()` function on that element of the list `linelist_split` and saving the correct name. Here is how it works:  
+
+* We begin with the vector of character names, passed to `map()`  
+* The function is `export()` (**rio** package, see [Import and export] page), which needs a dataframe and a filepath to write to  
+* The dataframe provided is the element of `linelist_split` being currently named as `map()` proceedes through `names(linelist_split)`  
+  * For example, at "Military Hospital", then `linelist_split[[.]]` is actually `linelist_split[["Military Hospital"]]`, thus returning the second element of `linelist_split` - all the cases from that hospital.  
+* The filepath provided is dynamic via use of `str_glue()` (see [Characters and strings] page):  
+  * `here()` is used to get the base of the filepath and specify the "data" folder (note single quotes to not interrupt the `str_glue()` double quotes)  
+  * Then a slash `/`, and then again the `.` which prints the current hospital name  
+  * Finally the extension ".csv" which `export()` uses to create a CSV file  
+  
+```{r, eval=F, message = F, warning=F}
+names(linelist_split) %>%
+  map(~export(linelist_split[[.]], file= str_glue("{here('data')}/{.}.csv")))
+```
+Now you can see that each file is saved in the "data" folder of the R Project "Epi_R_handbook"!  
+
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "purrr_export_csv.png"))
+```
+
+
+
+#### Split dataset and export as Excel sheets {-}  
+
+To export the hospital linelists as *an Excel workbook with one linelist per sheet*, we can just provide the named list `linelist_split` to the `write_xlsx()` function from the **writexl** package. This has the ability to save one Excel workbook with multiple sheets. The list element names are automatically applied as the sheet names.  
+
+```{r, eval=F}
+linelist_split %>% 
+  writexl::write_xlsx(path = here("data", "hospital_linelists.xlsx"))
+```
+
+You can now open the Excel file and see that each hospital has its own sheet.  
+
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "purrr_export_sheets.png"))
+```
+
+#### More than one `group_split()` column {-}  
+
+If you wanted to split the linelist by *more than one grouping column*, such as to produce subset linelist by intersection of hospital AND gender, you will need a different approach to naming the list elements. This involves collecting the unique "group keys" using `group_keys()` from **dplyr** - they are returned as a data frame. Then you can combine the group keys into values with `unite()` as shown below, and assign these conglomerate names to `linelist_split`.  
+
+
+```{r}
+# split linelist by unique hospital-gender combinations
+linelist_split <- linelist %>% 
+  group_split(hospital, gender)
+
+# extract group_keys() as a dataframe
+groupings <- linelist %>% 
+  group_by(hospital, gender) %>%       
+  group_keys()
+
+groupings      # show unique groupings 
+```
+
+Now we combine the groupings together, separated by dashes, and assign them as the names of list elements in `linelist_split`. This takes some extra lines as we replace `NA` with "Missing", use `unite()` from **dplyr** to combine the column values together (separated by dashes), and then convert into an un-named vector so it can be used as names of `linelist_split`.  
+
+```{r, eval=F}
+# Combine into one name value 
+names(linelist_split) <- groupings %>% 
+  mutate(across(everything(), replace_na, "Missing")) %>%  # replace NA with "Missing" in all columns
+  unite("combined", sep = "-") %>%                         # Unite all column values into one
+  setNames(NULL) %>% 
+  as_vector() %>% 
+  as.list()
+```
+
+
+#### Reading in multiple Excel sheets {-}  
+
+For reference, if you want to use **purrr** to import multiple Excel workbook sheets and combine them (the reverse of above), you can use the package **readxl** as demonstrated below.  
+
+First, extract the sheet names from the Excel workbook. Use `excel_sheets()` from the **readxl** package. You provide the filepath within the parentheses.  
+
+```{r}
+sheet_names <- readxl::excel_sheets(here("data", "hospital_linelists.xlsx"))
+
+sheet_names
+```
+
+
+
+Now we can use this vector of sheet names to iteratively `import()` the sheets. The argument used to import a specific Excel workbook sheet is given `.x`, which is the sheet name currently being mapped on. Finally, because we have used `map()`, the sheets have been saved as in a list - each data frame is one element in the list.   
+
+```{r}
+sheets_as_list <- sheet_names %>% 
+  map(~rio::import(here("data", "hospital_linelists.xlsx"), which = .x))
+```
+
+
+Assuming each data frame has the same columns, we can combine the six data frames with a simple `bind_rows()` command (from **dplyr**). Optionally, add `.id = "sheet_name"` to have a column specifying which sheet each row came from originally.  
+
+
+```{r}
+combined_sheets <- bind_rows(sheets_as_list)
+```
+
 
 
 
@@ -195,6 +567,27 @@ A purrr [tutorial](https://jennybc.github.io/purrr-tutorial/index.html )
 <!-- ======================================================= -->
 ## Resources { }
 
+[for loops with Data Carpentry](https://datacarpentry.org/semester-biology/materials/for-loops-R/)  
+
+The [R for Data Science page on iteration](https://r4ds.had.co.nz/iteration.html#iteration)  
+
+[Vignette on write/read Excel files](https://martinctc.github.io/blog/vignette-write-and-read-multiple-excel-files-with-purrr/)  
+
+A purrr [tutorial](https://jennybc.github.io/purrr-tutorial/index.html ) 
+
+[purrr cheatsheet](https://raw.githubusercontent.com/rstudio/cheatsheets/master/pngs/thumbnails/purrr-cheatsheet-thumbs.png)
 
 
+
+TO DO
+group_split
+collapse
+pluck
+
+set_names()
+vars = linelist %>%
+     select_if(is.numeric) %>%
+     select(-cyl, - year) %>%
+     names() %>%
+     set_names()
 

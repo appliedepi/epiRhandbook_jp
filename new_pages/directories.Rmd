@@ -1,71 +1,124 @@
 
 # Directory interactions { }  
 
-
-<!-- ======================================================= -->
-## Overview {  }
-
-Saving files, deleting files, creating folders, interacting with files in a folder, etc
-Overwriting files in Excel
+In this page we cover common scenarios where you interact with, save, and import with directories (folders).  
 
 
-<!-- ======================================================= -->
-## Preparation {  }
+## Preparation  
 
-Keep the title of this section as "Preparation".  
-Data preparation steps such as:  
+### **fs** package {-}  
 
-* Loading dataset  
-* Adding or changing variables  
-* melting, pivoting, grouping, etc.   
+The **fs** package is a **tidyverse** package that facilitate directory interactions, improving on some of the **base** R functions. In the sections below we will often use functions from **fs**.  
 
-<!-- ======================================================= -->
-### sub-tab 1 {  }
-
-Can be used to separate major steps of data preparation. Re-name as needed
+```{r}
+pacman::p_load(fs)
+```
 
 
-<!-- ======================================================= -->
-### sub-tab 2 {  }
+### Print directory as a dendrogram tree
+Use the function `dir_tree()` from **fs**.  
 
-Can be used to separate major steps of data preparation. Re-name as needed.
+Provide the folder filepath to `path = ` and decide whether you want to show only one level (`recurse = FALSE`) or all files in all sub-levels (`recurse = TRUE`). Below we use `here("data)` as shorthand for the R project and it's sub-folder "data", which contains all the data used for this R handbook. We use set it to display all files within "data" and its sub-folders (e.g. "cache", "epidemic models", "population", "shp", and "weather").  
+
+
+```{r}
+fs::dir_tree(path = here("data"), recurse = TRUE)
+```
+
+
+## Accessing files in the directory
 
 
 
-<!-- ======================================================= -->
-## Option 1 {  }
+## Running other files  
 
-This tab can be renamed. 
-This tab should demonstrate execution of the task using recommended package/approach. For example, using a package customized for this task where the execution is simple and fast but perhaps less customizable. For example using *incidence* package to create an epicurve.
+### `source()` {-}  
 
+To run one R script from another R script, you can use the `source()` command (from **base** R).
 
-<!-- ======================================================= -->
-### Option 1 sub-tab {  }
+```{r, eval=F}
+source(here("scripts", "cleaning_scripts", "clean_testing_data.R"))
+```
 
-Sub-tabs if necessary. Re-name as needed.
+This is equivalent to viewing the above R script and clicking the "Source" button in the upper-right of the script. This will execute the script but will do it silently (no output to the R console) unless specifically intended. See the page on [Interactive console] for examples of using `source()` to interact with a user via the R console in question-and-answer mode.  
 
-
-
-<!-- ======================================================= -->
-## Option 2 {  }
-
-This tab can be re-named. 
-This tab should demonstrate execution of the task a more standard/core package (e.g. ggplot2, or base R) that allows for more flexibility in the output or more package stability. For example, showing how to create an epicurve using *ggplot2*. 
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "source_button.png"))
+```
 
 
-<!-- ======================================================= -->
-### Option 2 sub-tab {  }
+### `render()` {-}  
 
-Sub-tabs if necessary. Re-name as needed.
+`render()` is a variation on `source()` most often used for R markdown scripts. You provide the `input = ` which is the R markdown file, and also the `output_format = ` (typically either "html_document", "pdf_document", "word_document", "") 
 
+See the page on [R markdown] for more details. Also see the documentation for `render()` [here](https://rmarkdown.rstudio.com/docs/reference/render.html) or by entering `?render`.  
+
+
+
+### Run files in a directory {-}
+
+You can create a *for loop* and use it to `source()` every file in a directory, as identified with `dir()`. 
+
+```{r, eval=F}
+for(script in dir(here("scripts"), pattern = ".R$")) {   # for each script name in the R Project's "scripts" folder (with .R extension)
+  source(here("scripts", script))                        # source the file with the matching name that exists in the scripts folder
+}
+```
+
+If you only want to run certain scripts, you can identify them by name like this:  
+
+```{r, eval=F}
+
+scripts_to_run <- c(
+     "epicurves.R",
+     "demographic_tables.R",
+     "survival_curves.R"
+)
+
+for(script in scripts_to_run) {
+  source(here("scripts", script))
+}
+
+```
+
+
+
+Here is a [comparison](https://cran.r-project.org/web/packages/fs/vignettes/function-comparisons.html) of the **fs** and **base** R functions.  
+
+### Import files in a directory  {-}
+
+See the page on [Import and export] for importing and exporting individual files.  
+See the page on [Iteration and loops] for an example with the package **purrr** demonstrating:  
+
+* Splitting a dataframe and saving it as multiple CSV files  
+* Splitting a dataframe and saving each part as a separate sheet within one Excel workbook  
+* Importing multiple CSV files and combining them into one dataframe  
+* Importing an Excel workbook with multiple sheets and combining them into one dataframe  
+
+
+
+
+## **base** R  
+
+See below the functions `list.files()` and `dir()`, which perform the same operation of listing files within a specified directory. You can specify `ignore.case =` or a specific patter to look for. 
+
+```{r, eval=F}
+list.files(path = here("data"))
+
+list.files(path = here("data"), pattern = ".csv")
+# dir(path = here("data"), pattern = ".csv")
+
+list.files(path = here("data"), pattern = "evd", ignore.case = TRUE)
+
+```
+
+If a file is currently "open", it will display with a tilde in front, like "~$hospital_linelists.xlsx".  
 
 
 <!-- ======================================================= -->
 ## Resources {  }
 
-This tab should stay with the name "Resources".
-Links to other online tutorials or resources.
-
+https://cran.r-project.org/web/packages/fs/vignettes/function-comparisons.html
 
 
 
