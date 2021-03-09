@@ -38,9 +38,9 @@ linelist_cleaned <- rio::import("linelist_cleaned.xlsx")
 
 ```
 
-### 
+### General cleaning {-}
 
-When preparing data to plot, it is best to make the data adhere to ["tidy" data standards](https://r4ds.had.co.nz/tidy-data.html) as much as possible. How to achieve this is expanded on in the data management pages of this handbook. 
+When preparing data to plot, it is best to make the data adhere to ["tidy" data standards](https://r4ds.had.co.nz/tidy-data.html) as much as possible. How to achieve this is expanded on in the data management pages of this handbook, such as [Cleaning data]. 
 
 Some simple ways we can prepare our data to make it better for plotting can often include making the contents of the data better for display - this does not necessarily mean its better for data manipulation! For example, we can replace `NA` values in a character column with the string "Unknown", or clean some variables so that their "data friendly" with underscores etc are changed to normal text. Here are some examples of this in action:
 
@@ -59,9 +59,11 @@ linelist_cleaned <- linelist_cleaned %>%
 
 ```
 
+### Pivoting longer {-}
 
+As a matter of data structure, we often also want to pivot our data into *longer* formats, which will allow us to use a set of variables as a single variable. Read more about this is the page on [Pivoting data].  
 
-As a matter of data structure, we often also want to pivot our data into *longer* formats, which will allow us to use a set of variables as a single variable. For example, if we wanted to show the number of cases with specific symptoms, we are limited by the fact that each symptom is a specific column. We can pivot this to a longer format like this:
+For example, if we wanted to show the number of cases with specific symptoms, we are limited by the fact that each symptom is a specific column. We can pivot this to a longer format like this:
 
 ```{r, eval = T}
 
@@ -73,7 +75,7 @@ linelist_sym <- linelist_cleaned %>%
 
 ```
 
-Note that this format is not very useful for other operations, and should just be used for the plot it was made for. However, users should endeavour to use these practices as much as possible for the base dataset, as they are more tidyverse compliant, and will make working with the data easier.
+Note that this format is not very useful for other operations, and should just be used for the plot it was made for. However, users should endeavor to use these practices as much as possible for the base dataset, as they are more tidyverse compliant, and will make working with the data easier.
 
 
 
@@ -280,7 +282,7 @@ Changing the order that discrete variables appear in is often difficult to under
 
 We can look at a common example using age groups - by default the 5-9 age group will be placed in the middle of the age groups (given alphabetical order), but we can move it behind the 0-4 age group of the chart by releveling the factors.
 
-```{r, eval = T}
+```{r, eval = T, warning=F, message=F}
 
 # remove the instances of age_cat5 where data is missing
 ggplot(linelist_cleaned %>%
@@ -309,7 +311,7 @@ Faceting is a very specific way to obtain multiple plots - by definition, to fac
   
 This can quickly become an overwhelming amount of information - its good to ensure you don't have too many levels of each variable that you choose to facet by! Here are some quick examples with the malaria dataset:
 
-```{r, eval = TRUE}
+```{r, eval = TRUE, warning=F, message=F}
 malaria_data <- rio::import(here::here("data", "facility_count_data.rds")) 
 
 # show a wrapped plot with facets by district
@@ -328,7 +330,7 @@ ggplot(malaria_data, aes(x = data_date, y = malaria_tot, fill = District)) +
 
 We can also use a `facet_grid()` approach with the different age groups - we need to do some data transformations first however, as the age groups all are in their own columns - we want them in a single column. When you pass the two variables to `facet_grid()`, you can use formula notation (e.g. `x ~ y`) or wrap the variables in `vars()`. For reference, this: `facet_grid(x ~ y)` is equivalent to `facet_grid(rows = vars(x), cols = vars(y))` Here's how we can do this:
 
-```{r, eval = T}
+```{r, eval = T, warning=F, message=F}
 
 malaria_age <- malaria_data %>%
   pivot_longer(
@@ -367,7 +369,7 @@ While faceting is a convenient approach to plotting, sometimes its not possible 
 The `cowplot` package has a fairly wide range of functions, but the easiest use of it can be achieved through the use of `plot_grid()`. This is effectively a way to arrange predefined plots in a grid formation. We can work through another example with the malaria dataset - here we can plot the total cases by district, and also show the epidemic curve over time.
 
 
-```{r, eval = T}
+```{r, eval = T, warning=F, message=F}
 
 # bar chart of total cases by district
 p1 <- ggplot(malaria_data, aes(x = District, y = malaria_tot)) +
@@ -408,8 +410,8 @@ The `ggrepel` package provides two new functions, `geom_label_repel()` and `and 
 For our example, we will make a scatterplot showing height against weight again. We're also going to label each point with a patient id when the patient is over 70 years of age. We'll use a trick with filter to only show these specific points!
 
 
-```{r, eval = T}
-library(ggrepel)
+```{r, eval = T, warning=F, message=F}
+pacman::p_load(ggrepel)
 
 ggplot(linelist_cleaned, 
        aes(x = ht_cm,
@@ -438,7 +440,7 @@ The single most useful set of functions for working with dates in `ggplot2` are 
   2. `date_labels` allows you to define the format dates are shown in. You can pass a date format string to these arguments (e.g. `"%b-%d-%Y"`):
 
 
-```{r, eval = T}
+```{r, eval = T, warning=F, message=F}
 # make epi curve by date of onset when available
 ggplot(linelist_cleaned, aes(x = date_onset)) +
   geom_bar(stat = "count") +
@@ -461,7 +463,7 @@ Highlighting specific elements in a chart is a useful way to draw attention to a
 
 The `gghighlight` package uses the `gghighlight()` function to achieve this effect. To use this function, supply a logical statement to the function - this can have quite flexible outcomes, but here we'll show an example of the age distribution of cases in our linelist, highlighting them by outcome.
 
-```{r, eval = T}
+```{r, eval = T, warning=F, message=F}
 # load gghighlight
 library(gghighlight)
 
@@ -482,7 +484,7 @@ ggplot(linelist_cleaned,
 
 This also works well with faceting functions - it allows the user to produce facet plots with the background data highlighted that doesn't apply to the facet!
 
-```{r, eval = T}
+```{r, eval = T, warning=F, message=F}
 
 # produce a histogram of all cases by age
 ggplot(linelist_cleaned, 
@@ -519,7 +521,7 @@ Note there is another example of this technique in the [Epicurves] page - overla
 
 **Make plot 1**  
 This is essentially the epicurve. We use `geom_area()` just to demonstrate its use (area under a line, by default)
-```{r}
+```{r, warning=F, message=F}
 pacman::p_load(cowplot)            # load/install cowplot
 
 p1 <- linelist %>%                 # save plot as object
@@ -540,7 +542,7 @@ p1                                      # view plot
 
 **Make plot 2**  
 Create the second plot showing a line of the weekly percent of cases who died. 
-```{r}
+```{r, warning=F, message=F}
 
 p2 <- linelist %>%         # save plot as object
      group_by(
@@ -569,7 +571,7 @@ Now we align the plot using the function `align_plots()`, specifying horizontal 
 
 Then we draw the two plots together using `ggdraw()` (from **cowplot**) and referencing the two parts of the `aligned_plots` object.  
 
-```{r}
+```{r, warning=F, message=F}
 aligned_plots <- align_plots(p1, p2, align="hv", axis="tblr")                  # align the two plots and save them as list
 aligned_plotted <- ggdraw(aligned_plots[[1]]) + draw_plot(aligned_plots[[2]])  # overlay them and save the visual plot
 aligned_plotted                                                                # print the overlayed plots
@@ -588,7 +590,7 @@ The syntax for adding a secondary axis is very straightforward! When calling a `
 For example, if we want to show the number of positive RDTs in the malaria dataset for facility 1, showing 0-4 year olds and all cases on chart:
 
 
-```{r, eval = T}
+```{r, eval = T, warning=F, message=F}
 
 # take malaria data from facility 1
 malaria_facility_1 <- malaria_data %>%
