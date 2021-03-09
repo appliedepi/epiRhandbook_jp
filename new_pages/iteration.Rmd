@@ -51,11 +51,11 @@ As an epidemiologist, it is a common need to repeat analyses on sub-groups (e.g.
 
 A *for loop* has three core parts:  
 
-1) The **container** for the results  
+1) The **container** for the results (optional)  
 2) The **sequence** of items to iterate through  
 3) The **operations** to conduct per item in the sequence  
 
-The basic syntax is: `for (item in sequence) {do operations using item}`. Note the parentheses and the curly brackets. The results could be printed to console, or stored in the container.   
+The basic syntax is: `for (item in sequence) {do operations using item}`. Note the parentheses and the curly brackets. The results could be printed to console, or stored in a container R object.   
 
 
 ### Container {-}
@@ -65,7 +65,7 @@ Sometimes the results of your *for loop* will be printed to the console or Plots
 It is most efficient to create the container for the results *before* even beginning the *for loop*. In practice, this means creating an empty vector, data frame, or list. These can be created with the functions `vector()` for vectors or lists, or with `matrix()` and `data.frame()` for a data frame. 
 
 **Empty vector**  
-Say you want to store the median delay-to-admission for each hospital in a new vector. Use `vector()` and specify the class as either "double" (to hold numbers), "character", or "logical". In this case we would use "double" and set the length to be the number of unique hospitals in the dataset (6).  
+Say you want to store the median delay-to-admission for each hospital in a new vector. Use `vector()` and specify the class as either "double" (to hold numbers), "character", or "logical". In this case we would use "double" and set the length to be the number of expected outputs (length of the *sequence*, or in this case the number of unique hospitals in the data set).  
 
 ```{r}
 delays <- vector(mode = "double",
@@ -152,6 +152,8 @@ for (i in seq_len(nrow(linelist)) {  # use on a data frame
 }  
 ```
 
+The below code actually returns numbers, which become the value of `i` in their respective loop.  
+
 ```{r}
 seq_along(hospital_names)  # use on a named vector
 ```
@@ -167,7 +169,7 @@ This is code within the *for loop*. You want this to run for each item in the *s
 
 Below, we use `seq_len()` on the linelist. The gender and age of each row is pasted together and stored the container character vector `cases_demographics`.  
 
-```{r, eval=F}
+```{r}
 # create container to store results - a character vector
 cases_demographics <- vector(mode = "character", length = nrow(linelist))
 
@@ -179,8 +181,8 @@ for (i in seq_len(nrow(linelist))){
   row_gender  <- linelist$gender[[i]]
   row_age     <- linelist$age_years[[i]]    # don't forget to index!
   
-  # store the gender-age in container
-  cases_demographics[i] <- str_c(row_gender, row_age, sep = ", ") 
+  # store the gender-age in container at indexed location
+  cases_demographics[[i]] <- str_c(row_gender, row_age, sep = ", ") 
 
 }  # end for loop
 
@@ -302,11 +304,13 @@ for (row in 1:nrow(linelist)){
 
 One approach to iterative operations is the **purrr** package. If you are using a *for loop*, you can probably do it with **purrr**! For example, applying a model to different datasets, producing plots or maps for various jurisdictions, or iterating data management tasks (across columns or subsets).  
 
-Here is the **purrr** online [cheatsheet](https://raw.githubusercontent.com/rstudio/cheatsheets/master/pngs/thumbnails/purrr-cheatsheet-thumbs.png)  
+In this section we will explain the basic syntax and a few key functions, and demonstrate the use by making plots and by performing data operations such as importing/exporting multiple Excel sheets and CSV files.  
+
+See the Resource section for more extensive trainings. Also, here is the **purrr** online [cheatsheet](https://raw.githubusercontent.com/rstudio/cheatsheets/master/pngs/thumbnails/purrr-cheatsheet-thumbs.png).  
 
 ### Load packages {-}  
 
-**purrr** is part of the **tidyverse**, so there is no need to install/load another package.  
+**purrr** is part of the **tidyverse**, so there is no need to install/load a separate package.  
 
 ```{r}
 pacman::p_load(
@@ -323,44 +327,51 @@ One core **purrr** function is `map()`, which "maps" (applies) a function to eac
 
 The key arguments are: 
 
-* `.x = ` this is the input - e.g. a vector, data frame, or list  
-* `.f = ` this is a function to apply to each element of the input  
+* `.x = ` this is the input - e.g. a vector, data frame, or list upon which the `.f` function will be iteratively applied  
+* `.f = ` this is the function to apply to each element of the `.x` input  
 
-You will often encounter the syntax `.`, which is a placeholder for the primary input - it could be a vector in a dataframe, or an element in a list.  
+The basic form is `map(.x, ~.f)`, which in a pipe chain can also look like:  
+
+```{r, eval=F}
+df %>% 
+  map(~.f)
+```
+
+You may encounter the syntax `.x` (or simply `.`) *within* the `.f` function as a placeholder for the `.x` input of that iteration.  
 
 
 ### Mapping a function across columns {-}  
 
-Below, we `map()` the function `t.test()` across numeric columns, comparing genders. Recall from the page on [Descriptive analysis] that `t.test()` can take inputs in a formula format, such as NUMERIC_COLUMN ~ BINARY COLUMN. In this example, we do the following:    
+Below, we `map()` the function `t.test()` across numeric columns, comparing values by gender. Recall from the page on [Descriptive analysis] that `t.test()` can take inputs in a formula format, such as NUMERIC_COLUMN ~ BINARY COLUMN. In this example, we do the following:    
 
-* The numeric columns of interest are selected from `linelist`  
+* The numeric columns of interest are selected from `linelist` - these are the `.x` inputs  
 * The function `t.test()` is supplied as the `.f` function mapped to each numeric column (note tilde `~` in front)  
 * Within the parentheses of `t.test()`:  
   * the `.` represents the current column being mapped  
   * the second `~` is part of the t-test equation  
   * the `linelist$gender` is the binary column for t-test comparison, not is a separate column not included in `select()` so that it is not included on the left side of the t.test equation.  
   
-The result is a list of t-test results - one element for each numeric column. The first one is shown for demonstration purposes.   
+The result is a list of t-test results - one element for each numeric column. **Only the first one of six is shown for demonstration purposes.**   
 
 ```{r}
 # Results are saved as a list
 t.test_results <- linelist %>% 
   select(age, wt_kg, ht_cm, ct_blood, temp) %>%  # keep only the numeric columns to map across
-  map(~t.test(. ~ linelist$gender))              # t.test function, with equation NUMERIC ~ CATEGORICAL
+  map(.f = ~t.test(.x ~ linelist$gender))              # t.test function, with equation NUMERIC ~ CATEGORICAL
 
 t.test_results[[1]] # show first result 
 ```
 
-If you wanted the p-values only, you can append `$p.value` on to the `t.test()` output.  
+If you wanted the p-values only, you can modify the `.f` function by appending `$p.value` to the `t.test()` output. This way, the value that `map()` returns to it's output list is only the p-value and not the entire t.test output.  
 
 ```{r}
 linelist %>% 
   select(age, wt_kg, ht_cm, ct_blood, temp) %>% 
-  map(~t.test(. ~ linelist$gender)$p.value)
+  map(.f = ~t.test(. ~ linelist$gender)$p.value)
 ```
 
 
-
+Note:  
 Remember that if you want to apply a function to only certain columns in a data frame, you can also use `mutate()` and `across()`, as explained in the [Grouping data] page. Below is an example of applying `as.character()` to only the "age" columns. Note the placement of the parentheses and commas.  
 
 ```{r, eval=F}
@@ -374,9 +385,11 @@ linelist <- linelist %>%
 
 ### Custom functions {-}  
 
-While `t.test()` was an existing function, you will often want to create your own function to provide to `map()`. One example may be to iteratively plot (as demonstrated in the *for loop* section).  
+You will often want to create your own function to provide to `map()`. In fact, we already did this! While `t.test()` was an existing function, when we used it in `map()` the second time we modified it by adding `$p.value` to the end, which in effect changed the function provided to `map()`.  
 
-Let's say we want to create simple epicurves for each hospital. To do this using **purrr**, our `.f` function can be `ggplot()` and extensions with `+` as usual. The plots are stored in a list by `map()`. They can be extracted and plotted easily with the `ggarrange()` function from the **ggpubr** package ([documentation](https://rpkgs.datanovia.com/ggpubr/reference/ggarrange.html).  
+One example of making a purely custom plotting function to provide to `map()` is shown below.  
+
+Let's say we want to create simple epicurves for each hospital. To do this using **purrr**, our `.f` function can be `ggplot()` and extensions with `+` as usual. As the output of `map()` is always a list, the plots are stored in a list. They can be extracted and plotted with the `ggarrange()` function from the **ggpubr** package ([documentation](https://rpkgs.datanovia.com/ggpubr/reference/ggarrange.html).  
 
 
 ```{r, message = F, warning=F}
@@ -388,17 +401,18 @@ pacman::p_load(ggpubr)
 # use the ggplot function specified
 # output is a list with 6 ggplots
 
-my_plots <- map(.x = hospital_names,
-             .f = ~ggplot(data = linelist %>% filter(hospital == .x))+
-                    geom_histogram(aes(x = date_onset)) +
-                    labs(title = .x)
+my_plots <- map(
+  .x = hospital_names,
+  .f = ~ggplot(data = linelist %>% filter(hospital == .x))+
+                geom_histogram(aes(x = date_onset)) +
+                labs(title = .x)
 )
 
 # print the ggplots (they are stored in a list)
 ggarrange(plotlist = my_plots, ncol = 2, nrow = 3)
 ```
 
-If this code style looks too messy, you can achieve the same result by saving your specific `ggplot()` command as a custom user-defined function `make_epicurve())`. This function is then used within the `map()`. `.x` will be iteratively replaced by the hospital name, and used as `hosp_name` in the `make_epicurve()` function. See the page on [Writing functions].
+If this code style looks too messy, you can achieve the same result by saving your specific `ggplot()` command as a custom user-defined function, for example we can name it `make_epicurve())`. This function is then used within the `map()`. `.x` will be iteratively replaced by the hospital name, and used as `hosp_name` in the `make_epicurve()` function. See the page on [Writing functions].
 
 ```{r, eval=F}
 make_epicurve <- function(hosp_name){
@@ -413,7 +427,7 @@ make_epicurve <- function(hosp_name){
 
 ```{r, eval=F}
 # mapping
-my_plots <- map(hospital_names, ~make_epicurve(.x))
+my_plots <- map(hospital_names, ~make_epicurve(hosp_name = .x))
 
 # print the ggplots (they are stored in a list)
 ggarrange(plotlist = my_plots, ncol = 2, nrow = 3)
@@ -447,9 +461,9 @@ However, note that the dataframes in the list do not have names! This is standar
 
 ```{r}
 names(linelist_split) <- linelist_split %>%
-  purrr::map(~pull(.,hospital)) %>% # Pull out Species variable
-  purrr::map(~as.character(.)) %>% # Convert factor to character
-  purrr::map(~unique(.))
+  purrr::map(.f = ~pull(.x,hospital)) %>% # Pull out Species variable
+  purrr::map(.f = ~as.character(.x)) %>% # Convert factor to character
+  purrr::map(.f = ~unique(.x))
 ```
 
 We can now see that each of the list elements has a name. These names can be access via `names(linelist_split)`.  
@@ -464,18 +478,18 @@ names(linelist_split)
 
 Lastly, we take the vector of names (shown above) and will use `map()` to iterate through them, applying `export()` function on that element of the list `linelist_split` and saving the correct name. Here is how it works:  
 
-* We begin with the vector of character names, passed to `map()`  
-* The function is `export()` (**rio** package, see [Import and export] page), which needs a dataframe and a filepath to write to  
-* The dataframe provided is the element of `linelist_split` being currently named as `map()` proceedes through `names(linelist_split)`  
-  * For example, at "Military Hospital", then `linelist_split[[.]]` is actually `linelist_split[["Military Hospital"]]`, thus returning the second element of `linelist_split` - all the cases from that hospital.  
-* The filepath provided is dynamic via use of `str_glue()` (see [Characters and strings] page):  
+* We begin with the vector of character names, passed to `map()` as `.x` (the sequence)  
+* The `.f` function is `export()` (**rio** package, see [Import and export] page), which needs a dataframe and a filepath to write to  
+* The input `.x` (the hospital name) is used *within* `.f` to extract/index that specific element of `linelist_split` list. This results in only one data frame at a time being provided to `export()`.  
+  * For example, at "Military Hospital", then `linelist_split[[.x]]` is actually `linelist_split[["Military Hospital"]]`, thus returning the second element of `linelist_split` - all the cases from that hospital.  
+* The filepath provided to `export()` is dynamic via use of `str_glue()` (see [Characters and strings] page):  
   * `here()` is used to get the base of the filepath and specify the "data" folder (note single quotes to not interrupt the `str_glue()` double quotes)  
-  * Then a slash `/`, and then again the `.` which prints the current hospital name  
+  * Then a slash `/`, and then again the `.x` which prints the current hospital name to make the file identifiable  
   * Finally the extension ".csv" which `export()` uses to create a CSV file  
   
 ```{r, eval=F, message = F, warning=F}
 names(linelist_split) %>%
-  map(~export(linelist_split[[.]], file= str_glue("{here('data')}/{.}.csv")))
+  map(.f = ~export(linelist_split[[.x]], file= str_glue("{here('data')}/{.x}.csv")))
 ```
 Now you can see that each file is saved in the "data" folder of the R Project "Epi_R_handbook"!  
 
@@ -549,7 +563,7 @@ Now we can use this vector of sheet names to iteratively `import()` the sheets. 
 
 ```{r}
 sheets_as_list <- sheet_names %>% 
-  map(~rio::import(here("data", "hospital_linelists.xlsx"), which = .x))
+  map(.f = ~rio::import(here("data", "hospital_linelists.xlsx"), which = .x))
 ```
 
 

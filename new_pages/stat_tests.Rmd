@@ -4,14 +4,14 @@
 
 ## Overview {  }
 
-This tab demonstrates the use of **gtstummary** and regression packages to 
+This page demonstrates the use of **gtstummary** and **base** R regression function such as `glm()` to 
 look at associations between variables (e.g. odds ratios, risk ratios and hazard
 ratios)
 
 1.  Univariate: two-by-two tables 
 2.  Stratified: mantel-haenszel estimates 
 3.  Multivariable: variable selection, model selection, final table
-4.  Forest plot
+4.  Forest plots
 
 
 <!-- ======================================================= -->
@@ -61,17 +61,19 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 ### Clean data {-}
 
-```{r}
-
-## make sure that age variable is numeric 
-linelist <- linelist %>% 
-  mutate(age = as.numeric(age))
-```
+**Store the explanatory variables**  
 
 ```{r}
 ## define variables of interest 
 explanatory_vars <- c("gender", "fever", "chills", "cough", "aches", "vomit")
 ```
+
+
+**Convert to 1's and 0's**  
+
+Below we convert the explanatory columns from "yes"/"no" "m"/"f", and "dead"/"alive" to **1 / 0**, to cooperate with the expectations of logistic regression models. To do this efficiently, we define a vector of the column names of our explanatory variables. 
+
+We apply the function `case_when()` to convert specified values to 1's and 0's. This function is applied all the `explanatory_vars`  columns using `across()` (see page on [Grouping data]).  
 
 ```{r}
 ## convert dichotomous variables to 0/1 
@@ -90,6 +92,9 @@ linelist <- linelist %>%
   )
 ```
 
+**Drop rows with missing values**  
+To do this, we add the column `age` to the `explanatory_vars` (`age` would have produced an error in the previous `case_when()` operation). Then we pipe the `linelist` to `drop_na()` to remove any rows with missing values in the `outcome` column or any of the `explanatory_vars` columns.  
+
 ```{r}
 ## add in age_category to the explanatory vars 
 explanatory_vars <- c(explanatory_vars, "age_cat")
@@ -100,6 +105,7 @@ linelist <- linelist %>%
 
 ```
 
+The number of rows remaining in `linelist` is `r nrow(linelist)`.  
 
 
 
@@ -107,13 +113,28 @@ linelist <- linelist %>%
 
 ## Univariate {  }
 
-There are two options for doing univariate analysis. 
-You can use the **gtsummary** package or you can use the individual regression 
-functions available in **base** together with the **broom** package. 
+Just like in the page on [Descriptive analysis], your use case will determine which R package you use. We present two options for doing univariate analysis:  
+
+* Use functions available in **base** to quickly print results to the console. Accompanied with the **broom** package to tidy up the outputs.  
+* Use the **gtsummary** package or you can use the individual regression 
+ 
+
+
+
+
+
 
 <!-- ======================================================= -->
 
 ### **gtsummary** package {-}
+
+Below we present the use of `tbl_uvregression()` from the **gtsummary** package. Just like in the page on [Descriptive analysis], **gtsummary** functions do a good job of running statistics *and* producing professional-looking outputs. This function produces a table of univariate regression results.  
+
+In this case, we select only the necessary columns from the `linelist` and then pipe into `tbl_uvregression()`. We are going to run univariate regression on each of the columns we defined as `explanatory_vars` in the Preparation section (gender, fever, chills, cough, aches, vomit, and age_cat).  
+
+Within the function itself, we provide the `method = ` as `glm` (no quotes), the outcome column as `outcome`, specify that we want to run logistic regression (it's in a list because you could specify multiple), and we tell it to exponentiate the results.  
+
+The output is HTML and contains the counts
 
 ```{r odds_gt}
 
@@ -130,22 +151,51 @@ univ_tab <- linelist %>%
     method.args = list(family = binomial), 
     ## exponentiate the outputs to produce odds ratios (rather than log odds)
     exponentiate = TRUE
-    )
+  )
 
 ## view univariate results table 
 univ_tab
 ```
 
+There are many modifications you can make to this table output, such as automatically bolding rows by their p-value, etc. See tutorials [here](http://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html) and elsewhere online.  
 
 <!-- ======================================================= -->
 
 ### **base** R {-}
 
-Using the `glm` function from the **stats** package (part of base R), you can 
-produce odds ratios. 
+To produce odds ratios or for logistic regression we use the `glm()` function from the **stats** package (part of **base** R). GLM is an acronym for Generalized Linear Model. Unlike **gtsummary**, you would need to run this multiple times (e.g. within a loop) to run univariate regression on multiple variables. An example of this is given below.  
 
-For a single exposure variable, pass the names to `glm()` and then use `tidy()` from 
-the **broom** package to get the exponentiated odds ratio estimates and confidence
+
+#### Univariate `glm()` on one variable {-}
+
+The model is provided to `glm()` as an equation, with the outcome on the left and explanatory variables on the right of a tilde `~`. In this example we are assessing the association between different age categories and the outcome of death (now coded as 1, see Preparation section).  
+
+The dataset is specified to the `dataset = ` argument.  
+
+The `family = ` is set to "binomial" to indicate logistic regression. Options for `family = ` are below. If necessary, you can also specify the link function in the syntax `glm(formula, family=familytype(link=linkfunction), data=)`.  
+
+
+Family                 | Default link function 
+-----------------------|-------------------------------------------  
+`"'binomial"` | `(link = "logit")`  
+`"gaussian"` | `(link = "identity")`  
+`"Gamma"` | `(link = "inverse")`  
+`"inverse.gaussian"` | `(link = "1/mu^2")`  
+`"poisson"` | `(link = "log")`  
+`"quasi"` | `(link = "identity", variance = "constant")`  
+`"quasibinomial"` | `(link = "logit")`  
+`"quasipoisson"` | `(link = "log")`  
+
+Type `?glm` for other options. 
+ 
+Below is how the output of `glm()` prints to the console - the log odds. The baseline reference category is the first factor level of `age_cat`.  
+
+```{r}
+glm(outcome ~ age_cat, family = "binomial", data = linelist)
+```
+
+For a single exposure variable, use `tidy()` from 
+the **broom** package to get the *exponentiated* log odds ratio estimates and confidence
 intervals. Here we demonstrate how to combine model outputs with a table of 
 counts. 
 
@@ -162,29 +212,68 @@ model <- glm(
   tidy(
       exponentiate = TRUE, 
       conf.int = TRUE)
+```
 
+Below is the output of `model` (tidied via **broom**):  
 
-linelist %>% 
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(model, rownames = FALSE, options = list(pageLength = nrow(model), scrollX=T), class = 'white-space: nowrap' )
+```
+
+We can combine these model results with a table of linelist counts. Below, we create the counts table by operating **dplyr** functions on the `linelist` used for the model:  
+
+* Group rows by outcome, and get counts by age category  
+* Pivot wider so the column are `age_cat`, `0`, and `1`  
+* Remove row for `NA` `age_cat`, if applicable, to align with the model results  
+
+```{r}
+
+counts_table <- linelist %>% 
   ## get counts of variable of interest grouped by outcome
   group_by(outcome) %>% 
   count(age_cat) %>% 
   ## spread to wide format (as in cross-tabulation)
   pivot_wider(names_from = outcome, values_from = n) %>% 
   ## drop rows with missings
-  filter(!is.na(age_cat)) %>% 
-  ## merge with the outputs of the regression 
-  bind_cols(., model) %>% 
-  ## only keep columns interested in 
-  select(term, 2:3, estimate, conf.low, conf.high, p.value)
-
+  filter(!is.na(age_cat))
 
 ```
 
 
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(counts_table, rownames = FALSE, options = list(pageLength = nrow(counts_table), scrollX=T), class = 'white-space: nowrap' )
+```
+Now we can bind the two tables together horizontally with `bind_cols()`. In this case, the `.` represents the piped object `counts_table` and we bind it to `model`. Then we use `select()` to pick the columns to keep and their order.  
+
+```{r}
+combined <- counts_table %>% 
+  ## merge with the outputs of the regression 
+  bind_cols(., model) %>% 
+  ## only keep columns interested in 
+  select(term, 2:3, estimate, conf.low, conf.high, p.value)
+```
+
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(combined, rownames = FALSE, options = list(pageLength = nrow(combined), scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+#### Looping multiple univariate models {-}  
+
 To run over several exposure variables to produce univariate odds ratios (i.e. 
 not controlling for each other), you can pass a vector of variable names to the 
 `map()` function in the **purrr** package. This will loop over each of the variables
-running regressions for each one. 
+running regressions for each one. See the page on [Iteration] for tips.
+
+Below we do the following:  
+
+* Create the `glm()` equation and pass it to `map()` from **purrr** as the `.f` (formula argument) (see [Iteration] page)  
+* Each of the resulting model outputs is passed sequentially to `tidy()` to exponentiate the log odds and CIs  
+* The output (list of model result dataframe) is passed to `bind_rows()` which combines all of the dataframes into one  
+
 
 ```{r odds_base_multiple}
 
@@ -214,8 +303,18 @@ models <- explanatory_vars %>%
   ) %>% 
   ## collapse the list of regressions outputs in to one data frame
   bind_rows()
+```
 
+This time, the end object `models` is longer because it now represents the combined results of several univariate regressions. Click through to see all the rows of `model`.  
 
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(models, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+As before, we can create a counts table from the `linelist`, bind it to `models`, and make a nice table. See the page on [Tables] for ideas on how to convert this table to an HTML output.  
+
+```{r, warning=F, message=F}
 
 ## for each explanatory variable
 univ_tab_base <- map(explanatory_vars, 
@@ -244,7 +343,10 @@ univ_tab_base <- map(explanatory_vars,
 
 ```
 
-
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(univ_tab_base, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
 
 <!-- ======================================================= -->
 
@@ -268,12 +370,24 @@ TODO
 
 <!-- ======================================================= -->
 
-## Multivariable {-}
 
-For multivariable analysis you can use a combination there is not much difference 
-between using **gtsummary** or **broom** to present the data. 
-The workflow is the same for both, as below, and only the last step of pulling a 
-table together is different. 
+
+## Multivariate {-}
+
+For multivariate analysis, there is not much difference between using
+**gtsummary** or `glm()` with **broom** to present the data. The workflow is the same for both, as shown below, and only the last step of pulling a table together is different.
+
+### Conduct multivariate {-}  
+
+Use `glm()` but add more variables to the right side of the equation, separated by plus symbols (`+`). To run the model with all of our explanatory variables we would run:  
+
+```{r}
+mv_reg <- glm(outcome ~ gender + fever + chills + cough + aches + vomit + age_cat, family = "binomial", data = linelist)
+
+mv_reg
+```
+
+*Optionally*, you can leverage the pre-defined vector of column names and re-create the above command using `str_c()` as shown below. This might be useful if your explanatory variable names are changing, or you don't want to type them all out again.  
 
 ```{r mv_regression}
 
@@ -287,24 +401,69 @@ mv_reg <- explanatory_vars %>%
       family = "binomial", 
       ## define your dataset
       data = linelist) 
+```
 
+Note the class of the saved model.  
+
+```{r}
+class(mv_reg)
+```
+
+Finally, you must take the model object and apply the `step()` function from the **stats** package, to specify which variable selection direction you want use when building the model.      
+
+```{r}
 ## choose a model using forward selection based on AIC
 ## you can also do "backward" or "both" by adjusting the direction
 final_mv_reg <- mv_reg %>%
   step(direction = "forward", trace = FALSE)
-
 ```
+
+
+You can also turn off scientific notation, for clarity:  
+
+```{r}
+options(scipen=999)
+```
+
+Pass to `tidy()` as described above to exponentiate the log odds and CIs. Scroll through to see all the rows.  
+
+```{r mv_regression_base}
+
+mv_tab_base <- final_mv_reg %>% 
+  ## get a tidy dataframe of estimates 
+  broom::tidy(exponentiate = TRUE, conf.int = TRUE)
+```
+
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(mv_tab_base, rownames = FALSE, options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+
+### Interaction terms {-}
+
+If you want to specify an interaction between two variables in `glm()`, separate the variables with a colon `:`. You can separate them with an asterisk `*` as shorthand to includ the two variables *and* their interaction:  
+
+```{r, eval=F}
+glm(outcome ~ gender + age_cat * fever, family = "binomial", data = linelist)
+```
+
+
 
 
 <!-- ======================================================= -->
 
-### **gtsummary** package {-}
+### Combine univariate and multivariate {-}
+
+#### Combine with **gtsummary**  {-}  
 
 The `gtsummary` package provides the `tbl_regression` function, which will 
 take the outputs from a regression (`glm` in this case) and produce an easy 
 summary table. 
 You can also combine several different output tables produced by `gtsummary` with 
-the `tbl_mege` function. 
+the `tbl_merge` function. 
+
 ```{r mv_regression_gt}
 
 ## show results table of final regression 
@@ -317,21 +476,19 @@ tbl_merge(
 
 ```
 
+#### Combine with **dplyr** {-}  
 
-<!-- ======================================================= -->
+To combine the `glm()`/`tidy()`univariate and multivariate outputs, you can also do the following with **dplyr** join functions.  
 
-### **base** {-}
+* Join the univariate results from earlier (which contains counts) with the tidied multivariate results  
+* Use `select()` to keep only the columns we want, specify their order, and re-name them  
+* Use `round()` with two decimal places on all the column that are class Double  
 
-```{r mv_regression_base}
-
-mv_tab_base <- final_mv_reg %>% 
-  ## get a tidy dataframe of estimates 
-  broom::tidy(exponentiate = TRUE, conf.int = TRUE)
-
+```{r}
 ## combine univariate and multivariable tables 
 left_join(univ_tab_base, mv_tab_base, by = "term") %>% 
   ## choose columns and rename them
-  select(
+  select( # new name =  old name
     "characteristic" = term, 
     "recovered"      = "0", 
     "dead"           = "1", 
@@ -343,9 +500,11 @@ left_join(univ_tab_base, mv_tab_base, by = "term") %>%
     "mvv_ci_low"     = conf.low.y, 
     "mv_ci_high"     = conf.high.y,
     "mv_pval"        = p.value.y 
-  )
+  ) %>% 
+  mutate(across(is.double, round, 2))
 
 ```
+
 
 
 
@@ -355,12 +514,20 @@ left_join(univ_tab_base, mv_tab_base, by = "term") %>%
 
 This section shows how to produce a plot with the outputs of your regression.
 There are two options, you can build a plot yourself using `ggplot2` or use a 
-package called 
+package called **easystats**.  
 
 
 <!-- ======================================================= -->
 
 ### **ggplot2** package {-}
+
+You can build a forest plot with `ggplot()` by plotting elements of the multivariate regression results. Add the layers:  
+
+* estimates with `geom_point()`  
+* confidence intervals with `geom_errorbar()`  
+* a vertical line at OR = 1 with `geom_vline()`  
+
+You may want to re-arrange the order of the variables/levels on the y-axis (see how the order of age_cat levels is alphabetical and not sensical). To do this, use `fct_relevel()` from the **forcats** package to classify the column `term` as a factor and specify the order manually. See the page on [Factors] for more details.  
 
 ```{r ggplot_forest}
 

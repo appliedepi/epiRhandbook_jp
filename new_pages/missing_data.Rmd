@@ -46,7 +46,7 @@ The first 50 lines are viewable below.
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
-DT::datatable(head(linelist_raw,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
@@ -59,15 +59,23 @@ In R, missing values are represented by a reserved (special) value - `NA`. Note 
 
 Your data may have other ways of representing missingness, such as "99", or "Missing", or "Unknown" - you may even have empty character value "" which looks "blank", or a single space " ". Be aware of these and consider whether to convert them to `NA` during importation or data cleaning (e.g. with `na_if()`). You may also want to convert the other way - changing all `NA` to "Missing" or similar (e.g. with `replace_na()` or `fct_explicit_na()`)  
 
-When you apply mathematical functions such as `max()`, `min()`, `sum()` or `mean()`, any `NA` value present over-rides the calculation and `NA` is returned. You must specify the arguemnt `na.rm = TRUE` within the function to remove any `NA` values from the calculation. This default behavior is intentional, so that you are alerted if any of your data are missing.  
+**Versions of `NA`**  
 
-If you want to assign a value as `NA`, for example if using `case_when()` (see [Cleaning data] page), there may be circumstances where `NA` is rejected because the column around it is of another class such as Character. The Right-Hand Side (RHS) values in a `case_when()` command must all be of the same class. Thus, if you have character outcomes on the RHS like "Confirmed", "Suspect", "Probable" and `NA` - you will get an error. Instead of `NA`, put "Missing", or else you must put `NA_character_`. Likewise for integers, use `NA_integer_` instead of `NA`. `NA` should work for dates and logical. See the [R documentation on NA](https://stat.ethz.ch/R-manual/R-devel/library/base/html/NA.html) for more information.  
+Most of the time, all you need to know/use is `NA` and `is.na()`. However sometimes you may encounter the need for variations on `NA` listed below. One example is when creating a new column with `case_when()` and deciding to assign `NA` as the outcome for some logical criteria (see [Cleaning data] page for tips on `case_when()`).  
+
+There may be circumstances where `NA` on the right-hand side (RHS) of `case_when()` is rejected because the other RHS values are a class such as Character. The RHS values in a `case_when()` command must all be of the same class. Thus, if you have character outcomes on the RHS like "Confirmed", "Suspect", "Probable" and then `NA` - you will get an error. Instead of `NA`, put "Missing", or else you must put `NA_character_`. Likewise for integers, use `NA_integer_` instead of `NA`. `NA` should work for dates and logical. See the [R documentation on NA](https://stat.ethz.ch/R-manual/R-devel/library/base/html/NA.html) for more information.  
 
 * `NA`  
 * `NA_character_`  
 * `NA_integer_`  
 * `NA_real_`  
 * `NA_complex_`  
+
+
+**`na.rm = TRUE`**  
+
+When you apply mathematical functions such as `max()`, `min()`, `sum()` or `mean()`, any `NA` value present over-rides the calculation and `NA` is returned. You must specify the arguemnt `na.rm = TRUE` within the function to remove any `NA` values from the calculation. This default behavior is intentional, so that you are alerted if any of your data are missing.  
+
 
 
 **`NULL`**  
@@ -414,7 +422,7 @@ Sometimes, when analyzing your data, it will be important to "fill in the gaps" 
 
 It's important to think about why your data might be missing in addition to seeing how much is missing. Doing this can help you decide how important it might be to impute missing data, and also which method of imputing missing data might be best in your situation.
 
-### Types of missing data
+### Types of missing data {-}
 
 Here are three general types of missing data:
 
@@ -426,7 +434,7 @@ Here are three general types of missing data:
 
 In general, imputing MCAR data is often fairly simple, while MNAR is very challenging if not impossible. Many of the common data imputation methods assume MAR. 
 
-### Useful packages
+### Useful packages {-}
 
 Some useful packages for imputing missing data are Mmisc, missForest (which uses random forests to impute missing data), and mice (Multivariate Imputation by Chained Equations). For this section we'll just use the mice package, which implements a variety of techniques. The maintainer of the mice package has published an online book about imputing missing data that goes into more detail here (https://stefvanbuuren.name/fimd/).  
 
@@ -436,7 +444,7 @@ Here is the code to load the mice package:
 pacman::p_load(mice)
 ```
 
-### Mean Imputation
+### Mean Imputation {-}
 
 Sometimes if you are doing a simple analysis or you have strong reason to think you can assume MCAR, you can simply set missing numerical values to the mean of that variable. Perhaps we can assume that missing temperature measurements in our dataset were either MCAR or were just normal values. Here is the code to create a new variable that replaces missing temperature values with the mean temperature value in our dataset. However, in many situations replacing data with the mean can lead to bias, so be careful.
 
@@ -452,7 +460,7 @@ linelist <- linelist %>%
   mutate(outcome_replace_na_with_death = replace_na(outcome, "Death"))
 ```
 
-### Regression imputation
+### Regression imputation {-}
 
 A somewhat more advanced method is to use some sort of statistical model to predict what a missing value is likely to be and replace it with the predicted value. Here is an example of creating predicted values for all the observations where temperature is missing, but age and fever are not, using simple linear regression using fever status and age in years as predictors. In practice you'd want to use a better model than this sort of simple approach.
 
@@ -483,13 +491,13 @@ temp_imputed_values <- temp_imputed$imp$temp
 
 This is the same type of approach by some more advanced methods like using the missForest package to replace missing data with predicted values. In that case, the prediction model is a random forest instead of a linear regression. You can use other types of models to do this as well. However, while this approach works well under MCAR you should be a bit careful if you believe MAR or MNAR more accurately describes your situation. The quality of your imputation will depend on how good your prediction model is and even with a very good model the variability of your imputed data may be underestimated. 
 
-### LOCF and BOCF
+### LOCF and BOCF {-}
 
 Last observation carried forward (LOCF) and baseline observation carried forward (BOCF) are  imputation methods for time series/longitudinal data. The idea is to take the previous observed value as a replacement for the missing data. When multiple values are missing in succession, the method searches for the last observed value.
 
 [TO BE COMPLETED]
 
-### Multiple Imputation
+### Multiple Imputation {-}
 
 The online book we mentioned earlier by the author of the mice package (https://stefvanbuuren.name/fimd/) contains a detailed explanation of multiple imputation and why you'd want to use it. But, here is a basic explanation of the method:
 
