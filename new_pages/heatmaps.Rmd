@@ -1,181 +1,241 @@
 
-# Heatmaps & density plots {.tabset .tabset-fade}  
+# Heatmaps { }  
+
+
+Heatmaps can be useful visualizations. Below we demonstrate two examples:  
+
+* Creating a visual matrix of transmission events by age ("who infected whom")  
+* Tracking reporting metrics across many facilities/jurisdictions over time  
+
+
+```{r, out.width = c('50%', '50%'), fig.show='hold', warning=F, message=F, echo=F}
+knitr::include_graphics(here::here("images", "transmission_matrix.png"))
+
+knitr::include_graphics(here::here("images", "heat_tile.png"))
+
+```
+
+
+
 
 
 <!-- ======================================================= -->
-## Overview {.tabset .tabset-fade}
+## Preparation { }
 
-Heatmaps can be useful when tracking reporting metrics across many facilities/jurisdictions over time
-
-For example, the image below shows % of weekdays that data was received from each facility, week-by-week:  
-
-```{r echo=F, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%','50%')}
-linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
-facility_count_data <- rio::import(here::here("data", "facility_count_data.rds"))
-pacman::p_load(aweek, tidyverse)
-```
-
-```{r, message=FALSE, warning=FALSE, echo=F}
-# Create weekly summary dataset
-###############################
-agg_weeks <- facility_count_data %>% 
-  
-  # filter the data as appropriate
-  filter(District == "Spring",
-         data_date < as.Date("2019-06-01")) %>% 
-  
-  # Create week column from data_date
-  mutate(week = aweek::date2week(data_date,
-                                 start_date = "Monday",
-                                 floor_day = TRUE,
-                                 factor = TRUE)) %>% 
-  # Group into facility-weeks
-  group_by(location_name, week, .drop = F) %>%
-  
-  # Create summary column on the grouped data
-  summarize(n_days          = 7,                                          # 7 days per week           
-            n_reports       = dplyr::n(),                                 # number of reports received per week (could be >7)
-            malaria_tot     = sum(malaria_tot, na.rm = T),                # total malaria cases reported
-            n_days_reported = length(unique(data_date)),                  # number of unique days reporting per week
-            p_days_reported = round(100*(n_days_reported / n_days))) %>%  # percent of days reporting
-  
-  # Ensure every possible facility-week combination appears in the data
-  right_join(tidyr::expand(., week, location_name))    # "." represents the dataset at that moment in the pipe chain
-```
-
-
-```{r echo=F, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%','50%')}
-# METRICS PLOT
-##############
-ggplot(agg_weeks,
-       aes(x = aweek::week2date(week),            # transformed to date class
-           y = location_name,
-           fill = p_days_reported))+
-  # tiles
-  geom_tile(colour="white")+                      # white gridlines
-  
-  scale_fill_gradient(low = "orange", high = "darkgreen", na.value = "grey80")+
-  scale_x_date(expand = c(0,0),
-               date_breaks = "2 weeks",
-               date_labels = "%d\n%b")+
-  
-  # aesthetic themes
-  theme_minimal()+                                  # simplify background
-  theme(
-    legend.title = element_text(size=12, face="bold"),
-    legend.text  = element_text(size=10, face="bold"),
-    legend.key.height = grid::unit(1,"cm"),         # height of legend key
-    legend.key.width  = grid::unit(0.6,"cm"),       # width of legend key
-    
-    axis.text.x = element_text(size=12),
-    axis.text.y = element_text(vjust=0.2),
-    axis.ticks = element_line(size=0.4),
-    axis.title = element_text(size=12, face="bold"),
-    
-    plot.title = element_text(hjust=0,size=14,face="bold"),
-    plot.caption = element_text(hjust = 0, face = "italic")
-    )+
-  
-  # plot labels
-  labs(x = "Week",
-       y = "Facility name",
-       fill = "Reporting\nperformance (%)", # legend title
-       title = "Percent of days per week that facility reported data",
-       subtitle = "District health facilities, April-May 2019",
-       caption = "7-day weeks beginning on Mondays.")
-
-################
-# DENSITY MAP
-################
-pacman::p_load(OpenStreetMap)
-
-# Fit basemap by range of lat/long coordinates. Choose tile type
-map <- openmap(c(max(linelist$lat, na.rm=T), max(linelist$lon, na.rm=T)),  # limits of tile
-               c(min(linelist$lat, na.rm=T), min(linelist$lon, na.rm=T)),
-               zoom = NULL,
-               type = c("osm", "stamen-toner", "stamen-terrain","stamen-watercolor", "esri","esri-topo")[1],
-               mergeTiles = TRUE)
-
-# Projection WGS84
-map.latlon <- openproj(map, projection = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-
-# Plot map. Must be autoplotted to work with ggplot
-OpenStreetMap::autoplot.OpenStreetMap(map.latlon)+
-  # Density tiles  
-  ggplot2::stat_density_2d(aes(x = lon,
-        y = lat,
-        fill = ..level..,
-        alpha =..level..),
-    bins = 10,
-    geom = "polygon",
-    contour_var = "count",
-    data = linelist,
-    show.legend = F) +
-  scale_fill_gradient(low = "black", high = "red")+
-  labs(x = "Longitude",
-       y = "Latitude",
-       caption = "OpenStreetMap base tile",
-       title = "Distribution density of simulated cases")
-```
-
-<!-- ======================================================= -->
-## Preparation {.tabset .tabset-fade}
+**Load packages**  
 
 ```{r}
-pacman::p_load(OpenStreetMap,
-               aweek)
+pacman::p_load(
+  tidyverse,       # data manipulation and visualization
+  rio,             # importing data 
+  lubridate        # working with dates
+  )
+```
+
+**Datasets**  
+
+This page utilizes the case linelist for the transmission matrix section, and a separate dataset of daily malaria case counts by facility for the metrics tracking section. They are loaded and cleaned in their individual sections.  
+
+
+
+
+
+
+
+## Transmission matrix  
+
+Heat tiles can be useful to visualize matrices. One example is to display "who-infected-whom" in an outbreak. This assumes that you have information on transmission events in your linelist.  
+
+We begin from the case linelist:  
+
+* There is one row per case  
+* There is a column that contains the case_id of the infector, who is also a case in the linelist  
+
+The first 50 rows of the linelist are shown below for demonstration:  
+
+
+```{r, echo=F}
+linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
+```
+
+We load the case `linelist`  
+
+```{r, eval=F}
+linelist <- import("linelist_cleaned.xlsx")
 ```
 
 
+```{r message=FALSE, echo=F}
+# display the population as a table
+DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+**Objective**: We need to achieve a "long"-style dataframe that contains the frequency of transmission events between each age category. This will take several data manuipulation steps to achieve.  
+
+To begin, we create a dataframe of the cases and their ages, called `case_ages`. The first rows are displayed below.  
+
+```{r}
+case_ages <- linelist %>% 
+  select(case_id, infector, age_cat) %>% 
+  rename("case_age_cat" = "age_cat")
+```
+
+```{r message=FALSE, echo=F}
+# display the shapefile as a table
+DT::datatable(head(case_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Next, we create a dataframe of the infectors - at the moment it consists of a single column. These are the infector IDs from the linelist. Not every case has a known infector, so we remove missing values. The first rows are displayed below.  
+
+
+```{r}
+infectors <- linelist %>% 
+  select(infector) %>% 
+  filter(!is.na(infector))
+```
+
+```{r message=FALSE, echo=F}
+# display the shapefile as a table
+DT::datatable(head(infectors, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Next, we use joins to procure the ages of the infectors. This is not simple, because in the `linelist`, infector's ages are not listed as such. We achieve this result by joining the case linelist to the infectors - joining such that the infector in the left-side "baseline" dataframe links to the `case_id` in the right-side linelist. Thus, the data from the infector's case record in the linelist (including age) is added to the infector row. The first rows are displayed below.  
+
+```{r}
+infector_ages <- infectors %>%             # begin with infectors
+  left_join(                               # add the linelist data to each infector  
+    linelist,
+    by = c("infector" = "case_id")) %>%    # match infector to their information as a case
+  select(infector, age_cat) %>%            # keep only columns of interest
+  rename("infector_age_cat" = "age_cat")   # rename for clarify
+```
+
+```{r message=FALSE, echo=F}
+# display the shapefile as a table
+DT::datatable(head(infector_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Then, we combine the cases and their ages with the infectors and their ages. Each of these dataframe has the column `infector`, so it is used for the join. The first rows are displayed below:    
+
+```{r}
+ages_complete <- case_ages %>%  
+  left_join(
+    infector_ages,
+    by = "infector") %>%        # each has the column infector
+  drop_na()                     # drop rows with any missing data
+```
+
+
+```{r message=FALSE, echo=F}
+# display the shapefile as a table
+DT::datatable(head(ages_complete, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Below, a simple cross-tabulation of counts between the case and infector age groups. Labels added for clarity.  
+
+```{r}
+table(cases = ages_complete$case_age_cat,
+      infectors = ages_complete$infector_age_cat)
+```
+We can convert this table to a dataframe with `data.frame()` from **base** R, which also automatically converts it to "long" format, which is desired for the `ggplot()`. The first rows are shown below.  
+
+```{r}
+long_counts <- data.frame(table(
+    cases     = ages_complete$case_age_cat,
+    infectors = ages_complete$infector_age_cat))
+```
+
+```{r message=FALSE, echo=F}
+# display the shapefile as a table
+DT::datatable(head(long_counts, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+The same but we apply `prop.table()` from **base** R to the table so instead of counts we get proportion of all values. The first rows are shown below.    
+
+```{r}
+long_prop <- data.frame(prop.table(table(
+    cases = ages_complete$case_age_cat,
+    infectors = ages_complete$infector_age_cat)))
+```
+
+```{r message=FALSE, echo=F}
+# display the shapefile as a table
+DT::datatable(head(long_prop, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Now finally we can create the heatmap with **ggplot2** package, using the `geom_tile()` function.  
+
+* In the aesthetics `aes()` of `geom_tile()` sex the x and y as the case age and infector age  
+* Also in `aes()` set the argument `fill = ` to the Freq column - this is the value that will be converted to a tile color  
+* Set a scale color with `scale_fill_gradient()` - you can specify the high/low colors  
+  * Note that `scale_color_gradient()` is different! In this case you want the fill  
+* Because the color is made via "fill", you can use the `fill = ` argument in `labs()` to change the legend title  
+
+```{r}
+ggplot(data = long_prop)+       # use long data, with proportions as Freq
+  geom_tile(                    # visualize it in tiles
+    aes(
+      x = cases,         # x-axis is case age
+      y = infectors,     # y-axis is infector age
+      fill = Freq))+            # color of the tile is the Freq column in the data
+  scale_fill_gradient(          # adjust the fill color of the tiles
+    low = "blue",
+    high = "orange")+
+  labs(                         # labels
+    x = "Case age",
+    y = "Infector age",
+    title = "Who infected whom",
+    subtitle = "Frequency matrix of transmission events",
+    fill = "Proportion of all\ntranmsission events"     # legend title
+  )
+  
+```
+
+
+
 <!-- ======================================================= -->
-## Reporting metrics over time {.tabset .tabset-fade}
-<h2> Reporting metrics over time </h2>
+## Reporting metrics over time { }
 
-Often in public health, an objective is to assess trends over time for many entities (facilities, jurisdictions, etc.). One way to visualize trends over time from many entities is a heatmap where the x-axis is time and the y-axis are the many entities.  
-
+Often in public health, one objective is to assess trends over time for many entities (facilities, jurisdictions, etc.). One way to visualize such trends over time is a heatmap where the x-axis is time and the y-axis are the many entities.  
 
 
-### Preparation
-<h3> Preparation </h3>
 
-To demonstrate this, we import this dataset of daily malaria case reports from `r length(unique(facility_count_data$location_name))` facilities. 
+### Preparation {-}
 
-The preparation will involve:  
-
-* Importing and reviewing the data   
-* Aggregating the daily data into weekly, and summarizing weekly performance  
-
-#### Load and view
+We begin with a dataset of daily malaria reports from many facilities. The reports contain a date, province, district, and malaria counts
 
 Below are the first 30 rows of these data:  
 
+And we also load this separate dataset of daily malaria case counts by facility:  
+
 ```{r, echo=F}
-DT::datatable(head(facility_count_data,30), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+facility_count_data <- rio::import(here::here("data", "facility_count_data.rds")) %>% 
+  select(location_name, data_date, District, malaria_tot)
 ```
 
-#### Packages  
-
-The packages we will use are:  
-
-```{r}
-pacman::p_load(tidyverse, # ggplot and data manipulation
-               rio,       # importing data
-               aweek)     # manage weeks
+```{r, eval=F}
+facility_count_data <- import("facility_count_data.rds")
 ```
 
-#### Aggregate and summarize
 
-The objective is to transform the daily reports (seen in previous tab) into weekly reports with a summary of performance - in this case *the proportion of days per week that the facility reported any data* for **Spring District** from April-May 2019.  
+```{r, echo=F}
+DT::datatable(head(facility_count_data,30), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
+```
 
-To achieve this:  
+
+#### Aggregate and summarize {-}
+
+**The objective in this example** is to transform the daily facility total malaria case counts (seen in previous tab) into *weekly* summary statistics of facility reporting performance - in this case *the proportion of days per week that the facility reported any data*. For this example we will show data only for **Spring District** from April-May 2019.  
+
+To achieve this we will do the following data management steps:  
 
 1) Filter the data as appropriate (by place, date)  
-2) Create a week column using `date2week()` from package **aweek**  
-    + This function transforms dates to weeks, using a specified start date of each week (e.g. "Monday")  
-    + The `floor_day =` argument means that dates are rounded into the week only (day of the week is not shown)  
-    + The `factor = ` argument converts the new column to a factor - important because all possible weeks within the date range are designated as levels, even if there is no data for them currently.  
+2) Create a week column using `floor_date()` from package **lubridate**  
+    + This function returns the start-date of a given date's week, using a specified start date of each week (e.g. "Mondays")  
 3) The data are grouped by columns "location" and "week" to create analysis units of "facility-week"  
-4) The verb `summarize()` creates new columns to calculate reporting performance for each "facility-week":  
+4) The function `summarise()` creates new columns to reflecting summary statistics per facility-week group:  
     + Number of days per week (7 - a static value)  
     + Number of reports received from the facility-week (could be more than 7!)  
     + Sum of malaria cases reported by the facility-week (just for interest)  
@@ -184,41 +244,88 @@ To achieve this:
 5) The dataframe is joined (`right_join()`) to a comprehensive list of all possible facility-week combinations, to make the dataset complete. The matrix of all possible combinations is created by applying `expand()` to those two columns of the dataframe as it is at that moment in the pipe chain (represented by "."). Because a `right_join()` is used, all rows in the `expand()` dataframe are kept, and added to agg_weeks if necessary. These new rows appear with `NA` (missing) summarized values.  
 
 
+Below we demonstrate step-by-step:  
+
 ```{r, message=FALSE, warning=FALSE}
 # Create weekly summary dataset
 agg_weeks <- facility_count_data %>% 
   
   # filter the data as appropriate
-  filter(District == "Spring",
-         data_date < as.Date("2019-06-01")) %>% 
-  
-  # Create week column from data_date
-  mutate(week = aweek::date2week(data_date,
-                                 start_date = "Monday",
-                                 floor_day = TRUE,
-                                 factor = TRUE)) %>% 
-  # Group into facility-weeks
-  group_by(location_name, week, .drop = F) %>%
-  
-  # Create summary column on the grouped data
-  summarize(n_days          = 7,                                          # 7 days per week           
-            n_reports       = dplyr::n(),                                 # number of reports received per week (could be >7)
-            malaria_tot     = sum(malaria_tot, na.rm = T),                # total malaria cases reported
-            n_days_reported = length(unique(data_date)),                  # number of unique days reporting per week
-            p_days_reported = round(100*(n_days_reported / n_days))) %>%  # percent of days reporting
-  
-  # Ensure every possible facility-week combination appears in the data
-  right_join(tidyr::expand(., week, location_name))    # "." represents the dataset at that moment in the pipe chain
-  
+  filter(
+    District == "Spring",
+    data_date < as.Date("2019-06-01")) 
 ```
 
+Now the dataset has `r nrow(agg_weeks)` rows, when it previously had `r nrow(facility_count_data) `  
+
+Next we create a `week` column reflecting the start date of the week for each record. This is achieved with the **lubridate** package and the function `floor_date()`, which is set to "week" and for the weeks to begin on Mondays (day 1 of the week - Sundays would be 7). The top rows are shown below.  
+
+```{r}
+agg_weeks <- agg_weeks %>% 
+  # Create week column from data_date
+  mutate(
+    week = lubridate::floor_date(                     # create new column of weeks
+      data_date,                                      # date column
+      unit = "week",                                  # give start of the week
+      week_start = 1))                                # weeks to start on Mondays 
+```
+
+The new week column can be seen on the far right of the dataframe  
+
+```{r, echo=F}
+DT::datatable(head(agg_weeks,30), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
+```
+
+Now we group the data into facility-weeks and summarise them to produce statistics per facility-week. See the page on [Grouping data] for tips. The grouping itself doesn't change the dataframe, but it impacts how the subsequent summary statistics are calculated.  
+
+The top rows are shown below. Note how the columns have completely changed to reflect the desired summary statistics. Each row reflects one facility-week. 
+
+```{r, warning=F, message=F}
+agg_weeks <- agg_weeks %>%   
+
+  # Group into facility-weeks
+  group_by(
+    location_name, week,
+    .drop = F) %>%
+  
+  # Create summary statistics columns on the grouped data
+  summarize(
+    n_days          = 7,                                          # 7 days per week           
+    n_reports       = dplyr::n(),                                 # number of reports received per week (could be >7)
+    malaria_tot     = sum(malaria_tot, na.rm = T),                # total malaria cases reported
+    n_days_reported = length(unique(data_date)),                  # number of unique days reporting per week
+    p_days_reported = round(100*(n_days_reported / n_days)))      # percent of days reporting
+```
+
+```{r, echo=F}
+DT::datatable(head(agg_weeks,30), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
+```
+Finally, we run the command below to ensure that ALL possible facility-weeks are present in the data, even if they were missing before.  
+
+We are using a `right_join()` on itself (the dataset is represented by ".") but having been expanded to include all possible combinations of the columns `week` and `location_name`. See documentation on the `expand()` function in the page on [Pivoting]. Before running this code the dataset contains `r nrow(agg_weeks)` rows.   
+
+```{r, message=F, warning=F}
+# Create dataframe of every possible facility-week
+expanded_weeks <- agg_weeks %>% 
+  mutate(week = as.factor(week)) %>%         # convert date to a factor so expand() works correctly
+  tidyr::expand(., week, location_name) %>%  # expand dataframe to include all possible facility-week combinations
+                                             # note: "." represents the dataset at that moment in the pipe chain
+  mutate(week = as.Date(week))               # re-convert week to class Date so the subsequent right_join works
+                                             
+
+# Use right-join with the expanded facility-week list to fill-in the missing gaps in the data
+agg_weeks <- agg_weeks %>%      
+  right_join(expanded_weeks) %>%                            # Ensure every possible facility-week combination appears in the data
+  mutate(p_days_reported = replace_na(p_days_reported, 0))  # convert missing values to 0                           
+```
+
+Before running this code the dataset contains `r nrow(agg_weeks)` rows.   
 
 <!-- ======================================================= -->
-### Create heatmap {.tabset .tabset-fade}
-<h3> Create heatmap </h3>
+### Create heatmap {-}
 
 
-The `ggplot()` is make using `geom_tile()`:  
+The `ggplot()` is made using `geom_tile()` from the **ggplot2** package:  
 
 * Weeks on the x-axis is transformed to dates, allowing use of `scale_x_date()`  
 * location_name on the y-axis will show all facility names  
@@ -227,54 +334,86 @@ The `ggplot()` is make using `geom_tile()`:
 * `scale_x_date()` is used on the x-axis specifying labels every 2 weeks and their format  
 * Aesthetic themes and labels can be adjusted as necessary
 
+
+
+
 <!-- ======================================================= -->
-#### Basic  
-<h4> Basic </h4>
+#### Basic {-}  
+
+A basic heatmap is produced below,using the default colors, scales, etc. Within the `aes()` for `geom_tile()` you must provide an x-axis column, y-axis column, **and** a column for the the `fill = ` - these are the numeric values that are converted to tile color.  
+
+```{r}
+ggplot(data = agg_weeks)+
+  geom_tile(
+    aes(x = week,
+        y = location_name,
+        fill = p_days_reported))
+```
+
+#### Cleaned plot {-}
+
+We can make this plot look better by adding additional **ggplot2** functions, as shown below. See the page on [ggplot tips] for details.  
 
 ```{r, message=FALSE, warning=FALSE}
-ggplot(agg_weeks,
-       aes(x = aweek::week2date(week),            # transformed to date class
-           y = location_name,
-           fill = p_days_reported))+
-  # tiles
-  geom_tile(colour="white")+                      # white gridlines
+ggplot(data = agg_weeks)+ 
   
-  scale_fill_gradient(low = "orange", high = "darkgreen", na.value = "grey80")+
-  scale_x_date(expand = c(0,0),
-               date_breaks = "2 weeks",
-               date_labels = "%d\n%b")+
+  # show data as tiles
+  geom_tile(
+    aes(x = week,
+        y = location_name,
+        fill = p_days_reported),      
+    color = "white")+                 # white gridlines
+  
+  scale_fill_gradient(
+    low = "orange",
+    high = "darkgreen",
+    na.value = "grey80")+
+  
+  # date axis
+  scale_x_date(
+    expand = c(0,0),             # remove extra space on sides
+    date_breaks = "2 weeks",     # labels every 2 weeks
+    date_labels = "%d\n%b")+     # format is day over month (\n in newline)
   
   # aesthetic themes
   theme_minimal()+                                  # simplify background
+  
   theme(
     legend.title = element_text(size=12, face="bold"),
     legend.text  = element_text(size=10, face="bold"),
-    legend.key.height = grid::unit(1,"cm"),         # height of legend key
-    legend.key.width  = grid::unit(0.6,"cm"),       # width of legend key
+    legend.key.height = grid::unit(1,"cm"),           # height of legend key
+    legend.key.width  = grid::unit(0.6,"cm"),         # width of legend key
     
-    axis.text.x = element_text(size=12),
-    axis.text.y = element_text(vjust=0.2),
-    axis.ticks = element_line(size=0.4),
-    axis.title = element_text(size=12, face="bold"),
+    axis.text.x = element_text(size=12),              # axis text size
+    axis.text.y = element_text(vjust=0.2),            # axis text alignment
+    axis.ticks = element_line(size=0.4),               
+    axis.title = element_text(size=12, face="bold"),  # axis title size and bold
     
-    plot.title = element_text(hjust=0,size=14,face="bold"),
-    plot.caption = element_text(hjust = 0, face = "italic")
+    plot.title = element_text(hjust=0,size=14,face="bold"),  # title right-aligned, large, bold
+    plot.caption = element_text(hjust = 0, face = "italic")  # caption right-aligned and italic
     )+
   
   # plot labels
   labs(x = "Week",
        y = "Facility name",
-       fill = "Reporting\nperformance (%)", # legend title
+       fill = "Reporting\nperformance (%)",           # legend title, because legend shows fill
        title = "Percent of days per week that facility reported data",
        subtitle = "District health facilities, April-May 2019",
        caption = "7-day weeks beginning on Mondays.")
 ```
 
-<!-- ======================================================= -->
-#### Ordered y-axis  
-<h4> Ordered y-axis </h4>
 
-If you want to order the y-axis facilities by something, convert them to class Factor and provide the order. Below, the order is set based on the total number of reporting days filed by the facility across the whole timespan:  
+
+
+
+<!-- ======================================================= -->
+#### Ordered y-axis {-}  
+
+Currently, the facilities are ordered "alphabetically" from the bottom to the top. If you want to adjust the order the y-axis facilities, convert them to class factor and provide the order. See the page on [Factors] for tips.  
+
+Below, the column `location_name` is converted to a factor, and the order of its levels is set based on the total number of reporting days filed by the facility across the whole time-span.  
+
+To do this, we create a dataframe which represents the total number of reports per facility, arranged in ascending order. We can use this vector to order the factor levels in the plot.   
 
 ```{r}
 facility_order <- agg_weeks %>% 
@@ -283,157 +422,155 @@ facility_order <- agg_weeks %>%
   arrange(tot_reports) # ascending order
 ```
 
-```{r}
-as.tibble(facility_order)
+See the dataframe below:  
+
+```{r, echo=F}
+DT::datatable(facility_order, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
-Now use the above vector (`facility_order$location_name`) to be the order of the factor levels of location_name in the dataset `agg_weeks`:  
 
-```{r}
+
+
+Now use the above vector (`facility_order$location_name`) to be the order of the factor levels of location_name in the dataframe `agg_weeks`:  
+
+```{r, warning=F, message=F}
+# load package 
+pacman::p_load(forcats)
+
+# create factor and define levels manually
 agg_weeks <- agg_weeks %>% 
-  mutate(location_name = factor(location_name, levels = facility_order$location_name))
+  mutate(location_name = as_factor(location_name),
+         location_name = fct_relevel(location_name, 
+                                     levels = facility_order$location_name))
 ```
 
 And now the data are re-plotted, with location_name being an ordered factor:  
 
 ```{r, message=FALSE, warning=FALSE}
-ggplot(agg_weeks,
-       aes(x = aweek::week2date(week),            # transformed to date class
-           y = location_name,
-           fill = p_days_reported))+
-  # tiles
-  geom_tile(colour="white")+                      # white gridlines
-
-  scale_fill_gradient(low = "orange", high = "darkgreen", na.value = "grey80")+
-  scale_x_date(expand = c(0,0),
-               date_breaks = "2 weeks",
-               date_labels = "%d\n%b")+
+ggplot(data = agg_weeks)+ 
+  
+  # show data as tiles
+  geom_tile(
+    aes(x = week,
+        y = location_name,
+        fill = p_days_reported),      
+    color = "white")+                 # white gridlines
+  
+  scale_fill_gradient(
+    low = "orange",
+    high = "darkgreen",
+    na.value = "grey80")+
+  
+  # date axis
+  scale_x_date(
+    expand = c(0,0),             # remove extra space on sides
+    date_breaks = "2 weeks",     # labels every 2 weeks
+    date_labels = "%d\n%b")+     # format is day over month (\n in newline)
   
   # aesthetic themes
   theme_minimal()+                                  # simplify background
+  
   theme(
     legend.title = element_text(size=12, face="bold"),
     legend.text  = element_text(size=10, face="bold"),
-    legend.key.height = grid::unit(1,"cm"),         # height of legend key
-    legend.key.width  = grid::unit(0.6,"cm"),       # width of legend key
+    legend.key.height = grid::unit(1,"cm"),           # height of legend key
+    legend.key.width  = grid::unit(0.6,"cm"),         # width of legend key
     
-    axis.text.x = element_text(size=12),
-    axis.text.y = element_text(vjust=0.2),
-    axis.ticks = element_line(size=0.4),
-    axis.title = element_text(size=12, face="bold"),
+    axis.text.x = element_text(size=12),              # axis text size
+    axis.text.y = element_text(vjust=0.2),            # axis text alignment
+    axis.ticks = element_line(size=0.4),               
+    axis.title = element_text(size=12, face="bold"),  # axis title size and bold
     
-    plot.title = element_text(hjust=0,size=14,face="bold"),
-    plot.caption = element_text(hjust = 0, face = "italic")
+    plot.title = element_text(hjust=0,size=14,face="bold"),  # title right-aligned, large, bold
+    plot.caption = element_text(hjust = 0, face = "italic")  # caption right-aligned and italic
     )+
   
   # plot labels
   labs(x = "Week",
        y = "Facility name",
-       fill = "Reporting\nperformance (%)", # legend title
+       fill = "Reporting\nperformance (%)",           # legend title, because legend shows fill
        title = "Percent of days per week that facility reported data",
        subtitle = "District health facilities, April-May 2019",
        caption = "7-day weeks beginning on Mondays.")
 ```
 
+
+
+
+
 <!-- ======================================================= -->
-#### Display values  
-<h4> Display values </h4>  
+#### Display values {-}  
 
 
 You can add a `geom_text()` layer on top of the tiles, to display the actual numbers of each tile. Be aware this may not look pretty if you have many small tiles!  
 
-* Note the fillowing code added `geom_text(aes(label=p_days_reported))+`. In the aesthetic `aes()` of the `geom_tile()` the argument `label` (what to show) is set to the same numeric column used to create the color gradient.  
+The following code has been added: `geom_text(aes(label = p_days_reported))`. This adds text onto every tile. The text displayed is the value assigned to the argument `label = `, which in this case has been set to the same numeric column `p_days_reported` that is used to create the color gradient.  
 
+
+
+  
 ```{r, message=FALSE, warning=FALSE}
-ggplot(agg_weeks,
-       aes(x = aweek::week2date(week),            # transformed to date class
-           y = location_name,
-           fill = p_days_reported))+
-  # tiles
-  geom_tile(colour="white")+                      # white gridlines
+ggplot(data = agg_weeks)+ 
   
-  geom_text(aes(label = p_days_reported))+          # add text on top of tile
+  # show data as tiles
+  geom_tile(
+    aes(x = week,
+        y = location_name,
+        fill = p_days_reported),      
+    color = "white")+                 # white gridlines
   
-  scale_fill_gradient(low = "orange", high = "darkgreen", na.value = "grey80")+
-  scale_x_date(expand = c(0,0),
-               date_breaks = "2 weeks",
-               date_labels = "%d\n%b")+
+  # text
+  geom_text(
+    aes(
+      x = week,
+      y = location_name,
+      label = p_days_reported))+          # add text on top of tile
+  
+  # fill scale
+  scale_fill_gradient(
+    low = "orange",
+    high = "darkgreen",
+    na.value = "grey80")+
+  
+  # date axis
+  scale_x_date(
+    expand = c(0,0),             # remove extra space on sides
+    date_breaks = "2 weeks",     # labels every 2 weeks
+    date_labels = "%d\n%b")+     # format is day over month (\n in newline)
   
   # aesthetic themes
   theme_minimal()+                                  # simplify background
+  
   theme(
     legend.title = element_text(size=12, face="bold"),
     legend.text  = element_text(size=10, face="bold"),
-    legend.key.height = grid::unit(1,"cm"),         # height of legend key
-    legend.key.width  = grid::unit(0.6,"cm"),       # width of legend key
+    legend.key.height = grid::unit(1,"cm"),           # height of legend key
+    legend.key.width  = grid::unit(0.6,"cm"),         # width of legend key
     
-    axis.text.x = element_text(size=12),
-    axis.text.y = element_text(vjust=0.2),
-    axis.ticks = element_line(size=0.4),
-    axis.title = element_text(size=12, face="bold"),
+    axis.text.x = element_text(size=12),              # axis text size
+    axis.text.y = element_text(vjust=0.2),            # axis text alignment
+    axis.ticks = element_line(size=0.4),               
+    axis.title = element_text(size=12, face="bold"),  # axis title size and bold
     
-    plot.title = element_text(hjust=0,size=14,face="bold"),
-    plot.caption = element_text(hjust = 0, face = "italic")
+    plot.title = element_text(hjust=0,size=14,face="bold"),  # title right-aligned, large, bold
+    plot.caption = element_text(hjust = 0, face = "italic")  # caption right-aligned and italic
     )+
   
   # plot labels
   labs(x = "Week",
        y = "Facility name",
-       fill = "Reporting\nperformance (%)", # legend title
+       fill = "Reporting\nperformance (%)",           # legend title, because legend shows fill
        title = "Percent of days per week that facility reported data",
        subtitle = "District health facilities, April-May 2019",
        caption = "7-day weeks beginning on Mondays.")
 ```
 
-<!-- ======================================================= -->
-## GIS heatmaps {.tabset .tabset-fade}
 
-Contoured heatmap of cases over a basemap  
 
-1) Create basemap tile from OpenStreetMap  
-2) Plot the cases from `linelist` using the latitude and longitude  
-
-http://data-analytics.net/cep/Schedule_files/geospatial.html
-
-```{r, message=FALSE, warning=FALSE}
-pacman::p_load(OpenStreetMap)
-
-# Fit basemap by range of lat/long coordinates. Choose tile type
-map <- openmap(c(max(linelist$lat, na.rm=T), max(linelist$lon, na.rm=T)),  # limits of tile
-               c(min(linelist$lat, na.rm=T), min(linelist$lon, na.rm=T)),
-               zoom = NULL,
-               type = c("osm", "stamen-toner", "stamen-terrain","stamen-watercolor", "esri","esri-topo")[1],
-               mergeTiles = TRUE)
-
-# Projection WGS84
-map.latlon <- openproj(map, projection = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-
-# Plot map. Must be autoplotted to work with ggplot
-OpenStreetMap::autoplot.OpenStreetMap(map.latlon)+
-  # Density tiles  
-  ggplot2::stat_density_2d(aes(x = lon,
-        y = lat,
-        fill = ..level..,
-        alpha=..level..),
-    bins = 10,
-    geom = "polygon",
-    contour_var = "count",
-    data = linelist,
-    show.legend = F) +
-  scale_fill_gradient(low = "black", high = "red")+
-  labs(x = "Longitude",
-       y = "Latitude",
-       title = "Distribution of simulated cases")
-
-```
-
-https://www.rdocumentation.org/packages/OpenStreetMap/versions/0.3.4/topics/autoplot.OpenStreetMap
 
 <!-- ======================================================= -->
-## Resources {.tabset .tabset-fade}
+## Resources { }
 
-This tab should stay with the name "Resources".
-Links to other online tutorials or resources.
 
 
 

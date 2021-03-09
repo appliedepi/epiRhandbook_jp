@@ -1,8 +1,8 @@
 
-# Diagrams {.tabset .tabset-fade}  
+# Diagrams { }  
 
 <!-- ======================================================= -->
-## Overview {.tabset .tabset-fade}
+## Overview { }
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "flow_chart.png"))
@@ -21,8 +21,7 @@ This page covers:
 
 
 <!-- ======================================================= -->
-## Preparation {.tabset .tabset-fade}
-<h2> Preparation </h2>
+## Preparation { }
 
 **Load packages**  
 
@@ -35,8 +34,7 @@ pacman::p_load(
 
 
 <!-- ======================================================= -->
-## Flow diagrams {.tabset .tabset-fade}
-<h2> Flow diagrams </h2>
+## Flow diagrams { }
 
 One can use the R package **DiagrammeR** to create charts/flow charts. They can be static, or they can adjust somewhat dynamically based on changes in a dataset.  
 
@@ -106,7 +104,6 @@ digraph surveillance_diagram {    # 'digraph' means 'directional graph', then th
 ```
 
 ### Syntax  
-<h3> Syntax </h3>
 
 **Basic syntax**  
 
@@ -175,12 +172,12 @@ Within edge statements, subgroups can be created on either side of the edge with
 
 
 ### Complex examples  
-<h3> Complex examples </h3>
 
 The example below expands on the surveillance_diagram, adding complex node names, grouped edges, colors and styling
 
-```{r out.width='50%'}
-grViz("                           # All instructions are within a large character string
+
+```
+DiagrammeR::grViz("               # All instructions are within a large character string
 digraph surveillance_diagram {    # 'digraph' means 'directional graph', then the graph name 
   
   # graph statement
@@ -221,14 +218,54 @@ digraph surveillance_diagram {    # 'digraph' means 'directional graph', then th
 ```
 
 
+```{r out.width='50%', echo=F}
+DiagrammeR::grViz("               # All instructions are within a large character string
+digraph surveillance_diagram {    # 'digraph' means 'directional graph', then the graph name 
+  
+  # graph statement
+  #################
+  graph [layout = dot,
+         rankdir = TB,            # layout top-to-bottom
+         fontsize = 10]
+  
+
+  # nodes (circles)
+  #################
+  node [shape = circle,           # shape = circle
+       fixedsize = true
+       width = 1.3]                      
+  
+  Primary   [label = 'Primary\nFacility'] 
+  Secondary [label = 'Secondary\nFacility'] 
+  Tertiary  [label = 'Tertiary\nFacility'] 
+  SC        [label = 'Surveillance\nCoordination',
+             fontcolor = darkgreen] 
+  
+  # edges
+  #######
+  Primary   -> Secondary [label = 'case transfer',
+                          fontcolor = red,
+                          color = red]
+  Secondary -> Tertiary [label = 'case transfer',
+                          fontcolor = red,
+                          color = red]
+  
+  # grouped edge
+  {Primary Secondary Tertiary} -> SC [label = 'case reporting',
+                                      fontcolor = darkgreen,
+                                      color = darkgreen,
+                                      style = dashed]
+}
+")
+```
+
 **Sub-graph clusters**  
 
-To group nodes into boxed clusters, put them within the same named subgraph (`subgraph name {}`). To have the subgraph identified within a box, begin the name with "cluster" as shown below.  
+To group nodes into boxed clusters, put them within the same named subgraph (`subgraph name {}`). To have each subgraph identified within a bounding box, begin the name of the subgraph with "cluster", as shown with the 4 boxes below.  
 
-
-```{r out.width='100%'}
-grViz("                           # All instructions are within a large character string
-digraph surveillance_diagram {    # 'digraph' means 'directional graph', then the graph name 
+```
+DiagrammeR::grViz("             # All instructions are within a large character string
+digraph surveillance_diagram {  # 'digraph' means 'directional graph', then the graph name 
   
   # graph statement
   #################
@@ -294,9 +331,77 @@ digraph surveillance_diagram {    # 'digraph' means 'directional graph', then th
 ```
 
 
-**node shapes**  
+```{r out.width='120%', echo=F}
+DiagrammeR::grViz("             # All instructions are within a large character string
+digraph surveillance_diagram {  # 'digraph' means 'directional graph', then the graph name 
+  
+  # graph statement
+  #################
+  graph [layout = dot,
+         rankdir = TB,            
+         overlap = true,
+         fontsize = 10]
+  
 
-The example below, borrowed from [this tutorial](http://rich-iannone.github.io/DiagrammeR/), shows applied node shapes, and shows a shorthand for serial edge connections  
+  # nodes (circles)
+  #################
+  node [shape = circle,                  # shape = circle
+       fixedsize = true
+       width = 1.3]                      # width of circles
+  
+  subgraph cluster_passive {
+    Primary   [label = 'Primary\nFacility'] 
+    Secondary [label = 'Secondary\nFacility'] 
+    Tertiary  [label = 'Tertiary\nFacility'] 
+    SC        [label = 'Surveillance\nCoordination',
+               fontcolor = darkgreen] 
+  }
+  
+  # nodes (boxes)
+  ###############
+  node [shape = box,                     # node shape
+        fontname = Helvetica]            # text font in node
+  
+  subgraph cluster_active {
+    Active [label = 'Active\nSurveillance']; 
+    HCF_active [label = 'HCF\nActive Search']
+  }
+  
+  subgraph cluster_EBD {
+    EBS [label = 'Event-Based\nSurveillance (EBS)']; 
+    'Social Media'
+    Radio
+  }
+  
+  subgraph cluster_CBS {
+    CBS [label = 'Community-Based\nSurveillance (CBS)'];
+    RECOs
+  }
+
+  
+  # edges
+  #######
+  {Primary Secondary Tertiary} -> SC [label = 'case reporting']
+
+  Primary   -> Secondary [label = 'case transfer',
+                          fontcolor = red]
+  Secondary -> Tertiary [label = 'case transfer',
+                          fontcolor = red]
+  
+  HCF_active -> Active
+  
+  {'Social Media'; Radio} -> EBS
+  
+  RECOs -> CBS
+}
+")
+
+```
+
+
+**Node shapes**  
+
+The example below, borrowed from [this tutorial](http://rich-iannone.github.io/DiagrammeR/), shows applied node shapes and a shorthand for serial edge connections  
 
 ```{r out.width='75%'}
 DiagrammeR::grViz("digraph {
@@ -319,7 +424,6 @@ results [label= 'Results']
 
 
 ### Outputs  
-<h3> Outputs </h3>
 
 How to handle and save outputs  
 
@@ -372,7 +476,6 @@ Other more in-depth tutorial: http://rich-iannone.github.io/DiagrammeR/
 
 
 ### CONSORT diagram  
-<h3> CONSORT diagram </h3>
 
 https://scriptsandstatistics.wordpress.com/2017/12/22/how-to-draw-a-consort-flow-diagram-using-r-and-graphviz/
 
@@ -382,11 +485,9 @@ Note above is out of date via DiagrammeR
 
 
 <!-- ======================================================= -->
-## Alluvial/Sankey Diagrams {.tabset .tabset-fade}
-<h2> Alluvial/Sankey Diagrams </h2>
+## Alluvial/Sankey Diagrams { }
 
 ### Preparation  
-<h3> Preparation </h3>
 
 **Load packages**  
 
@@ -395,7 +496,6 @@ pacman::p_load(networkD3)
 ```
 
 ### Plotting from dataset  
-<h3> Plotting from dataset </h3>
 
 Plotting the connections in a dataset  
 
@@ -415,7 +515,7 @@ links <- linelist %>%
 
 
 ```{r message=FALSE, echo=F}
-DT::datatable(head(links, 30), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+DT::datatable(head(links, 30), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
 Now formalize the nodes list, and adjust the ID columns to be numbers instead of labels:  
@@ -503,8 +603,7 @@ Timeline Sankey - LTFU from cohort... application/rejections... etc.
 
 
 <!-- ======================================================= -->
-## Event timelines {.tabset .tabset-fade}
-<h2> Event timelines </h2>
+## Event timelines { }
 
 To make a timeline showing specific events, you can use the `vistime` package.
 
@@ -541,7 +640,7 @@ data <- read.csv(text="event, group, start, end, color
 Here is the events dataset we begin with:  
 
 ```{r message=FALSE, echo=F}
-DT::datatable(data, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+DT::datatable(data, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
 
@@ -578,8 +677,7 @@ pp
 
 
 <!-- ======================================================= -->
-## DAGs {.tabset .tabset-fade}
-<h2> DAGs </h2>
+## DAGs { }
 
 You can build a DAG manually using the **DiagammeR** package and DOT language, as described in another tab. Alternatively, there are packages like **ggdag** and **daggity**
 
@@ -591,8 +689,7 @@ https://www.r-bloggers.com/2019/08/causal-inference-with-dags-in-r/#:~:text=In%2
 
 
 <!-- ======================================================= -->
-## Resources {.tabset .tabset-fade}
-<h2> Resources </h2>
+## Resources { }
 
 Links to other online tutorials or resources.
 

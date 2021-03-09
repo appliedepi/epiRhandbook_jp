@@ -1,68 +1,697 @@
 
-# ggplot tips {.tabset .tabset-fade}  
-
-UNDER CONSTRUCTION  
-
-https://www.tidyverse.org/blog/2018/07/ggplot2-3-0-0/
-
-<!-- ======================================================= -->
-## Overview {.tabset .tabset-fade .tabset-pills}
-
-Embed ggplot cheatsheet
+# ggplot tips {}
 
 
 <!-- ======================================================= -->
-## Preparation {.tabset .tabset-fade .tabset-pills}
+## Overview {}
 
-Keep the title of this section as "Preparation".  
-Data preparation steps such as:  
+`ggplot2` is the most popular data visualisation package in R, and is generally used instead of base `R` for creating figures. `ggplot2` benefits from a wide variety of supplementary packages that further enhance its functionality. Despite this, ggplot syntax is significantly different from base `R` plotting, and has a learning curve associated with it. Using `ggplot2` generally requires the user to format their data in a way that is highly `tidyverse` compatible, which ultimately makes using these packages together very effective.
 
-* Loading dataset  
-* Adding or changing variables  
-* melting, pivoting, grouping, etc.   
+<!-- One of the best resources is the official ggplot cheatsheet, shown here: -->
 
-<!-- ======================================================= -->
-### sub-tab 1 {.tabset .tabset-fade .tabset-pills}
+<!-- ```{r, include=TRUE, fig.align="center", fig.cap=c("ggplot cheatsheet"), echo=FALSE} -->
+<!-- knitr::include_graphics("./images/imagename.pdf") -->
+<!-- ``` -->
 
-Can be used to separate major steps of data preparation. Re-name as needed
+<!-- ``` -->
 
+If you want inspiration for ways to creatively visualise your data, we suggest reviewing websites like the [R graph gallery](https://www.r-graph-gallery.com/) and [Data-to-viz](https://www.data-to-viz.com/caveats.html). 
 
-<!-- ======================================================= -->
-### sub-tab 2 {.tabset .tabset-fade .tabset-pills}
-
-Can be used to separate major steps of data preparation. Re-name as needed.
 
 
 
 <!-- ======================================================= -->
-## Highlighting {.tabset .tabset-fade .tabset-pills}
+## Preparation {}
 
-highlighting one line among many etc
-gghighlight
+
+### Load data {-}  
+
+Lets start by reading in the linelist data we'll use for most of this section:
+
+```{r, eval=T, echo=F}
+linelist_cleaned <- rio::import(here::here("data", "linelist_cleaned.rds"))
+
+```
+
+```{r, eval=F}
+linelist_cleaned <- rio::import("linelist_cleaned.xlsx")
+
+```
+
+### 
+
+When preparing data to plot, it is best to make the data adhere to ["tidy" data standards](https://r4ds.had.co.nz/tidy-data.html) as much as possible. How to achieve this is expanded on in the data management pages of this handbook. 
+
+Some simple ways we can prepare our data to make it better for plotting can often include making the contents of the data better for display - this does not necessarily mean its better for data manipulation! For example, we can replace `NA` values in a character column with the string "Unknown", or clean some variables so that their "data friendly" with underscores etc are changed to normal text. Here are some examples of this in action:
+
+```{r, eval = TRUE}
+linelist_cleaned <- linelist_cleaned %>%
+  # make display version of columns with more friendly names
+  mutate(
+    # f to Male, f to Female, NA to Unknown
+    gender_disp = case_when(gender == "m" ~ "Male",
+                            gender == "f" ~ "Female",
+                            is.na(gender) ~ "Unknown"),
+    # replace NA with unknown for outcome
+    outcome_disp = replace_na(outcome, "Unknown")
+  )
+
+
+```
+
+
+
+As a matter of data structure, we often also want to pivot our data into *longer* formats, which will allow us to use a set of variables as a single variable. For example, if we wanted to show the number of cases with specific symptoms, we are limited by the fact that each symptom is a specific column. We can pivot this to a longer format like this:
+
+```{r, eval = T}
+
+linelist_sym <- linelist_cleaned %>%
+  pivot_longer(cols = c("fever", "chills", "cough", "aches", "vomit"),
+               names_to = "symptom_name",
+               values_to = "symptom_is_present") %>%
+  mutate(symptom_is_present = replace_na(symptom_is_present, "unknown"))
+
+```
+
+Note that this format is not very useful for other operations, and should just be used for the plot it was made for. However, users should endeavour to use these practices as much as possible for the base dataset, as they are more tidyverse compliant, and will make working with the data easier.
+
+
+
 
 
 <!-- ======================================================= -->
-## Dual axes {.tabset .tabset-fade .tabset-pills}
-Cowplot
-Complicated method (% 100 * ...)
+## Basics of ggplot {}
+
+Plotting with `ggplot2` is based on defining base attributes to a plot, and adding layers on top. In addition, the user can change various plot attributes like axis settings, colour schemes, and labels with additional objects that are "added" to the plot. While ggplot objects can be highly complex, the basic order of creating a ggplot looks something like this:
+
+1. Define base/default plot attributes and aesthetic swith `ggplot()` function
+2. Add geometric objects to the plot - i.e. is the plot a bar graph, a line plot, a scatter plot, or a histogram? Or is it a combination of these? These functions all start with `geom_` as a prefix.
+3. Change plot aesthetics e.g. changing the axes, labels, colour scheme, background etc.
+
+In code, this might look like this:
+
+```{r, eval = TRUE}
+
+# define base plot attributes and dataset
+ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
+  # add a geometric object with some parameters
+  geom_histogram(binwidth = 10, fill = "red", col = "black") +
+  # add labels to the axes
+  labs(x = "Age in years", y = "Number of cases")
+  
+
+```
+
+With this code, the most important things to note are:
+
+  1. When making a ggplot, all objects are combined with a `+` sign.
+  2. Understanding the principles behind aesthetic mapping with the `mappping = aes()` argument is essential to using ggplot. This can be done in the `ggplot()` function as well as every geometric object. Mapping with `aes()` is used to define which variables are assigned to each axis (these can be continuous or categorical variables). It is also used to define whether a variable can be used to create different plot aesthetics. This can apply to the:
+  
+    a. line colour (`col = `)
+    b. filled colour (`fill = `)
+    c. linetype (e.g. dotted, dashed) (`linetype =`)
+    d. size of an object (`size = `)
+  
+  This list is not exhaustive, but is enough to give a rough overview.
+  
+  3. Aesthetics of geometric objects can be defined *explicitly* as in the code above - this is different from assigning them to a variable. In cases where this is done, it must be *outside* the `mapping` argument. 
+  
+```{r, eval = FALSE}
+# correct
+ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
+  geom_histogram(col = "black")
+
+# incorrect
+# correct
+ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
+  geom_histogram(mapping = aes(col = "black"))
+
+```
+
+An example of defining aesthetics with a variable can be seen here:
+
+```{r, eval = TRUE}
+# read in dataset
+
+# define base plot attributes and dataset
+ggplot(data = linelist_cleaned, mapping = aes(x = age, fill = outcome)) +
+  # add a geometric object with some parameters (NO FILL GIVEN)
+  geom_histogram(binwidth = 10, col = "black") +
+  # add labels to the axes
+  labs(x = "Age in years", y = "Number of cases")
+```
+
+
+There are a huge number of different geoms that can be used, and they are all used with similar attribute names. While not exhaustive, some of the shapes that can be used are:
+
+  1. Histograms - `geom_histogram()`
+  2. Barcharts - `geom_bar()`
+  3. Boxplots - `geom_boxplot()`
+  4. Dot plots (for scatterplots or with discrete variables) - `geom_point()`
+  5. Line graphs - `geom_line()` or `geom_path()`
+  6. Trend lines - `geom_smooth()`
+
+You can also add straight lines to your plot with `geom_hline()` (horizontal), `geom_vline()` (vertical) or `geom_abline()` (with a specified y intercept and slope)
+
+There is much more detail we could show here, but we'll finish with an example that ties these concepts together by plotting a correlation between height and weight of all the patients. We can also colour the points by age in years
+  
+```{r, eval = TRUE, cache.vars = TRUE}
+
+
+# set up the plot and define key variables
+# colour is the outcome
+wt_ht_plot <- ggplot(data = linelist_cleaned,
+                     aes(y = wt_kg, x = ht_cm, col = age_years)) +
+  # define aspects of the geom that are NOT included specific to variables
+  # other attributes are inherited
+  geom_point(size = 1, alpha = 0.5) +
+  # add a trend line
+  # use a linear method
+  geom_smooth(method = "lm")
+wt_ht_plot
+
+```
+
 
 <!-- ======================================================= -->
-## Smart Labeling {.tabset .tabset-fade .tabset-pills}
+## Themes and Labels {}
+
+One of hte most important aspects of data visualisation is presenting data in a clear way with nice aesthetics. The plot we made previously looks ok, but we could make the theme a little nicer. `ggplot2` comes with some preset themes that can be used to change the theme of the plot. We can also edit themes of the plot with extreme detail with the `theme()` function. We can also add some nicer labels to the plot with the `labs()` function. There are 5 standard labeling locations:
+
+  1. `x` - the x-axis
+  2. `y` - the y-axis
+  3. `title` - the main plot title
+  4. `subtitle` - directly underneath the plot title in smaller text (by default)
+  5. `caption` - bottom of plot, on the right by default
+  
+For example, we can update the plot we previously plotted with nice labels like this:
+
+```{r, eval = TRUE}
+
+wt_ht_plot <- wt_ht_plot + 
+  # set the theme to classic
+  theme_classic() +
+  # further edit the theme to move the legend position
+  # add nicer labels
+  labs(y = "Weight (kg)", 
+       x = "height (cm)",
+       title = "Patient height and weight",
+       subtitle = glue::glue("total patients {nrow(linelist_cleaned)}"),
+       caption = "produced by me!")
+wt_ht_plot
+
+```
+
+The `theme()` function can also be used to edit the defaults of these elements. This function can take an extremely large number of arguments, each of which can be used to edit very specific aspects of the plot. We won't go through all examples, look at how editing aspects of text elements is done. The basic way this is done is:
+
+  1. Calling the specific argument of `theme()` for the element we want to edit (e.g. `plot.title` for the plot title)
+  2. Supplying the `element_text()` function to the argument (there are other versions of this e.g. `element_rect()` for editing the plot background aesthetics)
+  3. Changing the arguments in `element_text()`
+  
+For example, we increase the size of the plot title with `size`, make the subtitle italicised with `face`, and right
+justify the caption with `hjust`. We'll also change the legend location for good measure!
+
+```{r,eval=T}
+wt_ht_plot + 
+    theme(legend.position = "bottom",
+          # size of title is 30
+          plot.title = element_text(size = 30),
+          # right justify caption
+          plot.caption = element_text(hjust = 0),
+          # subtitle is italicised
+          plot.subtitle = element_text(face = "italic"))
+
+
+```
+
+If you ever want to remove an element of a plot, you can also do it through `theme()`! Just pass `element_blank()` to an argument in theme to have it disappear completely!
+
+<!-- ======================================================= -->
+## Colour schemes {}
+
+One thing that can initially be difficult to understand with `ggplot2` is control of colour schemes when passing colour or fill as a variable rather than defining them explicitly within a geom. There are a few simple tricks that can be used to achieve this however. Remember that when setting colours, you can use colour names (as long as they are recognised) like `"red"`, or a specific hex colour such as `"#ff0505"`.
+
+One of the most useful tricks is using manual scaling functions to explicity define colours. These are functions with the syntax `scale_xxx_manual()` (e.g. `scale_colour_manual()`). In this function you can explicitly define which colours map to which factor using the `values` argument. You can control the legend title with the `name` argument, and the order of factors with `breaks`. 
+
+If you want predefined palettes, you can use the `scale_xxx_brewer` or `scale_xxx_viridis_y` functions. The brewer functions can draw from colorbrewer.org palettes, and the viridis functions can draw from viridis (colourblind friendly!) palettes. Remember to define if the palette is discrete, continuous, or binned by specifying this at the end of the function (e.g. discrete is `scale_xxx_viridis_d`)
+
+We can see this by using the symptom-specific dataframe we made in the previous section:
+```{r,eval = TRUE} 
+
+
+
+symp_plot <- ggplot(linelist_sym, aes(x = symptom_name, fill = symptom_is_present)) +
+  # show as a portion of all
+  geom_bar(position = "fill", col = "black") +
+  theme_classic() +
+  labs(
+    x = "Symptom",
+    y = "Symptom status (proportion)"
+  )
+
+symp_plot
+
+symp_plot +
+  scale_fill_manual(
+    # explicitly define colours
+    values = c("yes" = "black",
+               "no" = "white",
+               "unknown" = "grey"),
+    # order the factors correctly
+    breaks = c("yes", "no", "unknown"),
+    # legend has no title
+    name = ""
+  ) 
+
+symp_plot +
+  scale_fill_viridis_d(
+    breaks = c("yes", "no", "unknown"),
+    name = ""
+  )
+
+
+```
+
+
+
+<!-- ======================================================= -->
+## Change order of discrete variables {}
+Changing the order that discrete variables appear in is often difficult to understand for people who are new to `ggplot2` graphs. It's easy to understand how to do this however once you understand how `ggplot2` handles discrete variables under the hood. Generally speaking, if a discrete varaible is used, it is automatically converted to a `factor` type - which orders factors by alphabetical order by default. To handle this, you simply have to reorder the factor levels to reflect the order you would like them to appear in the chart. For more detailed information on how to reorder `factor` objects, see the factor section of the guide. 
+
+We can look at a common example using age groups - by default the 5-9 age group will be placed in the middle of the age groups (given alphabetical order), but we can move it behind the 0-4 age group of the chart by releveling the factors.
+
+```{r, eval = T}
+
+# remove the instances of age_cat5 where data is missing
+ggplot(linelist_cleaned %>%
+         filter(!is.na(age_cat5)),
+       # relevel the factor within the ggplot call (can do externally as well)
+       aes(x = forcats::fct_relevel(age_cat5, "5-9", after = 1))) +
+  geom_histogram(stat = "count") +
+  labs(x = "Age group", y = "Number of hospitalisations",
+       title = "Total hospitalisations by age group") +
+  theme_minimal()
+
+
+```
+
+
+<!-- ======================================================= -->
+## Multiple plots {}
+
+Often its useful to show multiple graphs on one page, or one super-figure. There are a few ways to achieve this and a lot of packages that can help to facilitate it. However, while external packages are nice, it is often easier to use faceting as an alternative that is prebuilt into `ggplot2`. Faceting plots is extremely easy to do in terms of code, and produces plots with more predictable aesthetics - you wont have to wrangle legends and ensure that axes are aligned etc.
+
+Faceting is a very specific way to obtain multiple plots - by definition, to facet you have to show the same type of plot in each facet, where every plot is specific to a level of a variable. This is done with one of two functions:
+
+  1. `facet_wrap()` This is used when you want to show a different graph for each level of a *single* variable. One example of this could be showing a different epidemic curve for each hospital in a region. 
+  
+  2. `facet_grid()` This is used when you want to bring a second variable into the faceting arrangement. Here each element of a grid is shows the intersection between an x or y element of a grid. For example, this could involve showing a different epidemic curve for each hospital in a region, shown horizontally, for each age group, shown vertically.
+  
+This can quickly become an overwhelming amount of information - its good to ensure you don't have too many levels of each variable that you choose to facet by! Here are some quick examples with the malaria dataset:
+
+```{r, eval = TRUE}
+malaria_data <- rio::import(here::here("data", "facility_count_data.rds")) 
+
+# show a wrapped plot with facets by district
+
+ggplot(malaria_data, aes(x = data_date, y = malaria_tot, fill = District)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "date of data collection",
+    y = "malaria cases",
+    title = "Malaria cases by district"
+  ) +
+  facet_wrap(~District) +
+  theme_minimal()
+
+```
+
+We can also use a `facet_grid()` approach with the different age groups - we need to do some data transformations first however, as the age groups all are in their own columns - we want them in a single column. When you pass the two variables to `facet_grid()`, you can use formula notation (e.g. `x ~ y`) or wrap the variables in `vars()`. For reference, this: `facet_grid(x ~ y)` is equivalent to `facet_grid(rows = vars(x), cols = vars(y))` Here's how we can do this:
+
+```{r, eval = T}
+
+malaria_age <- malaria_data %>%
+  pivot_longer(
+    # choose all the columns that start with malaria rdt (age group specific)
+    cols = starts_with("malaria_rdt_"),
+    # column names become age group
+    names_to = "age_group",
+    # values to a single column (num_cases)
+    values_to = "num_cases"
+  ) %>%
+  # clean up age group column - replace "malaria_rdt_" to leave only age group
+  # then replace 15 with 15+
+  # then refactor the age groups so they are in order
+  mutate(age_group = str_replace(age_group, "malaria_rdt_", "") %>%
+           ifelse(. == "15", "15+", .) %>%
+           forcats::fct_relevel(., "5-14", after = 1))
+
+
+# make the same plot as before, but show in a grid
+ggplot(malaria_age, aes(x = data_date, y = num_cases, fill = age_group)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "date of data collection",
+    y = "malaria cases",
+    title = "Malaria cases by district and age group"
+  ) +
+  facet_grid(rows = vars(District), cols = vars(age_group)) +
+  theme_minimal()
+
+
+
+```
+
+While faceting is a convenient approach to plotting, sometimes its not possible to get the results you want from its relatively restrictive approach. Here, you may choose to combine plots by sticking them together into a larger plot. There are three well known packages that are great for this - `cowplot`, `gridExtra`, and `patchwork`. However, these packages largely do the same things, so we'll focus on `cowplot` for this section. 
+
+The `cowplot` package has a fairly wide range of functions, but the easiest use of it can be achieved through the use of `plot_grid()`. This is effectively a way to arrange predefined plots in a grid formation. We can work through another example with the malaria dataset - here we can plot the total cases by district, and also show the epidemic curve over time.
+
+
+```{r, eval = T}
+
+# bar chart of total cases by district
+p1 <- ggplot(malaria_data, aes(x = District, y = malaria_tot)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "District",
+    y = "Total number of cases",
+    title = "Total malaria cases by district"
+  ) +
+  theme_minimal()
+
+# epidemic curve over time
+p2 <- ggplot(malaria_data, aes(x = data_date, y = malaria_tot)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Date of data submission",
+    y =  "number of cases"
+  ) +
+  theme_minimal()
+
+cowplot::plot_grid(p1, p2,
+                  # 1 column and two rows - stacked on top of each other
+                   ncol = 1,
+                   nrow = 2,
+                   # top plot is 2/3 as tall as second
+                   rel_heights = c(2, 3))
+
+
+```
+
+
+<!-- ======================================================= -->
+## Smart Labeling {}
+In `ggplot2`, it is also possible to add text to plots. However, this comes with the notable limitation where text labels often clash with data points in a plot, making them look messy or hard to read. There is no ideal way to deal with this in the base package, but there is a `ggplot2` addon, known as `ggrepel` that makes dealing with this very simple! 
+
+The `ggrepel` package provides two new functions, `geom_label_repel()` and `and geom_text_repel()`, which replace `geom_label()` and `geom_text()`. Simply use these functions instead of the base functions to produce neat labels. You can also use the `force` argument to change the degree of repulsion between labels and their respective points.
+
+For our example, we will make a scatterplot showing height against weight again. We're also going to label each point with a patient id when the patient is over 70 years of age. We'll use a trick with filter to only show these specific points!
+
+
+```{r, eval = T}
+library(ggrepel)
+
+ggplot(linelist_cleaned, 
+       aes(x = ht_cm,
+           y = wt_kg)) +
+  geom_point() + 
+  # pass the filtered version of the dataset as a new dataset
+  ggrepel::geom_label_repel(data = linelist_cleaned %>% filter(age_years > 70),
+                           aes(label = case_id),
+                           force = 1) +
+  labs(y = "weight (kg)", x = "height(cm)")
+
+
+
+```
+
+
+<!-- ======================================================= -->
+## Time axes {}
+
+Working with time axes in ggplot can seem daunting, but is made very easy with a few key functions. Remember that when working with time or date that you should ensure that the correct variables are formatted as date or datetime class - see the _working with dates_ section for more information on this.
+
+The single most useful set of functions for working with dates in `ggplot2` are the scale functions (`scale_x_date()`, `scale_x_datetime()`, and their cognate y-axis functions). These functions let you define how often you have axis labels, and how to format axis labels. To find out how to format dates, see the _working with dates_ section again! You can use the `date_breaks` and `date_labels` arguments to specify how dates should look:
+
+  1. `date_breaks` allows you to specify how often axis breaks occur - you can pass a string here (e.g. `"3 months"`, or "`2 days"`)
+  
+  2. `date_labels` allows you to define the format dates are shown in. You can pass a date format string to these arguments (e.g. `"%b-%d-%Y"`):
+
+
+```{r, eval = T}
+# make epi curve by date of onset when available
+ggplot(linelist_cleaned, aes(x = date_onset)) +
+  geom_bar(stat = "count") +
+  scale_x_date(
+    # 1 break every 1 month
+    date_breaks = "1 months",
+    # labels should show month then date
+    date_labels = "%b %d"
+  ) +
+  theme_classic()
+
+```
+
+
+
+<!-- ======================================================= -->
+## Highlighting {}
+
+Highlighting specific elements in a chart is a useful way to draw attention to a specific instance of a variable while also providing information on the dispersion of the full dataset. While this is not easily done in base `ggplot2`, there is an external package that can help to do this known as `gghighlight`. This is easy to use within the ggplot syntax.
+
+The `gghighlight` package uses the `gghighlight()` function to achieve this effect. To use this function, supply a logical statement to the function - this can have quite flexible outcomes, but here we'll show an example of the age distribution of cases in our linelist, highlighting them by outcome.
+
+```{r, eval = T}
+# load gghighlight
+library(gghighlight)
+
+
+# replace NA values with unknown in the outcome variable
+linelist_cleaned <- linelist_cleaned %>%
+  mutate(outcome = replace_na(outcome, "Unknown"))
+
+# produce a histogram of all cases by age
+ggplot(linelist_cleaned, 
+       aes(x = age_years, fill = outcome)) +
+  geom_histogram() + 
+  # highlight instances where the patient has died.
+  gghighlight::gghighlight(outcome == "Death")
+
+
+```
+
+This also works well with faceting functions - it allows the user to produce facet plots with the background data highlighted that doesn't apply to the facet!
+
+```{r, eval = T}
+
+# produce a histogram of all cases by age
+ggplot(linelist_cleaned, 
+       aes(x = age_years, fill = outcome)) +
+  geom_histogram() + 
+  # highlight instances where the patient has died.
+  gghighlight::gghighlight() +
+  facet_wrap(~outcome)
+
+
+```
+
+
+<!-- ======================================================= -->
+## Dual axes {}
+
+A secondary y-axis is often a requested addition to a `ggplot2` graph. While there is a robust debate about the validity of such graphs in the data visualization community, and they are often not recommended, your manager may still want them. Below, we present two methods to achieve them.  
+
+1) Using the **cowplot** package to combine two separate plots  
+2) Using a statistical transformation of the data on the primary axis  
+
+
+### Using **cowplot** {-}  
+
+This approach involves creating two separate plots - one with a y-axis on the left, and the other with y-axis on the right. Both will use a specific `theme_cowplot()` and must have the same x-axis. Then in a third command the two plots are aligned and overlaid on top of each other. The functionalities of **cowplot**, of which this is only one, are described in depth at this [site](https://wilkelab.org/cowplot/articles/aligning_plots.html).  
+
+To demonstrate this technique we will overlay the epidemic curve with a line of the weekly percent of patients who died. We use this example because the alignment of dates on the x-axis is more complex than say, aligning a bar chart with another plot. Some things to note:  
+
+* The epicurve and the line are aggregated into weeks prior to plotting *and* the `date_breaks` and `date_labels` are identical - we do this so that the x-axes of the two plots are the same when they are overlaid.  
+* The y-axis is moved to the right-side for plot 2 with the `position = ` argument of `scale_y_continuous()`.  
+* Both plots make use of `theme_cowplot()`  
+
+Note there is another example of this technique in the [Epicurves] page - overlaying cumulative incidence on top of the epicurve.  
+
+**Make plot 1**  
+This is essentially the epicurve. We use `geom_area()` just to demonstrate its use (area under a line, by default)
+```{r}
+pacman::p_load(cowplot)            # load/install cowplot
+
+p1 <- linelist %>%                 # save plot as object
+     count(
+       epiweek = lubridate::floor_date(date_onset, "week")) %>% 
+     ggplot()+
+          geom_area(aes(x = epiweek, y = n), fill = "grey")+
+          scale_x_date(
+               date_breaks = "month",
+               date_labels = "%b")+
+     theme_cowplot()+
+     labs(
+       y = "Weekly cases"
+     )
+
+p1                                      # view plot 
+```
+
+**Make plot 2**  
+Create the second plot showing a line of the weekly percent of cases who died. 
+```{r}
+
+p2 <- linelist %>%         # save plot as object
+     group_by(
+       epiweek = lubridate::floor_date(date_onset, "week")) %>% 
+     summarise(
+       n = n(),
+       pct_death = 100*sum(outcome == "Death", na.rm=T) / n) %>% 
+     ggplot(aes(x = epiweek, y = pct_death))+
+          geom_line()+
+          scale_x_date(
+               date_breaks = "month",
+               date_labels = "%b")+
+          scale_y_continuous(
+               position = "right")+
+          theme_cowplot()+
+          labs(
+            x = "Epiweek of symptom onset",
+            y = "Weekly percent of deaths",
+            title = "Weekly case incidence and percent deaths"
+          )
+
+p2     # view plot
+```
+
+Now we align the plot using the function `align_plots()`, specifying horizontal and vertical alignment ("hv", could also be "h", "v", "none"). We specify alignment of all axes as well (top, bottom, left, and right) with "tblr". The output is of class list (2 elements).    
+
+Then we draw the two plots together using `ggdraw()` (from **cowplot**) and referencing the two parts of the `aligned_plots` object.  
+
+```{r}
+aligned_plots <- align_plots(p1, p2, align="hv", axis="tblr")                  # align the two plots and save them as list
+aligned_plotted <- ggdraw(aligned_plots[[1]]) + draw_plot(aligned_plots[[2]])  # overlay them and save the visual plot
+aligned_plotted                                                                # print the overlayed plots
+
+```
+
+### Statistical transformation {-}  
+
+Unfortunately, secondary axes are not well supported in the `ggplot` syntax. For this reason, you're fairly limited in terms of what can be shown with a secondary axis - the second axis has to be a direct transformation of the secondary axis. 
+
+Differences in axis values will be purely cosmetic - if you want to show two different variables on one graph, with different y-axis scales for each variable, this will not work without some work behind the scenes. To obtain this effect, you will have to transform one of your variables in the data, and apply the same transformation *in reverse* when specifying the axis labels. Based on this, you can either specify the transformation explicitly (e.g. variable a is around 10x as large as variable b) or calculate it in the code (e.g. what is the ratio between the maximum values of each dataset).
+
+
+The syntax for adding a secondary axis is very straightforward! When calling a `scale_xxx_xxx()` function (e.g. `scale_y_continuous()`), use the `sec.axis` argument to call the `sec_axis()` function. The `trans` argument in this function allows you to specify the label transformation for the axis - provide this in standard tidyverse syntax. 
+
+For example, if we want to show the number of positive RDTs in the malaria dataset for facility 1, showing 0-4 year olds and all cases on chart:
+
+
+```{r, eval = T}
+
+# take malaria data from facility 1
+malaria_facility_1 <- malaria_data %>%
+  filter(location_name == "Facility 1")
+
+# calculate the ratio between malaria_rdt_0-4 and malaria_tot 
+
+tf_ratio <- max(malaria_facility_1$malaria_tot, na.rm = T) / max(malaria_facility_1$`malaria_rdt_0-4`, na.rm = T)
+
+# transform the values in the dataset
+
+malaria_facility_1 <- malaria_facility_1 %>%
+  mutate(malaria_rdt_0_4_tf = `malaria_rdt_0-4` * tf_ratio)
+  
+
+# plot the graph with dual axes
+
+ggplot(malaria_facility_1, aes(x = data_date)) +
+  geom_line(aes(y = malaria_tot, col = "Total cases")) +
+  geom_line(aes(y = malaria_rdt_0_4_tf, col = "Cases: 0-4 years old")) +
+  scale_y_continuous(
+    name = "Total cases",
+    sec.axis = sec_axis(trans = ~ . / tf_ratio, name = "Cases: 0-4 years old")
+  ) +
+  labs(x = "date of data collection") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+  
+
+
+```
+
+
+## Resources
+
+Inspiration
+[ggplot graph gallery](https://www.tidyverse.org/blog/2018/07/ggplot2-3-0-0/)
+
+Facets and labellers
+[Using labellers for facet strips](http://www.cookbook-r.com/Graphs/Facets_(ggplot2)/#modifying-facet-label-text)
+[Labellers](https://ggplot2.tidyverse.org/reference/labellers.html)
+
+Adjusting order with factors
+[fct_reorder](https://forcats.tidyverse.org/reference/fct_reorder.html)  
+[fct_inorder](https://forcats.tidyverse.org/reference/fct_inorder.html)  
+[How to reorder a boxplot](https://cmdlinetips.com/2019/02/how-to-reorder-a-boxplot-in-r/)  
+[Reorder a variable in ggplot2](https://www.r-graph-gallery.com/267-reorder-a-variable-in-ggplot2.html)  
+[R for Data Science - Factors](https://r4ds.had.co.nz/factors.html)  
+
+Legends  
+[Adjust legend order](https://stackoverflow.com/questions/38425908/reverse-stacking-order-without-affecting-legend-order-in-ggplot2-bar-charts)  
+
+Captions
+[Caption alignment](https://stackoverflow.com/questions/64701500/left-align-ggplot-caption)  
+
+Cheatsheets  
+[Beautiful plotting with ggplot2](http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/)  
+
+
+
+
+TO DO - Under construction
+
+
+Using option `label_wrap_gen` in facet_wrap to have multiple strip lines
+labels and colors of strips
+
+Axis text vertical adjustment
+rotation
+Labellers
+
+limit range with limit() and coord_cartesian(), ylim(), or scale_x_continuous()
+theme_classic()
+
+expand = c(0,0)
+coord_flip()
+tick marks
+
 ggrepel
+animations
 
-<!-- ======================================================= -->
-## Time axes {.tabset .tabset-fade .tabset-pills}
-
-
-<!-- ======================================================= -->
-## Dual axes {.tabset .tabset-fade .tabset-pills}
-
-
-<!-- ======================================================= -->
-## Adding shapes {.tabset .tabset-fade .tabset-pills}
-
-<!-- ======================================================= -->
-## Animations {.tabset .tabset-fade .tabset-pills}
+remove
+remove title
+using fill = or color = in labs()
+flip order / don't flip order
+move location
+color?    theme(legend.title = element_text(colour="chocolate", size=16, face="bold"))+ scale_color_discrete(name="This color is\ncalled chocolate!?")
+Color of boxes behind points in legend 
+     theme(legend.key=element_rect(fill='pink'))   or use fill = NA to remove them. http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/ 
+Change size of symbols in legend only guides(colour = guide_legend(override.aes = list(size=4)))
 
 
+Turn off a layer in the legend
+geom_text(data=nmmaps, aes(date, temp, label=round(temp)), size=4)
+geom_text(data=nmmaps, aes(date, temp, label=round(temp), size=4), show_guide=FALSE)
 
+Force a legend even if there is no aes(). 
+ggplot(nmmaps, aes(x=date, y=o3))+
+     geom_line(aes(color="Important line"))+
+     geom_point(aes(color="My points"))
+Control the shape in the legend with guides - a list with linetype and shape
+ggplot(nmmaps, aes(x=date, y=o3))+geom_line(aes(color="Important line"))+
+   geom_point(aes(color="Point values"))+
+  scale_colour_manual(name='', values=c('Important line'='grey', 'Point values'='red'), guide='legend') +
+  guides(colour = guide_legend(override.aes = list(linetype=c(1,0)
+                                                      , shape=c(NA, 16))))

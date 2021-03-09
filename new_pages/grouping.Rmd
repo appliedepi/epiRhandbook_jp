@@ -1,0 +1,482 @@
+
+# Grouping data { }  
+     
+This page reviews how to group and aggregate data for descriptive analysis. It makes use of tidyverse packages for common and easy-to-use functions. 
+
+
+
+
+<!-- ======================================================= -->
+## Overview {  }
+
+Grouping data is a core component of data management and analysis. Grouped data can be plotted, or statistically summarised by group. Functions from the **dplyr** package (part of the **tidyverse**) make grouping and subsequent operations quite easy.  
+
+This page will address the following topics:  
+
+*  
+* Grouping data with the `group_by()` function  
+* Un-group data  
+* `summarise()` grouped data with statistics  
+* The difference between `count()` and `tally()`  
+* `arrange()` applied to grouped data  
+* `filter()` applied to grouped data  
+* `mutate()` applied to grouped data  
+* `select()` applied to grouped data  
+* The **base** R `aggregate()` command as an alternative  
+
+
+
+
+<!-- ======================================================= -->
+## Preparation {  }
+     
+### Load packages {-}  
+     
+Ensure **tidyverse** package is installed and loaded (includes **dplyr**).  
+
+```{r}
+pacman::p_load(
+  rio,       # to import data
+  here,      # to locate files
+  tidyverse, # to clean, handle, and plot the data (includes dplyr)
+  janitor)   # adding total rows and columns
+```
+
+
+
+
+### Load data {-}
+
+For this page we use the cleaned `linelist` dataset
+
+```{r, echo=F}
+linelist <- rio::import(here("data", "linelist_cleaned.rds"))
+```
+
+```{r, eval=F}
+linelist <- rio::import(here("data", "linelist_cleaned.xlsx"))
+```
+
+
+The first 50 rows of `linelist`:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+
+<!-- ======================================================= -->
+## Grouping {  }
+     
+The function `group_by()` from **dplyr** groups the rows by the unique values in the specified columns. Each unique value contitutes a group (or unique combination of values, if multiple grouping columns are specified). Subsequent changes to the dataset or calculations can then be performed within the context of each unique group.  
+
+For example, the command below takes the linelist and groups the rows by unique values in column `outcome`, saving the output as a new dataframe `ll_by_outcome`. The grouping column name is placed inside the parentheses of the function `group_by()`.  
+
+```{r}
+ll_by_outcome <- linelist %>% 
+  group_by(outcome)
+```
+
+**Note that there is no perceptible change to the dataset** after `group_by()`, *until* another **dplyr** verb such as `mutate()` or `summarise()` is applied on the "grouped" dataframe.  
+
+You can however "see" the groupings by printing the dataframe. When you print a grouped dataframe, you will see it has been transformed into a `tibble` class object (LINK) which, when printed, displays which grouping columns have been applied and how many groups there are - written just above the header row.  
+
+```{r}
+# print to see which groups are active
+ll_by_outcome
+```
+
+
+### Unique groups {-}  
+
+**The groups created reflect each unique combination of values in the grouping columns.** To see the groups and the number of rows in each group, pass the grouped data to `tally()`. To see just the unique groups without counts you can pass to `group_keys()`.  
+
+See below that there are **three** unique values in the grouping column `outcome`: "Death", "Recover", and `NA`. See that there were `r nrow(linelist %>% filter(outcome == "Death"))` deaths, `r nrow(linelist %>% filter(outcome == "Recover"))` recoveries, and `r nrow(linelist %>% filter(is.na(outcome)))` with no outcome recorded.
+
+```{r}
+linelist %>% 
+  group_by(outcome) %>% 
+  tally()
+```
+
+You can group by more than one column. Below, the dataframe is grouped by `outcome` and `gender`, and then tallied. Note how each unique combination of `outcome` and `gender` is registered as its own group - including missing values for either column.   
+
+```{r}
+linelist %>% 
+  group_by(outcome, gender) %>% 
+  tally()
+```
+
+### New columns {-} 
+
+You can also create a new grouping column *within* the `group_by()` statement. This is equivalent to calling `mutate()` before the `group_by()`. For a quick tabulation this style can be handy, but for more clarity in your code consider creating this column in it's own `mutate()` step and then piping to `group_by()`.
+
+```{r}
+# group dat based on a binary column created *within* the group_by() command
+linelist %>% 
+  group_by(
+    age_class = ifelse(age >= 18, "adult", "child")) %>% 
+  tally(sort = T)
+```
+
+### Replace/add grouping columns {-}  
+
+By default if you run `group_by()` on data that are already grouped, the old groups will be removed and the new one(s) will apply. If you want to add new groups to the existing ones, include the argument `.add=TRUE`.  
+
+````{r, eval=F}
+# Grouped by outcome
+by_outcome <- linelist %>% 
+  group_by(outcome)
+
+# Add grouping by gender in addition
+by_outcome_gender <- by_outcome %>% 
+  group_by(gender, .add = TRUE)
+```
+
+
+## Un-group  
+
+Data that have been grouped will remain grouped until specifically ungrouped via `ungroup()`. If you forget to ungroup, it can lead to incorrect calculations! Below is an example of removing all grouping columns:  
+
+```{r, eval=F}
+linelist %>% 
+  group_by(outcome, gender) %>% 
+  tally() %>% 
+  ungroup()
+```
+
+You can also remove grouping by only specific columns, by placing the column name inside.  
+
+```{r, eval=F}
+linelist %>% 
+  group_by(outcome, gender) %>% 
+  tally() %>% 
+  ungroup(gender) # remove the grouping by gender, leave grouping by outcome
+```
+
+
+<span style="color: black;">**_NOTE:_** The verb `count()` automatically ungroups the data after counting.</span>
+
+
+
+## Summarise  
+
+By applying the **dplyr** verb `summarise()` to grouped data, you can produce summary tables containing descriptive statistics *for each group*.  
+
+Within the summarise statement, provide the name(s) of the **new** summary column(s), an equals sign, and then a statistical function to apply to the data, as shown below. Within a statistical function, list the column to be operated on and any relevant arguements. For example, do not forget the argument `na.rm=TRUE` to remove missing values from calculations!  
+
+Below is an example of `summarise()` *applied without grouped data*. The statistics returned are produced from the entire dataset.     
+
+```{r}
+# summary statistics on ungrouped linelist
+linelist %>% 
+  summarise(
+    mean_age = mean(age_years, na.rm=T),
+    max_age  = max(age_years, na.rm=T),
+    min_age  = min(age_years, na.rm=T))
+```
+
+In contrast, below is the same `summarise()` statement applied to grouped data. The statistics are calculated for each `outcome` group.  
+
+```{r}
+# summary statistics on grouped linelist
+linelist %>% 
+  group_by(outcome) %>% 
+  summarise(
+    mean_age = mean(age_years, na.rm=T),
+    max_age  = max(age_years, na.rm=T),
+    min_age  = min(age_years, na.rm=T))
+```
+
+<span style="color: darkgreen;">**_TIP:_** The summarise function works with both UK and US spelling - `summarise()` and `summarize()` call the same function.</span>
+
+
+
+### Summarise `across()` multiple columns  
+
+You can use summarise across multiple columns using `across()`. Specify which column to operate across by either:  
+
+* Provide a vector of column names, or  
+* Use the `select()`semantic helper functions (explained below) to select columns by criteria  
+
+Below, `mean()` is applied to ungrouped data (global calculation). The columns are specified, a function is specified (no parentheses), and finally, any additional arguments for the function (e.g. `na.rm=TRUE`).  
+
+```{r}
+linelist %>% 
+  summarise(across(.cols = c(age_years, temp),
+                   .fns = mean,
+                   na.rm=T))
+```
+
+Below, the same summarise `across()` call is applied on grouped data:  
+
+```{r}
+linelist %>% 
+  group_by(outcome) %>% 
+  summarise(across(.cols = c(age_years, temp),
+                   .fns = mean,
+                   na.rm=T))
+```
+
+Here are those `select()` helper functions that you can place *within* `across()`:  
+
+
+These are helper functions available to assist you in specifying columns:  
+
+* `everything()`  - all other columns not mentioned  
+* `last_col()`    - the last column  
+* `where()`       - applies a function to all columns and selects those which are TRUE  
+* `starts_with()` - matches to a specified prefix. Example: `starts_with("date")`
+* `ends_with()`   - matches to a specified suffix. Example: `ends_with("_end")`  
+* `contains()`    - columns containing a character string. Example: `contains("time")` 
+* `matches()`     - to apply a regular expression (regex). Example: `contains("[pt]al")`  
+* `num_range()`   - 
+* `any_of()`      - matches if column is named. Useful if the name might not exist. Example: `any_of(date_onset, date_death, cardiac_arrest)`  
+
+
+For example, to return the mean of every numeric column:  
+
+```{r}
+linelist %>% 
+  group_by(outcome) %>% 
+  summarise(across(where(is.numeric), .fns = mean, na.rm=T))
+```
+
+
+If you want summary statistics of multiple columns, in an easy-to-read format, consider a two-way table with the **gtsummary** package This package is demonstrated more extensively in the the [Descriptive statistics] page.  
+
+```{r, message = F, warning=F}
+# load package
+pacman::p_load(gtsummary) 
+
+linelist %>% 
+  select(outcome, age_years, temp, ht_cm) %>%       # select columns (optional)
+  gtsummary::tbl_summary( 
+    by = outcome,                                   # indicate grouping column (optional)
+    statistic = all_continuous() ~ "{mean} ({sd})") # return mean and std deviation for each group
+    
+```
+
+
+
+
+
+## Count and tally  
+
+`count()` and `tally()` provide similar functionality but are different.  
+
+`tally()` is shorthand for `summarise()`, and *does not* automatically group data. Thus, to achieve grouped tallys it must follow a `group_by()` command. You can add `sort = TRUE` to see the largest groups first.    
+
+```{r}
+linelist %>% 
+  tally
+```
+```{r}
+linelist %>% 
+  group_by(outcome) %>% 
+  tally(sort = TRUE)
+```
+
+In contrast, `count()` does the following:  
+
+* applies `group_by()` on the specified column(s)  
+* applies `summarise()` and returns column `n` with the number of observations per group  
+* applies `ungroup()`  
+
+```{r}
+linelist %>% 
+  count(outcome)
+```
+
+Just like with `group_by()` you can create a new column within the `count()` command:  
+
+```{r}
+linelist %>% 
+  count(age_class = ifelse(age >= 18, "adult", "child"), sort = T)
+```
+Read more about the distinction between `tally()` and `count()` [here](https://dplyr.tidyverse.org/reference/tally.html)  
+
+Both of these verbs can be called multiple times, with the functionality "rolling up". For example, to summarise the number of genders present for each outcome, run the following. Note, the name of the final column is changed from default "n" for clarity.  
+
+```{r}
+linelist %>% 
+  # produce counts by outcome-gender groups
+  count(outcome, gender) %>% 
+  # produce counts of gender within each outcome group
+  count(outcome, name = "number of genders per outcome" ) 
+```
+
+
+### Add totals {-} 
+
+If you want to add total rows or column after using `tally()` or `count()`, consider using the **janitor** package, which offers functions like `adorn_totals()` and `adorn_percentages()`. There are many useful functions (search Help for details), here are a few of them, with examples below:  
+
+* Use `adorn_totals()` to get totals - specify the argument `where = ` either "row" or "col" or `c("row", "col")`.  
+* Use `adorn_percentages()` to convert counts to proportions - specify the argument `denominator = ` either "row", "col", or "all".  
+* Use `adorn_pct_formatting()` to convert proportions to percentages (can specify number of `digits = `, whether to add "%" with `affix_sign =`, and specify specific column names to operate on)  
+* Use `adorn_ns()` to add back the underlying counts ("N"s) to a table whose proportions were calculated by `adorn_percentages()` - to display them together. Indicate `position = ` of the Ns as either "rear" or "front" of the proportions.  
+
+
+To add totals:  
+
+```{r}
+linelist %>% 
+  count(outcome) %>% 
+  adorn_totals(where = "col")
+```
+
+To convert the numbers to proportions:  
+
+```{r}
+linelist %>% 
+  count(outcome) %>% 
+  adorn_totals(where = "row") %>%              # add total row
+  adorn_percentages(denominator = "col") %>%   # convert to column proportions
+  adorn_rounding(digits = 2)                   # round the proportions
+```
+
+To display both counts and percents:  
+
+```{r}
+linelist %>% 
+  count(outcome) %>%              # produce the counts by unique outcome
+  adorn_totals(where = "row") %>% # add total row
+  adorn_percentages("col") %>%    # add proportion by column
+  adorn_pct_formatting() %>%      # proportion converted to percent
+  adorn_ns(position = "front")    # Add the underlying N, in front of the percentage
+```
+
+
+
+
+
+## Arranging grouped data
+
+Using the **dplyr** verb `arrange()` to order the rows in a dataframe behaves the same when the data are grouped, *unless* you set the argument `.by_group =TRUE`. In this case the rows are ordered first by the grouping columns and then by any other columns you specify to `arrange()`.   
+
+
+
+## Filter on grouped data
+
+### `filter()` {-}
+
+When applied in conjunction with functions that evaluate the dataframe (like `max()`, `min()`, `mean()`), these functions will now be applied to the groups. For example, if you want to filter and keep rows where patients are above the median age, this will now apply per group - filtering to keep rows above the group's median age. 
+
+
+
+
+### Slice rows per group {-} 
+
+The **dplyr** function `slice()`, which [subsets rows based on their position](https://dplyr.tidyverse.org/reference/slice.html) in the data, can also be applied per group. Remember to account for sorting the data within each group to get the desired "slice".  
+
+For example, to retrieve only the latest 5 admissions from each hospital:  
+
+1) Group the linelist by column `hospital`  
+2) Arrange the records from latest to earliest `date_hospitalisation` *within each hospital group*  
+3) Slice to retrieve the first 5 rows from each hospital  
+
+```{r, eval=T}
+linelist %>%
+  group_by(hospital) %>%
+  arrange(hospital, date_hospitalisation) %>%
+  slice_head(n = 5) %>% 
+  arrange(hospital) %>% 
+  select(case_id, hospital, date_hospitalisation)
+```
+`slice_head()` - selects n rows from the top  
+`slice_tail()` - selects n rows from the end  
+`slice_sample()` - randomly selects n rows  
+`slice_min()` - selects n rows with highest values in `order_by = ` column, use `with_ties = TRUE` to keep ties  
+`slice_max()` - selects n rows with lowest values in `order_by = ` column, use `with_ties = TRUE` to keep ties  
+
+
+
+
+### Filter on group size {-} 
+
+The function `add_count()` adds a column `n` to the original data giving the number of rows in that row's group. 
+
+Shown below for simplicity is a selection of two columns from the `linelist` data. `add_count()` is applied to `hospital`, so the values in column `n` reflect the number of rows in that row's hospital group. Note how values in column `n` are repeated. In the example below, the column name `n` could be changed using `name = ` within `add_count()`.       
+
+```{r}
+linelist %>% 
+  select(case_id, hospital) %>% 
+  add_count(hospital) %>%          # add "number of rows admitted to same hospital as this row" 
+  head(10)                         # show just the first 10 rows, for demo purposes
+```
+
+It then becomes easy to filter for case rows who were hospitalized at a "small" hospital, say, a hospital that admitted fewer than 500 patients:  
+
+```{r, eval=F}
+linelist %>% 
+  select(case_id, hospital) %>% 
+  add_count(hospital) %>% 
+  filter(n < 500)
+```
+
+
+
+
+
+## Mutate on grouped data  
+
+To retain all columns and rows (not summarize) and *add a new variable containing group statistics*, use `mutate()` instead of `summarise()`. 
+
+This is useful if you want group statistics in the original dataset with all other column present - e.g. for calculations comparing one row to the group.  
+
+For example, this code below calculates the difference between a row's delay-to-admission and the median delay for their hospital. The steps are:  
+
+1) Group the data by hospital  
+2) Use the column `days_onset_hosp` (delay to hospitalisation) to create a new column containing the mean delay at the hospital of *that row*  
+3) Calculate the difference between the two columns  
+
+
+```{r}
+linelist %>% 
+  # group data by hospital (no change to linelist yet)
+  group_by(hospital) %>% 
+  
+  # new columns
+  mutate(
+    # mean days to admission per hospital (rounded to 1 decimal)
+    group_delay_admit = round(mean(days_onset_hosp, na.rm=T), 1),
+    
+    # difference between row's delay and mean delay at their hospital (rounded to 1 decimal)
+    diff_to_group     = round(days_onset_hosp - group_delay_admit, 1)) %>%
+  
+  # select certain rows only - for demonstration/viewing purposes
+  select(case_id, hospital, days_onset_hosp, group_delay_admit, diff_to_group)
+```
+
+
+
+## Select on grouped data  
+
+The verb `select()` works on grouped data, but the grouping columns are always included (even if not mentioned in `select()`). If you do not want these grouping columns, use `ungroup()` first.  
+
+
+
+
+
+
+
+
+
+
+<!-- ======================================================= -->
+## Resources {  }
+
+Here are some useful resources for more information:
+*https://github.com/rstudio/cheatsheets/blob/master/data-transformation.pdf
+*https://datacarpentry.org/R-genomics/04-dplyr.html
+*https://dplyr.tidyverse.org/reference/group_by.html
+https://dplyr.tidyverse.org/articles/grouping.html  
+*https://itsalocke.com/files/DataManipulationinR.pdf
+
+
+You can perform any summary function on grouped data; see the Cheat Sheet here for more info:
+https://github.com/rstudio/cheatsheets/blob/master/data-transformation.pdf
+
+
+
