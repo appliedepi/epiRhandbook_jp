@@ -23,50 +23,11 @@ When you import a "dataset" into R, you are generally creating a new data frame 
 
 The R package we recommend is: **rio**. The `import()` function from **rio** utilizes the file extension (e.g. .xlsx, .csv, .rds, .tsv) to correctly import or export the file. The name "rio" is an abbreviation of "R I/O" (input/output).  
 
-The alternative to using **rio** is to use functions from many other packages, each of which is specific to a type of file (e.g. `read.csv()`, `read.xlsx()`, `write.csv()`, etc.). These alternatives can be difficult to remember, whereas using `import()` and `export()` from **rio** is easy.  
+The alternative to using **rio** is to use functions from many other packages, each of which is specific to a type of file. For example, `read.csv()` (**base** R), `read.xlsx()` (**openxlsx** package), and `write_csv()` (**readr** pacakge), etc. These alternatives can be difficult to remember, whereas using `import()` and `export()` from **rio** is easy.  
 
-Below is a table, taken from the **rio** online [vignette](https://cran.r-project.org/web/packages/rio/vignettes/rio.html). For each type of data it shows: the expected file extension, the package **rio** uses to import or export the data, and whether this functionality is included in the default installed version of **rio**.  
+**rio**'s functions `import()` and `export()` use the appropriate package and function for a given file, based on its file extension. See the end of this page for a complete table of which packages/functions **rio** uses in the background. It can also be used to import STATA, SAS, and SPSS files, among dozens of others.  
 
-
-
-Format                     | Typical Extension | Import Package    | Export Package     | Installed by Default
----------------------------|-------------------|-------------------|--------------------|---------------------
-Comma-separated data | .csv | data.table `fread()` | data.table |	Yes
-Pipe-separated data |	.psv | data.table `fread()` | data.table | Yes
-Tab-separated data| .tsv | data.table `fread()` | data.table | Yes
-SAS | .sas7bdat | haven | haven | Yes
-SPSS | .sav | haven | haven | Yes
-Stata | .dta | haven | haven | Yes
-SAS | XPORT | .xpt | haven | haven | Yes
-SPSS Portable | .por | haven | | Yes
-Excel | .xls | readxl | | Yes
-Excel | .xlsx | readxl | openxlsx | Yes
-R syntax | .R	| base | base | Yes
-Saved R objects | .RData, .rda | base | base | Yes
-Serialized R objects | .rds | base | base | Yes
-Epiinfo | .rec | foreign | | Yes
-Minitab | .mtp | foreign | | Yes
-Systat | .syd |	foreign | | Yes
-“XBASE” | database files | .dbf | foreign | foreign | Yes
-Weka Attribute-Relation File Format | .arff | foreign | foreign | Yes
-Data Interchange Format | .dif | utils | | Yes
-Fortran data | no recognized extension | utils | | Yes
-Fixed-width format data | .fwf | utils | utils | Yes
-gzip comma-separated data | .csv.gz | utils | utils | Yes
-CSVY (CSV + YAML metadata header) | .csvy | csvy | csvy | No
-EViews | .wf1 |hexView | | No
-Feather R/Python interchange format | .feather | feather | feather | No
-Fast Storage | .fst | fst |	fst | No
-JSON | .json | jsonlite | jsonlite | No
-Matlab | .mat | rmatio | rmatio | No
-OpenDocument Spreadsheet | .ods | readODS | readODS | No
-HTML Tables | .html | xml2 | xml2 | No
-Shallow XML documents | .xml | xml2 | xml2 | No
-YAML | .yml | yaml | yaml	| No
-Clipboard	default is tsv | |  clipr | clipr | No
-
-
-
+Import/export of shapefiles requires other packages, as detailed in the page on [GIS basics].    
 
 
 <!-- ======================================================= -->
@@ -105,7 +66,7 @@ Below, the same file location is given *relative to* an R project root folder "e
 linelist <- import(here("data", "linelists", "ebola_linelist.xlsx"))
 ```
 
-The package **here** and its function `here()` locate files on your computer in relation to the root directory of an R project. This is how `here()` works:  
+The package **here** and its function `here()` locate files on your computer in relation to the root directory of an R project, and provide a shortcut syntax for providing a file path to a function like `import()`. This is how `here()` works:  
 
 * Ensure you are working within an R project (read more on the [R projects] page  
 * When the **here** package is first loaded within the R project, it places a small file called "here" in the root-level folder of your R project as a "benchmark" or "anchor" for all other files in the project.  
@@ -426,12 +387,13 @@ DT::datatable(manual_entry_cols)
 ### Pasting from clipboard {-}  
 
 
-If you copy data from elsewhere and have it on your clipboard, you can try the following command to convert those data into an R data frame:  
+If you copy data from elsewhere and have it on your clipboard, you can try the following function from **base** R to convert those data into an R data frame:  
 
 ```{r, eval=F}
-manual_entry_clipboard <- read.table(file = "clipboard",
-                                     sep = "t",           # separator could be tab, or commas, etc.
-                                     header=TRUE)         # if there is a header row
+df_from_clipboard <- read.table(
+  file = "clipboard",  # specify this as "clipboard"
+  sep = "t",           # separator could be tab, or commas, etc.
+  header=TRUE)         # if there is a header row
 ```
 
 
@@ -454,9 +416,13 @@ export(linelist, here("data","clean", "my_linelist.csv")
 
 
 
-### RDS files {-}
+## RDS files {-}
 
-You can also export/save R dataframes as .rds files. The convenient thing about these is that classes of columns are retained, so you have less cleaning to do when importing than with an Excel or even a CSV file. 
+Along with .csv, .xlsx, etc, you can also export/save R data frames as .rds files. This is a file format specific to R, and is very useful if you know you will work with the exported data again in R. 
+
+The classes of columns are stored, so you don't have do to cleaning again when it is imported (with an Excel or even a CSV file this can be a headache!).  
+
+For example, if you work in an Epi team and need to send files to a GIS team for mapping, and they use R as well, just send them the .rds file! Then all the column classes are retained and they have less work to do.  
 
 ```{r, eval=F}
 export(linelist, here("data","clean", "my_linelist.rds")
@@ -467,7 +433,7 @@ export(linelist, here("data","clean", "my_linelist.rds")
 <!-- ======================================================= -->
 ## Rdata files {}
 
-`.Rdata` files store R objects, and can actually store multiple R objects within one file, for example multiple dataframes, model results, lists, etc. This can be very useful to consolidate or share your data.  
+`.Rdata` files store R objects, and can actually store multiple R objects within one file, for example multiple dataframes, model results, lists, etc. This can be very useful to consolidate or share a lot of your data for a given project.  
 
 In the below example, multiple R objects are stored within the exported file "my_objects.Rdata":  
 
@@ -475,10 +441,10 @@ In the below example, multiple R objects are stored within the exported file "my
 rio::export(my_list, my_dataframe, my_vector, "my_objects.Rdata")
 ```
 
-If you are trying to import a list, and you want it to be imported with the original structure (e.g. a list of lists), use `import_list()` from **rio**:  
+Note: if you are trying to *import* a list, use `import_list()` from **rio** to import it witht the complete original structure and contents.  
 
 ```{r, eval=F}
-rio::import_list("my_list_of_lists.Rdata")
+rio::import_list("my_list.Rdata")
 ```
 
 
@@ -488,9 +454,9 @@ rio::import_list("my_list_of_lists.Rdata")
 <!-- ======================================================= -->
 ## Saving plots {} 
 
-How to save plots, such as those created by `ggplot()` is discussed in the [ggplot tips] page.  
+How to save plots, such as those created by `ggplot()` is discussed in depth in the [ggplot tips] page.  
 
-In brief, run `ggsave("my_plot_filepath_and_name.png")` after printing your plot.  
+In brief, run `ggsave("my_plot_filepath_and_name.png")` after printing your plot. You can either provide a saved plot object to the `plot = ` argument, or only specify the destination file path (with file extension) to save the most recently-displayed plot. You can also control the `width = `, `height = `, `units = `, and `dpi = `.  
 
 How to save a network graph, such as a transmission tree, is addressed in the page on [Transmission chains]. 
 
@@ -501,4 +467,47 @@ How to save a network graph, such as a transmission tree, is addressed in the pa
 The [R Data Import/Export Manual](https://cran.r-project.org/doc/manuals/r-release/R-data.html)  
 [R 4 Data Science chapter](https://r4ds.had.co.nz/data-import.html#data-import)  
 [ggsave](https://ggplot2.tidyverse.org/reference/ggsave.html)  
+
+
+Below is a table, taken from the **rio** online [vignette](https://cran.r-project.org/web/packages/rio/vignettes/rio.html). For each type of data it shows: the expected file extension, the package **rio** uses to import or export the data, and whether this functionality is included in the default installed version of **rio**.  
+
+
+
+Format                     | Typical Extension | Import Package    | Export Package     | Installed by Default
+---------------------------|-------------------|-------------------|--------------------|---------------------
+Comma-separated data | .csv | data.table `fread()` | data.table |	Yes
+Pipe-separated data |	.psv | data.table `fread()` | data.table | Yes
+Tab-separated data| .tsv | data.table `fread()` | data.table | Yes
+SAS | .sas7bdat | haven | haven | Yes
+SPSS | .sav | haven | haven | Yes
+Stata | .dta | haven | haven | Yes
+SAS | XPORT | .xpt | haven | haven | Yes
+SPSS Portable | .por | haven | | Yes
+Excel | .xls | readxl | | Yes
+Excel | .xlsx | readxl | openxlsx | Yes
+R syntax | .R	| base | base | Yes
+Saved R objects | .RData, .rda | base | base | Yes
+Serialized R objects | .rds | base | base | Yes
+Epiinfo | .rec | foreign | | Yes
+Minitab | .mtp | foreign | | Yes
+Systat | .syd |	foreign | | Yes
+“XBASE” | database files | .dbf | foreign | foreign | Yes
+Weka Attribute-Relation File Format | .arff | foreign | foreign | Yes
+Data Interchange Format | .dif | utils | | Yes
+Fortran data | no recognized extension | utils | | Yes
+Fixed-width format data | .fwf | utils | utils | Yes
+gzip comma-separated data | .csv.gz | utils | utils | Yes
+CSVY (CSV + YAML metadata header) | .csvy | csvy | csvy | No
+EViews | .wf1 |hexView | | No
+Feather R/Python interchange format | .feather | feather | feather | No
+Fast Storage | .fst | fst |	fst | No
+JSON | .json | jsonlite | jsonlite | No
+Matlab | .mat | rmatio | rmatio | No
+OpenDocument Spreadsheet | .ods | readODS | readODS | No
+HTML Tables | .html | xml2 | xml2 | No
+Shallow XML documents | .xml | xml2 | xml2 | No
+YAML | .yml | yaml | yaml	| No
+Clipboard	default is tsv | |  clipr | clipr | No
+
+
 

@@ -1,17 +1,15 @@
 
 # Moving averages { }  
 
-```{r, out.width=c("50%"), echo=F}
+```{r, out.width=c("100%"), echo=F}
 knitr::include_graphics(here::here("images", "moving_avg_epicurve.png"))
 ```
 
-<!-- ======================================================= -->
-## Overview {  }
 
 This page will cover two methods to calculate and visualize moving averages:  
 
-1) Calculate, then display  
-2) Calculate within a `ggplot()` command  
+1) Calculate with the **slider** package  
+2) Calculate *within* a `ggplot()` command with the **tidyquant** package  
 
 
 
@@ -30,11 +28,11 @@ pacman::p_load(
 
 
 <!-- ======================================================= -->
-## Calculate-then-display {  }
+## Calculate with **slider** {  }
 
-Use the package **slider** to calculate a moving average in a dataframe prior to plotting.  
+**Use this approach to calculate a moving average in a data frame prior to plotting.**  
 
-The **slider()** package provides several "sliding window" functions to compute rolling averages, cumulative sums, rolling regressions, etc. It treats a dataframe as a vector of rows, allowing iteration row-wise over a dataframe.   
+The **slider** package provides several "sliding window" functions to compute rolling averages, cumulative sums, rolling regressions, etc. It treats a dataframe as a vector of rows, allowing iteration row-wise over a dataframe.   
 
 Here are some of the common functions:  
 
@@ -103,7 +101,10 @@ DT::datatable(rolled, rownames = FALSE, options = list(pageLength = 15, scrollX=
 
 **Grouped data**  
 
-You will see differences if your data are grouped and you have set `.compete = TRUE` (windows with missing values are not calculated). As on ungrouped data, when `.complete = TRUE`, the first rows will not return a value until the window is complete. However the change between groups acts as a hard barrier and these empty rows will re-occur. See handbook page on [Grouping data]).  
+You will see differences if your data are grouped *and* you have set `.complete = TRUE`. That argument being TRUE means that averages are only calculated for windows with no missing values. Normally, (on un-grouped data when `.complete = TRUE`) the first rows in a data frame will not return a value until the window is complete. However with grouped data, as the window moves down the data frame, any changes between groups acts as a "hard" barrier and these empty rows at the "beginning" will re-occur throughout the data frame until a complete window is calculable *within that group*. Thus, ordering the data frame (and verifying by eye!) is also important.  
+
+See handbook page on [Grouping data] for details on grouping data.  
+
 
 ```{r}
 grouped_roll <- linelist %>%
@@ -236,7 +237,7 @@ ll_months <- linelist %>%
 
 
 <!-- ======================================================= -->
-## Calculate within `ggplot()`) {  }
+## Calculate with **tidyquant** within `ggplot()` {  }
 
 The package **tidyquant** offers another approach to calculating moving averages - this time from *within* a `ggplot()` command itself.  
 

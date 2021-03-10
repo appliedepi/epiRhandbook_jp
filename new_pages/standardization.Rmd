@@ -4,8 +4,9 @@
 This page will show you two ways to standardize an outcome, such as hospitalizations or mortality, by characteristics such as age and sex. 
 
 * Using **dsr** package 
-* Using **PHEindicatormethods** package
-`{#title_tag  }`
+* Using **PHEindicatormethods** package  
+
+We begin by extensively demonstrating the processes of data preparation/cleaning/joining, as this is common when combining population data from multiple countries, standard population data, deaths, etc.  
 
 <!-- ======================================================= -->
 ## Overview {  }
@@ -13,27 +14,40 @@ This page will show you two ways to standardize an outcome, such as hospitalizat
 There are two main ways to standardize: direct and indirect standardization.
 Let's say we would like to standardize mortality by age and sex for country A and country B, and compare the standardized rates between these countries.
 
-* For direct standardization, you will have to know the number of the at-risk population and the number of deaths for each stratum of age and sex, for country A and country B. One stratum in our example could be females between ages 15-44. 
+* For direct standardization, you will have to know the number of the at-risk population and the number of deaths for each stratum of age and sex, for country A and country B. One stratum in our example could be females between ages 15-44.  
 * For indirect standardization, you only need to know the total number of deaths and the age- and sex structure of each country. This option is therefore feasible if age- and sex-specific mortality rates or population numbers are not available. Indirect standardization is furthermore preferable in case of small numbers per stratum, as estimates in direct standardization would be influenced by substantial sampling variation. 
 
 <!-- ======================================================= -->
 ## Preparation {  }
-<h2> Preparation </h2>
 
-To show how standardization is done, we will use the `country_demographics` (country A) and `country_demographics_2` (country B) datasets, by age (in 5 year categories) and sex (female, male). We will add our own fictitious mortality data to these datasets. To make the dataset ready for use, we will perform the following steps:
+To show how standardization is done, we will use fictitious population counts and death counts from  country A and country B, by age (in 5 year categories) and sex (female, male). To make the datasets ready for use, we will perform the following preparation steps:  
 
-1. Load packages
-2. Load datasets
-3. Create one row per stratum of age and sex
-4. Add number of deaths per stratum
-5. Prepare reference population (standard population)
+1. Load packages  
+2. Load datasets  
+3. Join the populaton and death data from the two countries
+4. Pivot longer so there is one row per age-sex stratum
+5. Clean the reference population (world standard population) and join it to the country data  
 
-Alternatively, instead of just adding mortality numbers per stratum, you may have a dataset per country (or per group within a country, province, city, or other catchment area) with one row for each death and information on age and sex for each (or a significant proportion) of these deaths. In this case, you can aggregate by age and sex to create a dataset with numbers per stratum, and then add this to the dataset with population numbers per stratum.
+In your scenario, your data may come in a different format. Perhaps your data are by province, city, or other catchment area. You may have one row for each death and information on age and sex for each (or a significant proportion) of these deaths. In this case, see the pages on [Grouping data] and [Pivoting data] to create a dataset with event and population counts per age-sex stratum.  
 
-We also need a reference population, the standard population. There are several standard populations available, for the purpose of this exercise we will use the `world_standard_population_by_sex`. The World standard population is based on the populations of 46 countries and was developed in 1960. I found the website of the NHS Schotland quite informative on the European Standard Population, World Standard Population and Scotland Standard Population: https://www.opendata.nhs.scot/dataset/standard-populations
+We also need a reference population, the standard population. There are several standard populations available, for the purpose of this exercise we will use the `world_standard_population_by_sex`. The World standard population is based on the populations of 46 countries and was developed in 1960. There are many "standard" populations - as one example, the website of [NHS Scotland](https://www.opendata.nhs.scot/dataset/standard-populations) is quite informative on the European Standard Population, World Standard Population and Scotland Standard Population. 
 
 <!-- ======================================================= -->
-### Load packages {  }
+### Load packages {-}
+
+Load the packages required for this analysis:  
+
+```{r}
+pacman::p_load(
+     rio,         # to import data
+     here,        # to locate files
+     tidyverse,   # to clean, handle, and plot the data (includes ggplot2 package)
+     stringr,     # cleaning characters and strings
+     frailtypack, # needed for dsr, for frailty models
+     dsr,  
+     PHEindicatormethods)
+```
+
 
 <span style="color: orange;">**_CAUTION:_** If you have a newer version of R, the **dsr** package cannot be directly downloaded as it is archived. However, it is still available from the CRAN archive. You can install and use this one. </span>
 
@@ -58,167 +72,292 @@ require(devtools)
 devtools::install_version("dsr", version="0.2.2", repos="https://mac.R-project.org")
 ```
 
-Load the packages required for this analysis:  
 
-```{r}
-pacman::p_load(rio,       # to import data
-               here,      # to locate files
-               tidyverse, # to clean, handle, and plot the data (includes ggplot2 package)
-               frailtypack, # needed for dsr, for frailty models
-               dsr,  
-               PHEindicatormethods)
-```
 
-<!-- ======================================================= -->
-### Load data {  }
 
-```{r}
+### Load population data {-}  
+
+First we load the demographic data (counts of males and females by 5-year age category) for the two countries that we will be comparing, "Country A" and "Country B".  
+
+```{r, echo=F}
 # Country A
-countryA_demo_data <- rio::import(here::here("data", "country_demographics.csv"))
-countryA_demo_data$Country <- "A" # add column name with the name of the country
+countryA_demo <- rio::import(here::here("data", "country_demographics.csv")) %>% 
+     mutate(Country = "A") %>% 
+     select(Country, everything()) %>% 
+     mutate(age_cat5 = str_replace_all(age_cat5, "\\+", ""))
+```
 
+```{r, eval=F}
+# Country A
+countryA_demo <- import("country_demographics.csv")
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(countryA_demo, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+```{r, echo=F}
 # Country B
-countryB_demo_data <- rio::import(here::here("data", "country_demographics_2.csv"))
-countryB_demo_data$Country <- "B" # add column name with the name of the country
-
-# Join data of country A and country B in one object
-all_countries <- rbind(countryA_demo_data, countryB_demo_data)
-
-# Reference population
-standard_pop_data <- rio::import(here::here("data", "world_standard_population_by_sex.csv"))
+countryB_demo <- rio::import(here::here("data", "country_demographics_2.csv")) %>% 
+     mutate(Country = "B") %>% 
+     select(Country, everything())
 ```
 
-<!-- ======================================================= -->
-### One row per stratum {  }
-
-We need datasets with one row per stratum, while the current `all_countries` object has males and females listed on the same row.
-
-```{r}
-# Make a data frame for males only and change the column name m
-males_countries <- all_countries %>% dplyr::select(Country, age_cat5, m) # make dataframe for males only
-males_countries <- males_countries %>% rename(Tot = m) # rename columns
-males_countries$Sex <- "Male" # add column containing male sex
-
-# Do the same for females
-females_countries <- all_countries %>% dplyr::select(Country, age_cat5, f) 
-females_countries <- females_countries %>% rename(Tot = f)
-females_countries$Sex <- "Female" # add column containing female sex
-
-# Join the rows to finalize the population table with 1 row per stratum
-poptable_countries <- rbind(males_countries, females_countries) 
-poptable_countries <- poptable_countries %>% rename(AgeGroup = age_cat5) # rename column name so it matches the column name of the reference population dataset
-
-# Remove specific string from column values
-poptable_countries <- poptable_countries %>% mutate(AgeGroup = gsub("\\+", "", AgeGroup))
+```{r, eval=F}
+# Country B
+countryB_demo <- import("country_demographics_2.csv")
 ```
 
-<!-- ======================================================= -->
-### Add mortality numbers {  }
+```{r message=FALSE, echo=F}
+DT::datatable(countryB_demo, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
 
-We currently do not have number of deaths for each of the strata in our `poptable_countries` dataset, so we will need to add these. For the purpose of this analysis, we will add fictional data. Alternatively, 
-```{r}
-# Make a vector with number of deaths
-mortality_n <- c(224, 257, 251, 245, 334, 245, 154, 189, 334, 342, 565, 432, 543, 432, 245, 543, 234, 354, # for males of country A
-                 34, 37, 51, 145, 434, 120, 100, 143, 307, 354, 463, 639, 706, 232, 275, 543, 234, 274, # for males of country B
-                 194, 254, 232, 214, 316, 224, 163, 167, 354, 354, 463, 574, 493, 295, 175, 380, 177, 392, # for females of country A
-                 54, 24, 32, 154, 276, 254, 123, 164, 254, 354, 453, 654, 435, 354, 165, 432, 287, 395) # for females of country B
 
-# Make dataset including deaths
-poptable_countries$Deaths <- mortality_n # add column with number of deaths
 
-# Create factor levels 
-poptable_countries <- poptable_countries %>% mutate(AgeGroup = factor(AgeGroup, 
-                                                                      levels= c("0-4", "5-9", "10-14",
-                                                                                "15-19", "20-24", "25-29",
-                                                                                "30-34", "35-39", "40-44",
+
+
+### Load death counts {-}  
+
+Conveniently, we also have the counts of deaths during the time period of interest, by age and sex. Each country's counts are in a separate file, shown below.   
+
+```{r, echo=F}
+A_males <- c(224, 257, 251, 245, 334, 245, 154, 189, 334, 342, 565, 432, 543, 432, 245, 543, 234, 354) # for males of country A
+B_males <- c(34, 37, 51, 145, 434, 120, 100, 143, 307, 354, 463, 639, 706, 232, 275, 543, 234, 274) # for males of country B
+A_females <- c(194, 254, 232, 214, 316, 224, 163, 167, 354, 354, 463, 574, 493, 295, 175, 380, 177, 392) # for females of country A
+B_females <- c(54, 24, 32, 154, 276, 254, 123, 164, 254, 354, 453, 654, 435, 354, 165, 432, 287, 395) # for females of country B
+
+age_cat5 <- c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29",  "30-34", "35-39", "40-44",
                                                                                 "45-49", "50-54", "55-59",
                                                                                 "60-64", "65-69", "70-74",
-                                                                                "75-79", "80-84", "85")),
-                                                    Sex = factor(Sex, levels=c("Male", "Female")))
-                                   
-# Arrange by Country and AgeGroup
-poptable_countries <- poptable_countries %>% arrange(Country, AgeGroup, Sex)
+                                                                                "75-79", "80-84", "85")
+A_deaths <- data.frame(Country = "A", AgeCat = age_cat5, Male = A_males, Female = A_females)
+B_deaths <- data.frame(Country = "B", AgeCat = age_cat5, Male = B_males, Female = B_females)
 ```
+
+Deaths in Country A
+```{r message=FALSE, echo=F}
+DT::datatable(A_deaths, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Deaths in Country B
+
+```{r message=FALSE, echo=F}
+DT::datatable(B_deaths, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+
+
+
+
+### Clean populations and deaths {-}  
+
+
+We need to join and transform these data in the following ways:  
+
+* Combine country populations into one dataset and pivot "long" so that each age-sex stratum is one row  
+* Combine country death counts into one dataset and pivot "long" so each age-sex stratum is one row  
+* Join the deaths to the populations  
+
+First, we combine the country populations datasets, pivot longer, and do minor cleaning. See the page on [Pivoting data] for more detail.  
+
+```{r}
+pop_countries <- countryA_demo %>%  # begin with country A dataset
+     bind_rows(countryB_demo) %>%        # bind rows, because cols are identically named
+     pivot_longer(                       # pivot longer
+          cols = c(m, f),                   # column to transform into one
+          names_to = "Sex",                 # name for new column containing the category ("m" or "f") 
+          values_to = "Population") %>%     # name for new column containing the numeric values pivoted
+     mutate(Sex = recode(                # recode values for clarity
+          Sex,
+          "m" = "Male",
+          "f" = "Female"))
+     
+```
+
+The population data now look like this:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(pop_countries, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+And now we perform similar operations on the two deaths datasets.
+
+```{r}
+deaths_countries <- A_deaths %>%    # begin with country A deaths dataset
+     bind_rows(B_deaths) %>%        # bind rows with B dataset, because cols are identically named
+     pivot_longer(                  # pivot longer
+          cols = c(Male, Female),        # column to transform into one
+          names_to = "Sex",              # name for new column containing the category ("m" or "f") 
+          values_to = "Deaths") %>%      # name for new column containing the numeric values pivoted
+     rename(age_cat5 = AgeCat)    # rename for clarity
+     
+```
+
+The deaths data now look like this, and contains data from both countries: 
+
+```{r message=FALSE, echo=F}
+DT::datatable(deaths_countries, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+We now join the deaths and population data based on common columns `age_cat5`, `Sex`, and `Country`.  
+
+```{r}
+country_data <- pop_countries %>% 
+     left_join(deaths_countries, by = c("Country", "Sex", "age_cat5"))
+```
+
+We can now classify `Sex`, `age_cat5`, and `Country` as factors so their ordering is specified correctly. We use the `as_factor()` function from the **forcats** package, as described in the page on [Factors]. Note, classifying the factor levels doesn't visibly change the data, but the `arrange()` command does sort it by Country, age category, and sex.  
+
+```{r, warning=F, message=F}
+country_data <- country_data %>% 
+     mutate(
+          Country = as_factor(Country),
+          Country = fct_relevel(Country, "A", "B"),
+          
+          Sex = as_factor(Sex),
+          Sex = fct_relevel(Sex, "Male", "Female"),
+          
+          age_cat5 = as_factor(age_cat5),
+          age_cat5 = fct_relevel(age_cat5,
+                                 "0-4", "5-9", "10-14", "15-19",
+                                 "20-24", "25-29",  "30-34", "35-39",
+                                 "40-44", "45-49", "50-54", "55-59",
+                                 "60-64", "65-69", "70-74",
+                                 "75-79", "80-84", "85")) %>% 
+          arrange(Country, age_cat5, Sex)
+
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(country_data, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
 <span style="color: orange;">**_CAUTION:_** NB. If you have few deaths per stratum, use 10-, or 15-year categories, instead of 5-year categories for age, or combine categories</span>
 
-<!-- ======================================================= -->
-### Prepare reference population {  }
 
-The values of the column `AgeGroup` from the `standard_pop_data` contain the word "years" and "plus", while those of the `poptable_country` do not. We will have to remove this string to make it match.
+
+
+### Load reference population {-}  
+
+Lastly, we import the reference population (world "standard population" by sex)
+
+```{r, echo=F}
+# Reference population
+standard_pop_data <- rio::import(here::here("data", "world_standard_population_by_sex.csv")) %>% 
+     rename(age_cat5 = AgeGroup)
+```
+
+```{r, eval=F}
+# Reference population
+standard_pop_data <- import("world_standard_population_by_sex.csv")
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(standard_pop_data, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
+
+<!-- ======================================================= -->
+### Clean reference population {-}
+
+The values of the column `age_cat5` from the `standard_pop_data` contain the word "years" and "plus", while those of the `country_data` do not. We will have to remove this string to make the age category values match. We use `str_replace_all()` from the **stringr** package, as described in the page on [Characters and strings].  
+
+Furthermore, the package **dsr** expects that in the standard population, the column containing counts will be called `"pop"`. So we rename that column accordingly.  
 
 ```{r}
 # Remove specific string from column values
-standard_pop <- standard_pop_data %>% mutate(AgeGroup = gsub("years", "", AgeGroup))
-standard_pop <- standard_pop %>% mutate(AgeGroup = gsub("plus", "", AgeGroup))
-standard_pop <- standard_pop %>% mutate(AgeGroup = gsub(" ", "", AgeGroup))
-
-# Rename last column with total population numbers, this variable must be named pop
-standard_pop <- standard_pop %>% rename(pop = WorldStandardPopulation)
-
-# Create factor levels 
-standard_pop <- standard_pop %>% mutate(AgeGroup = factor(AgeGroup, 
-                                                          levels= c("0-4", "5-9", "10-14",
-                                                                    "15-19", "20-24", "25-29",
-                                                                    "30-34", "35-39", "40-44",
-                                                                    "45-49", "50-54", "55-59",
-                                                                    "60-64", "65-69", "70-74",
-                                                                    "75-79", "80-84", "85")),
-                                        Sex = factor(Sex, levels=c("Male", "Female")))
-                                   
-# Arrange by AgeGroup
-standard_pop <- standard_pop %>% arrange(AgeGroup, Sex, pop)
-
-# Add standard_pop to poptables_countries object (we need this in one dataset for **PHEindicatormethods**)
-countries_alldata <- left_join(poptable_countries, standard_pop, by=c("AgeGroup", "Sex"))
+standard_pop_clean <- standard_pop_data %>%
+     mutate(
+          age_cat5 = str_replace_all(age_cat5, "years", ""),   # remove "year"
+          age_cat5 = str_replace_all(age_cat5, "plus", ""),    # remove "plus"
+          age_cat5 = str_replace_all(age_cat5, " ", "")) %>%   # remove " " space
+     
+     rename(pop = WorldStandardPopulation)   # change col name to "pop", as this is expected by dsr package
 ```
+
+<span style="color: orange;">**_CAUTION:_** If you try to use `str_replace_all()` to remove a plus *symbol*, it won't work because it is a special symbol. "Escape" the specialnes by putting two back slashes in front, as in `str_replace_call(column, "\\+", "")`. </span>
+
+Finally, the package **PHEindicatormethods**, detailed below, expects the standard populations joined to the country event and population counts. So, we will create a dataset `all_data` for that purpose.  
+
+```{r}
+all_data <- left_join(country_data, standard_pop_clean, by=c("age_cat5", "Sex"))
+```
+
+This complete dataset looks like this:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(all_data, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+
 
 <!-- ======================================================= -->
 ## **dsr** package {  }
  
-<h2> Calculating and comparing directly standardized rates using the **dsr** package </h2>
+Below we demonstrate calculating and comparing directly standardized rates using the **dsr** package. The **dsr** package allows you to calculate and compare directly standardized rates (no indirectly standardized rates!).
+  
+In the data Preparation section, we made separate datasets for country counts and standard population:  
 
-Remember, we made 1) the `poptable_countries` object, which is a population table with the number of population and number of deaths per stratum per country 2) the `standard_pop` object, containing the number of population per stratum for our reference population, the World Standard Population.
- 
-The **dsr** package allows you to calculate and compare directly standardized rates (no indirectly standardized rates!).
+1) the `country_data` object, which is a population table with the number of population and number of deaths per stratum per country  
+2) the `standard_pop_clean` object, containing the number of population per stratum for our reference population, the World Standard Population  
+
+We will use these separate datasets for the **dsr** approach.  
+
 
 <!-- ======================================================= -->
-### Standardized rates {  }
+### Standardized rates {-}
 
-```{r}
+Below, we calculate rates per country directly standardized for age and sex. We use the `dsr()` function. 
+
+Of note - `dsr()` expects one data frame for the country populations and event counts (deaths), *and a **separate** data frame with the reference population*. It also expects that in this reference population dataset the unit-time column name is "pop" (we assured this in the data Preparation section).  
+
+There are many arguments, as annotated in the code below. Notably, `event = ` is set to the column `Deaths`, and the `fu = ` ("follow-up") is set to the `Population` column. We set the subgroups of comparison as the column `Country` and we standardize based on `age_cat5` and `Sex`. These last two columns are not assigned a particular named argument. See `?dsr` for details. 
+
+```{r, warning=F, message=F}
 # Calculate rates per country directly standardized for age and sex
-mortality_rate <- dsr::dsr(data=poptable_countries, # specify object containing number of deaths per stratum
-                      event=Deaths, # column containing number of deaths per stratum 
-                      fu=Tot, # column containing number of population per stratum
-                      subgroup=Country, # units we would like to compare
-                      AgeGroup, Sex, # characteristics to which we would like to standardize 
-                      refdata=standard_pop, # reference population, with numbers in column called pop
-                      method="gamma", # method to calculate 95% CI
-                      sig=0.95, # significance level
-                      mp=100000, # we want rates per 100.000 population
-                      decimals=2) # number of decimals)
+mortality_rate <- dsr::dsr(
+     data = country_data,  # specify object containing number of deaths per stratum
+     event = Deaths,       # column containing number of deaths per stratum 
+     fu = Population,      # column containing number of population per stratum
+     subgroup = Country,   # units we would like to compare
+     age_cat5,             # other columns - rates will be standardized by these
+     Sex,
+     refdata = standard_pop_clean, # reference population data frame, with column called pop
+     method = "gamma",      # method to calculate 95% CI
+     sig = 0.95,            # significance level
+     mp = 100000,           # we want rates per 100.000 population
+     decimals = 2)          # number of decimals)
 
-# Print table
+
+# Print output as nice-looking HTML table
 knitr::kable(mortality_rate) # show mortality rate before and after direct standardization
 ```
 
-Here, we see that while country A had a lower crude mortality rate than country B, it has a higher standardized rate after direct age and sex standardization.
+Above, we see that while country A had a lower crude mortality rate than country B, it has a higher standardized rate after direct age and sex standardization.
+
+
+
 
 <!-- ======================================================= -->
-### Standardized rate ratios {  }
+### Standardized rate ratios {-}
 
-```{r}
+```{r,warning=F, message=F}
 # Calculate RR
-mortality_rr <- dsr::dsrr(data=poptable_countries, # specify object containing number of deaths per stratum
-                    event=Deaths, # column containing number of deaths per stratum 
-                    fu=Tot, # column containing number of population per stratum
-                    subgroup=Country, # units we would like to compare
-                    AgeGroup, Sex, # characteristics to which we would like to standardize 
-                    refdata=standard_pop, # reference population, with numbers in column called pop
-                    refgroup="B", # reference for comparison
-                    estimate="ratio", # type of estimate
-                    sig=0.95, # significance level
-                    mp=100000, # we want rates per 100.000 population
-                    decimals=2) # number of decimals)
+mortality_rr <- dsr::dsrr(
+     data = country_data, # specify object containing number of deaths per stratum
+     event = Deaths,      # column containing number of deaths per stratum 
+     fu = Population,     # column containing number of population per stratum
+     subgroup = Country,  # units we would like to compare
+     age_cat5,
+     Sex,                 # characteristics to which we would like to standardize 
+     refdata = standard_pop_clean, # reference population, with numbers in column called pop
+     refgroup = "B",      # reference for comparison
+     estimate = "ratio",  # type of estimate
+     sig = 0.95,          # significance level
+     mp = 100000,         # we want rates per 100.000 population
+     decimals = 2)        # number of decimals
 
 # Print table
 knitr::kable(mortality_rr) 
@@ -227,21 +366,23 @@ knitr::kable(mortality_rr)
 The standardized mortality rate is 1.22 times higher in country A compared to country B (95% CI 1.17-1.27).
 
 <!-- ======================================================= -->
-### Standardized rate difference {  }
+### Standardized rate difference {-}
 
-```{r}
+```{r, warning=F, message=F}
 # Calculate RD
-mortality_rd <- dsr::dsrr(data=poptable_countries, # specify object containing number of deaths per stratum
-                    event=Deaths, # column containing number of deaths per stratum 
-                    fu=Tot, # column containing number of population per stratum
-                    subgroup=Country, # units we would like to compare
-                    AgeGroup, Sex, # characteristics to which we would like to standardize 
-                    refdata=standard_pop, # reference population, with numbers in column called pop
-                    refgroup="B", # reference for comparison
-                    estimate="difference", # type of estimate
-                    sig=0.95, # significance level
-                    mp=100000, # we want rates per 100.000 population
-                    decimals=2) # number of decimals)
+mortality_rd <- dsr::dsrr(
+     data = country_data,       # specify object containing number of deaths per stratum
+     event = Deaths,            # column containing number of deaths per stratum 
+     fu = Population,           # column containing number of population per stratum
+     subgroup = Country,        # units we would like to compare
+     age_cat5,                  # characteristics to which we would like to standardize
+     Sex,                        
+     refdata = standard_pop_clean, # reference population, with numbers in column called pop
+     refgroup = "B",            # reference for comparison
+     estimate = "difference",   # type of estimate
+     sig = 0.95,                # significance level
+     mp = 100000,               # we want rates per 100.000 population
+     decimals = 2)              # number of decimals
 
 # Print table
 knitr::kable(mortality_rd) 
@@ -249,22 +390,35 @@ knitr::kable(mortality_rd)
 
 Country A has 4.24 additional deaths per 100.000 population (95% CI 3.24-5.24) compared to country A.
 
+
+
+
+
+
+
 <!-- ======================================================= -->
 ## **PHEindicatormethods** package {  }
 
-Another way of calculating standardized rates is with the **PHEindicatormethods** package. This package allows you to calculate directly as well as indirectly standardized rates. We need the reference (standard) population as well as the country-specific mortality and population data in one object, which we have made earlier: `countries_alldata`.
+Another way of calculating standardized rates is with the **PHEindicatormethods** package. This package allows you to calculate directly as well as indirectly standardized rates.  
+
+This package expects the reference (standard) population and the country-specific mortality and population data in **one data frame**, which we have made earlier: `all_data`.
 
 <!-- ======================================================= -->
-### Directly standardized rates {  }
+### Directly standardized rates {-}
+
+Below, we first group the data by Country and then pass it to the function `phe_dsr()` to get directly standardized rates.  
+See the help with `?phr_dsr` or the links in the References section for more information.  
 
 ```{r}
 # Calculate rates per country directly standardized for age and sex
-mortality_rate_phe <- countries_alldata %>% group_by(Country) %>% 
-  PHEindicatormethods::phe_dsr(Deaths, # observed number of events (column name)
-                               n = Tot, # non-standard pops for category i.e. ageband
-                               stdpop = pop, # standard populations for each stratum
-                               stdpoptype = "field") # standalone vector or field name, for the std populations
-                                                   
+mortality_rate_phe <- all_data %>%
+     group_by(Country) %>%
+     PHEindicatormethods::phe_dsr(
+          x = Deaths,                 # column with observed number of events
+          n = Population,             # Column with non-standard pops for each category
+          stdpop = pop,               # standard populations for each stratum
+          stdpoptype = "field")       # either "vector" for a standalone vector or "field" meaning std populations are in the data  
+
 # Print table
 knitr::kable(mortality_rate_phe)
 ```
