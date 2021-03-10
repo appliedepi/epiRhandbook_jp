@@ -15,18 +15,33 @@
 
 <!-- ``` -->
 
-If you want inspiration for ways to creatively visualise your data, we suggest reviewing websites like the [R graph gallery](https://www.r-graph-gallery.com/) and [Data-to-viz](https://www.data-to-viz.com/caveats.html). 
+You can also download this [data visualization with ggplot cheatsheet](https://rstudio.com/resources/cheatsheets/) from the RStudio website.  
 
+If you want inspiration for ways to creatively visualise your data, we suggest reviewing websites like the [R graph gallery](https://www.r-graph-gallery.com/) and [Data-to-viz](https://www.data-to-viz.com/caveats.html). 
 
 
 
 <!-- ======================================================= -->
 ## Preparation {}
 
+### Load packages {-}
+
+```{r}
+pacman::p_load(
+  tidyverse,      # includes ggplot2 and other
+  rio,            # import/export
+  here,           # file locator
+  stringr,        # working with characters   
+  scales,         # transform numbers
+  ggrepel,        # smartly-placed labels
+  gghighlight,    # highlight one part of plot
+  RColorBrewer    # color scales
+)
+```
 
 ### Load data {-}  
 
-Lets start by reading in the linelist data we'll use for most of this section:
+Lets start by reading in the linelist data we will use for most of this page:
 
 ```{r, eval=T, echo=F}
 linelist_cleaned <- rio::import(here::here("data", "linelist_cleaned.rds"))
@@ -84,15 +99,17 @@ Note that this format is not very useful for other operations, and should just b
 <!-- ======================================================= -->
 ## Basics of ggplot {}
 
-Plotting with `ggplot2` is based on defining base attributes to a plot, and adding layers on top. In addition, the user can change various plot attributes like axis settings, colour schemes, and labels with additional objects that are "added" to the plot. While ggplot objects can be highly complex, the basic order of creating a ggplot looks something like this:
+**"Grammar of graphics" - ggplot2**  
 
-1. Define base/default plot attributes and aesthetic swith `ggplot()` function
+Plotting with **ggplot2** is based on defining base attributes to a plot, and "adding" layers on top. In addition, the user can change various plot attributes like axis settings, colour schemes, and labels with additional objects that are "added" to the plot. While ggplot objects can be highly complex, the basic order of creating a ggplot looks something like this:
+
+1. Define base/default plot attributes and aesthetics with `ggplot()` function
 2. Add geometric objects to the plot - i.e. is the plot a bar graph, a line plot, a scatter plot, or a histogram? Or is it a combination of these? These functions all start with `geom_` as a prefix.
 3. Change plot aesthetics e.g. changing the axes, labels, colour scheme, background etc.
 
 In code, this might look like this:
 
-```{r, eval = TRUE}
+```{r, eval = TRUE, warning=F, message=F}
 
 # define base plot attributes and dataset
 ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
@@ -107,7 +124,7 @@ ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
 With this code, the most important things to note are:
 
   1. When making a ggplot, all objects are combined with a `+` sign.
-  2. Understanding the principles behind aesthetic mapping with the `mappping = aes()` argument is essential to using ggplot. This can be done in the `ggplot()` function as well as every geometric object. Mapping with `aes()` is used to define which variables are assigned to each axis (these can be continuous or categorical variables). It is also used to define whether a variable can be used to create different plot aesthetics. This can apply to the:
+  2. Understand the principles behind aesthetic mapping with the `mappping = aes()` argument is essential to using ggplot. This can be done in the `ggplot()` function as well as every geometric object. Mapping with `aes()` is used to define which variables are assigned to each axis (these can be continuous or categorical variables). It is also used to define whether a variable can be used to create different plot aesthetics. This can apply to the:
   
     a. line colour (`col = `)
     b. filled colour (`fill = `)
@@ -178,7 +195,7 @@ wt_ht_plot
 <!-- ======================================================= -->
 ## Themes and Labels {}
 
-One of hte most important aspects of data visualisation is presenting data in a clear way with nice aesthetics. The plot we made previously looks ok, but we could make the theme a little nicer. `ggplot2` comes with some preset themes that can be used to change the theme of the plot. We can also edit themes of the plot with extreme detail with the `theme()` function. We can also add some nicer labels to the plot with the `labs()` function. There are 5 standard labeling locations:
+One of the most important aspects of data visualisation is presenting data in a clear way with nice aesthetics. The plot we made previously looks ok, but we could make the theme a little nicer. `ggplot2` comes with some preset themes that can be used to change the theme of the plot. We can also edit themes of the plot with extreme detail with the `theme()` function. We can also add some nicer labels to the plot with the `labs()` function. There are 5 standard labeling locations:
 
   1. `x` - the x-axis
   2. `y` - the y-axis
@@ -623,6 +640,32 @@ ggplot(malaria_facility_1, aes(x = data_date)) +
 
 ```
 
+
+
+## Miscellaneous  
+
+
+### Numeric display {-}  
+
+You can disable scientific notation by running this command prior to plotting.  
+
+```{r, eval=F}
+options(scipen=999)
+```
+
+Or apply `number_format()` from the **scales** package to a specific value or column, as shown below.  
+
+Use functions from the package **scales** to easily adjust how numbers are displayed. These can be applied to columns in your data frame, but are shown on individual numbers for purpose of example.  
+
+```{r}
+scales::number(6.2e5)
+scales::number(1506800.62,  accuracy = 0.1,)
+scales::comma(1506800.62, accuracy = 0.01)
+scales::comma(1506800.62, accuracy = 0.01,  big.mark = "." , decimal.mark = ",")
+scales::percent(0.1)
+scales::dollar(56)
+scales::scientific(100000)
+```
 
 ## Resources
 
