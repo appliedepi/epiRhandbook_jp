@@ -1,7 +1,9 @@
 
 # Tables { }  
 
-This section demonstrates how to create publication-ready tables, which can be inserted directly into shareable documents, including R Markdown outputs. 
+This section demonstrates how to create publication-ready tables, which can be inserted directly into shareable documents, including R Markdown outputs.  
+
+See the [Descriptive statistics] page for instruction on how to make tabulations, cross-tabulations, and descriptive summary tables.  
 
 <!-- ======================================================= -->
 ## Overview {  }
@@ -64,35 +66,72 @@ add_header_row(.,
 <!-- ======================================================= -->
 ## Preparation {  }
 
-Using packages discussed in other sections such as `gtsummary` and `dplyr`, create a table with the content of interest, with the correct columns and rows. 
+### Load packages {-} 
 
-Here we create a simple summary table of patient outcomes using the Ebola linelist. We are interested in knowing the number and proportion of patients that recover or died, as well as their median CT values, by hospital of admission. 
+Use packages discussed in other sections such as `gtsummary` and `dplyr` to create a table with the content of interest, with the correct columns and rows. 
 
-```{r message=FALSE, warning=FALSE}
-
-table <- linelist %>% 
-  group_by(hospital, outcome) %>% 
-  filter(!is.na(outcome) & hospital!="Missing") %>%  # Remove cases with missing outcome/hospital
-  summarise(ct_value = median(ct_blood), N = n()) %>%  # Calculate indicators of interest 
-  pivot_wider(values_from=c(ct_value, N), names_from = outcome) %>% #Pivot from long to wide
-  mutate(`N known` = `N_Death` + N_Recover) %>% # Calculate total number
-  arrange(-`N known`) %>% # Arrange rows from highest to lowest total
-  mutate(`Prop_Death` = `N_Death`/`N known`*100,  # Calculate proportions
-         `Prop_Recover` = `N_Recover`/`N known`*100) %>% 
-  select(hospital, `N known`, `N_Recover`, `Prop_Recover`, ct_value_Recover,
-         `N_Death`, `Prop_Death`, ct_value_Death) # Re-order columns 
-
-
-table
-
-```
-
-Load, and install if necessary, `flextable`, which we will use to convert the above table into a fully formatted and presentable table. 
+Load, and install if necessary, `flextable`, which we will use to convert the above table into a fully formatted and presentable table. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary and loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
 ```{r}
 pacman::p_load(flextable)
 
 ```
+
+### Import data {-}  
+
+
+We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Datasets used] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+
+```{r, echo=F}
+# import the linelist into R
+linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
+```
+
+```{r, eval=F}
+# import the linelist
+linelist <- rio::import("linelist_cleaned.xlsx")
+```
+
+The first 50 rows of the linelist are displayed below.
+
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+### Prepare table {-}  
+
+*Before* beginning to use **flextable** you will need to *create* your table contents.  
+
+Below is an example - we create a simple summary table of patient outcomes. We are interested in knowing the number and proportion of patients that recover or died, as well as their median CT values, by hospital of admission. 
+
+```{r message=FALSE, warning=FALSE}
+table <- linelist %>% 
+  group_by(hospital, outcome) %>%                      # Group data
+  filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
+  summarise(
+    ct_value = median(ct_blood),                       # Create new summary columns of indicators of interest
+    N = n()) %>%                                 
+  pivot_wider(                                         # Pivot from long to wide
+    values_from = c(ct_value, N),
+    names_from = outcome) %>% 
+  mutate(                                              # Calculate total number
+    `N known` = `N_Death` + N_Recover) %>% 
+  arrange(                                             # Arrange rows from highest to lowest total
+    -`N known`) %>% 
+  mutate(                                              # Calculate proportions
+    `Prop_Death` = `N_Death`/`N known`*100,  
+    `Prop_Recover` = `N_Recover`/`N known`*100) %>% 
+  select(                                              # Re-order columns
+    hospital, `N known`, `N_Recover`,
+    `Prop_Recover`, ct_value_Recover,
+    `N_Death`, `Prop_Death`, ct_value_Death)  
+
+table  # print
+
+```
+
+
 
 
 <!-- ======================================================= -->
