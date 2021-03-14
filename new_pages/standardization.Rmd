@@ -83,7 +83,6 @@ First we load the demographic data (counts of males and females by 5-year age ca
 # Country A
 countryA_demo <- rio::import(here::here("data", "country_demographics.csv")) %>% 
      mutate(Country = "A") %>% 
-     select(Country, everything()) %>% 
      mutate(age_cat5 = str_replace_all(age_cat5, "\\+", ""))
 ```
 
@@ -98,8 +97,7 @@ DT::datatable(countryA_demo, rownames = FALSE, options = list(pageLength = 5, sc
 ```{r, echo=F}
 # Country B
 countryB_demo <- rio::import(here::here("data", "country_demographics_2.csv")) %>% 
-     mutate(Country = "B") %>% 
-     select(Country, everything())
+     mutate(Country = "B")
 ```
 
 ```{r, eval=F}
@@ -171,7 +169,6 @@ pop_countries <- countryA_demo %>%  # begin with country A dataset
           Sex,
           "m" = "Male",
           "f" = "Female"))
-     
 ```
 
 The population data now look like this:  
@@ -190,7 +187,6 @@ deaths_countries <- A_deaths %>%    # begin with country A deaths dataset
           names_to = "Sex",              # name for new column containing the category ("m" or "f") 
           values_to = "Deaths") %>%      # name for new column containing the numeric values pivoted
      rename(age_cat5 = AgeCat)    # rename for clarity
-     
 ```
 
 The deaths data now look like this, and contains data from both countries: 
@@ -399,34 +395,67 @@ Country A has 4.24 additional deaths per 100.000 population (95% CI 3.24-5.24) c
 <!-- ======================================================= -->
 ## **PHEindicatormethods** package {  }
 
-Another way of calculating standardized rates is with the **PHEindicatormethods** package. This package allows you to calculate directly as well as indirectly standardized rates.  
-
-This package expects the reference (standard) population and the country-specific mortality and population data in **one data frame**, which we have made earlier: `all_data`.
+Another way of calculating standardized rates is with the **PHEindicatormethods** package. This package allows you to calculate directly as well as indirectly standardized rates. We will show both.
 
 <!-- ======================================================= -->
 ### Directly standardized rates {-}
 
-Below, we first group the data by Country and then pass it to the function `phe_dsr()` to get directly standardized rates.  
+Below, we first group the data by Country and then pass it to the function `phe_dsr()` to get directly standardized rates per country.
+
+Of note - the reference (standard) population can be provided as a **column within the country-specific data frame** or as a **separate vector**. If provided within the country-specific data frame, you have to set `stdpoptype = "field"`. If provided as a vector, set `stdpoptype = "vector"`. In the latter case, you have to make sure the ordering of rows by strata is similar in both the country-specific data frame and the reference population, as records will be matched by position. In our example below, we provided the reference population as a column within the country-specific data frame.
+
 See the help with `?phr_dsr` or the links in the References section for more information.  
 
 ```{r}
 # Calculate rates per country directly standardized for age and sex
-mortality_rate_phe <- all_data %>%
+mortality_ds_rate_phe <- all_data %>%
      group_by(Country) %>%
      PHEindicatormethods::phe_dsr(
           x = Deaths,                 # column with observed number of events
-          n = Population,             # Column with non-standard pops for each category
+          n = Population,             # column with non-standard pops for each stratum
           stdpop = pop,               # standard populations for each stratum
           stdpoptype = "field")       # either "vector" for a standalone vector or "field" meaning std populations are in the data  
 
 # Print table
-knitr::kable(mortality_rate_phe)
+knitr::kable(mortality_ds_rate_phe)
+```
+
+<!-- ======================================================= -->
+### Indirectly standardized rates {-}
+
+For indirect standardization, you need a reference population with the number of deaths and number of population per stratum. In this example, we will be calculating rates for country A using country B as the reference population, as our previous `standard_pop_clean` reference population does not include number of deaths per stratum. 
+
+Below, we first create the reference population from country B. Then, we pass mortality and population data for country A, combine it with the reference population, and pass it to the function `phe_isr()`, to get indirectly standardized rates. Of course, you can do it also vice versa.
+
+Of note - in our example below, the reference population is provided as a separate data frame. In this case, we make sure that `x = `, `n = `, `x_ref = ` and `n_ref = ` vectors are all ordered by the same standardization category (stratum) values as that in our country-specific data frame, as records will be matched by position.
+
+See the help with `?phr_isr` or the links in the References section for more information.  
+
+```{r}
+# Create reference population
+refpopCountryB <- country_data %>% 
+  filter(Country=="B") 
+
+# Calculate rates for country A indirectly standardized by age and sex
+mortality_is_rate_phe_A <- country_data %>%
+     filter(Country=="A") %>%
+     PHEindicatormethods::phe_isr(
+          x = Deaths,                 # column with observed number of events
+          n = Population,             # column with non-standard pops for each stratum
+          x_ref = refpopCountryB$Deaths,  # reference number of deaths for each stratum
+          n_ref = refpopCountryB$Population)  # reference population for each stratum
+
+# Print table
+knitr::kable(mortality_is_rate_phe_A)
 ```
 
 <!-- ======================================================= -->
 ## Resources {  }
 
-<span style="color: darkgreen;">**_TIP:_** If you would like to see another reproducible example than listed in this Handbook, please go to https://mran.microsoft.com/snapshot/2020-02-12/web/packages/dsr/vignettes/dsr.html.</span>
+<span style="color: darkgreen;">**_TIP:_** If you would like to see another reproducible example using **dsr** than listed in this Handbook, please go to https://mran.microsoft.com/snapshot/2020-02-12/web/packages/dsr/vignettes/dsr.html.</span>
+
+<span style="color: darkgreen;">**_TIP:_** For another example using **PHEindicatormethods**, please go to https://mran.microsoft.com/snapshot/2018-10-22/web/packages/PHEindicatormethods/vignettes/IntroductiontoPHEindicatormethods.html</span>
 
 **PHEindicatormethods** reference file: https://cran.r-project.org/web/packages/PHEindicatormethods/PHEindicatormethods.pdf 
+
 
