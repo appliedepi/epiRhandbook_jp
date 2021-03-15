@@ -49,7 +49,7 @@ pacman::p_load(
 ```
 
 
-<span style="color: orange;">**_CAUTION:_** If you have a newer version of R, the **dsr** package cannot be directly downloaded as it is archived. However, it is still available from the CRAN archive. You can install and use this one. </span>
+<span style="color: orange;">**_CAUTION:_** If you have a newer version of R, the **dsr** package cannot be directly downloaded from CRAN. However, it is still available from the CRAN archive. You can install and use this one. </span>
 
 For non-Mac users:  
 
@@ -83,7 +83,8 @@ First we load the demographic data (counts of males and females by 5-year age ca
 # Country A
 countryA_demo <- rio::import(here::here("data", "country_demographics.csv")) %>% 
      mutate(Country = "A") %>% 
-     mutate(age_cat5 = str_replace_all(age_cat5, "\\+", ""))
+     select(Country, everything()) %>% # re-arrange
+     mutate(age_cat5 = str_replace_all(age_cat5, "\\+", "")) # remove + symbols
 ```
 
 ```{r, eval=F}
@@ -97,7 +98,8 @@ DT::datatable(countryA_demo, rownames = FALSE, options = list(pageLength = 5, sc
 ```{r, echo=F}
 # Country B
 countryB_demo <- rio::import(here::here("data", "country_demographics_2.csv")) %>% 
-     mutate(Country = "B")
+     mutate(Country = "B") %>% 
+     select(Country, everything()) # re-arrange
 ```
 
 ```{r, eval=F}
@@ -162,11 +164,10 @@ First, we combine the country populations datasets, pivot longer, and do minor c
 pop_countries <- countryA_demo %>%  # begin with country A dataset
      bind_rows(countryB_demo) %>%        # bind rows, because cols are identically named
      pivot_longer(                       # pivot longer
-          cols = c(m, f),                   # column to transform into one
+          cols = c(m, f),                   # columns to combine into one
           names_to = "Sex",                 # name for new column containing the category ("m" or "f") 
           values_to = "Population") %>%     # name for new column containing the numeric values pivoted
-     mutate(Sex = recode(                # recode values for clarity
-          Sex,
+     mutate(Sex = recode(Sex,            # re-code values for clarity
           "m" = "Male",
           "f" = "Female"))
 ```
@@ -196,11 +197,11 @@ DT::datatable(deaths_countries, rownames = FALSE, options = list(pageLength = 5,
 ```
 
 
-We now join the deaths and population data based on common columns `age_cat5`, `Sex`, and `Country`.  
+We now join the deaths and population data based on common columns `Country`, `age_cat5`, and `Sex`.  
 
 ```{r}
 country_data <- pop_countries %>% 
-     left_join(deaths_countries, by = c("Country", "Sex", "age_cat5"))
+     left_join(deaths_countries, by = c("Country", "age_cat5", "Sex"))
 ```
 
 We can now classify `Sex`, `age_cat5`, and `Country` as factors so their ordering is specified correctly. We use the `as_factor()` function from the **forcats** package, as described in the page on [Factors]. Note, classifying the factor levels doesn't visibly change the data, but the `arrange()` command does sort it by Country, age category, and sex.  
