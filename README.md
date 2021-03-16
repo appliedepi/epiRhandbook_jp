@@ -45,7 +45,7 @@
 * To “follow along” with any of the handbook examples that use the case linelist, download and load either the “linelist_raw.xlsx” (for the Cleaning data page), or “linelist_cleaned.rds” (for any other page).  
 
 # Edit or contribute
-We welcome your comments and suggestions. You can submit an issue or pull request at our Github repository, or provide feedback via this Google survey.
+We welcome your comments and suggestions. You can submit an issue or pull request at our Github repository, or provide feedback via this Google survey.  
 ***Download the contribution guide here:*** https://nsbatra.github.io/Epi_R_handbook/contribution_guide_05-02-2021.html  
 
 # Acknowledgements
@@ -81,10 +81,10 @@ More generally, the following sources provided inspiration and laid the groundwo
 * Netlify hosts this website
 
 # Image credits
-Logo (US CDC Public Health Image Library):
-2013 Yemen looking for mosquito breeding sites
-Ebola virus
-Survey in Rajasthan
+Logo (US CDC Public Health Image Library):  
+2013 Yemen looking for mosquito breeding sites  
+Ebola virus  
+Survey in Rajasthan  
 
 # Terms of Use and License
 
