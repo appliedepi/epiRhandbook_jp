@@ -13,7 +13,6 @@ Grouping data is a core component of data management and analysis. Grouped data 
 
 This page will address the following topics:  
 
-*  
 * Grouping data with the `group_by()` function  
 * Un-group data  
 * `summarise()` grouped data with statistics  
@@ -71,7 +70,7 @@ DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(
 <!-- ======================================================= -->
 ## Grouping {  }
      
-The function `group_by()` from **dplyr** groups the rows by the unique values in the specified columns. Each unique value contitutes a group (or unique combination of values, if multiple grouping columns are specified). Subsequent changes to the dataset or calculations can then be performed within the context of each unique group.  
+The function `group_by()` from **dplyr** groups the rows by the unique values in the specified columns. Each unique value constitutes a group (or unique combination of values, if multiple grouping columns are specified). Subsequent changes to the dataset or calculations can then be performed within the context of each unique group.  
 
 For example, the command below takes the linelist and groups the rows by unique values in column `outcome`, saving the output as a new dataframe `ll_by_outcome`. The grouping column name is placed inside the parentheses of the function `group_by()`.  
 
@@ -164,7 +163,9 @@ linelist %>%
 
 ## Summarise  
 
-By applying the **dplyr** verb `summarise()` to grouped data, you can produce summary tables containing descriptive statistics *for each group*.  
+See the page on [Descriptive analysis] for a detailed description of how to produce summary tables with `summarise()`. Here we briefly address how its behavior changes when applied to grouped data.  
+
+By applying the **dplyr** verb `summarise()` to grouped data, you can produce summary tables containing descriptive statistics *for each group*. The grouping columns will always be returned in the new data frame.  
 
 Within the summarise statement, provide the name(s) of the **new** summary column(s), an equals sign, and then a statistical function to apply to the data, as shown below. For example, `min()`, `max()`, `median()`, `sd()`. Within the statistical function, list the column to be operated on and any relevant argument (e.g. `na.rm = TRUE`). You can use `sum()` to count the number of rows that meet a logical criteria (use double equals `==`).   
 
@@ -195,95 +196,7 @@ linelist %>%
     n_males    = sum(gender == "m", na.rm=T))
 ```
 
-*If you begin with aggregated data*, use `sum()` on the counts column. For example, let's say you are beginning with the table of counts below, called `linelist_agg` - it shows in "long" format the case counts by outcome and gender.  
-
-```{r, echo=F}
-linelist_agg <- linelist %>% 
-  filter(!is.na(gender),
-         !is.na(outcome)) %>% 
-  count(outcome, gender)
-linelist_agg
-```
-
-To summarise the counts in column `n` by outcome you can group by outcome and use `sum(n, na.rm=T)`. To summarise the counts by outcome *and within that by gender subset*, you can use the subset bracket [ ] syntax on the count column as below:  
-
-```{r}
-linelist_agg %>% 
-  group_by(outcome) %>% 
-  summarise(
-    total_cases = sum(n, na.rm=T),
-    male_cases = sum(n[gender == "m"], na.rm=T),
-    female_cases = sum(n[gender == "f"], na.rm=T))
-```
-
 <span style="color: darkgreen;">**_TIP:_** The summarise function works with both UK and US spelling - `summarise()` and `summarize()` call the same function.</span>
-
-
-### Summarise `across()` multiple columns  
-
-You can use summarise across multiple columns using `across()`. Specify which column to operate across by either:  
-
-* Provide a vector of column names, or  
-* Use the `select()`semantic helper functions (explained below) to select columns by criteria  
-
-Below, `mean()` is applied to ungrouped data (global calculation). The columns are specified, a function is specified (no parentheses), and finally, any additional arguments for the function (e.g. `na.rm=TRUE`).  
-
-```{r}
-linelist %>% 
-  summarise(across(.cols = c(age_years, temp),
-                   .fns = mean,
-                   na.rm=T))
-```
-
-Below, the same summarise `across()` call is applied on grouped data:  
-
-```{r}
-linelist %>% 
-  group_by(outcome) %>% 
-  summarise(across(.cols = c(age_years, temp),
-                   .fns = mean,
-                   na.rm=T))
-```
-
-Here are those `select()` helper functions that you can place *within* `across()`:  
-
-
-These are helper functions available to assist you in specifying columns:  
-
-* `everything()`  - all other columns not mentioned  
-* `last_col()`    - the last column  
-* `where()`       - applies a function to all columns and selects those which are TRUE  
-* `starts_with()` - matches to a specified prefix. Example: `starts_with("date")`
-* `ends_with()`   - matches to a specified suffix. Example: `ends_with("_end")`  
-* `contains()`    - columns containing a character string. Example: `contains("time")` 
-* `matches()`     - to apply a regular expression (regex). Example: `contains("[pt]al")`  
-* `num_range()`   - 
-* `any_of()`      - matches if column is named. Useful if the name might not exist. Example: `any_of(date_onset, date_death, cardiac_arrest)`  
-
-
-For example, to return the mean of every numeric column:  
-
-```{r}
-linelist %>% 
-  group_by(outcome) %>% 
-  summarise(across(where(is.numeric), .fns = mean, na.rm=T))
-```
-
-
-If you want summary statistics of multiple columns, in an easy-to-read format, consider a two-way table with the **gtsummary** package This package is demonstrated more extensively in the the [Descriptive statistics] page.  
-
-```{r, message = F, warning=F}
-# load package
-pacman::p_load(gtsummary) 
-
-linelist %>% 
-  select(outcome, age_years, temp, ht_cm) %>%       # select columns (optional)
-  gtsummary::tbl_summary( 
-    by = outcome,                                   # indicate grouping column (optional)
-    statistic = all_continuous() ~ "{mean} ({sd})") # return mean and std deviation for each group
-    
-```
-
 
 
 
@@ -321,6 +234,7 @@ Just like with `group_by()` you can create a new column within the `count()` com
 linelist %>% 
   count(age_class = ifelse(age >= 18, "adult", "child"), sort = T)
 ```
+
 Read more about the distinction between `tally()` and `count()` [here](https://dplyr.tidyverse.org/reference/tally.html)  
 
 Both of these verbs can be called multiple times, with the functionality "rolling up". For example, to summarise the number of genders present for each outcome, run the following. Note, the name of the final column is changed from default "n" for clarity.  
@@ -336,44 +250,19 @@ linelist %>%
 
 ### Add totals {-} 
 
-If you want to add total rows or column after using `tally()` or `count()`, consider using the **janitor** package, which offers functions like `adorn_totals()` and `adorn_percentages()`. There are many useful functions (search Help for details), here are a few of them, with examples below:  
-
-* Use `adorn_totals()` to get totals - specify the argument `where = ` either "row" or "col" or `c("row", "col")`.  
-* Use `adorn_percentages()` to convert counts to proportions - specify the argument `denominator = ` either "row", "col", or "all".  
-* Use `adorn_pct_formatting()` to convert proportions to percentages (can specify number of `digits = `, whether to add "%" with `affix_sign =`, and specify specific column names to operate on)  
-* Use `adorn_ns()` to add back the underlying counts ("N"s) to a table whose proportions were calculated by `adorn_percentages()` - to display them together. Indicate `position = ` of the Ns as either "rear" or "front" of the proportions.  
-
-
-To add totals:  
+If you want to add total rows or column after using `tally()` or `count()`, see the page on [Descriptive analysis] for demonstrations of the **janitor** package. This package offers functions like `tabyl()` to make cross-tabulations, and `adorn_totals()` and `adorn_percentages()` to add totals and convert to show percentages. Below is a brief example:  
 
 ```{r}
-linelist %>% 
-  count(outcome) %>% 
-  adorn_totals(where = "col")
+linelist %>%                                  # case linelist
+  tabyl(age_cat, gender) %>%                  # cross-tabulate counts of two columns
+  adorn_totals(where = "row") %>%             # add a total row
+  adorn_percentages(denominator = "col") %>%  # convert to proportions with column denominator
+  adorn_pct_formatting() %>%                  # convert proportions to percents
+  adorn_ns(position = "front") %>%            # display as: "count (percent)"
+  adorn_title(                                # adjust titles
+    row_name = "Age Category",
+    col_name = "Gender")
 ```
-
-To convert the numbers to proportions:  
-
-```{r}
-linelist %>% 
-  count(outcome) %>% 
-  adorn_totals(where = "row") %>%              # add total row
-  adorn_percentages(denominator = "col") %>%   # convert to column proportions
-  adorn_rounding(digits = 2)                   # round the proportions
-```
-
-To display both counts and percents:  
-
-```{r}
-linelist %>% 
-  count(outcome) %>%              # produce the counts by unique outcome
-  adorn_totals(where = "row") %>% # add total row
-  adorn_percentages("col") %>%    # add proportion by column
-  adorn_pct_formatting() %>%      # proportion converted to percent
-  adorn_ns(position = "front")    # Add the underlying N, in front of the percentage
-```
-
-
 
 
 

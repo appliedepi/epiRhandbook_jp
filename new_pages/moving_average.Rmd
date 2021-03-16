@@ -40,7 +40,7 @@ linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
 
 ```{r, eval=F}
 # import the linelist
-linelist <- rio::import("linelist_cleaned.xlsx")
+linelist <- import("linelist_cleaned.xlsx")
 ```
 
 The first 50 rows of the linelist are displayed below.
@@ -87,6 +87,8 @@ Specify the size of the window by using either `.before`, `.after`, or both argu
 
 For example, to achieve a 7-day window including the current value and the six previous, use `.before = 6`. To achieve a "centered" window provide the same number to both `.before = ` and `.after = `.    
 
+By default, `.complete = ` will be FALSE so if the full window of rows does not exist, the functions will use available rows to perform the calculation. Setting to TRUE restricts so calculations are only performed on complete windows.  
+
 **Expanding window**  
 
 To achieve *cumulative* operations, set the `.before = ` argument to `Inf`. This will conduct the operation on the current value and all coming before.  
@@ -96,12 +98,12 @@ To achieve *cumulative* operations, set the `.before = ` argument to `Inf`. This
 
 ### Rolling operations {-}  
 
-Use `slide_dbl()`, which is made specifically to slide across a numeric vector.  
-
-To calculate the rolling mean of delay from onset to hospital admission (`days_onset_hosp` column):  
+Use `slide_dbl()`, which is made specifically to slide across a numeric vector. This operates across the data frame from row 1 onwards, so be careful the ordering of the rows. For example, below we arrange the dataset by date of onset, and then calculate a rolling mean of the days delay from symptom onset to hospital admission (`days_onset_hosp` column). We set the window as the value and the two values before.  
 
 ```{r}
-rolled <- linelist %>%
+rolled <- linelist %>%  
+  
+  arrange(date_onset) %>%             # arrange rows by ascending date of onset
   
   select(                             # select only some columns, for visibility
     case_id,                     
@@ -113,8 +115,9 @@ rolled <- linelist %>%
       .x        = days_onset_hosp,    # apply function to delays column
       .f        = mean,               # use mean()
       .before   = 2,                  # use value and 2 previous values
-      .complete = TRUE))              # only use windows that have all three values present
+      .complete = FALSE)) %>%         # calculate even if three values not present
 
+  mutate(delay_roll = round(delay_roll, 2)) # round values to 2 decimal places
 ```
 
 ```{r, echo = F}
@@ -125,7 +128,9 @@ DT::datatable(rolled, rownames = FALSE, options = list(pageLength = 15, scrollX=
 
 **Grouped data**  
 
-You will see differences if your data are grouped *and* you have set `.complete = TRUE`. That argument being TRUE means that averages are only calculated for windows with no missing values. Normally, (on un-grouped data when `.complete = TRUE`) the first rows in a data frame will not return a value until the window is complete. However with grouped data, as the window moves down the data frame, any changes between groups acts as a "hard" barrier and these empty rows at the "beginning" will re-occur throughout the data frame until a complete window is calculable *within that group*. Thus, ordering the data frame (and verifying by eye!) is also important.  
+You can group your data so that the moving average is calculated within groups.  
+
+If you do this *and* you have set `.complete = TRUE` be careful of how the rows are arranged. Every change in the grouping variable will start over the minimum window to allow a calculation.
 
 See handbook page on [Grouping data] for details on grouping data.  
 
@@ -133,29 +138,42 @@ See handbook page on [Grouping data] for details on grouping data.
 ```{r}
 grouped_roll <- linelist %>%
   
-  select(                             # select only some columns, for visibility
+  select(                             # select only some columns, for example clarity
     case_id,                     
+    hospital,
     date_onset,
     days_onset_hosp) %>%  
   
-  group_by(                           # group by month of onset 
-    month = lubridate::month(date_onset)) %>%
+  arrange(hospital, date_onset) %>%   # arrange rows by hospital and then by date of onset
+
+  group_by(hospital) %>%              # group by month of onset 
+    
   
   mutate(                             # rolling mean, as before  
-    delay_roll_month = slider::slide_dbl(
+    delay_roll_hosp = slider::slide_dbl(
       .x = days_onset_hosp,
       .f = mean,
-      .before = 2,
-      .complete = TRUE
-      )
+      .before = 30,                   # 30-day sliding window
+      .complete = TRUE)
     )
+
 ```
 
-You see the difference below from above when the month of June begins:  
+You can now plot the moving averages by group. See the page on [ggplot tips] for more information on facetting and using **gghighlight**.    
 
-```{r, echo=F}
-DT::datatable(grouped_roll, rownames = FALSE, options = list(pageLength = 15, scrollX=T), class = 'white-space: nowrap' )
+```{r, warning=F, message=F}
+grouped_roll %>% 
+  ggplot()+
+  geom_line(aes(x = date_onset, y = delay_roll_hosp, color = hospital))+
+  theme_classic()+
+  gghighlight::gghighlight()+
+  facet_wrap(~hospital, ncol = 2)+
+  labs(
+    title = "Monthly rolling average of delay to care",
+    x = "Date of symptom onset",
+    y = "Days onset to admission")
 ```
+
 
 <span style="color: red;">**_DANGER:_** If you get an error saying *"slide() was deprecated in tsibble 0.9.0 and is now defunct. Please use slider::slide() instead."*, it means that the `slide()` function from the **tsibble** package is masking the `slide()` function from **slider** package. Fix this by specifying the package in the command, such as `slider::slide_dbl()`.</span>
 
@@ -167,7 +185,7 @@ Often when conducting rolling operations *by date* (common with epidemiological 
 
 * Dates are missing from the dataframe, but should be included in a window  
 
-To solve this, use `slide_index()` from **slider**. It uses a separate column as an *index* for the rolling window. If this column is a date, it will know which dates are not present in the data and account for them. Below is an example to return a 7-day rolloing average of new cases reported per day:  
+To solve this, use `slide_index()` from **slider**. It uses a separate column as an *index* for the rolling window. If this column is a date, it will know which dates are not present in the data and include them in the window as `NA`. Below is an example to return a 7-day rolling average of new cases reported per day:  
 
 * First we count the number of cases reported each day with `count()` from **dplyr** (see page on [Grouping data]).  
 
