@@ -1,7 +1,8 @@
 # The Epidemiologist R Handbook 
 
 # About this handbook
-**This is a free open-access R reference manual for applied epidemiologists and public health practitioners.**
+**This is a free open-access R reference manual for applied epidemiologists and public health practitioners.**  
+
 ***Go to www.epiRhandbook.com to see the latest version of the online handbook.***
 
 ![Project logo](https://github.com/nsbatra/Epi_R_handbook/blob/master/images/R%20Handbook%20Logo.png)
@@ -33,10 +34,15 @@
 
 **To download the offline version follow these steps:**
 
-* Click on the html file in our Github repository
+* Click on this [html file](https://github.com/nsbatra/Epi_R_handbook/tree/master/offline_long) the "offline_long" folder of this Github repository
 * Click the “Download” button. A window will open with HTML source code.
 * “Save As” the webpage, via right-click (windows) or Cmd-s (mac) - ensure the file type is “Webpage, Complete”
 * The file is large (>40MB) so content may take time to appear. It displays as one long page, so search with Ctrl+f (Cmd-f).
+
+# To download the datasets used in this book  
+
+* Go to the ["data" folder](https://github.com/nsbatra/Epi_R_handbook/tree/master/data) of this Github repository.  
+* To “follow along” with any of the handbook examples that use the case linelist, download and load either the “linelist_raw.xlsx” (for the Cleaning data page), or “linelist_cleaned.rds” (for any other page).  
 
 # Edit or contribute
 We welcome your comments and suggestions. You can submit an issue or pull request at our Github repository, or provide feedback via this Google survey.
@@ -67,12 +73,12 @@ Programmatic support was provided by the EPIET Alumni Network (EAN) and also MSF
 # Inspiration
 The multitude of tutorials and vignettes that provided knowledge for development of handbook content are credited within their respective pages.
 
-More generally, the following sources provided inspiration and laid the groundwork for this handbook:
-The “R4Epis” project (a collaboration between MSF and RECON)
-R Epidemics Consortium (RECON)
-R for Data Science book (R4DS)
-bookdown: Authoring Books and Technical Documents with R Markdown
-Netlify hosts this website
+More generally, the following sources provided inspiration and laid the groundwork for this handbook:  
+* The “R4Epis” project (a collaboration between MSF and RECON)
+* R Epidemics Consortium (RECON)
+* R for Data Science book (R4DS)
+* bookdown: Authoring Books and Technical Documents with R Markdown
+* Netlify hosts this website
 
 # Image credits
 Logo (US CDC Public Health Image Library):
