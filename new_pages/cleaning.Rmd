@@ -588,12 +588,10 @@ If your dataframe is already *grouped* (see page on [Grouping data]), `mutate()`
 ```{r, eval=F}
 # age normalized to mean of ALL rows
 linelist %>% 
-  select(case_id, age, hospital) %>% 
   mutate(age_norm = age / mean(age, na.rm=T))
 
 # age normalized to mean of hospital group
 linelist %>% 
-  select(case_id, age, hospital) %>% 
   group_by(hospital) %>% 
   mutate(age_norm = age / mean(age, na.rm=T))
 ```
@@ -605,16 +603,19 @@ Read more about using mutate on grouped dataframes in this [tidyverse mutate doc
 ### Transform multiple columns {-}
 
 
-Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple columns at once using the `across()` function from the package **dplyr** (also contained within **tidyverse** package).  
+Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple columns at once using the `across()` function from the package **dplyr** (also contained within **tidyverse** package). `across()` can be used with any **dplyr** function, but commonly with `select()`, `mutate()`, `filter()`, or `summarise()`. See how it is applied to `summarise()` in the page on [Descriptive analysis].  
 
-`across()` can be used with any **dplyr** function, but commonly with `mutate()`, `filter()`, or `summarise()`. 
-`across()` allows you to specify which columns you want a function to apply to. To specify the columns, you can name them indvidually, or use helper functions.  
+You specify the columns to `.cols = ` and the function(s) to `.fns`. Any additional arguments to provide to the function can be included after a comma, still within `across()`.   
 
-Here the transformation `as.character()` is applied to specific columns named within `across()`. Note that functions in `across()` are written *without* their parentheses ( )    
+#### `across()` column selection {-}  
+
+Specify the columns to the argument `.cols = ` - you can name them individually, or use helper functions. Specify the function to `.fns = `. Note that using the function mode demonstrated below, the function is written *without* its parentheses ( ).  
+
+Here the transformation `as.character()` is applied to specific columns named within `across()`. 
 
 ```{r, eval=F}
 linelist <- linelist %>% 
-  mutate(across(c(temp, ht_cm, wt_kg), as.character))
+  mutate(across(.cols = c(temp, ht_cm, wt_kg), .fns = as.character))
 ```
 
 There are helpers available to assist you in specifying columns:  
@@ -639,7 +640,7 @@ Here is an example of how one would change **all columns** to character class:
 ```{r, eval=F}
 #to change all columns to character class
 linelist <- linelist %>% 
-  mutate(across(everything(), as.character))
+  mutate(across(.cols = everything(), .fns = as.character))
 ```
 
 Columns where the name contains the string "date" (note placement of commas and parentheses):  
@@ -647,21 +648,29 @@ Columns where the name contains the string "date" (note placement of commas and 
 ```{r, eval=F}
 #to change all columns to character class
 linelist <- linelist %>% 
-  mutate(across(contains("date"), as.character))
+  mutate(across(.cols = contains("date"), .fns = as.character))
 ```
 
 Below, we want to mutate the columns where they are class POSIXct (a datetime class that shows timestamps) - in other words, where the function `is.POSIXct()` evaluates to `TRUE`. Then we want to apply the function `as.Date()` to these columns to convert them to a normal class Date.  
 
 ```{r, eval=F}
 linelist <- linelist %>% 
-  mutate(across(where(lubridate::is.POSIXct), as.Date))
+  mutate(across(.cols = where(lubridate::is.POSIXct), .fns = as.Date))
 ```
 
 * Note that within `across()` we also use the function `where()`  
 * Note that `is.POSIXct()` is from the package **lubridate**. Other similar functions (`is.character()`, `is.numeric()`, and `is.logical()`) are from **base R**  
 
+#### `across()` functions {-}
 
+You can read the documentation with `?across` for details on how to provide functions to `across()`. A few summary points: there are several ways to specify the function(s) to perform on a column and you can even define your own functions:  
 
+* You can provide the function name alone (e.g. `mean` or `as.character`)  
+* You can provide the function in **purrr**-style (e.g. `~ mean(.x, na.rm = TRUE)`)  
+* You can specify multiple functions by providing a list (e.g. `list(mean = mean, n_miss = ~ sum(is.na(.x))`).  
+  * If you provide multiple functions, multiple transformed columns will be returned with unique names (e.g. col_fn). You can adjust how the new columns are named with the `.names =` argument using **glue** syntax (see page on [Characters and strings]) where `{.col}` and `{.fn}` are shorthand for the column and function.  
+  
+  
 Here are a few online resources on using `across()`: [creator Hadley Wickham's thoughts/rationale](https://www.tidyverse.org/blog/2020/04/dplyr-1-0-0-colwise/)
 
 
