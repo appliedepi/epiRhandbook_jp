@@ -24,7 +24,7 @@ Below is an example of one of the outputs we'll be producing in this section.
 ```{r out.width=c('100%', '100%'), fig.show='hold', echo=F, fig.width = 12, fig.height = 9, message=F, warning=F}
 
 ## install and load packages
-pacman::p_load(tidyverse, EpiNow2, EpiEstim, here, epicontacts, rio, projections)
+pacman::p_load(tidyverse, EpiNow2, EpiEstim, here, incidence2, epicontacts, rio, projections)
 
 ## load linelist
 linelist <- import(here::here("data", "linelist_cleaned.rds"))
@@ -131,7 +131,7 @@ pacman::p_load(
    EpiNow2,      # Rt estimation
    EpiEstim,     # Rt estimation
    projections,  # Incidence projections
-   incidence,    # Handling incidence data
+   incidence2,   # Handling incidence data
    epitrix,      # Useful epi functions
    distcrete     # Discrete delay distributions
 )
@@ -456,13 +456,17 @@ serial interval (i.e. the distribution of delays between symptom onset of
 primary and secondary cases). 
 
 Incidence data can be provided as a vector, a dataframe or an `incidence`
-object from the **incidence** package, and you can even distinguish between imports
+object from the **incidence2** package, and you can even distinguish between imports
 and locally acquired infections; see the documentation at `?estimate_R` for
-further details. We will create an incidence object:
+further details.  
+
+We will create an incidence object. The page on [Epidemic curves] for more examples with the **incidence2** package. The incidence object consists of a tibble with dates and their respective case counts. We `rename()` the columns to what is expected by `estimate_R()` in a later step.  
 
 ```{r epidemic_models_epiestim_incidence, eval=T}
 ## get incidence from onset date
-cases <- incidence(linelist$date_onset)
+cases <- incidence2::incidence(linelist, date_index = date_onset) %>% 
+  rename(I = count,
+         dates = date)
 ```
 
 The package provides several options for specifying the serial interval, the
@@ -634,12 +638,12 @@ df_wide <- epiestim_res_lit$R %>%
     var = "R[t]"
   ) %>%
   ## merge in daily incidence data
-  left_join(as.data.frame(cases), "dates") %>%
+  left_join(cases, "dates") %>%
   ## calculate risk across all r estimates
   mutate(
     across(
       lower_95_r:upper_95_r,
-      ~ .x*counts,
+      ~ .x*I,
       .names = "{str_replace(.col, '_r', '_risk')}"
     )
   ) %>%

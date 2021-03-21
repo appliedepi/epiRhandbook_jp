@@ -109,7 +109,7 @@ linelist <- linelist %>%
 linelist$date_onset <- as.Date(linelist$date_of_onset, format = "%d/%m/%Y"))
 ```
 
-Most of the abbreviations are listed below:  
+Most of the abbreviations are listed below. You can see the complete list by running `?strptime`.  
 
 %d = Day number of month (5, 17, 28, etc.)  
 %j = Day number of the year (Julian day 001-366)  
@@ -453,7 +453,7 @@ med_days_outcome <- median(linelist_delay$dats_onset_to_outcome, na.rm = T)
 
 Once dates are the correct class, you often want them to display differently (e.g. in a plot, graph, or table). For example, to display as "Monday 05 Jan" instead of "2018-01-05". You can do this with the **base** R function `format()`, which accepts the date and then a character string (in quotes) specifying the desired output (same as the `format = ` argument in `as.Date()`). Read more [in this online tutorial](https://www.statmethods.net/input/dates.html). Below are most of the common placeholders for the string.  
 
-Using `format()` will convert the values to class Character, so this is generally used towards the end of an analysis or for display purposes only!
+Using `format()` will convert the values to class Character, so this is generally used towards the end of an analysis or for display purposes only! You can see the complete list by running `?strptime`.  
 
 %d = Day number of month (5, 17, 28, etc.)  
 %j = Day number of the year (Julian day 001-366)  
@@ -539,29 +539,30 @@ This may seem largely abstract, and is often not needed if the user isn't workin
 
 ### **lubridate** {-}  
 
-We generally recommend using the `floor_date()` function from **lubridate**, with the argument `unit = "week"`. This rounds the date down to the "start" of the week, as defined by the argument `week_start = `. The default week start is 1 (for Mondays) but you can specify any day of the week as the start (e.g. 7 for Sundays).  
+See the page on [Grouping data] for example of grouping by date. Below we briefly describe grouping data by weeks.  
 
-`floor_date()` can also be used to round down to other time units including "second", "minute", "hour", "day", "month", or "year").  
-The returned value is the start date of the week, in Date class. This is useful when plotting the data, as the class Date will be easily recognized and ordered correctly by `ggplot()`, and any grouping can be adjusted easily using `scale_x_date()` (e.g. `date_breaks = "3 weeks"`). This is described further in the page on [ggplot tips] and the page on [Epidemic curves].  
+We generally recommend using the `floor_date()` function from **lubridate**, with the argument `unit = "week"`. This rounds the date down to the "start" of the week, as defined by the argument `week_start = `. The default week start is 1 (for Mondays) but you can specify any day of the week as the start (e.g. 7 for Sundays). `floor_date()` can also be used to round down to other time units by setting `unit = ` to "second", "minute", "hour", "day", "month", or "year").  
 
-See the section on Date display for tips on how to adjust the *display* of dates in a plot. You can provide a week column of class Date (after using `floor_date()`) and format the display as desired by providing the desired "%" nomenclature to `date_labels = ` of `scale_x_date()`. For example, use "%Y-%W" or "%Y-%U" to return the year and week number (given Monday or Sunday week start, respectively).  
+The returned value is the start date of the week, in Date class. Date class is useful when plotting the data, as it will be easily recognized and ordered correctly by `ggplot()`.
+
+See the section on Date display for tips on how to adjust the *display* of dates in a plot. For example, if plotting an epicurve you format the date display by providing the desired strptime "%" nomenclature. For example, use "%Y-%W" or "%Y-%U" to return the year and week number (given Monday or Sunday week start, respectively).  
 
 #### Weekly counts {-}  
 
-See the page on [Epidemic curves] for an example of aggregating data into epiweeks. A brief example is below.  
+See the page on [Grouping data] for a thorough explanation of grouping data with `count()`, `group_by()`, and `summarise()`. A brief example is below.  
 
-1) Create a new 'week' column with `mutate()`, using `floor_date()`  
-2) Get counts of rows (case) per week with `count()`; filter our any cases with missing date  
+1) Create a new 'week' column with `mutate()`, using `floor_date()` with `unit = "week"  
+2) Get counts of rows (cases) per week with `count()`; filter out any cases with missing date  
 3) Follow-up with `complete()` from **tidyr** to ensure that *all* weeks appear in the data - even those with no rows/cases.  
 
 ```{r}
 # Make aggregated dataset of weekly case counts
 weekly_counts <- linelist %>% 
+  filter(!is.na(date_onset)) %>%    # remove cases missing onset date
   mutate(week = floor_date(         # make new column, week of onset
     date_onset,
     unit = "week")) %>%            
   count(week) %>%                   # group data by week and count rows per group
-  filter(!is.na(week)) %>%          # remove cases that were missing onset date
   tidyr::complete(week = seq.Date(  # ensure all weeks are present, even those with no cases reported
     from = min(week),               
     to = max(week),
