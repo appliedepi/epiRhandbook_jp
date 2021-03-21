@@ -109,13 +109,16 @@ First, we need to extract the sheet names and save them. We provide the Excel wo
 ```{r, echo=F}
 sheet_names <- readxl::excel_sheets(here("data", "hospital_linelists.xlsx"))
 
-sheet_names
 ```
 
 
 ```{r, eval=F}
 sheet_names <- readxl::excel_sheets("hospital_linelists.xlsx")
+```
 
+Here are the names:  
+
+```{r}
 sheet_names
 ```
 
@@ -123,7 +126,7 @@ Now that we have this vector of names, `map()` can provide them one-by-one to th
 
 Recall from the [Import and export] page that when used on Excel workbooks, `import()` can accept the argument `which = ` specifying the sheet to import. Within the `.f` function (`import()`), we provide `which = .x`, whose value will change with each iteration through the vector `sheet_names` - first "Central Hospital", then "Military Hospital", etc.  
 
-Of note - because we have used `map()`, the data in each Excel sheet will be saved as a separate data frame within a List. We want each of these list elements (data frames) to have a *name*, so before we pass `sheet_names` to `map()` we pass it through `set_names()`, which ensures that each list elements gets the appropriate name.  
+Of note - because we have used `map()`, the data in each Excel sheet will be saved into R as a separate data frame within a List. We want each of these list elements (data frames) to have a *name*, so before we pass `sheet_names` to `map()` we pass it through `set_names()`, which ensures that each list elements gets the appropriate name.  
 
 We save the output List as `combined`.  
 
@@ -139,13 +142,13 @@ combined <- sheet_names %>%
   map(.f = ~import("hospital_linelists.xlsx", which = .x))
 ```
 
-When we inspect output, we see that the data from each Excel sheet is saved in the List with a name. This is good, but we are not quite finished.  
+When we inspect the `combined` List output, we see that the data from each Excel sheet is saved as *named* data frames within the List. This is good, but we are not quite finished.  
 
 ```{r, fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "sheets_as_list.png"))
 ```
 
-Lastly, we combine add the function `bind_rows()` (from **dplyr**) which accepts the list of data frames and combines them into one data frame. To create a column from the list element *names*, we use the argument `.id = ` and provide it with the desired name of the new column.  
+Lastly, we use the function `bind_rows()` (from **dplyr**) which accepts the list of data frames and combines them into one data frame. To create a column from the list element *names*, we use the argument `.id = ` and provide it with the desired name of the new column.  
 
 Below is the whole sequence of commands:  
 
@@ -219,7 +222,7 @@ Remember that if you want to apply a function to only certain columns in a data 
 ```{r, eval=F}
 # convert columns with column name containing "age" to class Character
 linelist <- linelist %>% 
-  mutate(across(contains("age"), as.character))  
+  mutate(across(.cols = contains("age"), .fns = as.character))  
 ```
 
 
@@ -229,7 +232,7 @@ linelist <- linelist %>%
 
 You will often want to create your own function to provide to `map()`. One example of making a purely custom plotting function to provide to `map()` is shown below.  
 
-Let's say we want to create epidemic curves for each hospital's cases. To do this using **purrr**, our `.f` function can be `ggplot()` and extensions with `+` as usual. As the output of `map()` is always a list, the plots are stored in a list. They can be extracted and plotted with the `ggarrange()` function from the **ggpubr** package ([documentation](https://rpkgs.datanovia.com/ggpubr/reference/ggarrange.html).  
+Let's say we want to create epidemic curves for each hospital's cases. To do this using **purrr**, our `.f` function can be `ggplot()` and extensions with `+` as usual. As the output of `map()` is always a list, the plots are stored in a list. They can be extracted and plotted with the `ggarrange()` function from the **ggpubr** package ([documentation](https://rpkgs.datanovia.com/ggpubr/reference/ggarrange.html)).  
 
 
 ```{r, message = F, warning=F}

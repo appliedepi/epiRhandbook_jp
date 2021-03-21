@@ -11,6 +11,7 @@ filter <- dplyr::filter
 select <- dplyr::select
 summarise <- dplyr::summarise
 summary <- base::summary
+incidence <- incidence2::incidence
 
 #load core packages
 pacman::p_load(

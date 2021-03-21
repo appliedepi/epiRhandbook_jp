@@ -265,6 +265,97 @@ linelist %>%                                  # case linelist
 ```
 
 
+## Grouping by date  
+
+When grouping data by date, you must have or create a column for the date unit of interest, for example "day", "epiweek", "month", etc. You can make this column using `floor_date()` from **lubridate**, as explained in the page on [Working with dates] (Epidemiological weeks section). Once you have this column, you can use `count()` to group the rows and achieve aggregate counts. 
+
+One additional step that is particular to dates is to use `complete()` from **tidyr** so that the aggregated date series is *complete* including *all possible date units* within the range. Without this step, a week with no cases reported might not appear in your data! Within `complete()` you re-define the date column as a sequence of dates from the minimum to the maximum - thus the dates are expanded.  
+
+
+### Linelist cases into days  {-}  
+
+Here is an example of grouping cases into days *without* using `complete()`. Note the first rows skip over dates with no cases.  
+
+```{r}
+daily_counts <- linelist %>% 
+  filter(!is.na(date_onset)) %>%        # remove that were missing date_onset
+  count(date_onset)                     # count number of rows per unique date
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(daily_counts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Below we add the `complete()` command to ensure every day in the range is represented.
+
+```{r, eval=F}
+daily_counts <- linelist %>% 
+  filter(!is.na(date_onset)) %>%                  # remove case missing date_onset
+  count(date_onset) %>%                           # count number of rows per unique date
+  complete(date_onset = seq.Date(min(date_onset), # ensure all days appear even if no cases
+                                 max(date_onset),
+                                 by="day")) %>% 
+  mutate(n = replace_na(n, 0))                    # replace NA counts with 0
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(daily_counts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+#### Linelist cases into weeks {-}  
+
+
+The same principle can be applied for weeks. First create a new column that is the week of the case using `floor_date()` with `unit = "week"`. Then, use `count()` as above to achieve weekly case counts. Finish with `complete()` to ensure that all weeks are represented, even if they contain no cases.
+
+```{r}
+# Make dataset of weekly case counts
+weekly_counts <- linelist %>% 
+  filter(!is.na(date_onset)) %>%                      # remove cases missing date_onset
+  mutate(week = lubridate::floor_date(date_onset, unit = "week")) %>%  # new column of week of onset
+  count(week) %>%                                     # group data by week and count rows per group
+  complete(week = seq.Date(from = min(week),          # include all weeks, even if no cases
+                           to = max(week),
+                           by="week")) %>% 
+  mutate(n = replace_na(n, 0))                        # fill-in NA values with 0
+```
+
+Here are the first 50 rows of the resulting dataframe:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(weekly_counts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+#### Daily counts into weeks {-}
+
+To aggregate daily counts into weekly counts, use `floor_date()` as above. However, use `group_by()` and `summarize()` instead of `count()` because you need to `sum()` daily case counts instead of just counting the number of rows per week.
+
+
+#### Linelist cases into months {-}
+
+To aggregate cases into months, again use `floor_date()` from the **lubridate** package, but with the argument `unit = "months"`. This rounds each date down to the 1st of its month. The output will be class Date. Note that in the `complete()` step we also use `by = "months"`.  
+
+
+```{r}
+# Make dataset of monthly case counts
+monthly_counts <- linelist %>% 
+  filter(!is.na(date_onset)) %>% 
+  mutate(month = lubridate::floor_date(date_onset, unit = "months")) %>%  # new column, 1st of month of onset
+  count(month) %>%                          # count cases by month
+  complete(month = seq.Date(min(month),     # include all months with no cases reported
+                            max(month),
+                            by="month")) %>% 
+  mutate(month = replace_na(n, 0))          # replace NA with 0 for months with no cases
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(monthly_counts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+#### Daily counts into months {-}
+
+To aggregate daily counts into months counts, use `floor_date()` with `unit = "month"` as above. However, use `group_by()` and `summarize()` instead of `count()` because you need to `sum()` daily case counts instead of just counting the number of rows per month.  
+
+
+
 
 ## Arranging grouped data
 
