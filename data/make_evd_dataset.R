@@ -450,6 +450,14 @@ evd <- select(evd, case_id:age, age_unit, everything()) %>%
         select(-onset_to_hosp_days, -delay_short_long)
 head(evd, 10)
 
+# checks
+##########
+
+table(Hospital  = evd$hospital,                     # hospital name
+      YearOnset = lubridate::year(evd$`date onset`),  # year of date_onset
+      useNA     = "always")                              # show missing values
+
+
 # export
 rio::export(evd, here::here("data", "linelist_raw.xlsx"))
 
