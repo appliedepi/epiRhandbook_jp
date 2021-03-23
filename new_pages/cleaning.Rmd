@@ -86,7 +86,7 @@ pacman::p_load(
 
 ### Import {-}  
 
-Here we import the raw .xlsx case linelist using the `import()` function from the package **rio**, and save it as the data frame `linelist_raw`. If you want to download the data to follow step-by-step, see instructions in the [Datasets and versions used] page.  
+Here we import the raw .xlsx case linelist using the `import()` function from the package **rio**, and save it as the data frame `linelist_raw`. If you want to download the data to follow step-by-step, see instructions in the [Data and session info] page.  
 
 If your dataset is large and takes a long time to import, it can be useful to have the import command be separate from the pipe chain and the "raw" saved as a distinct file. This also allows easy comparison between the original and cleaned versions.  
 
@@ -117,15 +117,19 @@ DT::datatable(head(linelist_raw,50), rownames = FALSE, options = list(pageLength
 ```
 ### Review {-}  
 
-You can use the package **skimr** and its function `skim()` to get an overview of the entire dataframe (see page on [Descriptive analysis] for more info). Columns are summarised by class (character, numeric, POSIXct - a type of date class).  
+You can use the function `skim()` from the package **skimr** to get an overview of the entire dataframe (see page on [Descriptive analysis] for more info). Columns are summarised by class (character, numeric, POSIXct - a type of date class).  
+
+
+```{r, eval=F}
+skimr::skim(linelist_raw)
+```
 
 ```{r, echo=F}
 skimr::skim_without_charts(linelist_raw)
 ```
 
-```{r, eval=F}
-skimr::skim_without_charts(linelist_raw)
-```
+
+
 
  
 
@@ -244,7 +248,9 @@ linelist_raw %>%
 
 #### Empty Excel column names {-} 
 
-If you are importing an Excel sheet with a missing column name, depending on the import function used, R will likely create a column name with a value like "...1" or "...2". You can clean these names manually by referencing their position number (see example above), or their name (`linelist_raw$...1`).  
+R cannot have dataset columns that do not have column names (headers). So, if you import an Excel dataset with data but no column headers, R will fill-in the headers with names like "...1" or "...2". The number represents the column number (e.g. if the 4th column in the dataset has no header, then R will name it "..4").  
+
+You can clean these names manually by referencing their position number (see example above), or their assigned name (`linelist_raw$...1`).  
 
 
 
@@ -280,7 +286,7 @@ linelist_raw <- openxlsx::readWorkbook("linelist_raw.xlsx", fillMergedCells = TR
 
 Use `select()` from **dplyr** to select the columns you want to retain, and specify their order in the data frame. 
 
-<span style="color: orange;">**_CAUTION:_** In the examples below, `linelist` is modified with `select()` but not over-written. The modified column names are only displayed via `names()` for purpose of example.</span>
+<span style="color: orange;">**_CAUTION:_** In the examples below, the `linelist` data frame is modified with `select()` and displayed, but not saved. This is for demonstration purposes. The modified column names are printed by piping the data frame to `names()`.</span>
 
 **Here are ALL the column names in the linelist at this point in the cleaning pipe chain:**
 
@@ -436,9 +442,13 @@ linelist <- linelist_raw %>%
 ## Deduplication
 
 
-See the handbook page on [De-duplication]. Only a very simple de-duplication example is presented here.  
+See the handbook page on [De-duplication]. Only a very simple row de-duplication example is presented here.  
 
-The package **dplyr** offers the `distinct()` function to reduce the dataframe to only unique rows - removing rows that are 100% duplicates. We just add the simple command `distinct()` to the pipe chain:  
+The package **dplyr** offers the `distinct()` function. This function examines every row and reduce the data frame to only the unique rows. That is, it removes rows that are 100% duplicates.  
+
+When evaluating duplicate rows, it takes into account a range of columns - by default it considers all columns. As shown in the de-duplication page, you can adjust this column range so that the uniqueness of rows is only evaluated in regards to certain columns.  
+
+In this simple example, we just add the empty command `distinct()` to the pipe chain. This ensures there are no rows that are 100% duplicates of other rows (evaluated across all columns).  
 
 We begin with `r nrow(linelist)` rows in `linelist`. 
 
@@ -447,7 +457,7 @@ linelist <- linelist %>%
   distinct()
 ```
 
-After de-duplication there are `r nrow(linelist)` rows. Any removed would have been rows that were 100% duplicates of other rows.  
+After de-duplication there are `r nrow(linelist)` rows. Any removed rows would have been 100% duplicates of other rows.  
 
 Below, the `distinct()` command is added to the cleaning pipe chain:
 
@@ -530,7 +540,7 @@ linelist <- linelist %>%
 DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-<span style="color: darkgreen;">**_TIP:_** The function `transmute()` adds new columns just like `mutate()` but also drops/removes all other columns that you do not mention.</span>
+<span style="color: darkgreen;">**_TIP:_** A variation on `mutate()` is the function `transmute()`. This function adds a new column just like `mutate()`, but also drops/removes all other columns that you do not mention within its parentheses.</span>
 
 
 ```{r, echo=F}
@@ -568,19 +578,12 @@ linelist <- linelist %>%
   mutate(age = as.numeric(age))
 ```
 
-Examples of other converting functions:  
+In a similar way, you can use `as.character()`, `as.double()`, `as.logical()`.  
 
-```{r, eval=F}
-# Examples of modifying class
-linelist <- linelist %>% 
-  mutate(date_var      = as.Date(date_var, format = "MM/DD/YYYY"),  # see page on Dates for details  
-         numeric_var   = as.numeric(numeric_var),
-         character_var = as.character(character_var),
-         factor_var    = as_factor(factor_var)        # see page on Factors for details  
-         )
-```
+To convert to class Factor, you can use `factor()` from **base** R or `as_factor()` from **forcats**. Read more about this in the [Factors] page.  
 
-Dates can be especially difficult to convert - there are several ways, but be careful with what you are doing. Typically, the raw date values must all be in the same format for conversion to work correctly (e.g "MM/DD/YYYY", or "DD MM YYYY"). See the page on [Working with dates] for details. Especially after converting to class date, check your data visually or with a cross-table to confirm that each value was converted correctly. For `as.Date()`, the `format = ` argument is often a source of errors. 
+Converting to class date you must take care. Several methods are explained on the page [Working with dates]. Typically, the raw date values must all be in the same format for conversion to work correctly (e.g "MM/DD/YYYY", or "DD MM YYYY"). After converting to class Date, check your data visually or with a cross-table to confirm that each value was converted correctly.  
+
 
 
 

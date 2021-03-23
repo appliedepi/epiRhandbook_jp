@@ -130,7 +130,7 @@ count_data <- linelist %>%
 
 **Case linelist**
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instruction in the [Datasets and versions used] page.  
+We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instruction in the [Data and session info] page.  
 
 ```{r, eval=F}
 linelist <- import("linelist_cleaned.xlsx")
@@ -311,8 +311,9 @@ Groups are specified in the `incidence()` command, and can be used to color the 
 
 You can specify that cases with missing values in the grouping columns be listed as a distinct `NA` group by setting `na_as_group = TRUE`. Otherwise, they will be excluded from the plot.   
 
-*To color the bars by a grouping column*, you must again provide the column name to `fill = ` in the `plot()` command.  
-*To facet based on a grouping column*, see the section below on facets with **incidence2**.  
+* To color the bars by a grouping column*, you must again provide the column name to `fill = ` in the `plot()` command.  
+
+* To facet based on a grouping column*, see the section below on facets with **incidence2**.  
 
 In the example below, the cases in the whole outbreak are grouped by their age category. Missing values are included as a group. The epicurve interval is weeks.  
 
@@ -336,7 +337,7 @@ labs(fill = "Age Category") # change legend title from default "age_cat" (this i
 
 You can also have the grouped bars display side-by-side by setting `stack = FALSE` in `plot()`, as shown below:  
 
-```{r}
+```{r, warning=F, message=F}
 # Make incidence object of monthly counts. 
 monthly_gender <- incidence(
  linelist,
@@ -893,7 +894,7 @@ monthly_breaks   # print
 
 This vector can be provided to `geom_histogram()` as `breaks = `:  
 
-```{r}
+```{r, warning=F, message=F}
 # monthly 
 ggplot(data = central_data) +  
   geom_histogram(
@@ -902,25 +903,20 @@ ggplot(data = central_data) +
   labs(title = "Monthly case bins")   # title
 ```
 
-A weekly date sequence can be returned by setting `by = "week"`. For example: 
+A simple weekly date sequence can be returned by setting `by = "week"`. For example: 
 
 ```{r}
 weekly_breaks <- seq.Date(from = as.Date("2014-02-01"), to = as.Date("2015-07-15"), by = "week")
 ```
 
-An alternative to supplying specific start and end dates is to write *dynamic* code so that weekly bins begin *the Monday before the first case*. We will use these throughout the examples below.    
-
+ 
+An alternative to supplying specific start and end dates is to write *dynamic* code so that weekly bins begin *the Monday before the first case*. **We will use these date vectors throughout the examples below.**  
+     
 ```{r}
 # Sequence of weekly Monday dates for CENTRAL HOSPITAL
 weekly_breaks_central <- seq.Date(
   from = as.Date(floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 1)), # monday before first case
   to   = as.Date(ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 1)), # monday after last case
-  by   = "week")
-
-# Sequence for the entire outbreak
-weekly_breaks_all <- seq.Date(
-  from = as.Date(floor_date(min(linelist$date_onset, na.rm=T),   "week", week_start = 1)), # monday before first case
-  to   = as.Date(ceiling_date(max(linelist$date_onset, na.rm=T), "week", week_start = 1)), # monday after last case
   by   = "week")
 ```  
 
@@ -930,6 +926,16 @@ Let's unpack the rather daunting code above:
 * Likewise, the "to" value (end date of the sequence) is created using the inverse function `ceiling_date()` to return the Monday *after* the last case.  
 * The "by" argument of `seq.Date()` can be set to any number of days, weeks, or months.   
 * Use `week_start = 7` for Sunday weeks  
+
+As we will use these date vectors throughout this page, we also define one for the whole outbreak (the above is for Central Hospital only).  
+
+```{r}
+# Sequence for the entire outbreak
+weekly_breaks_all <- seq.Date(
+  from = as.Date(floor_date(min(linelist$date_onset, na.rm=T),   "week", week_start = 1)), # monday before first case
+  to   = as.Date(ceiling_date(max(linelist$date_onset, na.rm=T), "week", week_start = 1)), # monday after last case
+  by   = "week")
+```
 
 These `seq.Date()` outputs can be used to create histogram bin breaks, but also the breaks for the date labels, which may be independent from the bins. Read more about the date labels in later sections.  
 
