@@ -37,7 +37,7 @@ pacman::p_load(
 
 ### Import data {-}  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow along step-by-step, see instruction in the [Data and session info] page.  
+We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow along step-by-step, see instruction in the [Download book and data] page.  
 
 ```{r, eval=T, echo=F}
 linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
@@ -347,6 +347,23 @@ as.numeric(time2_clean - time1_clean)   # difference in hours
 Note however that without a date value provided, it assumes the date is today. To combine a string date and a string time together see how to use **stringr** in the section just above. Read more about `strptime()` [here](https://rdrr.io/r/base/strptime.html).  
 
 
+### Extract time {-}  
+
+You can extract elements of a time with `hour()`, `minute()`, or `second()` from **lubridate**.  
+
+Here is an example of extracting the hour, and then using to classify times. We begin with the column `time_admission`, which is class Character in format "HH:MM". First, the `strptime()` is used as described above to convert the characters to datetime class. Then, the hour is extracted with `hour()`, returning a number from 0-24. Finally, a column `time_period` is created using logic with `case_when()` to classify rows into Morning/Afternoon/Evening/Night based on their hour of admission.  
+
+```{r}
+linelist <- linelist %>%
+  mutate(hour_admit = hour(strptime(time_admission, format = "%H:%M"))) %>%
+  mutate(time_period = case_when(
+    hour_admit > 06 & hour_admit < 12 ~ "Morning",
+    hour_admit >= 12 & hour_admit < 17 ~ "Afternoon",
+    hour_admit >= 17 & hour_admit < 21 ~ "Evening",
+    hour_admit >=21 | hour_admit <= 6 ~ "Night"))
+```
+
+To learn more about `case_when()` see the page on [Cleaning data and core functions].  
 
 <!-- ======================================================= -->
 ## Working with dates   
