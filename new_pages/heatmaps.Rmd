@@ -1,10 +1,10 @@
 
-# Heatmaps { }  
+# Heat tiles { }  
 
 
-Heatmaps can be useful visualizations. Below we demonstrate two examples:  
+Heat tiles ("heatmaps") can be useful visualizations when trying to display 3 variables (x-axis, y-axis, and fill). Below we demonstrate two examples:  
 
-* Creating a visual matrix of transmission events by age ("who infected whom")  
+* A visual matrix of transmission events by age ("who infected whom")  
 * Tracking reporting metrics across many facilities/jurisdictions over time  
 
 
@@ -74,9 +74,14 @@ DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 
 ```
 
 
+
+### Convert to "long" {-}  
+
 **Objective**: We need to achieve a "long"-style dataframe that contains the frequency of transmission events between each age category. This will take several data manuipulation steps to achieve.  
 
-To begin, we create a dataframe of the cases and their ages, called `case_ages`. The first rows are displayed below.  
+#### Make cases data frame {-} 
+
+To begin, we create a dataframe of the cases, their ages, and their infectors - we call the data frame `case_ages`. The first rows are displayed below.  
 
 ```{r}
 case_ages <- linelist %>% 
@@ -88,6 +93,8 @@ case_ages <- linelist %>%
 # display the shapefile as a table
 DT::datatable(head(case_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
+
+#### Make infectors data frame {-}  
 
 Next, we create a dataframe of the infectors - at the moment it consists of a single column. These are the infector IDs from the linelist. Not every case has a known infector, so we remove missing values. The first rows are displayed below.  
 
@@ -103,7 +110,9 @@ infectors <- linelist %>%
 DT::datatable(head(infectors, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Next, we use joins to procure the ages of the infectors. This is not simple, because in the `linelist`, infector's ages are not listed as such. We achieve this result by joining the case linelist to the infectors - joining such that the infector in the left-side "baseline" dataframe links to the `case_id` in the right-side linelist. Thus, the data from the infector's case record in the linelist (including age) is added to the infector row. The first rows are displayed below.  
+Next, we use joins to procure the ages of the infectors. This is not simple, because in the `linelist`, the infector's ages are not listed as such. We achieve this result by joining the case `linelist` to the infectors. We begin with the infectors, and `left_join()` (add) the case `linelist` such that the `infector` id column left-side "baseline" data frame joins to the `case_id` column in the right-side `linelist` data frame.  
+
+Thus, the data from the infector's case record in the linelist (including age) is added to the infector row. The first rows are displayed below.  
 
 ```{r}
 infector_ages <- infectors %>%             # begin with infectors
