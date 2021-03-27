@@ -1,21 +1,13 @@
 
 # Interactive plots { }  
 
-Data visualisation is increasingly required to be interrogable by the audience. Consequently creating interactive plots are becoming common. There are several ways to include these but the two most important are {*plotly*} and {*shiny*}. 
+Data visualisation is increasingly required to be interrogable by the audience. Consequently, is is becoming common to create interactive plots. There are several ways to include these but the two most common are **plotly** and **shiny**. 
 
-{**Shiny**} is covered in another part of this handbook, so we will only cover {**plotly**} here.
-#TODO - link to shiny page
+In this page we will focus on converting an existing `ggplot()` plot into an interactive plot with **plotly**. You can read more about **shiny** in the [Shiny and dashboards] page.  
+Below is a basic epicurve that has been transformed to be interactive using the integration of **ggplot2** and **plotly** (hover your mouse over the plot). 
 
-
-<!-- ======================================================= -->
-## Overview {  }
-
-Making plots interactive can sound more difficult than it turns out to be, thanks to some fantastic tools.
-
-In this section, you'll learn to easily make a plot interactive with {the wonders {**ggplot2**} and {**plotly**}
-
-```{r plotly_demo, out.width=c('75%'), out.height=c('500px'), echo=F}
-pacman::p_load(plotly, ggplot2, dplyr)
+```{r plotly_demo, out.width=c('75%'), out.height=c('500px'), echo=F, warning=F, message=F}
+pacman::p_load(plotly, rio, here, ggplot2, dplyr, lubridate)
 linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
 
 ## these buttons are superfluous/distracting
@@ -43,9 +35,6 @@ p %>%
 <!-- ======================================================= -->
 ## Preparation {  }
 
-In the example above you saw a very basic epicurve that had been transformed to bbe interactive using the fantastic {**ggplot2**} - {**plotly**} integrations. So to start, make a basic chart of your own:
-
-
 ### Load packages {-}  
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary and loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
@@ -53,9 +42,19 @@ This code chunk shows the loading of packages required for the analyses. In this
 
 ```{r}
 pacman::p_load(
+  rio,       # import/export
+  here,      # filepaths
+  lubridate, # working with dates
   plotly,    # interactive plots
-  tidyverse) # data management and visualization
+  scales,    # quick percents
+  tidyverse  # data management and visualization
+  ) 
 ```
+
+### Start with a `ggplot()` {-}  
+
+In this page we assume that you are beginning with a `ggplot()` plot that you want to convert to be interactive. We will build several of these plots in this page, using the case `linelist` used in many pages of this handbook.  
+
 
 ### Import data {-}
 
@@ -82,52 +81,102 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 Manipulate and add columns (best taught in the epicurves section).  
 
 ```{r manipulate_show, eval=F}
-linelist <- linelist %>% 
-  dplyr::mutate(
-    ## If the outcome column is NA, change to "Unknown"
-    outcome = dplyr::if_else(condition = is.na(outcome),
-                             true = "Unknown",
-                             false = outcome),
-    ## If the date of infection is NA, use the date of onset instead
-    date_earliest = dplyr::if_else(condition = is.na(date_infection),
-                                   true = date_onset,
-                                   false = date_infection),
-    ## Summarise earliest date to earliest week 
-    week_earliest = lubridate::floor_date(x = date_earliest,
-                                          unit = "week",
-                                          week_start = 1)
-    )
+# linelist <- linelist %>% 
+#   dplyr::mutate(
+#     ## If the outcome column is NA, change to "Unknown"
+#     outcome = dplyr::if_else(condition = is.na(outcome),
+#                              true = "Unknown",
+#                              false = outcome),
+#     ## If the date of infection is NA, use the date of onset instead
+#     date_earliest = dplyr::if_else(condition = is.na(date_infection),
+#                                    true = date_onset,
+#                                    false = date_infection),
+#     ## Summarise earliest date to earliest week 
+#     week_earliest = lubridate::floor_date(x = date_earliest,
+#                                           unit = "week",
+#                                           week_start = 1)
+#     )
 ```
   
 Count for plotting
 ```{r manipulate_show2, eval=F}
 ## Find number of cases in each week by their outcome
-linelist <- linelist %>% 
-  dplyr::count(week_earliest, outcome)
-```
-  
-<!-- ======================================================= -->
-## Plot {  }
-Make into a plot
-```{r plot_show, eval=F}
-p <- linelist %>% 
-  ggplot()+
-  geom_col(aes(week_earliest, n, fill = outcome))+
-  xlab("Week of infection/onset") + ylab("Cases per week")+
-  theme_minimal()
-```
-  
-Make interactive
-```{r interactive_show, eval=F}
-p <- p %>% 
-  plotly::ggplotly()
-```
-  
-*Voila!*
-```{r, eval=F}
-p
+# linelist <- linelist %>% 
+#   dplyr::count(week_earliest, outcome)
 ```
 
+
+  
+<!-- ======================================================= -->
+## Plot with `ggplotly()` {  }
+
+The function `ggplotly()` from the **plotly** package makes it easy to convert a `ggplot()` to be interactive. Simply save your `ggplot()` and then pipe it to the `ggplotly()` function.  
+
+
+Below, we plot a simple line representing the proportion of cases who died in a given week:  
+
+We begin by creating a summary dataset of each epidemiological week, and the percent of cases with a known outcome that died.  
+
+```{r}
+weekly_deaths <- linelist %>%
+  group_by(epiweek = floor_date(date_onset, "week")) %>% 
+  summarise(
+    n_known_outcome = sum(!is.na(outcome), na.rm=T),
+    n_death  = sum(outcome == "Death", na.rm=T),
+    pct_death = 100*(n_death / n_known_outcome)
+  )
+```
+Here is the first 50 rows of the `weekly_deaths` dataset.  
+
+```{r message=FALSE, echo=F}
+DT::datatable(head(weekly_deaths, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+Then we create the plot with **ggplot2**, using `geom_line()`.  
+
+```{r, warning=F, message=F}
+deaths_plot <- ggplot(data = weekly_deaths)+    # begin with weekly deaths data
+  geom_line(                                    # create line
+    mapping = aes(x = epiweek, y = pct_death),  # map epiweek to x-axis, and pct_death to y-axis
+    stat = "identity")                          # line height reflects y value, not number of rows (default)
+
+deaths_plot   # print
+```
+
+
+We can make this interactive by simply passing this plot to `ggplotly()`, as below. Hover your mouse over the line to show the x and y values. 
+
+You can also see icons in the upper-right of the plot. In order, they allow you to:  
+
+* Download the current view as a PNG image  
+* Zoom in with a select box  
+* "Pan", or move across the plot by clicking and dragging the plot  
+* Zoom in, zoom out, or return to default zoom  
+* Reset axes to defaults  
+* Toggle on/off "spike lines" which are dotted lines from the interactive point extending to the x and y axes  
+* Adjustments to whether data show when you are not hovering on the line  
+
+
+```{r}
+deaths_plot %>% plotly::ggplotly()
+```
+
+Grouped data work with plotly as well. Below, a weekly epicurve is made, grouped by outcome. The stacked bars are interactive. Try clicking on the different items in the legend (they will appear/disappear).  
+
+
+```{r plot_show, eval=F}
+# Make epidemic curve with incidence2 pacakge
+p <- incidence2::incidence(
+  linelist,
+  date_index = date_onset,
+  interval = "weeks",
+  groups = outcome) %>% plot(fill = outcome)
+```
+
+```{r, echo=T, eval=F}
+# Plot interactively  
+p %>% ggplotly()
+```
+  
 ```{r, eval=TRUE, out.width=c('95%'), out.height=c('500px'), echo=FALSE}
 p %>% 
   plotly::ggplotly() %>% 
@@ -136,46 +185,64 @@ p %>%
   
 <!-- ======================================================= -->
 ## Modifications {  }
-When exporting in an Rmarkdown generated HTML (like this book!) you want to make the plot as small as possible (with no negative side effects in most cases). For this, just add add this line:
+
+### File size {-}  
+
+When exporting in an Rmarkdown generated HTML (like this book!) you want to make the plot as small data size as possible (with no negative side effects in most cases). For this, just pipe the interactive plot to `partial_bundle()`, also from **plotly**.  
+
 ```{r plot_tidyshow, eval=F}
 p <- p %>% 
-  plotly::partial_bundle()
+  ggploty() %>% 
+  partial_bundle()
 ```
-  
-Some of the buttons on a standard plotly (as shown on the preparation tab) are superfluous and can be distracting, so it's best to remove them. You can do this simply by piping the output into `plotly::config`
+
+### Buttons {-}  
+
+Some of the buttons on a standard plotly are superfluous and can be distracting, so it's best to remove them. You can do this simply by piping the output into `config()` from **plotly** and specifying which buttons to remove. In the below example we specify in advance the names of the buttons to remove, and provide them to the argument `modeBarButtonsToRemove = `. We also set `displaylogo = FALSE` to remove the plotly logo.  
+
 ```{r plot_tidyshow2, eval=F}
-## these buttons are superfluous/distracting
+## these buttons are distracting and we want to remove them
 plotly_buttons_remove <- list('zoom2d','pan2d','lasso2d', 'select2d','zoomIn2d',
                               'zoomOut2d','autoScale2d','hoverClosestCartesian',
                               'toggleSpikelines','hoverCompareCartesian')
 
-p <- p %>% 
+p <- p %>%          # re-define interactive plot without these buttons
   plotly::config(displaylogo = FALSE, modeBarButtonsToRemove = plotly_buttons_remove)
 ```
 
-<!-- ======================================================= -->
-## Example {  }
 
-Earlier you saw `#TODO link to heatmaps` how to make heatmaps, and they are just as easy to make interactive.
-```{r example2, eval=T, echo=F}
+
+<!-- ======================================================= -->
+## Heat tiles {  }
+
+You can make almost any `ggplot()` plot interactive, including heat tiles. In the page on [Heat tiles] you can read about how to make the below `ggplot()`, which displays the proportion of days per week that certain facilities reported data to their province.  
+
+Here is the code, although we will not describe it in depth here.  
+
+```{r eval=T, message=F, warning=F}
+# import data
 facility_count_data <- rio::import(here::here("data", "facility_count_data.rds"))
 
+# aggregate data into Weeks for Spring district
 agg_weeks <- facility_count_data %>% 
   filter(District == "Spring",
          data_date < as.Date("2019-06-01")) %>% 
-  mutate(week = aweek::date2week(data_date,
-                                 start_date = "Monday",
-                                 floor_day = TRUE,
-                                 factor = TRUE)) %>% 
+  mutate(week = aweek::date2week(
+    data_date,
+    start_date = "Monday",
+    floor_day = TRUE,
+    factor = TRUE)) %>% 
   group_by(location_name, week, .drop = F) %>%
-  summarize(n_days          = 7,
-            n_reports       = dplyr::n(),
-            malaria_tot     = sum(malaria_tot, na.rm = T),
-            n_days_reported = length(unique(data_date)),
-            p_days_reported = round(100*(n_days_reported / n_days))) %>% 
+  summarize(
+    n_days          = 7,
+    n_reports       = dplyr::n(),
+    malaria_tot     = sum(malaria_tot, na.rm = T),
+    n_days_reported = length(unique(data_date)),
+    p_days_reported = round(100*(n_days_reported / n_days))) %>% 
   right_join(tidyr::expand(., week, location_name)) %>% 
   mutate(week = aweek::week2date(week))
 
+# create plot
 metrics_plot <- ggplot(agg_weeks,
        aes(x = week,
            y = location_name,
@@ -204,19 +271,26 @@ metrics_plot <- ggplot(agg_weeks,
        title = "Percent of days per week that facility reported data",
        subtitle = "District health facilities, April-May 2019",
        caption = "7-day weeks beginning on Mondays.")
+
+metrics_plot # print
 ```
 
-```{r, echo=T, eval=T, out.width=c('95%'), out.height=c('500px')}
+Below, we make it interactive and modify it for simple buttons and file size.  
+
+```{r, eval=T, out.width=c('95%'), out.height=c('500px')}
 metrics_plot %>% 
   ggplotly() %>% 
   partial_bundle() %>% 
   config(displaylogo = FALSE, modeBarButtonsToRemove = plotly_buttons_remove)
 ```
 
-<!-- ======================================================= -->
-## Maps - preparation {  }
+## Maps {-}  
 
-You can even make interactive maps! However, they're slightly trickier. Although {**plotly**} works well with `ggplot2::geom_sf` in RStudio, when you try to include it's outputs in Rmarkdown HTML files (like this book), it doesn't work well.  
+You can also make `ggplot()` GIS maps interactive, although it makes a bit more care. 
+
+THIS SECTION IS UNDER CONSTRUCTION 
+
+Although **plotly** works well with `ggplot2::geom_sf` in RStudio, when you try to include its outputs in Rmarkdown HTML files (like this book), it doesn't work well.  
   
 So instead you can use {**plotly**}'s own mapping tools which can be tricky but are easy when you know how. Read on...  
   
@@ -257,7 +331,7 @@ geoJSON$features <- purrr::map(.x = geoJSON$features, give_id)
 ```
 
 <!-- ======================================================= -->
-## Maps - plot {  }
+### Maps - plot {  }
 
 ```{r, echo=T, eval=T, out.width=c('95%'), out.height=c('500px'),warning=F}
 plotly::plot_ly() %>% 
