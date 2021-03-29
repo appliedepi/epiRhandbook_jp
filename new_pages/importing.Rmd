@@ -338,7 +338,7 @@ names(df) <- paste(names(df), df[1, ], sep = "_")
 
 ## Multiple files - import, export, split, combine  
 
-See the page on [Iteration] for examples of how to import and combine multiple files, or multiple Excel workbook files. This page also has examples on how to split a data frame into parts and export each one separately, or as named sheets in an Excel workbook.  
+See the page on [Iteration and loops] for examples of how to import and combine multiple files, or multiple Excel workbook files. That page also has examples on how to split a data frame into parts and export each one separately, or as named sheets in an Excel workbook.  
 
 
 
@@ -346,9 +346,9 @@ See the page on [Iteration] for examples of how to import and combine multiple f
 <!-- ======================================================= -->
 ## Import from Github {}
 
-Importing data directly from Github into R can be easy or annoying, depending on the file type or file size. Below are some approaches:  
+Importing data directly from Github into R can be very easy or can require a few steps - depending on the file type. Below are some approaches:  
 
-### CSV files  
+### CSV files {-}  
 
 It can be easy to import a .csv file directly from Github into R with an R command.  
 
@@ -361,13 +361,13 @@ It can be easy to import a .csv file directly from Github into R with an R comma
 knitr::include_graphics(here::here("images", "download_csv_raw.png"))
 ```
 
-### XLSX files  
+### XLSX files {-}  
 
-You may not be able to view the "Raw" data for some files (e.g. .xlsx, .rds, .nwk)
-1) Go to the **["data" folder](https://github.com/nsbatra/Epi_R_handbook/tree/master/data)** of our Github repository  
-2) Click on "linelist_raw.xlsx"  
-3) Click the "Download" button as shown below  
-4) Save the file on your computer, and import it into R with the `import()` function from **rio**, as described in the page on [Import and export].  
+You may not be able to view the "Raw" data for some files (e.g. .xlsx, .rds, .nwk, .shp)  
+
+1) Go to the Github repo, locate the file of interest, and click on it  
+2) Click the "Download" button, as shown below  
+3) Save the file on your computer, and import it into R  
 
 
 ```{r out.height = "50%", fig.align = "center", echo=F}
@@ -458,6 +458,112 @@ df_from_clipboard <- read.table(
 ```
 
 
+
+
+
+
+
+
+## Import most recent file {-}  
+
+Often you may receive daily updates to your datasets. In this case you will want to write code that imports the most recent file. Below we present two ways to approach this:  
+
+* Selecting the file based on the date in the file name  
+* Selecting the file based on file metadata (last modification)  
+
+
+### Dates in file name {-}  
+
+This approach depends on three premises:  
+
+1) You trust the dates in the file names  
+2) The dates are numeric and appear in *generally* the same format (e.g. year then month then day)  
+3) There are no other numbers in the file name  
+
+We will explain each step, and then show you them combined at the end. First, use `dir()` from **base** R to extract just the file names for each file in the folder of interest. See the page on [Directory interactions] for more details about `dir()`. In this example, the folder of interest is the folder "linelists" within the folder "data" within the R project. 
+
+```{r}
+linelist_filenames <- dir(here("data", "linelists")) # get file names from folder
+linelist_filenames                                   # print
+```
+
+Once you have this vector of names, you can extract the dates by applying `str_extract()` from **stringr** using this regular expression. It extracts any numbers in the file name (including any other characters in the middle such as dashes or slashes). You can read more about **stringr** in the [Strings and characters] page.  
+
+```{r}
+linelist_dates_raw <- stringr::str_extract(linelist_filenames, "[0-9].*[0-9]") # extract numbers and any characters in between
+linelist_dates_raw  # print
+```
+
+Assuming  dates are written in the same date general format (e.g. Year Month Day) you can use **lubridate**'s flexible `ymd()` function (or `dmy()` or `mdy()`) to convert them to dates. For these functions, the dashes, spaces, or slashes do not matter, only of order of the numbers. Read more in [Working with dates].  
+
+```{r}
+linelist_dates_clean <- lubridate::ymd(linelist_dates_raw)
+linelist_dates_clean
+```
+
+
+The **base** R function `which.max()` can then be used to return the index position (e.g. 1st, 2nd, 3rd, ...) of the maximum date value. The latest file is correctly identified as the 6th file - "case_linelist_2020-10-08.xlsx".  
+
+```{r}
+index_latest_file <- which.max(linelist_dates_clean)
+index_latest_file
+```
+
+If we condense all these commands, the complete code could look like below. Note that the `.` in the last line is a placeholder for the piped object at that point in the pipe sequence. At that point the value is simply the number 6. This is placed in double brackets to extract the 6th element of the vector of file names produced by `dir()`.    
+
+```{r}
+# load packages
+pacman::p_load(
+  tidyverse,         # data management
+  stringr,           # work with strings/characters
+  lubridate,         # work with dates
+  rio,               # import / export
+  here,              # relative file paths
+  fs)                # directory interactions
+
+# extract the file name of latest file
+latest_file <- dir(here("data", "linelists")) %>%  # file names from "linelists" sub-folder          
+  str_extract("[0-9].*[0-9]") %>%                  # pull out dates (numbers)
+  ymd() %>%                                        # convert numbers to dates (assuming year-month-day format)
+  which.max() %>%                                  # get index of max date (latest file)
+  dir(here("data", "linelists"))[[.]]              # return the filename of latest linelist
+
+latest_file  # print name of latest file
+```
+
+You can now use this name to finish the relative file path, with `here()`:  
+
+```{r}
+here("data", "linelists", latest_file) 
+```
+
+And you can now import the latest file:  
+
+```{r, eval=F}
+# import
+import(here("data", "linelists", latest_file)) # import 
+```
+
+ 
+
+
+
+### Use the file info {-}  
+
+If your files do not have dates in their names (or you do not trust those dates), you can try to extract the last modification date from the file metadata. Use functions from the package **fs** to examine the metadata information for each file, which includes the last modification time and the file path.  
+
+Below, we provide the folder of interest to **fs**'s `dir_info()`. In this case, the folder of interest is the sub-folder "linelists" within the folder "data" within the R project. The result is a data frame with one line per file and columns for `modification_time`, `path`, etc. You can see a visual example of this in the page on [Directory interactions].    
+
+We can sort this data frame of files by the column `modification_time`, and then keep only the top/latest row (file) with **base** R's `head()`. Then we can extract the file path of this latest file only with the **dplyr** function `pull()` on the column `path`. Finally we can pass this file path to `import()`. The imported file is saved as `latest_file`.  
+
+```{r, eval=F}
+latest_file <- dir_info(here("data", "linelists")) %>%  # collect file info on all files in directory
+  arrange(desc(modification_time)) %>%      # sort by modification time
+  head(1) %>%                               # keep only the top (latest) file
+  pull(path) %>%                            # extract only the file path
+  import()                                  # import the file
+
+```
 
 
 <!-- ======================================================= -->

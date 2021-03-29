@@ -88,7 +88,8 @@ summary(linelist$age_years)
 You can access and save one specific part of it with index brackets [ ]:  
 
 ```{r}
-summary(linelist$age_years)[[2]]
+summary(linelist$age_years)[[2]]            # return only the 2nd element
+# summary(linelist$age_years)[["1st Qu."]]  # equivalent, alternative to above by element name
 ```
 
 You can return individual statistics with **base** R functions like `max()`, `min()`, `median()`, `mean()`, `quantile()`, `sd()`, and `range()`. See the [R Basics] page for a complete list.  
@@ -302,15 +303,13 @@ age_summary <- linelist %>%
 age_summary
 ```
 
-You can calculate proportions *within groups* by having two levels of aggregation prior to using `mutate()`. The table below first groups the data frame by `outcome` and then groups again and counts by column `age_cat`, achieving the breakdown of age *by outcome*. Note that you can add more stratifications by adding columns to the `group_by()` command.  
+Below is a method to calculate proportions *within groups*. It relies on different levels of data grouping being selectively applied and removed. First, the data are grouped on `outcome` via `group_by()`. Then, `count()` is applied. This function further groups the data by `age_cat` and returns counts for each `outcome`-`age-cat` combination. Importantly - as it finishes its process, `count()` also *ungroups* the `age_cat` grouping, so the only remaining data grouping is the original grouping by `outcome`. Thus, the final step of calculating percents (over `sum(n)`) is still grouped by `outcome`.  
 
 ```{r}
-age_by_outcome <- linelist %>% 
-  group_by(outcome) %>%                  # group first by outcome 
-  count(age_cat) %>%                     # group again and count by gender (produces "n" column)
-  mutate(                                # calculate percent - note the denominator is by outcome group
-    percent = scales::percent(n / sum(n))
-    ) 
+age_by_outcome <- linelist %>%                  # begin with linelist
+  group_by(outcome) %>%                         # group by outcome 
+  count(age_cat) %>%                            # group and count by age_cat, and then remove age_cat grouping
+  mutate(percent = scales::percent(n / sum(n))) # calculate percent - note the denominator is by outcome group
 ```
 
 ```{r, echo=F}
@@ -372,7 +371,7 @@ Some tips:
 * To calculate these statistics on the entire dataset, use `summarise()` without `group_by()`  
 
 
-### Glueing together {-}  
+#### Glueing together {-}  
 
 You can also use `str_glue()` from **stringr** to combine columns into one new column - typically used *after* the `summarise()` command.  
 
@@ -415,7 +414,6 @@ linelist %>%
       na.rm=TRUE)
     )
 ```
-
 
 
 ### On aggregated data {-}  
@@ -512,6 +510,193 @@ age_by_outcome %>%
   select(-percent) %>%   # keep only counts for simplicity
   pivot_wider(names_from = age_cat, values_from = n)  
 ```
+
+
+### Total rows {-}  
+
+When `summarise()` operates on grouped data it does not automatically produce "total" statistics. Below, two approaches to adding a total row are presented:  
+
+#### **janitor**'s `adorn_totals()` {-}  
+
+If your table consists only of counts or proportions/percents that can be summed into a total, then you can add *sum* totals using **janitor**'s `adorn_totals()` as described in the section above. Note that this function can only sum the numeric columns - if you want to calculate total summary statistics see the next section.  
+
+Below, `linelist` is grouped by gender and summarised into a table that described the numer of cases with known outcome, deaths, and recovered. Piping the table to `adorn_totals()` adds a total row at the bottom reflecting the sum of each column. The further `adorn_*()` functions adjust the display as noted in the code.  
+```{r}
+linelist %>% 
+  group_by(gender) %>%
+  summarise(
+    known_outcome = sum(!is.na(outcome)),           # Number of rows in group where outcome is not missing
+    n_death  = sum(outcome == "Death", na.rm=T),    # Number of rows in group where outcome is Death
+    n_recover = sum(outcome == "Recover", na.rm=T), # Number of rows in group where outcome is Recovered
+  ) %>% 
+  adorn_totals() %>%                                # Adorn total row (sums of each numeric column)
+  adorn_percentages("col") %>%                      # Get column proportions
+  adorn_pct_formatting() %>%                        # Convert proportions to percents
+  adorn_ns(position = "front")                      # display % and counts (with counts in front)
+```
+
+#### `summarise()` on "total" data and then `bind_rows()` {-}  
+
+If your table consists of summary statistics such as `median()`, `mean()`, etc, the `adorn_totals()` approach shown above will *not* be sufficient. Instead, to get summary statistics for the entire dataset you must calculate them with a separate `summarise()` command and then bind the results to the original grouped summary table. To do the binding you can use `bind_rows()` from **dplyr**. Below is an example:  
+
+You can make a summary table of outcome *by hospital* with `group_by()` and `summarise()` like this:  
+
+```{r, warning=F, message=F}
+by_hospital <- linelist %>% 
+  filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
+  group_by(hospital, outcome) %>%                      # Group data
+  summarise(                                           # Create new summary columns of indicators of interest
+    N = n(),                                            # Number of rows per hospital-outcome group     
+    ct_value = median(ct_blood, na.rm=T))               # median CT value per group
+  
+by_hospital # print table
+```
+
+To get the totals, run the same `summarise()` command but only group the data by outcome (not by hospital), like this:  
+
+```{r}
+totals <- linelist %>% 
+      filter(!is.na(outcome) & hospital != "Missing") %>%
+      group_by(outcome) %>%                            # Grouped only by outcome, not by hospital    
+      summarise(
+        N = n(),                                       # These statistics are now by outcome only     
+        ct_value = median(ct_blood, na.rm=T))
+
+totals # print table
+```
+
+We can bind these two data frames together. Note that `by_hospital` has 4 columns whereas `totals` has 3 columns. By using `bind_rows()`, the columns are combined by name, and any extra space is filled in with `NA` (e.g the column `hospital` values for the two new `totals` rows). After binding the rows, we convert these empty spaces to "Total"  using `replace_na()` (see [Cleaning data and core functions] page).  
+
+```{r}
+table_long <- bind_rows(by_hospital, totals) %>% 
+  mutate(hospital = replace_na(hospital, "Total"))
+```
+
+Here is the new table with "Total" rows at the bottom.  
+
+```{r, message=FALSE, echo=F}
+DT::datatable(table_long, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
+```
+
+This table is in a "long" format, which may be what you want. *Optionally*, you can *pivot* this table *wider* to make it more readable. See the section on pivoting wider above, and the [Pivoting data] page. You can also add more columns, and arrange it nicely.  
+
+```{r}
+table_long %>% 
+  
+  # Pivot wider and format
+  ########################
+  mutate(hospital = replace_na(hospital, "Total")) %>% 
+  pivot_wider(                                         # Pivot from long to wide
+    values_from = c(ct_value, N),                       # new values are from ct and count columns
+    names_from = outcome) %>%                           # new column names are from outcomes
+  mutate(                                              # Add new columns
+    N_Known = N_Death + N_Recover,                      # number with known outcome
+    Pct_Death = N_Death / N_Known * 100,               # percent cases who died
+    Pct_Recover = N_Recover/N_Known * 100) %>%         # percent who recovered
+  select(                                              # Re-order columns
+    hospital, N_Known,                                   # Intro columns
+    N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
+    N_Death, Pct_Death, ct_value_Death)  %>%             # Death columns
+  arrange(N_Known)                                  # Arrange rows from lowest to highest (Total row at bottom)
+
+```
+
+And then you can print this nicely with HTML - below is the output printed with **flextable**. You can read more in depth about this example and how to achieve this nice table in the [HTML tables] page.  
+
+```{r echo=FALSE, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
+
+linelist <- rio::import(here::here("data", "linelist_cleaned.rds")) 
+
+border_style = officer::fp_border(color="black", width=1)
+
+pacman::p_load(
+  rio,            # import/export
+  here,           # file pathways
+  flextable,      # make HTML tables 
+  officer,        # helper functions for tables
+  tidyverse)      # data management, summary, and visualization
+
+table <- linelist %>% 
+  # filter
+  ########
+  filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
+  
+  # Get summary values per hospital-outcome group
+  ###############################################
+  group_by(hospital, outcome) %>%                      # Group data
+  summarise(                                           # Create new summary columns of indicators of interest
+    N = n(),                                            # Number of rows per hospital-outcome group     
+    ct_value = median(ct_blood, na.rm=T)) %>%           # median CT value per group
+  
+  # add totals
+  ############
+  bind_rows(                                           # Bind the previous table with this mini-table of totals
+    linelist %>% 
+      filter(!is.na(outcome) & hospital != "Missing") %>%
+      group_by(outcome) %>%                            # Grouped only by outcome, not by hospital    
+      summarise(
+        N = n(),                                       # Number of rows for whole dataset     
+        ct_value = median(ct_blood, na.rm=T))) %>%     # Median CT for whole dataset
+  
+  # Pivot wider and format
+  ########################
+  mutate(hospital = replace_na(hospital, "Total")) %>% 
+  pivot_wider(                                         # Pivot from long to wide
+    values_from = c(ct_value, N),                       # new values are from ct and count columns
+    names_from = outcome) %>%                           # new column names are from outcomes
+  mutate(                                              # Add new columns
+    N_Known = N_Death + N_Recover,                      # number with known outcome
+    Pct_Death = N_Death / N_Known * 100,               # percent cases who died
+    Pct_Recover = N_Recover/N_Known * 100) %>%         # percent who recovered
+  select(                                              # Re-order columns
+    hospital, N_Known,                                   # Intro columns
+    N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
+    N_Death, Pct_Death, ct_value_Death)  %>%             # Death columns
+  arrange(N_Known) %>%                                 # Arrange rows from lowest to highest (Total row at bottom)
+
+  # formatting
+  ############
+  flextable() %>% 
+  add_header_row(
+    top = TRUE,                # New header goes on top of existing header row
+    values = c("Hospital",     # Header values for each column below
+               "Total cases with known outcome", 
+               "Recovered",    # This will be the top-level header for this and two next columns
+               "",
+               "",
+               "Died",         # This will be the top-level header for this and two next columns
+               "",             # Leave blank, as it will be merged with "Died"
+               "")) %>% 
+    set_header_labels(         # Rename the columns in original header row
+      hospital = "", 
+      N_Known = "",                  
+      N_Recover = "Total",
+      Pct_Recover = "% of cases",
+      ct_value_Recover = "Median CT values",
+      N_Death = "Total",
+      Pct_Death = "% of cases",
+      ct_value_Death = "Median CT values")  %>% 
+  merge_at(i = 1, j = 3:5, part = "header") %>% # Horizontally merge columns 3 to 5 in new header row
+  merge_at(i = 1, j = 6:8, part = "header") %>%  
+  border_remove() %>%  
+  theme_booktabs() %>% 
+  vline(part = "all", j = 2, border = border_style) %>%   # at column 2 
+  vline(part = "all", j = 5, border = border_style) %>%   # at column 5
+  merge_at(i = 1:2, j = 1, part = "header") %>% 
+  merge_at(i = 1:2, j = 2, part = "header") %>% 
+  width(j=1, width = 2.7) %>% 
+  width(j=2, width = 1.5) %>% 
+  width(j=c(4,5,7,8), width = 1) %>% 
+  flextable::align(., align = "center", j = c(2:8), part = "all") %>% 
+  bg(., part = "body", bg = "gray95")  %>% 
+  colformat_num(., j = c(4,7), digits = 1) %>% 
+  bold(i = 1, bold = TRUE, part = "header") %>% 
+  bold(i = 6, bold = TRUE, part = "body")
+
+
+table
+```
+
 
 
 ## **gtsummary** package   
@@ -668,14 +853,14 @@ Converting a `table()` object directly to a data frame is not straight-forward. 
 1) Create the table, *without using* `useNA = "always"`. Instead convert `NA` values to "(Missing)" with `fct_explicit_na()` from **forcats**.  
 2) Add totals (optional) by piping to `addmargins()`  
 3) Pipe to the **base** R function `as.data.frame.matrix()`  
-4) Pipe the table to the **dplyr** function `add_rownames()`, specifying the name for the first column  
+4) Pipe the table to the **tibble** function `rownames_to_column()`, specifying the name for the first column  
 5) Print, View, or export as desired. In this example we use `flextable()` from package **flextable** as described in the [HTML tables] page. This will print to the RStudio viewer pane as a pretty HTML.  
 
 ```{r, warning=F, message=F}
 table(fct_explicit_na(linelist$age_cat), fct_explicit_na(linelist$outcome)) %>% 
   addmargins() %>% 
   as.data.frame.matrix() %>% 
-  dplyr::add_rownames(var = "Age Category") %>% 
+  tibble::rownames_to_column(var = "Age Category") %>% 
   flextable::flextable()
 ```
 

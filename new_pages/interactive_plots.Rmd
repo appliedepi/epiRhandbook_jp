@@ -4,7 +4,8 @@
 Data visualisation is increasingly required to be interrogable by the audience. Consequently, is is becoming common to create interactive plots. There are several ways to include these but the two most common are **plotly** and **shiny**. 
 
 In this page we will focus on converting an existing `ggplot()` plot into an interactive plot with **plotly**. You can read more about **shiny** in the [Shiny and dashboards] page.  
-Below is a basic epicurve that has been transformed to be interactive using the integration of **ggplot2** and **plotly** (hover your mouse over the plot). 
+
+Below is a basic epicurve that has been transformed to be interactive using the integration of **ggplot2** and **plotly** (hover your mouse over the plot, or click items in the legend). 
 
 ```{r plotly_demo, out.width=c('75%'), out.height=c('500px'), echo=F, warning=F, message=F}
 pacman::p_load(plotly, rio, here, ggplot2, dplyr, lubridate)
@@ -78,33 +79,6 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 ```
 
 
-Manipulate and add columns (best taught in the epicurves section).  
-
-```{r manipulate_show, eval=F}
-# linelist <- linelist %>% 
-#   dplyr::mutate(
-#     ## If the outcome column is NA, change to "Unknown"
-#     outcome = dplyr::if_else(condition = is.na(outcome),
-#                              true = "Unknown",
-#                              false = outcome),
-#     ## If the date of infection is NA, use the date of onset instead
-#     date_earliest = dplyr::if_else(condition = is.na(date_infection),
-#                                    true = date_onset,
-#                                    false = date_infection),
-#     ## Summarise earliest date to earliest week 
-#     week_earliest = lubridate::floor_date(x = date_earliest,
-#                                           unit = "week",
-#                                           week_start = 1)
-#     )
-```
-  
-Count for plotting
-```{r manipulate_show2, eval=F}
-## Find number of cases in each week by their outcome
-# linelist <- linelist %>% 
-#   dplyr::count(week_earliest, outcome)
-```
-
 
   
 <!-- ======================================================= -->
@@ -119,11 +93,11 @@ We begin by creating a summary dataset of each epidemiological week, and the per
 
 ```{r}
 weekly_deaths <- linelist %>%
-  group_by(epiweek = floor_date(date_onset, "week")) %>% 
-  summarise(
-    n_known_outcome = sum(!is.na(outcome), na.rm=T),
-    n_death  = sum(outcome == "Death", na.rm=T),
-    pct_death = 100*(n_death / n_known_outcome)
+  group_by(epiweek = floor_date(date_onset, "week")) %>%  # create and group data by epiweek column
+  summarise(                                           # create new summary data frame:
+    n_known_outcome = sum(!is.na(outcome), na.rm=T),     # number of cases per group with known outcome
+    n_death  = sum(outcome == "Death", na.rm=T),         # number of cases per group who died
+    pct_death = 100*(n_death / n_known_outcome)          # percent of cases with known outcome who died
   )
 ```
 Here is the first 50 rows of the `weekly_deaths` dataset.  
@@ -143,9 +117,7 @@ deaths_plot   # print
 ```
 
 
-We can make this interactive by simply passing this plot to `ggplotly()`, as below. Hover your mouse over the line to show the x and y values. 
-
-You can also see icons in the upper-right of the plot. In order, they allow you to:  
+We can make this interactive by simply passing this plot to `ggplotly()`, as below. Hover your mouse over the line to show the x and y values. You can zoom in on the plot, and drag it around. You can also see icons in the upper-right of the plot. In order, they allow you to:  
 
 * Download the current view as a PNG image  
 * Zoom in with a select box  
@@ -160,7 +132,7 @@ You can also see icons in the upper-right of the plot. In order, they allow you 
 deaths_plot %>% plotly::ggplotly()
 ```
 
-Grouped data work with plotly as well. Below, a weekly epicurve is made, grouped by outcome. The stacked bars are interactive. Try clicking on the different items in the legend (they will appear/disappear).  
+Grouped data work with `ggplotly()` as well. Below, a weekly epicurve is made, grouped by outcome. The stacked bars are interactive. Try clicking on the different items in the legend (they will appear/disappear).  
 
 
 ```{r plot_show, eval=F}
@@ -177,7 +149,7 @@ p <- incidence2::incidence(
 p %>% ggplotly()
 ```
   
-```{r, eval=TRUE, out.width=c('95%'), out.height=c('500px'), echo=FALSE}
+```{r, warning = F, message = F, eval=TRUE, out.width=c('95%'), out.height=c('500px'), echo=FALSE}
 p %>% 
   plotly::ggplotly() %>% 
   plotly::partial_bundle() 
@@ -198,7 +170,7 @@ p <- p %>%
 
 ### Buttons {-}  
 
-Some of the buttons on a standard plotly are superfluous and can be distracting, so it's best to remove them. You can do this simply by piping the output into `config()` from **plotly** and specifying which buttons to remove. In the below example we specify in advance the names of the buttons to remove, and provide them to the argument `modeBarButtonsToRemove = `. We also set `displaylogo = FALSE` to remove the plotly logo.  
+Some of the buttons on a standard plotly are superfluous and can be distracting, so you can remove them. You can do this simply by piping the output into `config()` from **plotly** and specifying which buttons to remove. In the below example we specify in advance the names of the buttons to remove, and provide them to the argument `modeBarButtonsToRemove = `. We also set `displaylogo = FALSE` to remove the plotly logo.  
 
 ```{r plot_tidyshow2, eval=F}
 ## these buttons are distracting and we want to remove them
@@ -215,7 +187,7 @@ p <- p %>%          # re-define interactive plot without these buttons
 <!-- ======================================================= -->
 ## Heat tiles {  }
 
-You can make almost any `ggplot()` plot interactive, including heat tiles. In the page on [Heat tiles] you can read about how to make the below `ggplot()`, which displays the proportion of days per week that certain facilities reported data to their province.  
+You can make almost any `ggplot()` plot interactive, including heat tiles. In the page on [Heat tiles] you can read about how to make the below plot, which displays the proportion of days per week that certain facilities reported data to their province.  
 
 Here is the code, although we will not describe it in depth here.  
 
