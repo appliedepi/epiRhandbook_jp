@@ -31,8 +31,8 @@ This code chunk shows the loading of packages required for the analyses. In this
 ```{r}
 pacman::p_load(
   DiagrammeR,     # for flow diagrams
-  networkD3       # For alluvial/Sankey diagrams
-  )
+  networkD3,      # For alluvial/Sankey diagrams
+  tidyverse)      # data management and visualization
 ```
 
 ### Import data {-}  
@@ -225,10 +225,10 @@ digraph surveillance_diagram {    # 'digraph' means 'directional graph', then th
   
   # edges
   #######
-  Primary   -> Secondary [label = 'case transfer',
+  Primary   -> Secondary [label = ' case transfer',
                           fontcolor = red,
                           color = red]
-  Secondary -> Tertiary [label = 'case transfer',
+  Secondary -> Tertiary [label = ' case transfer',
                           fontcolor = red,
                           color = red]
   
@@ -319,18 +319,18 @@ digraph surveillance_diagram {  # 'digraph' means 'directional graph', then the 
         fontname = Helvetica]            # text font in node
   
   subgraph cluster_active {
-    Active [label = 'Active\nSurveillance']; 
+    Active [label = 'Active\nSurveillance'] 
     HCF_active [label = 'HCF\nActive Search']
   }
   
   subgraph cluster_EBD {
-    EBS [label = 'Event-Based\nSurveillance (EBS)']; 
+    EBS [label = 'Event-Based\nSurveillance (EBS)'] 
     'Social Media'
     Radio
   }
   
   subgraph cluster_CBS {
-    CBS [label = 'Community-Based\nSurveillance (CBS)'];
+    CBS [label = 'Community-Based\nSurveillance (CBS)']
     RECOs
   }
 
@@ -346,7 +346,7 @@ digraph surveillance_diagram {  # 'digraph' means 'directional graph', then the 
   
   HCF_active -> Active
   
-  {'Social Media'; Radio} -> EBS
+  {'Social Media' Radio} -> EBS
   
   RECOs -> CBS
 }
@@ -387,18 +387,18 @@ digraph surveillance_diagram {  # 'digraph' means 'directional graph', then the 
         fontname = Helvetica]            # text font in node
   
   subgraph cluster_active {
-    Active [label = 'Active\nSurveillance']; 
+    Active [label = 'Active\nSurveillance'] 
     HCF_active [label = 'HCF\nActive Search']
   }
   
   subgraph cluster_EBD {
-    EBS [label = 'Event-Based\nSurveillance (EBS)']; 
+    EBS [label = 'Event-Based\nSurveillance (EBS)'] 
     'Social Media'
     Radio
   }
   
   subgraph cluster_CBS {
-    CBS [label = 'Community-Based\nSurveillance (CBS)'];
+    CBS [label = 'Community-Based\nSurveillance (CBS)']
     RECOs
   }
 
@@ -414,7 +414,7 @@ digraph surveillance_diagram {  # 'digraph' means 'directional graph', then the 
   
   HCF_active -> Active
   
-  {'Social Media'; Radio} -> EBS
+  {'Social Media' Radio} -> EBS
   
   RECOs -> CBS
 }
@@ -459,8 +459,9 @@ How to handle and save outputs
 
 ### Parameterized figures  
 
-"Parameterized figures: A great benefit of designing figures within R is that we are able to connect the figures directly with our analysis by reading R values directly into our flowcharts. For example, suppose you have created a filtering process which removes values after each stage of a process, you can have a figure show the number of values left in the dataset after each stage of your process. To do this we, you can use the @@X symbol directly within the figure, then refer to this in the footer of the plot using [X]:, where X is the a unique numeric index. Here is a basic example:"  
-https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
+This section is not yet complete. But here is a quote from this tutorial: https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
+  
+"Parameterized figures: A great benefit of designing figures within R is that we are able to connect the figures directly with our analysis by reading R values directly into our flowcharts. For example, suppose you have created a filtering process which removes values after each stage of a process, you can have a figure show the number of values left in the dataset after each stage of your process. To do this we, you can use the @@X symbol directly within the figure, then refer to this in the footer of the plot using [X]:, where X is the a unique numeric index."  
 
 ```{r, eval=F}
 # Define some sample data
@@ -494,11 +495,13 @@ a -> b -> c -> d
 
 Much of the above is adapted from the tutorial [at this site](https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/)  
 
-Other more in-depth tutorial: http://rich-iannone.github.io/DiagrammeR/
+Another more in-depth tutorial: http://rich-iannone.github.io/DiagrammeR/
 
 
 
 ### CONSORT diagram  
+
+THIS SECTION IS UNDER CONSTRUCTION  
 
 https://scriptsandstatistics.wordpress.com/2017/12/22/how-to-draw-a-consort-flow-diagram-using-r-and-graphviz/
 
@@ -514,35 +517,38 @@ Note above is out of date via DiagrammeR
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary and loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
+We load the **networkD3** package to produce the diagram, and also **tidyverse** for the data preparation steps.  
+
 ```{r}
-pacman::p_load(networkD3)
+pacman::p_load(
+  networkD3,
+  tidyverse)
 ```
 
 ### Plotting from dataset  
 
-Plotting the connections in a dataset. Below we demonstrate using this package on the case `linelist`.  
+Plotting the connections in a dataset. Below we demonstrate using this package on the case `linelist`. Here is an [online tutorial](https://www.r-graph-gallery.com/321-introduction-to-interactive-sankey-diagram-2.html).    
 
-Here is an [online tutorial](https://www.r-graph-gallery.com/321-introduction-to-interactive-sankey-diagram-2.html).    
-
-
-Counts of age category and hospital, re-labled as target and source, respectively.  
+We begin by getting the case counts for each unique age category and hospital combination. We've removed values with missing age category for clarity. We also re-label the `hospital` and `age_cat` columns as `source` and `target` respectively. These will be the two sides of the alluvial diagram.  
 
 ```{r}
 # counts by hospital and age category
 links <- linelist %>% 
+  filter(!is.na(age_cat)) %>% 
   select(hospital, age_cat) %>%
   count(hospital, age_cat) %>% 
   rename(source = hospital,
          target = age_cat)
 ```
 
+The dataset now look like this:  
 
 ```{r message=FALSE, echo=F}
-DT::datatable(head(links, 30), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
+DT::datatable(links, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
-Now formalize the nodes list, and adjust the ID columns to be numbers instead of labels:  
 
+Now we create a data frame of all the diagram nodes, under the column `name`. This consists of all the values for `hospital` and `age_cat`. Note that we ensure they are all class Character before combining them. and adjust the ID columns to be numbers instead of labels:  
 
 ```{r}
 # The unique node names
@@ -551,48 +557,65 @@ nodes <- data.frame(
     unique()
   )
 
+nodes  # print
+```
+The we edit the `links` data frame, which we created above with `count()`. We add two numeric columns `IDsource` and `IDtarget` which will actually reflect/create the links between the nodes. These columns will hold the rownumbers (position) of the source and target nodes. 1 is subtracted so that these position numbers begin at 0 (not 1).  
+
+```{r}
 # match to numbers, not names
 links$IDsource <- match(links$source, nodes$name)-1 
 links$IDtarget <- match(links$target, nodes$name)-1
 ```
 
-Now plot the Sankey diagram:  
+The links dataset now looks like this:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(links, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
+```
+
+Now plot the Sankey diagram with `sankeyNetwork()`. You can read more about each argument by running `?sankeyNetwork` in the console. Note that unless you set `iterations = 0` the order of your nodes may not be as expected. 
+
 
 ```{r}
 
 # plot
 ######
-p <- sankeyNetwork(Links = links,
-                   Nodes = nodes,
-                   Source = "IDsource",
-                   Target = "IDtarget",
-                   Value = "n",
-                   NodeID = "name",
-                   units = "TWh",
-                   fontSize = 12,
-                   nodeWidth = 30)
+p <- sankeyNetwork(
+  Links = links,
+  Nodes = nodes,
+  Source = "IDsource",
+  Target = "IDtarget",
+  Value = "n",
+  NodeID = "name",
+  units = "TWh",
+  fontSize = 12,
+  nodeWidth = 30,
+  iterations = 0)        # ensure node order is as in data
 p
 ```
 
 
 
-Here is an example where the patient Outome is included as well. Note in the data management step how we bind rows of counts of hospital -> outcome, using the same column names.   
+Here is an example where the patient Outcome is included as well. Note in the data preparation step we have to calculate the counts of cases between age and hospital, and separately between hospital and outcome - and then bind all these counts together with `bind_rows()`.  
 
 ```{r}
 # counts by hospital and age category
-links <- linelist %>% 
+age_hosp_links <- linelist %>% 
+  filter(!is.na(age_cat)) %>% 
   select(hospital, age_cat) %>%
-  mutate(age_cat = stringr::str_glue("Age {age_cat}")) %>% 
   count(hospital, age_cat) %>% 
-  rename(source = age_cat,
-         target = hospital) %>% 
-  bind_rows(
-    linelist %>% 
-      select(hospital, outcome) %>% 
-      count(hospital, outcome) %>% 
-      rename(source = hospital,
-             target = outcome)
-  )
+  rename(source = age_cat,          # re-name
+         target = hospital)
+
+hosp_out_links <- linelist %>% 
+    filter(!is.na(age_cat)) %>% 
+    select(hospital, outcome) %>% 
+    count(hospital, outcome) %>% 
+    rename(source = hospital,       # re-name
+           target = outcome)
+
+# combine links
+links <- bind_rows(age_hosp_links, hosp_out_links)
 
 # The unique node names
 nodes <- data.frame(
@@ -600,7 +623,7 @@ nodes <- data.frame(
     unique()
   )
 
-# match to numbers, not names
+# Create id numbers
 links$IDsource <- match(links$source, nodes$name)-1 
 links$IDtarget <- match(links$target, nodes$name)-1
 
@@ -614,7 +637,8 @@ p <- sankeyNetwork(Links = links,
                    NodeID = "name",
                    units = "TWh",
                    fontSize = 12,
-                   nodeWidth = 30)
+                   nodeWidth = 30,
+                   iterations = 0)
 p
 
 ```
