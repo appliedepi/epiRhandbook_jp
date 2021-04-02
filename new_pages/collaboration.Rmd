@@ -1,123 +1,253 @@
 
 # Collaboration with Github { }  
 
-
-<!-- ======================================================= -->
-## Overview {  }
-
-* Package management  
-* Using Github and R  
+This page presents an overview of using Github to collaborate with others. More extensive tutorials, which informed the writing of this page, can be found at the bottom in the Resources section.  
 
 
 
+## Why use Github  
 
-## Using Github and R to contribute
+Github is a website that supports **collaborative projects** with **version control**. Basically, it facilitates:  
 
-Here is an [online guide](https://happygitwithr.com/rstudio-git-github.html) to using Github and R. Some of the below text is adapted from this guide.  
+1) Archiving versions with incremental changes so that you can easily revert backwards  
+2) Collaboration so that others can review, comment on, accept/decline changes to code  
+3) Having parallel versions of your code with structured ways to integrate changes after review  
+4) Publicly sharing your code, data, and outputs, and inviting feedback from the public  
 
-### Overview of GitHub  
-Github is a website that supports **collaborative projects** with **version control**.  In a nutshell, the project's files exist in the **Github repository** as a **"master"** version (called a **"branch"**). If you want to make a change to those files you must create a different branch (version) to build and test the changes in. Master remains unaffected by your changes until your branch is **merged** (after some verification steps) into the master branch. A **"commit"** is the saving of a smaller group of changes you make within your branch. A **Pull Request** is your request to merge your changes into the master branch.  
+Using Github is helpful if working within a team, if you want to have a system for code review, and if you want Github to take care of version control and archiving. This can avoid the situation of having many versions of scripts saved with various dates - which can be so confusing!  
 
-The way RStudio and Github interact is as follows:  
-
-* There is a REMOTE version of the `Epi_R_handbook` R project that lives on Github website repository - master and other branches all exist and are viewable on this Github repository. Pull requests, issue tracking, and de-conflicting merges happens online here.  
-* On your LOCAL computer, you **clone** a version of the entire Github repository (all the R project files, from *all* its branches/versions). Locally, you can make changes to the files of any branch and "commit" those changes (save them with an explanatory note). These changes are only stored locally on your computer until...  
-* Your LOCAL repository/Rproject interacts with the REMOTE one by 1) **pulling** (updating local files from the remote ones of the same branch) and **pushing** (pushing local changes to the same branch of the remote repository)  
-* The software *Git* on your computer underlies all this, and is used by RStudio. You don't have to interact with Git except *through* RStudio. While you can write Git command-line into the RStudio terminal, it is easier to just interact with Git through RStudio point-and-click buttons. As noted below, you may *occasionally* have to write Git commands in the RStudio terminal.  
+Github's value as a collaboration and quality-control tool does come at the cost of some speed - the processes of uploading and reviewing may not be optimal for some teams working in emergency settings.  
 
 
-```{r echo=F, out.width = "75%", out.height="75%", fig.align = "center"}
+
+
+
+
+## Github basics  
+
+### What is Git? {-}
+
+*Git* is a software for tracking changes in files, usually used for coordinating work between programmers. You must install *Git* to use Github with R. You can install Git for your computer at [https://git-scm.com/downloads](https://git-scm.com/downloads).  
+
+*Github* is a website ([github.com](github.com)) that facilitates and enhances the use of Git, including capabilities for code review, issue-tracking, and sharing with the public.  
+
+The software *Git* on your computer is the engine behind the scenes. Git receives commands in it's own language/syntax, but you do not typically need to interact with Git via it's "command line" interface. Instead, you can interact with it via point-and-click buttons through either RStudio or Github Desktop. As noted below, you may *occasionally* have to write Git commands into a terminal such as the RStudio terminal. To learn Git commands see this online [interactive tutorial](learngitbranching.js.org).    
+
+### Account {-}  
+
+You can sign-up for a free account at [github.com](github.com).  
+
+You may be requested to set-up two-factor authentication with an app on your phone. Read more in the Github  [help documents](https://docs.github.com/en/github/authenticating-to-github/securing-your-account-with-two-factor-authentication-2fa).  
+
+
+### Repositories {-}  
+
+A Github repository ("repo") is like a folder that contains all the sub-folders and files for your project (data, code, images, etc.) and their revision histories. A Github repository aligns nicely with an *R Project* (see handbook page on [R projects]. 
+
+To create a new repository, log-in to Github and look for the green button to create a new repository.  
+
+```{r echo=F, fig.align = "center"}
+knitr::include_graphics(here::here("images", "github_new.png"))
+``` 
+
+#### Public or private {-}  
+
+You must choose if you want your repository to be public (visible to everyone on the internet) or private (only visible to those with permission). This has important implications if your data are sensitive. If your repository is private you will encounter some quotas in advanced special circumstances, such as if you are using Github *actions* to automatically run your code in the cloud.  
+
+#### Start-up files {-}  
+
+All of the below files are offered when you create a new repository, are optional, and you can also add them to your repository at a later stage. They would typically live in the "root" folder of the repository. Brief descriptions are below:  
+
+* A *README* file. This is a file that someone can read to understand why your project exists and what else they should know to use it. It will be empty at first, but you can complete it later.  
+
+* A *.gitignore* file is a text file where each line would contain folders or files that Github should ignore (not track changes). Read more about it and see examples [here](https://www.freecodecamp.org/news/gitignore-what-is-it-and-how-to-add-to-repo/).  
+
+* You can choose a *license* for your work, so that it is not reproduced by others without due acknowledgment. For more information, see the [Creative Commons licenses](https://creativecommons.org/licenses/).  
+
+
+### Key vocabulary {-}  
+
+* Your project files will exist in two places:  
+        * *REMOTE* - the versions of your Project files that exist online in the Github repository  
+        * *LOCAL* - this is a *clone* of the online repository that exists on your physical computer. This is where you make the actual changes to the files/code.  
+* *Pull* and *push* - these are how the REMOTE repository syncs changes with the LOCAL repository  
+* *Branches* - these are parallel, alternate versions of your project files  
+        * The *"main" branch* is the primary/final/"live" version of your files  
+        * Other branches are made to test changes before they are incorporated into the "main" branch  
+* A *commit* - is a unit of trackable changes. For example, perhaps you edit some lines of code and update a related dataset. You can bundle these changes into one "commit". For version control purposes, you can revert your project back in time based on commits, so it is best to keep them relatively small. You will also attach a brief description of the changes as the "commit message".   
+* To *merge* - To adopt changes from one branch into another (e.g. into "main"), you *merge* one branch into the other.  
+* A *pull request* - (a "PR") is a request to merge one branch into another. A pull request typically involves multiple commits, which each contain changes to certain files. A pull request usually begins a conversation and review process before the it is accepted and the branch is merged.  
+
+
+
+## Github workflow {}  
+
+Familiarize yourself to the Github workflow by reading this interactive example at [the Github website](https://guides.github.com/introduction/flow/)  
+
+### Orientation {-}  
+
+When using Github your R project files will exist in several dimensions:  
+
+* The files will exist in the *online* Github repository **and** on your computer in a *local clone* of that repository  
+        * Remote and local versions are synced by *pushing* and *pulling* changes  
+* The files will also exist as a *"main" branch* (version), and also in other "working" *branches*  
+        * Changes made to working branches can be merged into Main branch  
+
+In brief:  
+Initial setup involves cloning an online Github repository as a new R project on your computer. When you want to add/delete/make changes to files, you will sync your R project to the most current (online) version of "main" branch. Then on your computer you will make a new branch from "main" (like "Make a Copy"). You can then make changes to the code, files, etc. in that new "working" branch locally on your computer. When satisfied with your changes, packet-ize them as *commits*, and *push* them up to the working branch's online version. Then you can merge the online working branch into the online "main" branch to transfer the changes. Other team members may be doing the same thing with their own branches, or perhaps contributing commits into your working branch as well.  
+
+Here is a schematic we've developed - it's in the format of a two-way table so it should help epidemiologists understand...  
+
+```{r echo=F, out.height='150%', out.width='100%', fig.align = "center"}
+knitr::include_graphics(here::here("images", "github_table.png"))
+``` 
+
+Here's another diagram from [this website](https://build5nines.com/introduction-to-git-version-control-workflow/). Until recently, the term "master" branch was used, but it is now referred to as "main" branch.    
+
+```{r echo=F, out.width = '100%', out.height='100%', fig.align = "center"}
 knitr::include_graphics(here::here("images", "GitHub-Flow.png"))
 ``` 
-*Image [source](https://build5nines.com/introduction-to-git-version-control-workflow/)*
+Image [source](https://build5nines.com/introduction-to-git-version-control-workflow/)
 
 
-### First steps
 
-1) **Register** for a free account with Github 
-2) **Have R and RStudio** installed/updated  
-3) **Install Git** to your computer (remember Git is a software on your computer accessed by RStudio, Github is a website)  
-4) **Familiarize yourself** to the Github workflow by [reading about it](https://guides.github.com/introduction/flow/)  
-5) **Become a contributor** to the [Epi_R_handbook Github repository](https://github.com/nsbatra/Epi_R_handbook) (email neale.batra@gmail.com)
-6) **Clone** the Github repository to your computer  
-     * In RStudio start a new project *File > New Project > Version Control > Git*  
-     * In “Repository URL”, paste the URL *https://github.com/nsbatra/Epi_R_handbook.git* (link also available from repo main page, green "Code" button, HTTPS)
-     * Accept the default project directory name `Epi_R_handbook`  
-     * Take charge of – or at least notice! – where the Project will be saved locally  
+
+### First steps {-}
+
+1) Register for a free account with Github 
+2) Have R and RStudio installed/updated  
+3) Install *Git* to your computer (Git is a software on your computer, Github is a website with optional Desktop client)  
+4) Create an empty Github repository, or go to the Github repository you want to clone/work on
+
+
+### Clone the Github repo as a local R project {-}  
+
+5) In RStudio start a new R project by clicking *File > New Project > Version Control > Git*  
+     * In Github, copy the repository URL by copying the link as shown in image below  
+     * In RStudio, when prompted for “Repository URL”, paste the URL  
+     * Assign the R project name  
+     * Designate where the new R Project will be saved locally  
      * Check "Open in new session" and click "Create project"  
-     * You should now be in a new local RStudio project that is a clone of the `Epi_R_handbook` repository on Github
-     
-In your RStudio you will now have a Git tab in the same tab as your R Environment: 
+     * You should now be in a new local RStudio project that is a clone of the Github repository  
 
+Below is how to copy the repository URL from Github, to provide to RStudio when making the new R project.  
+
+```{r echo=F, out.width = '100%', out.height='100%', fig.align = "center"}
+knitr::include_graphics(here::here("images", "github_clone.png"))
+```
+ 
+In RStudio, you will now have a "Git" tab, in the same pane as your R Environment:  
 
 ```{r echo=F, out.width = "75%", out.height="75%", fig.align = "center"}
 knitr::include_graphics(here::here("images", "Git_console.png"))
 ```  
-Please note the buttons circled as they will be referenced later (from left to right):  
 
-* Button to begin "commiting" your changes to your branch (will open a new window)  
-* Arrows to PULL (update your local version of the branch with any changes to made your branch by others) and to PUSH (send any completed commits stored in your local version of the branch to the remote/Github version of your branch)  
+Please note the buttons circled in the image above, as they will be referenced later (from left to right):  
+
+* Button to begin "committing" the saved file changes to the local branch (this will open a new window)  
+* Blue arrow to *pull* (update your local version of the branch with any changes made to that branch by others)  
+* Green arrow to *push* (send any commits/changes for your local version of the branch to the remote/Github version of the branch) 
 * The Git tab in RStudio  
-* Button to create a NEW branch of whichever version is listed to the right. **You almost always want to branch off of the master (after you PULL to update the master first)**.  
+* Button to create a NEW branch using whichever local branch is shown to the right as the base. *You almost always want to branch off of the main branch (after you first pull to update the main branch)*.  
 * The branch you are currently working in.  
-* Below all this, changes you make to code or files will begin to appear  
-
-### **To work on your Handbook page:**  
-
-*Note: Last I heard, Github will soon change their terminology of "master" to "main", as it is an unnecessary reference to slavery*  
-
-1) **Create a branch**  
+* Below all this, changes you make to code or other files will appear  
 
 
-* **Be in master branch** and then click the branch button/icon.  
-* **Name your branch** with a one-word descriptive name (can use underscores if needed). You will see that locally, you are still in the project Epi_R_handbook, but you are no longer working on the master branch. Once created, the new branch will also appear on the Github website as a branch.  
-*  **Make your changes**... to files, code, etc. Your changes are tracked.  
-* **Commit the changes**. Every series of changes you make that are substantial (e.g. adding or updating a section, etc.), stop and *commit* those changes. Think of a commit as a "batch" of changes related to a common purpose.  
-     * Press "Commit" in the git tab, opens new window  
-     * Review the changes you made (green, red etc.)  
-     * Highlight all the changes for the commit and "stage" them by checking their boxes or highlighting all the rows and clicking "stage all"  
+### Make changes {-}  
+
+To make a change to your files and have it reflected in the online main branch, you can do the following steps. These steps assume you are using Github with RStudio. For the slight variation if you are using Github Desktop instead of RStudio, see the next section.  
+
+6) Create a branch  
+
+Be in "main" branch and then click the new branch icon (see image above).  
+
+* You will be prompted to name your branch with a one-word descriptive name (can use underscores if needed).  
+* You will see that locally, you are still in the same R project, but you are no longer working on the "main" branch.  
+* Once created, the new branch will also appear in the Github website as a branch.  
+
+7) Make your changes... edit code, add new files, update datasets, etc. Every one of these changes is tracked, once the respective file is saved. Changed files will appear in the RStudio Git tab.  
+
+
+
+
+### Commit changes {-}  
+
+8) Commit your changes. Every bunch of changes that you make that are substantial (e.g. adding or updating a section of code), pause and *commit* those changes. Think of a commit as a "batch" of changes related to a common purpose. You can always continue to revise a file after having committed changes on it.  
+     * Press "Commit" in the Git tab (see image above), which opens a new window (shown below)  
+     * Click on a file name in the upper-left box  
+     * Review the changes you made to that file (green, red etc.)  
+     * "Stage" the file to include in the commit by checking the box next to it, or click multiple file names and click "Stage"  
      * Write a commit message that is short but descriptive (required) 
-     * Press "commit" on the right side  
-* Make and commit more changes, as many times as you would like  
-* **PULL** - click the PULL icon (downward arrow) which updates the branch version on your local computer with any changes that have been made to it and stored in the remote/Github version  
-     * PULL often. Don't hesitate. **Always pull before pushing**.  
-* **PUSH** your changes up to the remote/Github version of your branch.  
-     * You may be asked to enter your Github username and password.  
-     * The first time you are asked, you may need to enter two Git command lines into the *Terminal* (the tab next to the R Console):
-        * **git config --global user.email "you@example.com"**   (your Github email address), and  
-        * **git config --global user.name "Your Github username"**  
+     * Press the "Commit" button. A pop-up box will appear showing success or an error message.  
+     * Make and commit more changes, as many times as you would like  
      
+```{r echo=F, out.width = '100%', out.height='150%', fig.align = "center"}
+knitr::include_graphics(here::here("images", "github_commit.png"))
+```  
 
 
-2) **Request to merge your branch with master**  
+### Push changes to Github {-}  
 
-Once done with your commits and pushed everything up to the remote Github repository, you may want to request that your branch be merged with the master branch. 
+"First PULL, then PUSH"  
 
-* Go to Epi_R_handbook Github repository  
-* Use the branch drop-down to view your branch, not master
-* At top you will see green button saying "Compare and Pull Request" for your branch. If not, look for another button that says pull request.
-* Write a detailed comment and click "Create Pull Request"
-* On the right, request a review from members of the project's core team. You need at least one review to be able to complete the merge.
+9) *PULL* - First, click the PULL icon (downward arrow) which updates the branch version on your local computer with any changes that have been made to it in the remote/Github version. PULL often. Don't hesitate. *Always pull before pushing*.  
+
+10) *PUSH* your changes up to the remote/Github version of your branch. You may be asked to enter your Github username and password.  
+
+        * The first time you are asked, you may need to enter two Git command lines into the *Terminal* (the tab next to the R Console):  
+                * **git config --global user.email "you@example.com"**   (your Github email address), and  
+                * **git config --global user.name "Your Github username"**  
+
+<span style="color: darkgreen;">**_TIP:_** Asked to provide your password too often? See these chapters 10 & 11 of this [tutorial](https://happygitwithr.com/credential-caching.html#credential-caching) to connect to a repository via SSH key (more complicated)</span>
+
+
+
+### Merge changes to Main {-}  
+
+If you have finished making changes, you can begin the process of merging those changes into the main branch. Depending on your situation, this may be fast, or you may build-in review and approval steps involving teammates.  
+
+#### Submit a Pull Request {-}  
+
+Once done with your commits and you have *pushed* the commits up to the remote Github repository, you can request that your branch be merged with the main branch. 
+
+* Go to Github repository  
+* Use the branch drop-down menu to view your branch, not main
+* At the top click the green button saying "Compare and Pull Request" for your branch. If you do not see this, look for another button that says "Pull requests" and click that to see the "New pull request" button (you can use this to set up your pull request).  
+* Write a detailed Pull Request comment and click "Create Pull Request".  
+
+Now you can see the pull request (example image below):  
+
+* Review the tab "Files changed" to see how the "main" branch would change if the branch is merged.  
+* On the right, you can request a review from members of your team by tagging their Github ID. If you like, you can set the repository settings to require one approving review in order to merge into main.  
+* Once the pull request is approved you will see a button available to "Merge pull request". Click this.  
 * Once completed, delete your branch as explained below
 
-3) **Delete your branch on Github**  
-
-GO to the repository on Github and click the button to view all the branches (next to the drop-down to select branches). Now find your branch and click the trash icon next to it. Read more [here](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/creating-and-deleting-branches-within-your-repository#deleting-a-branch)  
-
-Be sure to also delete the branch locally on your computer:
-
-* From RStudio, make sure you are in Master branch
-* Switch to typing in the "terminal" (tab adjacent to the R console), and enter this: **git branch -d branch_name** , where "branch_name" is the name of your branch to be deleted  
-* Refresh your Git tab and this branch should be gone.
+```{r echo=F, out.width = '100%', out.height='150%', fig.align = "center"}
+knitr::include_graphics(here::here("images", "github_pull_request.png"))
+```
 
 
-**TEST IT**
-You can test your ability to make changes, commits, pull requests, etc. by modifying this R script which is saved to the main Rproject folder: `test_your_abilities.R`
+
+#### Delete your branch {-}  
+
+Go to the repository on Github and click the button to view all the branches (next to the drop-down to select branches). Now find your branch and click the trash icon next to it. Read more detail on deleting a branch [here](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/creating-and-deleting-branches-within-your-repository#deleting-a-branch)  
+
+Be sure to also delete the branch locally on your computer. This will not happen automatically.  
+
+* From RStudio, make sure you are in the Main branch
+* Switch to typing Git commands in the RStudio "Terminal" (the tab adjacent to the R console), and enter this: **git branch -d branch_name** , where "branch_name" is the name of your branch to be deleted  
+* Refresh your Git tab and this branch should be gone  
 
 
-**Asked to provide password too often??**  
-Instructions for connecting to the repository via a SSH key (more complicated): 
-See chapters 10 and 11 of [this tutorial](https://happygitwithr.com/credential-caching.html#credential-caching)
+
+
+## Github Desktop  
+
+
+
+
+
+## Package management with **renv**  
 
 
 
@@ -125,9 +255,10 @@ See chapters 10 and 11 of [this tutorial](https://happygitwithr.com/credential-c
 <!-- ======================================================= -->
 ## Resources {  }
 
-
+https://www.rstudio.com/wp-content/uploads/2016/01/rstudio-IDE-cheatsheet.pdf
 
 https://happygitwithr.com/reset.html
 
 https://ohi-science.org/news/github-going-back-in-time
 
+learngitbranching.js.org
