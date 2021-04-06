@@ -3,7 +3,7 @@
 
 Data visualisation is increasingly required to be interrogable by the audience. Consequently, is is becoming common to create interactive plots. There are several ways to include these but the two most common are **plotly** and **shiny**. 
 
-In this page we will focus on converting an existing `ggplot()` plot into an interactive plot with **plotly**. You can read more about **shiny** in the [Shiny and dashboards] page.  
+In this page we will focus on converting an existing `ggplot()` plot into an interactive plot with **plotly**. You can read more about **shiny** in the [Shiny and dashboards] page. What is worth mentioning is that interactive plots are only useable in HTML format Rmarkdown   documents, not PDF or Word documents.
 
 Below is a basic epicurve that has been transformed to be interactive using the integration of **ggplot2** and **plotly** (hover your mouse over the plot, or click items in the legend). 
 
@@ -68,7 +68,7 @@ linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
 
 ```{r, eval=F}
 # import the linelist
-linelist <- import("linelist_cleaned.xlsx")
+linelist <- rio::import("linelist_cleaned.xlsx")
 ```
 
 The first 50 rows of the linelist are displayed below.
@@ -94,10 +94,10 @@ We begin by creating a summary dataset of each epidemiological week, and the per
 ```{r}
 weekly_deaths <- linelist %>%
   group_by(epiweek = floor_date(date_onset, "week")) %>%  # create and group data by epiweek column
-  summarise(                                           # create new summary data frame:
-    n_known_outcome = sum(!is.na(outcome), na.rm=T),     # number of cases per group with known outcome
-    n_death  = sum(outcome == "Death", na.rm=T),         # number of cases per group who died
-    pct_death = 100*(n_death / n_known_outcome)          # percent of cases with known outcome who died
+  summarise(                                              # create new summary data frame:
+    n_known_outcome = sum(!is.na(outcome), na.rm=T),      # number of cases per group with known outcome
+    n_death  = sum(outcome == "Death", na.rm=T),          # number of cases per group who died
+    pct_death = 100*(n_death / n_known_outcome)           # percent of cases with known outcome who died
   )
 ```
 Here is the first 50 rows of the `weekly_deaths` dataset.  
@@ -108,10 +108,10 @@ DT::datatable(head(weekly_deaths, 50), rownames = FALSE, options = list(pageLeng
 Then we create the plot with **ggplot2**, using `geom_line()`.  
 
 ```{r, warning=F, message=F}
-deaths_plot <- ggplot(data = weekly_deaths)+    # begin with weekly deaths data
-  geom_line(                                    # create line
-    mapping = aes(x = epiweek, y = pct_death),  # map epiweek to x-axis, and pct_death to y-axis
-    stat = "identity")                          # line height reflects y value, not number of rows (default)
+deaths_plot <- ggplot2::ggplot(data = weekly_deaths)+    # begin with weekly deaths data
+  ggplot2::geom_line(                                    # create line
+    mapping = ggplot2::aes(x = epiweek, y = pct_death),  # map epiweek to x-axis, and pct_death to y-axis
+    stat = "identity")                                   # line height reflects y value, not number of rows (default)
 
 deaths_plot   # print
 ```
@@ -146,13 +146,13 @@ p <- incidence2::incidence(
 
 ```{r, echo=T, eval=F}
 # Plot interactively  
-p %>% ggplotly()
+p %>% plotly::ggplotly()
 ```
   
 ```{r, warning = F, message = F, eval=TRUE, out.width=c('95%'), out.height=c('500px'), echo=FALSE}
 p %>% 
-  plotly::ggplotly() %>% 
-  plotly::partial_bundle() 
+  ggplotly() %>% 
+  partial_bundle() 
 ```
   
 <!-- ======================================================= -->
@@ -164,8 +164,8 @@ When exporting in an Rmarkdown generated HTML (like this book!) you want to make
 
 ```{r plot_tidyshow, eval=F}
 p <- p %>% 
-  ggploty() %>% 
-  partial_bundle()
+  plotly::ggplotly() %>%
+  plotly::partial_bundle()
 ```
 
 ### Buttons {-}  
@@ -205,9 +205,9 @@ agg_weeks <- facility_count_data %>%
     floor_day = TRUE,
     factor = TRUE)) %>% 
   group_by(location_name, week, .drop = F) %>%
-  summarize(
+  summarise(
     n_days          = 7,
-    n_reports       = dplyr::n(),
+    n_reports       = n(),
     malaria_tot     = sum(malaria_tot, na.rm = T),
     n_days_reported = length(unique(data_date)),
     p_days_reported = round(100*(n_days_reported / n_days))) %>% 
@@ -215,29 +215,29 @@ agg_weeks <- facility_count_data %>%
   mutate(week = aweek::week2date(week))
 
 # create plot
-metrics_plot <- ggplot(agg_weeks,
-       aes(x = week,
+metrics_plot <- ggplot2::ggplot(agg_weeks,
+       ggplot2::aes(x = week,
            y = location_name,
            fill = p_days_reported))+
-  geom_tile(colour="white")+
-  scale_fill_gradient(low = "orange", high = "darkgreen", na.value = "grey80")+
-  scale_x_date(expand = c(0,0),
+  ggplot2::geom_tile(colour="white")+
+  ggplot2::scale_fill_gradient(low = "orange", high = "darkgreen", na.value = "grey80")+
+  ggplot2::scale_x_date(expand = c(0,0),
                date_breaks = "2 weeks",
                date_labels = "%d\n%b")+
-  theme_minimal()+ 
-  theme(
-    legend.title = element_text(size=12, face="bold"),
-    legend.text  = element_text(size=10, face="bold"),
+  ggplot2::theme_minimal()+ 
+  ggplot2::theme(
+    legend.title = ggplot2::element_text(size=12, face="bold"),
+    legend.text  = ggplot2::element_text(size=10, face="bold"),
     legend.key.height = grid::unit(1,"cm"),
     legend.key.width  = grid::unit(0.6,"cm"),
-    axis.text.x = element_text(size=12),
-    axis.text.y = element_text(vjust=0.2),
-    axis.ticks = element_line(size=0.4),
-    axis.title = element_text(size=12, face="bold"),
-    plot.title = element_text(hjust=0,size=14,face="bold"),
-    plot.caption = element_text(hjust = 0, face = "italic")
+    axis.text.x = ggplot2::element_text(size=12),
+    axis.text.y = ggplot2::element_text(vjust=0.2),
+    axis.ticks = ggplot2::element_line(size=0.4),
+    axis.title = ggplot2::element_text(size=12, face="bold"),
+    plot.title = ggplot2::element_text(hjust=0,size=14,face="bold"),
+    plot.caption = ggplot2::element_text(hjust = 0, face = "italic")
     )+
-  labs(x = "Week",
+  ggplot2::labs(x = "Week",
        y = "Facility name",
        fill = "Reporting\nperformance (%)",
        title = "Percent of days per week that facility reported data",
@@ -251,9 +251,9 @@ Below, we make it interactive and modify it for simple buttons and file size.
 
 ```{r, eval=T, out.width=c('95%'), out.height=c('500px')}
 metrics_plot %>% 
-  ggplotly() %>% 
-  partial_bundle() %>% 
-  config(displaylogo = FALSE, modeBarButtonsToRemove = plotly_buttons_remove)
+  plotly::ggplotly() %>% 
+  plotly::partial_bundle() %>% 
+  plotly::config(displaylogo = FALSE, modeBarButtonsToRemove = plotly_buttons_remove)
 ```
 
 ## Maps {-}  
@@ -317,10 +317,10 @@ plotly::plot_ly() %>%
     colorscale="Viridis",
     marker=list(line=list(width=0))
   ) %>%
-  plotly::colorbar(title = "Cases per million") %>%
-  plotly::layout(title = "Covid-19 cumulative incidence",
+  colorbar(title = "Cases per million") %>%
+  layout(title = "Covid-19 cumulative incidence",
                  geo = list(scope = 'africa')) %>% 
-  plotly::config(displaylogo = FALSE, modeBarButtonsToRemove = plotly_buttons_remove)
+  config(displaylogo = FALSE, modeBarButtonsToRemove = plotly_buttons_remove)
 ```
 
 <!-- ======================================================= -->
