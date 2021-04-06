@@ -3,7 +3,7 @@
 
 Data visualisation is increasingly required to be interrogable by the audience. Consequently, is is becoming common to create interactive plots. There are several ways to include these but the two most common are **plotly** and **shiny**. 
 
-In this page we will focus on converting an existing `ggplot()` plot into an interactive plot with **plotly**. You can read more about **shiny** in the [Shiny and dashboards] page. What will be obvious but is worth mentioning nonetheless is that interactive plots are only useable in HTML format Rmarkdown   documents, not PDF or Word documents.
+In this page we will focus on converting an existing `ggplot()` plot into an interactive plot with **plotly**. You can read more about **shiny** in the [Shiny and dashboards] page. What is worth mentioning is that interactive plots are only useable in HTML format Rmarkdown   documents, not PDF or Word documents.
 
 Below is a basic epicurve that has been transformed to be interactive using the integration of **ggplot2** and **plotly** (hover your mouse over the plot, or click items in the legend). 
 
@@ -93,11 +93,11 @@ We begin by creating a summary dataset of each epidemiological week, and the per
 
 ```{r}
 weekly_deaths <- linelist %>%
-  dplyr::group_by(epiweek = floor_date(date_onset, "week")) %>%  # create and group data by epiweek column
-  dplyr::summarise(                                              # create new summary data frame:
-    n_known_outcome = sum(!is.na(outcome), na.rm=T),             # number of cases per group with known outcome
-    n_death  = sum(outcome == "Death", na.rm=T),                 # number of cases per group who died
-    pct_death = 100*(n_death / n_known_outcome)                  # percent of cases with known outcome who died
+  group_by(epiweek = floor_date(date_onset, "week")) %>%  # create and group data by epiweek column
+  summarise(                                              # create new summary data frame:
+    n_known_outcome = sum(!is.na(outcome), na.rm=T),      # number of cases per group with known outcome
+    n_death  = sum(outcome == "Death", na.rm=T),          # number of cases per group who died
+    pct_death = 100*(n_death / n_known_outcome)           # percent of cases with known outcome who died
   )
 ```
 Here is the first 50 rows of the `weekly_deaths` dataset.  
@@ -151,8 +151,8 @@ p %>% plotly::ggplotly()
   
 ```{r, warning = F, message = F, eval=TRUE, out.width=c('95%'), out.height=c('500px'), echo=FALSE}
 p %>% 
-  plotly::ggplotly() %>% 
-  plotly::partial_bundle() 
+  ggplotly() %>% 
+  partial_bundle() 
 ```
   
 <!-- ======================================================= -->
@@ -164,7 +164,7 @@ When exporting in an Rmarkdown generated HTML (like this book!) you want to make
 
 ```{r plot_tidyshow, eval=F}
 p <- p %>% 
-  plotly::ggplotly() %>% 
+  plotly::ggplotly() %>%
   plotly::partial_bundle()
 ```
 
@@ -197,22 +197,22 @@ facility_count_data <- rio::import(here::here("data", "facility_count_data.rds")
 
 # aggregate data into Weeks for Spring district
 agg_weeks <- facility_count_data %>% 
-  dplyr::filter(District == "Spring",
+  filter(District == "Spring",
          data_date < as.Date("2019-06-01")) %>% 
-  dplyr::mutate(week = aweek::date2week(
+  mutate(week = aweek::date2week(
     data_date,
     start_date = "Monday",
     floor_day = TRUE,
     factor = TRUE)) %>% 
-  dplyr::group_by(location_name, week, .drop = F) %>%
-  dplyr::summarise(
+  group_by(location_name, week, .drop = F) %>%
+  summarise(
     n_days          = 7,
-    n_reports       = dplyr::n(),
+    n_reports       = n(),
     malaria_tot     = sum(malaria_tot, na.rm = T),
     n_days_reported = length(unique(data_date)),
     p_days_reported = round(100*(n_days_reported / n_days))) %>% 
-  dplyr::right_join(tidyr::expand(., week, location_name)) %>% 
-  dplyr::mutate(week = aweek::week2date(week))
+  right_join(tidyr::expand(., week, location_name)) %>% 
+  mutate(week = aweek::week2date(week))
 
 # create plot
 metrics_plot <- ggplot2::ggplot(agg_weeks,
@@ -317,10 +317,10 @@ plotly::plot_ly() %>%
     colorscale="Viridis",
     marker=list(line=list(width=0))
   ) %>%
-  plotly::colorbar(title = "Cases per million") %>%
-  plotly::layout(title = "Covid-19 cumulative incidence",
+  colorbar(title = "Cases per million") %>%
+  layout(title = "Covid-19 cumulative incidence",
                  geo = list(scope = 'africa')) %>% 
-  plotly::config(displaylogo = FALSE, modeBarButtonsToRemove = plotly_buttons_remove)
+  config(displaylogo = FALSE, modeBarButtonsToRemove = plotly_buttons_remove)
 ```
 
 <!-- ======================================================= -->
