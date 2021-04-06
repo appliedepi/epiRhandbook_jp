@@ -666,15 +666,15 @@ It is much easier to just use the R markdown within an R project and use the **h
 <!-- ======================================================= -->
 ### Providing file paths {-}  
 
-Perhaps the most common source of frustration for an R beginner (at least on a Windows machine) is typing in a filepath to import data. Note the following:  
+Perhaps the most common source of frustration for an R beginner (at least on a Windows machine) is typing in a filepath to import data. There is a thorough explanation of how to best input file paths in the [Import and export] page, but here are a few key points:  
 
-**Slash direction** - *If typing in a filepath, beware the direction of the slashes.* Enter them using *forward slashes* to separate the components ("data/provincial.csv"). For Windows users, the default way that filepaths are displayed and copied is with *backslashes* ("\\") - so this means you will need to change the direction of each slash.  
+**Slash direction** - *If typing in a file path, beware the direction of the slashes.* Enter them using *forward slashes* to separate the components ("data/provincial.csv"). For Windows users, the default way that filepaths are displayed and copied is with *backslashes* ("\\") - so this means you will need to change the direction of each slash.  
 
 If you use the **here** package as described in [R projects] the slash direction is not an issue.  
 
 **Broken paths** - 
 
-Below is an example of an "absolute" or "full address" filepath. These will likely break if used by another computer.  
+Below is an example of an "absolute" or "full address" file path. These will likely break if used by another computer.  
 
 ```
 C:/Users/Name/Document/Analytic Software/R/Projects/Analysis2019/data/March2019.csv  
@@ -825,7 +825,7 @@ Vectors | A container for a sequence of singular objects, all of the same class 
 Data Frames | Vectors (e.g. columns) that are bound together that all have the same number of rows. | `linelist` is a data frame.
 
 Note that to create a vector that "stands alone" (is not part of a data frame) the function `c()` is used to combine the different elements. For example, if creating a vector of colors plot's color scale: 
-`list_of_names <- c("blue", "red2", "orange", "grey")`  
+`vector_of_colors <- c("blue", "red2", "orange", "grey")`  
 
 
 <!-- ======================================================= -->
@@ -849,7 +849,7 @@ list | A list is like vector, but holds other objects that can be other differen
 **You can test the class of an object by providing its name to the function `class()`**. Note: you can reference a specific column within a dataset using the `$` notation to separate the name of the dataset and the name of the column.
 
 ```{r, echo=TRUE, eval=T}
-class(linelist)         # class should be a data frame
+class(linelist)         # class should be a data frame or tibble
 
 class(linelist$age)     # class should be numeric
 
@@ -857,8 +857,6 @@ class(linelist$gender)  # class should be character
 ```
 
 Sometimes, a column will be converted to a different class automatically by R. Watch out for this! For example, if you have a vector or column of numbers, but a character value is inserted... the entire column will change to class character.  
-
-One common example of this is when manipulating a data frame in order to print a table - if you make a total row and try paste/glue together percents in the same cell as numbers (e.g. `23 (40%)`), the entire numeric column above will convert to character and can no longer be used for mathematical calculations.
 
 ```{r}
 num_vector <- c(1,2,3,4,5) # define vector as all numbers
@@ -868,7 +866,7 @@ class(num_vector)          # vector is now character class
 ```
 
 
-**Sometimes, you will need to convert objects or columns to another class.**
+One common example of this is when manipulating a data frame in order to print a table - if you make a total row and try paste/glue together percents in the same cell as numbers (e.g. `23 (40%)`), the entire numeric column above will convert to character and can no longer be used for mathematical calculations.**Sometimes, you will need to convert objects or columns to another class.**
 
 Function | Action  
 ----------------- | --------------------------------------------------------------    
@@ -935,11 +933,15 @@ Square brackets also work to return specific parts of an returned output, such a
 # All of the summary
 summary(linelist$age)
 
-# Just one part of the summary
+# Just the second element of the summary, with name (using only single brackets)
 summary(linelist$age)[2]
 
-# One part without its "name"
+# Just the second element, without name (using double brackets)
 summary(linelist$age)[[2]]
+
+# Extract an element by name, without showing the name
+summary(linelist$age)[["Median"]]
+
 ```
 
 Brackets also work on data frames to view specific rows and columns. You can do this using the syntax `dataframe[rows, columns]`:  
@@ -971,6 +973,22 @@ View(linelist[2:20, "date_onset"])
 # Save as a new object
 new_table <- linelist[2:20, c("date_onset")] 
 ```
+
+Note that you can also achieve the above row/column indexing on data frames and tibbles using **dplyr** syntax (functions `filter()` for rows, and `select()` for columns). Read more about these core functions in the [Cleaning data and core functions] page.  
+
+To filter based on "row number", you can use the **dplyr** function `row_number()` with open parentheses as part of a logical filtering statement. Often you will use the `%in%` operator and a range of numbers as part of that logical statement, as shown below. To see the *first* N rows, you can also use the special **dplyr** function `head()`.   
+
+```{r, eval=F}
+# View first 100 rows
+linelist %>% head(100)
+
+# Show row 5 only
+linelist %>% filter(row_number() == 5)
+
+# View rows 2 through 20, and three specific columns (note no quotes necessary on column names)
+linelist %>% filter(row_number() %in% 2:20) %>% select(date_onset, outcome, age)
+```
+
 
 When indexing an object of class **list**, single brackets always return with class list, even if only a single object is returned. Double brackets, however, can be used to access a single element and return a different class than list.  
 Brackets can also be written after one another, as demonstrated below.  
@@ -1077,7 +1095,7 @@ cake <- flour %>%       # to define cake, start with flour, and then...
 
 Here is another [link](https://cfss.uchicago.edu/notes/pipes/#:~:text=Pipes%20are%20an%20extremely%20useful,code%20and%20combine%20multiple%20operations) describing the utility of pipes.  
 
-Piping is not a **base** function. To use piping, the **magrittr** package must be installed and loaded (this is typically done by loading **tidyverse** or **dplyr** package). You can [read more about piping in the magrittr documentation](https://magrittr.tidyverse.org/).
+Piping is not a **base** function. To use piping, the **magrittr** package must be installed and loaded (this is typically done by loading **tidyverse** or **dplyr** package which include it). You can [read more about piping in the magrittr documentation](https://magrittr.tidyverse.org/).
 
 Note that just like other R commands, pipes can be used to just display the result, or to save/re-save an object, depending on whether the assignment operator `<-` is involved. See both below:  
 
@@ -1087,17 +1105,25 @@ linelist_summary <- linelist %>%
   count(age_cat)
 ```
 
-```{R, eval=F}
+```{r}
 # Print the table of counts in the console, but don't save it
 linelist %>% 
   count(age_cat)
 ```
 
-<span style="color: orange;">**_CAUTION:_** Remember that even when using piping to link functions, if the assignment operator (`<-`) is present, the object to the left will still be over-written (re-defined) by the right side.</span>
-
 
 **`%<>%`**  
-This is an "assignment pipe" from the **magritter** package, which pipes an object forward and also re-defines the object. It must be the first pipe operator in the chain. It is shorthand, so `object %<>% function() %>% function()` is the same as `object <- object %>% function() %>% function()`.  
+This is an "assignment pipe" from the **magrittr** package, which *pipes an object forward and also re-defines the object*. It must be the first pipe operator in the chain. It is shorthand. The below two commands are equivalent:  
+
+```{r, eval=F}
+linelist %<>% 
+  count() %>%
+  filter(n > 10)
+
+sobject <- object %>%
+  count() %>%
+  filter(n > 10)
+```
 
 
 <!-- ======================================================= -->
