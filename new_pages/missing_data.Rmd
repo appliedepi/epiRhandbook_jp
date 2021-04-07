@@ -13,8 +13,7 @@ This page will cover:
 3) How to filter out rows by missingness  
 3) Plotting missingness over time  
 4) Handling how `NA` is displayed in plots  
-5) Missing value imputation  
-
+5) Missing value imputation, MCAR, MAR, MNAR  
 
 
 
@@ -36,7 +35,7 @@ pacman::p_load(
 
 ### Import data {-}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Datasets used] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, echo=F}
 # import the linelist into R
@@ -54,6 +53,9 @@ The first 50 rows of the linelist are displayed below.
 # display the linelist data as a table
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
+
+
+When importing your data, be aware of values that should be classified as missing. For example, 99, 999, "Missing", blank cells (""), or cells with an empty space (" "). You can convert these to `NA` (R's version of missing data) during the data import. See the page on [Import and export] for details.  
 
 
 <!-- ======================================================= -->
@@ -197,7 +199,7 @@ You can use the package **naniar** to assess and visualize missingness in the da
 pacman::p_load(naniar)
 ```
 
-### Statistics {-}
+### Quantifying missingness {-}
 
 To find the percent of all values that are missing use `pct_miss()`. Use `n_miss()` to get the number of missing values.  
 
@@ -205,7 +207,7 @@ To find the percent of all values that are missing use `pct_miss()`. Use `n_miss
 pct_miss(linelist)
 ```
 
-The two functions below return the percent of rows with any missing value, or that are entirely complete, respectively. Reember that `NA` means missing, and that ``""` or `" "` will register as non-missing.  
+The two functions below return the percent of rows with any missing value, or that are entirely complete, respectively. Remember that `NA` means missing, and that ``""` or `" "` will register as non-missing.  
 
 ```{r}
 pct_miss_case(linelist)   # also see n_complete() for counts
@@ -346,8 +348,13 @@ ggplot(data = outcome_missing)+
 
 
 
+
+
 <!-- ======================================================= -->
-## Filter out rows with missing values { }
+## Using data with missing values  
+
+
+### Filter out rows with missing values {-}
 
 To quickly remove rows with missing values, use the **dplyr** function `drop_na()`.  
 
@@ -378,7 +385,7 @@ linelist %>%
 
 
 <!-- ======================================================= -->
-## Handling `NA` in `ggplot()` { }
+### Handling `NA` in `ggplot()` {-}
 
 It is often wise to report the number of values excluded from a plot in a caption. Below is an example:  
 
@@ -401,7 +408,7 @@ Sometimes, it can be easier to save the string as an object in commands prior to
 
 
 <!-- ======================================================= -->
-## `NA` in factors { }
+### `NA` in factors {-}
 
 If your column of interest is a factor, use `fct_explicit_na()` from the **forcats** package to convert `NA` values to a character value. By default the character value is "(Missing)" but this can be adjusted via the `na_level =` arguement.   
 

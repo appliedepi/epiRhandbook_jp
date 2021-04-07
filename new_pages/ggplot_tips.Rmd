@@ -5,7 +5,7 @@
 <!-- ======================================================= -->
 ## Overview {}
 
-`ggplot2` is the most popular data visualisation package in R, and is generally used instead of base `R` for creating figures. `ggplot2` benefits from a wide variety of supplementary packages that further enhance its functionality. Despite this, ggplot syntax is significantly different from base `R` plotting, and has a learning curve associated with it. Using `ggplot2` generally requires the user to format their data in a way that is highly `tidyverse` compatible, which ultimately makes using these packages together very effective.
+**ggplot2** is the most popular data visualisation package in R, and is generally used instead of **base** `R` for creating figures. **ggplot2** benefits from a wide variety of supplementary packages that further enhance its functionality. Despite this, ggplot syntax is significantly different from **base** `R` plotting, and has a learning curve associated with it. Using **ggplot2** generally requires the user to format their data in a way that is highly **tidyverse** compatible, which ultimately makes using these packages together very effective.
 
 <!-- One of the best resources is the official ggplot cheatsheet, shown here: -->
 
@@ -41,9 +41,9 @@ pacman::p_load(
 )
 ```
 
-### IMport data {-}  
+### Import data {-}  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Datasets used] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, eval=T, echo=F}
 linelist_cleaned <- rio::import(here::here("data", "linelist_cleaned.rds"))
@@ -59,7 +59,12 @@ linelist_cleaned <- rio::import("linelist_cleaned.xlsx")
 
 When preparing data to plot, it is best to make the data adhere to ["tidy" data standards](https://r4ds.had.co.nz/tidy-data.html) as much as possible. How to achieve this is expanded on in the data management pages of this handbook, such as [Cleaning data and core functions]. 
 
-Some simple ways we can prepare our data to make it better for plotting can often include making the contents of the data better for display - this does not necessarily mean its better for data manipulation! For example, we can replace `NA` values in a character column with the string "Unknown", or clean some variables so that their "data friendly" with underscores etc are changed to normal text. Here are some examples of this in action:
+Some simple ways we can prepare our data to make it better for plotting can include making the contents of the data better for display - this does not necessarily mean its better for data manipulation! For example:  
+
+* Replace `NA` values in a character column with the string "Unknown"  
+* Clean some columns so that their "data friendly" values with underscores etc are changed to normal text or title case (see [Characters and strings])  
+
+Here are some examples of this in action:
 
 ```{r, eval = TRUE}
 linelist_cleaned <- linelist_cleaned %>%
@@ -72,13 +77,11 @@ linelist_cleaned <- linelist_cleaned %>%
     # replace NA with unknown for outcome
     outcome_disp = replace_na(outcome, "Unknown")
   )
-
-
 ```
 
 ### Pivoting longer {-}
 
-As a matter of data structure, we often also want to pivot our data into *longer* formats, which will allow us to use a set of variables as a single variable. Read more about this is the page on [Pivoting data].  
+As a matter of data structure, for **ggplot2** we often also want to pivot our data into *longer* formats, which will allow us to use a set of variables as a single variable. Read more about this is the page on [Pivoting data].  
 
 For example, if we wanted to show the number of cases with specific symptoms, we are limited by the fact that each symptom is a specific column. We can pivot this to a longer format like this:
 
@@ -128,12 +131,12 @@ With this code, the most important things to note are:
   1. When making a ggplot, all objects are combined with a `+` sign.
   2. Understand the principles behind aesthetic mapping with the `mappping = aes()` argument is essential to using ggplot. This can be done in the `ggplot()` function as well as every geometric object. Mapping with `aes()` is used to define which variables are assigned to each axis (these can be continuous or categorical variables). It is also used to define whether a variable can be used to create different plot aesthetics. This can apply to the:
   
-    a. line colour (`col = `)
-    b. filled colour (`fill = `)
-    c. linetype (e.g. dotted, dashed) (`linetype =`)
-    d. size of an object (`size = `)
-  
-  This list is not exhaustive, but is enough to give a rough overview.
+a. line colour (`col = `)  
+b. filled colour (`fill = `)  
+c. linetype (e.g. dotted, dashed) (`linetype =`)  
+d. size of an object (`size = `)  
+
+This list is not exhaustive, but is enough to give a rough overview.
   
   3. Aesthetics of geometric objects can be defined *explicitly* as in the code above - this is different from assigning them to a variable. In cases where this is done, it must be *outside* the `mapping` argument. 
   
@@ -151,9 +154,7 @@ ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
 
 An example of defining aesthetics with a variable can be seen here:
 
-```{r, eval = TRUE}
-# read in dataset
-
+```{r, eval = TRUE, warning=F, message=F}
 # define base plot attributes and dataset
 ggplot(data = linelist_cleaned, mapping = aes(x = age, fill = outcome)) +
   # add a geometric object with some parameters (NO FILL GIVEN)
@@ -420,37 +421,163 @@ cowplot::plot_grid(p1, p2,
 ```
 
 
+## Marginal distributions  
+
+To show the distributions on the edges of a `geom_point()` scatterplot, you can use the **ggExtra** package and its function `ggMarginal()`. Save your original ggplot as an object, then pass it to `ggMarginal()` as shown below. Here are the key arguments:  
+
+* You must specify the `type = ` as either "histogram", "density" "boxplot", "violin", or "densigram".  
+* By default, marginal plots will appear for both axes. You can set `margins = ` to "x" or "y" if you only want one.  
+* Other optional arguments include `fill = ` (bar color), `color = ` (line color), `size = ` (plot size relative to margin size, so larger number makes the marginal plot smaller).  
+* You can provide other axis-specific arguments to `xparams = ` and `yparams = `. For example, to have different histogram bin sizes, as shown below.  
+
+You can have the marginal plots reflect groups (columns that have been assigned to `color = ` in your `ggplot()` mapped aesthetics). If this is the case, set the `ggMarginal()` argument `groupColour = ` or `groupFill = ` to `TRUE`, as shown below.  
+
+Read more at [this vignette](https://cran.r-project.org/web/packages/ggExtra/vignettes/ggExtra.html), in the [R Graph Gallery](https://www.r-graph-gallery.com/277-marginal-histogram-for-ggplot2.html) or the function R documentation `?ggMarginal`.  
+
+```{r, message=FALSE, warning=FALSE}
+# Install/load ggExtra
+pacman::p_load(ggExtra)
+
+# Basic scatter plot of weight and age
+scatter_plot <- ggplot(data = linelist)+
+  geom_point(mapping = aes(y = wt_kg, x = age)) +
+  labs(title = "Scatter plot of weight and age")
+```
+
+To add marginal histograms:  
+
+```{r, message=FALSE, warning=FALSE}
+# with histograms
+ggMarginal(
+  scatter_plot,                     # add marginal histograms
+  type = "histogram",               # specify histograms
+  fill = "lightblue",               # bar fill
+  xparams = list(binwidth = 10),    # other parameters for x-axis marginal
+  yparams = list(binwidth = 5))     # other parameters for y-axis marginal
+```
+
+Marginal histograms with grouped/colored values:  
+
+```{r, message=FALSE, warning=FALSE}
+
+# Scatter plot, colored by outcome
+# Outcome column is assigned as color in ggplot. groupFill in ggMarginal set to TRUE
+scatter_plot_color <- ggplot(data = linelist)+
+  geom_point(mapping = aes(y = wt_kg, x = age, color = outcome)) +
+  labs(title = "Scatter plot of weight and age")+
+  theme(legend.position = "bottom")
+
+ggMarginal(scatter_plot_color, type = "histogram", groupFill = TRUE)
+```
+
+Marginal density curve, with demonstration of size and color arguments:  
+```{r, message=FALSE, warning=FALSE}
+# with density curves
+ggMarginal(
+  scatter_plot,
+  type = "density",
+  color = "red",                    # line color
+  size = 4)                         # smaller number makes larger marginal plots
+```
+
+Marginal boxplots, with demonstration of the margins argument:  
+
+```{r, message=FALSE, warning=FALSE}
+# with boxplot 
+ggMarginal(
+  scatter_plot,
+  margins = "x",      # only show x-axis marginal plot
+  type = "boxplot")   
+```
+
+
+
 <!-- ======================================================= -->
 ## Smart Labeling {}
-In `ggplot2`, it is also possible to add text to plots. However, this comes with the notable limitation where text labels often clash with data points in a plot, making them look messy or hard to read. There is no ideal way to deal with this in the base package, but there is a `ggplot2` addon, known as `ggrepel` that makes dealing with this very simple! 
+In `ggplot2`, it is also possible to add text to plots. However, this comes with the notable limitation where text labels often clash with data points in a plot, making them look messy or hard to read. There is no ideal way to deal with this in the base package, but there is a `ggplot2` add-on, known as `ggrepel` that makes dealing with this very simple! 
 
-The `ggrepel` package provides two new functions, `geom_label_repel()` and `and geom_text_repel()`, which replace `geom_label()` and `geom_text()`. Simply use these functions instead of the base functions to produce neat labels. You can also use the `force` argument to change the degree of repulsion between labels and their respective points.
+The `ggrepel` package provides two new functions, `geom_label_repel()` and `geom_text_repel()`, which replace `geom_label()` and `geom_text()`. Simply use these functions instead of the base functions to produce neat labels. Within the function, map the aesthetics `aes()` as always, but include the argument `label = ` to which you provide a column name containing the values you want to display (e.g. patient id, or name, etc.). You can make more complex labels by combining columns and newlines (`\n`) within `str_glue()` as shown below.  
 
-For our example, we will make a scatterplot showing height against weight again. We're also going to label each point with a patient id when the patient is over 70 years of age. We'll use a trick with filter to only show these specific points!
+A few tips:  
 
+* Use `min.segment.length = 0` to always draw line segments, or `min.segment.length = Inf` to never draw them  
+* Use `size = ` outside of `aes()` to set text size  
+* Use `force = ` to change the degree of repulsion between labels and their respective points (default is 1)  
+* Include `fill = ` within `aes()` to have label colored by value  
+  * A letter "a" may appear in the legend - add `guides(fill = guide_legend(override.aes = aes(color = NA)))+` to remove it  
+
+See this is very in-depth [tutorial](https://ggrepel.slowkow.com/articles/examples.html) for more.  
 
 ```{r, eval = T, warning=F, message=F}
 pacman::p_load(ggrepel)
 
-ggplot(linelist_cleaned, 
-       aes(x = ht_cm,
-           y = wt_kg)) +
-  geom_point() + 
-  # pass the filtered version of the dataset as a new dataset
-  ggrepel::geom_label_repel(data = linelist_cleaned %>% filter(age_years > 70),
-                           aes(label = case_id),
-                           force = 1) +
-  labs(y = "weight (kg)", x = "height(cm)")
-
-
-
+linelist %>%                                               # start with linelist
+  group_by(hospital) %>%                                   # group by hospital
+  summarise(                                               # create new dataset with summary values per hospital
+    n_cases = n(),                                           # number of cases per hospital
+    delay_mean = round(mean(days_onset_hosp, na.rm=T),1),    # mean delay per hospital
+  ) %>% 
+  ggplot(mapping = aes(x = n_cases, y = delay_mean))+      # send data frame to ggplot
+  geom_point(size = 2)+                                    # add points
+  geom_label_repel(                                        # add point labels
+    mapping = aes(
+      label = stringr::str_glue(
+        "{hospital}\n{n_cases} cases, {delay_mean} days")  # how label displays
+      ), 
+    size = 3,                                              # text size in labels
+    min.segment.length = 0)+                               # show all line segments                
+  labs(                                                    # add axes labels
+    title = "Mean delay to admission, by hospital",
+    x = "Number of cases",
+    y = "Mean delay (days)")
 ```
+
+You can label only a subset of the data points - by using standard `ggplot()` syntax to provide different `data = ` for each `geom` layer of the plot. Below, All cases are plotted, but only a few are labeled.    
+
+```{r, warning=F, message=FALSE}
+
+ggplot()+
+  # All points in grey
+  geom_point(
+    data = linelist_cleaned,                                   # all data provided to this layer
+    mapping = aes(x = ht_cm, y = wt_kg),
+    color = "grey",
+    alpha = 0.5)+                                              # grey and semi-transparent
+  
+  # Few points in black
+  geom_point(
+    data = linelist_cleaned %>% filter(days_onset_hosp > 15),  # filtered data provided to this layer
+    mapping = aes(x = ht_cm, y = wt_kg),
+    alpha = 1)+                                                # default black and not transparent
+  
+  # point labels for few points
+  geom_label_repel(
+    data = linelist_cleaned %>% filter(days_onset_hosp > 15),  # filter the data for the labels
+    mapping = aes(
+      x = ht_cm,
+      y = wt_kg,
+      fill = outcome,                                          # label color by outcome
+      label = stringr::str_glue("Delay: {days_onset_hosp}d")), # label created with str_glue()
+    min.segment.length = 0) +                                  # show line segments for all
+  
+  # remove letter "a" from inside legend boxes
+  guides(fill = guide_legend(override.aes = aes(color = NA)))+
+  
+  # axis labels
+  labs(
+    title = "Cases with long delay to admission",
+    y = "weight (kg)",
+    x = "height(cm)")
+```
+
+
+
 
 
 <!-- ======================================================= -->
 ## Time axes {}
 
-Working with time axes in ggplot can seem daunting, but is made very easy with a few key functions. Remember that when working with time or date that you should ensure that the correct variables are formatted as date or datetime class - see the _working with dates_ section for more information on this.
+Working with time axes in ggplot can seem daunting, but is made very easy with a few key functions. Remember that when working with time or date that you should ensure that the correct variables are formatted as date or datetime class - see the [Working with dates] page for more information on this, or [Epidemic curves] page (ggplot section) for examples.
 
 The single most useful set of functions for working with dates in `ggplot2` are the scale functions (`scale_x_date()`, `scale_x_datetime()`, and their cognate y-axis functions). These functions let you define how often you have axis labels, and how to format axis labels. To find out how to format dates, see the _working with dates_ section again! You can use the `date_breaks` and `date_labels` arguments to specify how dates should look:
 
@@ -674,6 +801,10 @@ scales::scientific(100000)
 Inspiration
 [ggplot graph gallery](https://www.tidyverse.org/blog/2018/07/ggplot2-3-0-0/)
 
+Presentation of data
+European Centre for Disease Prevention and Control [Guidelines of presentation of surveillance data](https://ecdc.europa.eu/sites/portal/files/documents/Guidelines%20for%20presentation%20of%20surveillance%20data-final-with-cover-for-we....pdf) 
+
+
 Facets and labellers
 [Using labellers for facet strips](http://www.cookbook-r.com/Graphs/Facets_(ggplot2)/#modifying-facet-label-text)
 [Labellers](https://ggplot2.tidyverse.org/reference/labellers.html)
@@ -690,6 +821,9 @@ Legends
 
 Captions
 [Caption alignment](https://stackoverflow.com/questions/64701500/left-align-ggplot-caption)  
+
+Labels  
+[ggrepel](https://ggrepel.slowkow.com/articles/examples.html)  
 
 Cheatsheets  
 [Beautiful plotting with ggplot2](http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/)  

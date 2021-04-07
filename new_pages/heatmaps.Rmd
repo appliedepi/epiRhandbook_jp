@@ -1,10 +1,10 @@
 
-# Heatmaps { }  
+# Heat tiles { }  
 
 
-Heatmaps can be useful visualizations. Below we demonstrate two examples:  
+Heat tiles ("heatmaps") can be useful visualizations when trying to display 3 variables (x-axis, y-axis, and fill). Below we demonstrate two examples:  
 
-* Creating a visual matrix of transmission events by age ("who infected whom")  
+* A visual matrix of transmission events by age ("who infected whom")  
 * Tracking reporting metrics across many facilities/jurisdictions over time  
 
 
@@ -53,7 +53,7 @@ We begin from the case linelist:
 * There is one row per case  
 * There is a column that contains the case_id of the infector, who is also a case in the linelist  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Datasets used] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 The first 50 rows of the linelist are shown below for demonstration:  
 
@@ -74,9 +74,14 @@ DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 
 ```
 
 
+
+### Convert to "long" {-}  
+
 **Objective**: We need to achieve a "long"-style dataframe that contains the frequency of transmission events between each age category. This will take several data manuipulation steps to achieve.  
 
-To begin, we create a dataframe of the cases and their ages, called `case_ages`. The first rows are displayed below.  
+#### Make cases data frame {-} 
+
+To begin, we create a dataframe of the cases, their ages, and their infectors - we call the data frame `case_ages`. The first rows are displayed below.  
 
 ```{r}
 case_ages <- linelist %>% 
@@ -88,6 +93,8 @@ case_ages <- linelist %>%
 # display the shapefile as a table
 DT::datatable(head(case_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
+
+#### Make infectors data frame {-}  
 
 Next, we create a dataframe of the infectors - at the moment it consists of a single column. These are the infector IDs from the linelist. Not every case has a known infector, so we remove missing values. The first rows are displayed below.  
 
@@ -103,7 +110,9 @@ infectors <- linelist %>%
 DT::datatable(head(infectors, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Next, we use joins to procure the ages of the infectors. This is not simple, because in the `linelist`, infector's ages are not listed as such. We achieve this result by joining the case linelist to the infectors - joining such that the infector in the left-side "baseline" dataframe links to the `case_id` in the right-side linelist. Thus, the data from the infector's case record in the linelist (including age) is added to the infector row. The first rows are displayed below.  
+Next, we use joins to procure the ages of the infectors. This is not simple, because in the `linelist`, the infector's ages are not listed as such. We achieve this result by joining the case `linelist` to the infectors. We begin with the infectors, and `left_join()` (add) the case `linelist` such that the `infector` id column left-side "baseline" data frame joins to the `case_id` column in the right-side `linelist` data frame.  
+
+Thus, the data from the infector's case record in the linelist (including age) is added to the infector row. The first rows are displayed below.  
 
 ```{r}
 infector_ages <- infectors %>%             # begin with infectors
@@ -111,7 +120,7 @@ infector_ages <- infectors %>%             # begin with infectors
     linelist,
     by = c("infector" = "case_id")) %>%    # match infector to their information as a case
   select(infector, age_cat) %>%            # keep only columns of interest
-  rename("infector_age_cat" = "age_cat")   # rename for clarify
+  rename("infector_age_cat" = "age_cat")   # rename for clarity
 ```
 
 ```{r message=FALSE, echo=F}
@@ -170,7 +179,7 @@ DT::datatable(head(long_prop, 50), rownames = FALSE, options = list(pageLength =
 
 Now finally we can create the heatmap with **ggplot2** package, using the `geom_tile()` function.  
 
-* In the aesthetics `aes()` of `geom_tile()` sex the x and y as the case age and infector age  
+* In the aesthetics `aes()` of `geom_tile()` set the x and y as the case age and infector age  
 * Also in `aes()` set the argument `fill = ` to the Freq column - this is the value that will be converted to a tile color  
 * Set a scale color with `scale_fill_gradient()` - you can specify the high/low colors  
   * Note that `scale_color_gradient()` is different! In this case you want the fill  
@@ -207,11 +216,7 @@ Often in public health, one objective is to assess trends over time for many ent
 
 ### Preparation {-}
 
-We begin with a dataset of daily malaria reports from many facilities. The reports contain a date, province, district, and malaria counts
-
-Below are the first 30 rows of these data:  
-
-And we also load this separate dataset of daily malaria case counts by facility:  
+We begin by importing a dataset of daily malaria reports from many facilities. The reports contain a date, province, district, and malaria counts. See the page on [Download book and data] for informaton on how to download these data. Below are the first 30 rows:  
 
 ```{r, echo=F}
 facility_count_data <- rio::import(here::here("data", "facility_count_data.rds")) %>% 
@@ -279,7 +284,7 @@ The new week column can be seen on the far right of the dataframe
 DT::datatable(head(agg_weeks,30), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
-Now we group the data into facility-weeks and summarise them to produce statistics per facility-week. See the page on [Descriptive analysis] for tips. The grouping itself doesn't change the dataframe, but it impacts how the subsequent summary statistics are calculated.  
+Now we group the data into facility-weeks and summarise them to produce statistics per facility-week. See the page on [Descriptive tables] for tips. The grouping itself doesn't change the dataframe, but it impacts how the subsequent summary statistics are calculated.  
 
 The top rows are shown below. Note how the columns have completely changed to reflect the desired summary statistics. Each row reflects one facility-week. 
 
@@ -288,8 +293,7 @@ agg_weeks <- agg_weeks %>%
 
   # Group into facility-weeks
   group_by(
-    location_name, week,
-    .drop = F) %>%
+    location_name, week) %>%
   
   # Create summary statistics columns on the grouped data
   summarize(

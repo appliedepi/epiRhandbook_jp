@@ -11,6 +11,7 @@ filter <- dplyr::filter
 select <- dplyr::select
 summarise <- dplyr::summarise
 summary <- base::summary
+incidence <- incidence2::incidence
 
 #load core packages
 pacman::p_load(
@@ -27,3 +28,7 @@ linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
 
 # import the count data - facility level
 #count_data <- rio::import(here::here("data", "facility_count_data.rds"))
+
+# Settings
+
+options(scipen=1, digits=3)

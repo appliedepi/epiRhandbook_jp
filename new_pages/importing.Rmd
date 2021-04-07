@@ -44,6 +44,7 @@ When importing or exporting data, you must provide a file path. You can do this 
 ### "Absolute" file paths {-}  
 
 This is an example of an absolute file path, placed within quotes and provided to `import()`, to be saved in R as the data frame object named `linelist`.  
+In the filepath below, "epiproject" is the home/root folder of the analysis. There is a sub-folder "data" and within that a subfolder "linelists", in which there is the xlsx file.  
 
 ```{r, eval=F}
 linelist <- import("C:/Users/Pierre/My Documents/epiproject/data/linelists/ebola_linelist.xlsx")
@@ -53,14 +54,17 @@ A few things to note about absolute file paths:
 
 * **Avoid using absolute file paths** as they will usually break if the script is run on a different computer
 * They can be used if you must load data from a *shared drive* folder distant from where your R script is saved  
-* Use *forward* slashes as in the example above (this is *NOT* the default for Windows file paths)  
+* Use *forward* slashes (`/`) as in the example above (this is *NOT* the default for Windows file paths)  
 * File paths that begin with double slashes (e.g. "//...") will likely **not be recognized by R** and will produce an error. Consider moving to a "named" or "lettered" drive that begins with a letter (e.g. "J:" or "C:"). See the page on [Directory interactions] for more details on this issue.  
 
+<span style="color: darkgreen;">**_TIP:_** To quickly convert all `\` to `/`, highlight the code of interest, use Ctrl+f (in Windows), check the option box for "In selection", and then use the replace functionality to convert them.</span>  
 
 
 ### "Relative" file paths {-}
 
-Below, the same file location is given *relative to* an R project root folder "epiproject". This assumes you are working in an R project and have loaded the package **here**.  
+"Relative" file paths consist of the file path *relative to* a particular root folder. They allow for more simple file paths that can work on different computers (e.g. if root folder is on a shared drive or is sent by email).  
+
+Below, we assume the folder "epiproject" is the root folder of an R project and that we are using the package **here**. The same file path as above is written as *relative to* the R project root folder "epiproject". The **here** syntax is explained below.  
 
 ```{r, eval=F}
 linelist <- import(here("data", "linelists", "ebola_linelist.xlsx"))
@@ -68,7 +72,7 @@ linelist <- import(here("data", "linelists", "ebola_linelist.xlsx"))
 
 The package **here** and its function `here()` locate files on your computer in relation to the root directory of an R project, and provide a shortcut syntax for providing a file path to a function like `import()`. This is how `here()` works:  
 
-* Ensure you are working within an R project (read more on the [R projects] page  
+* Ensure you are working within an R project (read more on the [R projects] page)  
 * When the **here** package is first loaded within the R project, it places a small file called "here" in the root-level folder of your R project as a "benchmark" or "anchor" for all other files in the project.  
 * In your script, if you want to reference a file saved in your project’s folders, you use the function `here()` to tell R where the file is located *in relation to that anchor*.  
 * `here()` can be used for both importing and exporting.  
@@ -148,9 +152,13 @@ You may want to designate which value(s) in your dataset should be considered as
 
 Use the `na = ` argument for `import()` and provide the value(s) within quotes (even if they are numbers). You can specify multiple values by including them within a vector, using `c()` as shown below.  
 
+Here, the value "99" in the imported dataset is considered missing and converted to `NA` in R.  
+
 ```{r, eval=F}
 linelist <- import(here("data", "linelist_raw.xlsx"), na ="99")
 ```
+
+Here, any of the values "Missing", "" (empty cell), or " " (single space) in the imported dataset are converted to `NA` in R.  
 
 ```{r, eval=F}
 linelist <- import(here("data", "cleaning_dict.csv"), na = c("Missing", "", " "))
@@ -189,11 +197,26 @@ Another package, **googledrive** offers useful functions for writing, editing, a
 Here are some other helpful online tutorials: [basic importing tutorial](https://arbor-analytics.com/post/getting-your-data-into-r-from-google-sheets/) [more detail](https://googlesheets4.tidyverse.org/articles/googlesheets4.html) [interaction between the two packages](https://googlesheets4.tidyverse.org/articles/articles/drive-and-sheets.html)
 
 
+
+
+
 <!-- ======================================================= -->
 ## Scraping websites {}
 
 Scraping data from a website - TBD - Under construction
 
+
+
+
+<!-- ======================================================= -->
+## API {}
+
+TBD - Under construction
+
+An Automated Programming Interface (API) is commonly used to directly request clean data from a website. You can use R with the packages **httr** and **jsonlite** to pull directly via an API.  
+
+
+This section was informed by [this tutorial](https://www.dataquest.io/blog/r-api-tutorial/) and [this tutorial](https://medium.com/@traffordDataLab/querying-apis-in-r-39029b73d5f1).  
 
 
 
@@ -246,6 +269,7 @@ linelist_2headers <- rio::import(here::here("data", "linelist_cleaned.rds")) %>%
                 time_admission = "time of hospital admission HH:MM")
 ```
 
+Below is an example of this kind of dataset (with the first row being the data dictionary).  
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
@@ -293,12 +317,12 @@ linelist_raw <- import("linelist_raw.csv",
 colnames(linelist_raw) <- linelist_raw_names
 ```
 
-Bonus! If you do have a second row that is a data dictionary, you can easily create a proper data dictionary from it. See this [vignette](https://alison.rbind.io/post/2018-02-23-read-multiple-header-rows/)  
+
 
 
 ### Make a data dictionary {-}  
 
-Bonus! If you do have a second row that is a data dictionary, you can easily create a proper data dictionary from it. This tip is adapted from this [post](source: https://alison.rbind.io/post/2018-02-23-read-multiple-header-rows/).  
+Bonus! If you do have a second row that is a data dictionary, you can easily create a proper data dictionary from it. This tip is adapted from this [post](https://alison.rbind.io/post/2018-02-23-read-multiple-header-rows/).  
 
 
 ```{r}
@@ -327,7 +351,53 @@ names(df) <- paste(names(df), df[1, ], sep = "_")
 
 ## Multiple files - import, export, split, combine  
 
-See the page on [Iteration] for examples of how to import and combine multiple files, or multiple Excel workbook files. This page also has examples on how to split a data frame into parts and export each one separately, or as named sheets in an Excel workbook.  
+See the page on [Iteration and loops] for examples of how to import and combine multiple files, or multiple Excel workbook files. That page also has examples on how to split a data frame into parts and export each one separately, or as named sheets in an Excel workbook.  
+
+
+
+
+<!-- ======================================================= -->
+## Import from Github {}
+
+Importing data directly from Github into R can be very easy or can require a few steps - depending on the file type. Below are some approaches:  
+
+### CSV files {-}  
+
+It can be easy to import a .csv file directly from Github into R with an R command.  
+
+1) Go to the Github repo, locate the file of interest, and click on it  
+3) Click on the "Raw" button (you will then see the "raw" csv data, as shown below)  
+4) Copy the URL (web address)  
+5) Use the URL in the `import()` R command, as shown below  
+
+```{r out.height = "50%", fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "download_csv_raw.png"))
+```
+
+### XLSX files {-}  
+
+You may not be able to view the "Raw" data for some files (e.g. .xlsx, .rds, .nwk, .shp)  
+
+1) Go to the Github repo, locate the file of interest, and click on it  
+2) Click the "Download" button, as shown below  
+3) Save the file on your computer, and import it into R  
+
+
+```{r out.height = "50%", fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "download_xlsx.png"))
+```
+
+### Shapefiles {-} 
+
+Shapefiles have many sub-component files, each with a different file extention. One file will have the ".shp" extension, but others may have ".dbf", ".prj", etc.  To download a shapefile from Github, you will need to download each of the sub-component files individually, and save them in the *same* folder on your computer. In Github, click on each file individually and download them by clicking on the "Download" button.  
+
+Once saved to your computer you can import the shapefile as shown in the [GIS basics] page using `st_read()` from the **sf** package. You only need to provide the filepath and name of the ".shp" file - as long as the other related files are within the same folder on your computer.  
+
+Below, you can see how the shapefile "sle_adm3" consists of many files - each of which must be downloaded from Github.  
+
+```{r out.height = "50%", fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "download_shp.png"))
+```
 
 
 
@@ -390,8 +460,18 @@ DT::datatable(manual_entry_cols)
 
 ### Pasting from clipboard {-}  
 
+If you copy data from elsewhere and have it on your clipboard, you can try one of the two ways below:  
 
-If you copy data from elsewhere and have it on your clipboard, you can try the following function from **base** R to convert those data into an R data frame:  
+From the **clipr** package, you can use `read_clip_tbl()` to import as a data frame, or just just `read_clip()` to import as a character vector. In both cases, leave the parentheses empty.    
+
+```{r, eval=F}
+linelist <- clipr::read_clip_tbl()  # imports current clipboard as data frame
+linelist <- clipr::read_clip()      # imports as character vector
+```
+You can also easily export to your system's clipboard with **clipr**. See the section below on Export.  
+
+
+Alternatively, you can use the the `read.table()` function from **base** R with `file = "clipboard")` to import as a data frame:  
 
 ```{r, eval=F}
 df_from_clipboard <- read.table(
@@ -403,9 +483,114 @@ df_from_clipboard <- read.table(
 
 
 
+
+
+## Import most recent file {-}  
+
+Often you may receive daily updates to your datasets. In this case you will want to write code that imports the most recent file. Below we present two ways to approach this:  
+
+* Selecting the file based on the date in the file name  
+* Selecting the file based on file metadata (last modification)  
+
+
+### Dates in file name {-}  
+
+This approach depends on three premises:  
+
+1) You trust the dates in the file names  
+2) The dates are numeric and appear in *generally* the same format (e.g. year then month then day)  
+3) There are no other numbers in the file name  
+
+We will explain each step, and then show you them combined at the end. First, use `dir()` from **base** R to extract just the file names for each file in the folder of interest. See the page on [Directory interactions] for more details about `dir()`. In this example, the folder of interest is the folder "linelists" within the folder "data" within the R project. 
+
+```{r}
+linelist_filenames <- dir(here("data", "linelists")) # get file names from folder
+linelist_filenames                                   # print
+```
+
+Once you have this vector of names, you can extract the dates by applying `str_extract()` from **stringr** using this regular expression. It extracts any numbers in the file name (including any other characters in the middle such as dashes or slashes). You can read more about **stringr** in the [Strings and characters] page.  
+
+```{r}
+linelist_dates_raw <- stringr::str_extract(linelist_filenames, "[0-9].*[0-9]") # extract numbers and any characters in between
+linelist_dates_raw  # print
+```
+
+Assuming  dates are written in the same date general format (e.g. Year Month Day) you can use **lubridate**'s flexible `ymd()` function (or `dmy()` or `mdy()`) to convert them to dates. For these functions, the dashes, spaces, or slashes do not matter, only of order of the numbers. Read more in [Working with dates].  
+
+```{r}
+linelist_dates_clean <- lubridate::ymd(linelist_dates_raw)
+linelist_dates_clean
+```
+
+
+The **base** R function `which.max()` can then be used to return the index position (e.g. 1st, 2nd, 3rd, ...) of the maximum date value. The latest file is correctly identified as the 6th file - "case_linelist_2020-10-08.xlsx".  
+
+```{r}
+index_latest_file <- which.max(linelist_dates_clean)
+index_latest_file
+```
+
+If we condense all these commands, the complete code could look like below. Note that the `.` in the last line is a placeholder for the piped object at that point in the pipe sequence. At that point the value is simply the number 6. This is placed in double brackets to extract the 6th element of the vector of file names produced by `dir()`.    
+
+```{r}
+# load packages
+pacman::p_load(
+  tidyverse,         # data management
+  stringr,           # work with strings/characters
+  lubridate,         # work with dates
+  rio,               # import / export
+  here,              # relative file paths
+  fs)                # directory interactions
+
+# extract the file name of latest file
+latest_file <- dir(here("data", "linelists")) %>%  # file names from "linelists" sub-folder          
+  str_extract("[0-9].*[0-9]") %>%                  # pull out dates (numbers)
+  ymd() %>%                                        # convert numbers to dates (assuming year-month-day format)
+  which.max() %>%                                  # get index of max date (latest file)
+  dir(here("data", "linelists"))[[.]]              # return the filename of latest linelist
+
+latest_file  # print name of latest file
+```
+
+You can now use this name to finish the relative file path, with `here()`:  
+
+```{r}
+here("data", "linelists", latest_file) 
+```
+
+And you can now import the latest file:  
+
+```{r, eval=F}
+# import
+import(here("data", "linelists", latest_file)) # import 
+```
+
+ 
+
+
+
+### Use the file info {-}  
+
+If your files do not have dates in their names (or you do not trust those dates), you can try to extract the last modification date from the file metadata. Use functions from the package **fs** to examine the metadata information for each file, which includes the last modification time and the file path.  
+
+Below, we provide the folder of interest to **fs**'s `dir_info()`. In this case, the folder of interest is the sub-folder "linelists" within the folder "data" within the R project. The result is a data frame with one line per file and columns for `modification_time`, `path`, etc. You can see a visual example of this in the page on [Directory interactions].    
+
+We can sort this data frame of files by the column `modification_time`, and then keep only the top/latest row (file) with **base** R's `head()`. Then we can extract the file path of this latest file only with the **dplyr** function `pull()` on the column `path`. Finally we can pass this file path to `import()`. The imported file is saved as `latest_file`.  
+
+```{r, eval=F}
+latest_file <- dir_info(here("data", "linelists")) %>%  # collect file info on all files in directory
+  arrange(desc(modification_time)) %>%      # sort by modification time
+  head(1) %>%                               # keep only the top (latest) file
+  pull(path) %>%                            # extract only the file path
+  import()                                  # import the file
+
+```
+
+
 <!-- ======================================================= -->
 ## Export {}  
 
+### With **rio** package {-}
 With **rio**, you can use the `export()` function in a very similar way to `import()`. First give the name of the R object you want to save (e.g. `linelist`) and then in quote the filepath including name and file extension. For example:  
 
 ```{r, eval=F}
@@ -418,6 +603,15 @@ You could save the same dataframe as a .csv, and to a folder specified by **here
 export(linelist, here("data","clean", "my_linelist.csv")
 ```
 
+
+### To clipboard {-}
+
+To export a data frame to your computer's "clipboard" (to then paste into another software like Excel, Google Spreadsheets, etc.) you can use `write_clip()` from the **clipr** package. 
+
+```{r}
+# export the linelist data frame to your system's clipboard
+clipr::write_clip(linelist)
+```
 
 
 ## RDS files {}
@@ -445,11 +639,13 @@ In the below example, multiple R objects are stored within the exported file "my
 rio::export(my_list, my_dataframe, my_vector, "my_objects.Rdata")
 ```
 
-Note: if you are trying to *import* a list, use `import_list()` from **rio** to import it witht the complete original structure and contents.  
+Note: if you are trying to *import* a list, use `import_list()` from **rio** to import it with the complete original structure and contents.  
 
 ```{r, eval=F}
 rio::import_list("my_list.Rdata")
 ```
+
+
 
 
 

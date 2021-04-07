@@ -8,9 +8,9 @@ In a column of class *factor*:
 * the possible values are restricted - values not already defined as levels are rejected  
 * values are ordered, which impacts how they display in tables and plots  
 
-Most of this page will use functions from the package **forcats** (a short name for "For categorical variables"). 
+This page demonstrates use of functions from the package **forcats** (a short name for "For categorical variables") and some **base** R functions. We also touch upon the use of **lubridate** and **aweek** for special cases related to epiweeks.  
 
-*Factors are useful in statistical modeling, which allows integer values such as 1/0 to be evaluated categorically and not continuously.*  
+Factors are useful in statistical modeling, which allows integer values such as 1/0 to be evaluated categorically and not continuously.  
 
 
 
@@ -27,6 +27,7 @@ pacman::p_load(
   here,          # filepaths
   lubridate,     # working with dates
   forcats,       # factors
+  aweek,         # create epiweeks with automatic factor levels
   tidyverse      # data mgmt and viz
   )
 ```
@@ -35,7 +36,7 @@ pacman::p_load(
 
 ### Import data {-}  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Datasets used] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.  
+We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.  
 
 ```{r, echo=F}
 # import the linelist into R
@@ -49,25 +50,13 @@ linelist <- import("linelist_cleaned.xlsx")
 ```
 
 
+### Example: new categorical column  
 
+For demonstration in this page we will use a common scenario - the creation of a categorical variable.  
 
+We use the existing column `days_onset_hosp` (days from symptom onset to hospital admission) and classify each row into one of several categorical groupings.  
 
-<!-- ======================================================= -->
-## Create new column  
-
-We begin in a common epidemiological scenario - the creation of a categorical column. In this case, we use the existing column `days_onset_hosp` (days from symptom onset to hospital admission) to classify rows into categorical groups.  
-
-The **dplyr** function `case_when()` is used to apply logical criteria on each row, resulting in values for the new column `delay`  
-
-```{r, eval=F, echo=F}
-# linelist <- linelist %>% 
-#   mutate(hour = hour(strptime(time_admission, format = "%H:%M"))) %>% 
-#   mutate(time_period = case_when(
-#     hour > 06 & hour < 12 ~ "Morning",
-#     hour >= 12 & hour < 17 ~ "Afternoon",
-#     hour >= 17 & hour < 21 ~ "Evening",
-#     hour >=21 | hour <= 6 ~ "Night"))
-```
+We can use the **dplyr** function `case_when()` to apply logical criteria on each row, resulting in values for the new column `delay`  
 
 ```{r}
 linelist <- linelist %>% 
@@ -79,24 +68,27 @@ linelist <- linelist %>%
     TRUE                                       ~ "Check me"))  
 ```
 
-This is a column of character categorical values, but is **not** yet classified as a factor. Thus, in a frequency table, we see that the values appear in a default alphabetical order - an order that does not make much intuitive sense:  
+
+## Non-factor categorical  
+
+The column `delay` (created in the Preparation section above) is a categorical column of class Character - *not* yet a Factor. Thus, in a frequency table, we see that the values appear in a default alphabetical order - an order that does not make much intuitive sense:  
 
 ```{r}
 table(linelist$delay, useNA = "always")
 ```
 
-Likewise, if we make a bar plot the values also appear in this order from the bottom:    
-This probably does not make sense to show.  
+Likewise, if we make a bar plot, the values also appear in this order on the x-axis. This order does not make sense. (see the [ggplot tips] page for more on **ggplot2** - a very common and useful visualization package).  
 
 ```{r, warning=F, message=F}
-ggplot(data = linelist, aes(x = delay))+
-  geom_bar()+
-  theme_classic()
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(x = delay))
 ```
+
+
 
 ## Convert to factor  
 
-To initially convert a column to class *factor*, use the **base** R function `factor()`. Below the dataframe `linelist` is modified such that the column `time_period` is converted to a factor.    
+To initially convert a character or numeric column to class Factor, we suggest using the **base** R function `factor()`. Below the data frame `linelist` is modified such that the column `delay` is converted to a factor. The default order of the values will be alpha-numeric.  
 
 ```{r}
 linelist <- linelist %>%
@@ -109,10 +101,23 @@ Unless specified, the levels will still be in alphabetic (or numeric) order. Use
 levels(linelist$delay)
 ```
 
+You can specify the levels and their order *in your initial conversion command* to the `levels = ` argument. 
+
+```{r}
+linelist <- linelist %>%
+  mutate(delay = factor(delay, levels = c("<2 days", "2-5 days", ">5 days")))
+```
+
+```{r}
+levels(linelist$delay)
+```
+
+
+
 
 ## Adjust level order  
 
-Using the package **forcats**, there are several functions to adjust the order of a factor's levels: 
+The package **forcats** offers several useful functions to easily *adjust* the order of a factor's levels: 
 
 * Use `fct_relevel()` to *manually* adjust the order  
 * Use `fct_infreq()` to reorder by frequency (highest to lowest)  
@@ -132,27 +137,36 @@ These functions can be applied outside of a plot to re-define the column, or wit
 
 **`fct_relevel()`**  
 
-This function is used to manually assign factor levels. If desired, you can write all the levels in the desired order. However, it is not necessary to specify the order of *all* levels - you can adjust the order only certain levels using the `after = ` argument.  
-
-Here are examples of redefining the column, with mew order of levels:  
+This function is used to manually order the factor levels. Within the parentheses, first provide the factor column, then provide the levels in the desired order (as a character vector within `c()`). Here is an example of redefining the column `delay` (which is already class Factor) and specifying the desired order of levels.  
 
 ```{r}
 # re-define level order
 linelist <- linelist %>% 
   mutate(delay = fct_relevel(delay, c("<2 days", "2-5 days", ">5 days")))
+```
 
+If you only want to move one level, you can specify it to `fct_relevel()` alone and give a number to the `after = ` argument to indicate where in the order it should be. For example: 
 
-# using base R 
-linelist$delay <- fct_relevel(linelist$delay, c("<2 days", "2-5 days", ">5 days"))
+```{r}
+# re-define level order
+linelist <- linelist %>% 
+  mutate(delay = fct_relevel(delay, "<2 days", after = 1))
+
+levels(linelist$delay)
 ```
 
 
-Alternatively, you can adjust the levels of a factor from *within* a plot, and the re-ordering of the levels will only apply within the plot. Below, you can see how the specified order begins from the bottom to the top. The missing value `NA` are at the end.  
+The above will define the level order in the data frame. Alternatively, you can adjust the levels from *within* a ggplot, and the re-ordering of the levels will only apply within the plot. Below, as the the `delay` column is mapped to the x-axis of the plot it is wrapped within `fct_relevel()`.  
 
 
-```{r, warning=F, message=F}
-ggplot(data = linelist, aes(x = fct_relevel(delay, c("<2 days", "2-5 days", ">5 days", "Missing"))))+
-  geom_bar()
+```{r, warning=F, message=F, out.width = c('50%', '50%'), fig.show='hold'}
+# Incorrect order - no adjustment within ggplot
+ggplot(data = linelist)+
+    geom_bar(mapping = aes(x = delay))
+
+# Factor level order adjusted within ggplot
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(x = fct_relevel(delay, c("<2 days", "2-5 days", ">5 days"))))
 ```
 
 Note how the default x-axis label is now quite complicated - you can overwrite this with the `labs()` in ggplot.  
@@ -162,9 +176,9 @@ Note how the default x-axis label is now quite complicated - you can overwrite t
 
 **`fct_infreq()`**  
 
-To order by frequency that the value appears in the data, use `fct_infreq()`. Any missing values (`NA`) will automatically be included at the end.  
+To order by frequency that the value appears in the data, use `fct_infreq()`. Any missing values (`NA`) will automatically be included at the end. You can reverse this order by further modifying with `fct_rev()`.  
 
-You can reverse the order by wrapping with `fct_rev()`, like this: `fct_rev(fct_infreq(time_period))`.
+This function can be used within a `ggplot()`, as shown below.  
 
 ```{r, out.width = c('50%', '50%', '50%'), fig.show='hold', warning=F, message=F}
 # ordered by frequency
@@ -178,7 +192,13 @@ ggplot(data = linelist, aes(x = fct_rev(fct_infreq(delay))))+
   labs(x = "Delay onset to admission (days)")
 ```
 
+Here is an example within a data frame:  
 
+```{r, eval = F}
+linelist %>% 
+  mutate(delay = fct_infreq(delay),
+         delay = fct_rev(delay))
+```
 
 
 **`fct_reorder()`**  
@@ -337,22 +357,55 @@ levels(linelist$hospital)
 
 ### Epiweeks {-}  
 
-TBD - under construction  
+Please see the extensive discussion of how to create epidemiological weeks in the [Grouping data] page.  
+Please also see the [Working with dates] page for tips on how to create and format epi weeks.  
 
-Epiweeks produced by **aweek** will appear as an ordered factor 
+
+#### `floor_date()` {-}  
+
+If you create epiweeks with **lubridate**'s `floor_date()`, the values returned be of class Date with format YYYY-MM-DD. If you use them in a plot the dates will naturally order correctly, and you do not need to worry about class Factor. For example, in the `ggplot()` histogram of onset dates below.  
+
+You can adjust the *display* of the dates on an axis with `scale_x_date()`. See the page on [Epidemic curves] for more information. You can specify a "strptime" display format to the `date_labels = ` argument. These formats use "%" placeholders and are covered in the [Working with dates] page. Use "%Y" to represent a 4-digit year, and either "%W" or "%U" to represent the week number (Monday or Sunday weeks respectively).  
+
+```{r, warning=F, message=F}
+linelist %>% 
+  mutate(epiweek_date = floor_date(date_onset, "week")) %>%  # create week column
+  ggplot()+                                                  # begin ggplot
+  geom_histogram(mapping = aes(x = epiweek_date))+           # histogram of date of onset
+  scale_x_date(date_labels = "%Y-W%W")                       # adjust disply of dates to be YYYY-WWw
+```
+
+However, if your purpose in factoring is *not* to plot, you may convert this epiweek column (YYYY-MM-DD) to a different display format (YYYY-WWw) *within the data frame itself*, and convert it to class Factor. Use `format()` from **base** R to convert the display, then convert to class Factor with `factor()`.  
+
+```{r}
+linelist <- linelist %>% 
+  mutate(epiweek_date = floor_date(date_onset, "week"),       # create epiweeks (YYYY-MM-DD)
+         epiweek_formatted = format(epiweek_date, "%Y-W%W"),  # Convert to display (YYYY-WWw)
+         epiweek_formatted = factor(epiweek_formatted))       # Convert to factor
+
+# Display levels
+levels(linelist$epiweek_formatted)
+```
+
+<span style="color: red;">**_DANGER:_** If you use "Www-YYYY" ("%W-%Y") display format instead, the default alpha-numeric level ordering will be incorrect (e.g. 01-2015 will be before 35-2014).</span>  
+
+#### **aweek** {-}  
+
+An alternative method if you want to convert dates to epiweeks *within a data frame* is to use the **aweek** package function `date2week()`. You can set the `week_start = ` and if you set `factor = TRUE` then the output column is an ordered factor. As a bonus, the factor includes levels for *all* weeks in the span - even if there are no cases that week. This ensure that if you create a table or bar plot that all weeks will appear.  
 
 ```{r, eval=F}
-a <- linelist %>% 
-  mutate(epiweek = aweek::date2week(date_onset, ))
+df <- linelist %>% 
+  mutate(epiweek = date2week(date_onset, week_start = "Monday", factor = TRUE))
 
-
-a <- linelist %>% 
-  mutate(epiweek = factor(lubridate::isoweek(date_onset)))
-
-levels(a$epiweek)
+levels(df$epiweek)
 ```
+
+See the [Working with dates] page for more information about **aweek**. It also offers the reverse function `week2date()`.  
+
+
 
 <!-- ======================================================= -->
 ## Resources {} 
 
-R for Data Science page on [factors](https://r4ds.had.co.nz/factors.html).  
+R for Data Science page on [factors](https://r4ds.had.co.nz/factors.html).
+[aweek vignette](https://cran.r-project.org/web/packages/aweek/vignettes/introduction.html)

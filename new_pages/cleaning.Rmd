@@ -15,21 +15,24 @@ This page demonstrates common steps necessary to clean a dataset, starting with 
 
 This page also explains the use of many core functions used in data management, including:  
 
-* ` %>% `    - pipe to pass the dataset from one function to the next  
-* `mutate()` - to create, transform, and re-define columns  
-* `select()` - to select or re-name columns  
-* `rename()` - to rename columns  
-* `across()` - to transform multiple columns at one time  
-* `filter()` - to keep certain rows  
-* `add_row()` - to add row manually  
-* `clean_names()` - to standardize the syntax of column names  
-* `as.characer()`, `as.numeric()`, `as.Date()`, etc. - to convert the class of a column  
-* `recode()` - to re-code values in a column  
-* `case_when()` - to re-code values in a column using more complex logical criteria  
-* `replace_na()`, `na_if()`, `coalesce()` - special functions for re-coding  
-* `clean_data()` - to re-code/clean using a data dictionary  
-* `age_categories()` and `cut()` - to create categorical groups from a numeric column  
-* `distinct()` - to de-duplicate rows  
+Function       | Utility                               | Package
+---------------|---------------------------------------|------------------------------
+` %>% `|pipe to pass the dataset from one function to the next|**magrittr** (also **tidyverse**)
+`mutate()`|to create, transform, and re-define columns|**dplyr** (also **tidyverse**) 
+`select()`|to select or re-name columns| "
+`filter()`|to keep certain rows| " 
+`across()`|to transform multiple columns at one time| " 
+`rename()`|to rename columns| " 
+`add_row()`|to add rows manually| " 
+`distinct()`|to de-duplicate rows| " 
+`recode()`|to re-code values in a column| " 
+`case_when()`|to re-code values in a column using more complex logical criteria| " 
+`clean_names()`|to standardize the syntax of column names|**janitor**
+`replace_na()`, `na_if()`, `coalesce()`|special functions for re-coding|**tidyr** (also **tidyverse**)
+`as.character()`, `as.numeric()`, `as.Date()`, etc.|to convert the class of a column|**base** R
+`clean_data()`|to re-code/clean using a data dictionary|**linelist**
+`age_categories()` and `cut()`|to create categorical groups from a numeric column|**epikit** and **base** R
+
 
 If you want to see how these functions compare to Stata or SAS, see the page on [Transition to R].  
 
@@ -83,7 +86,7 @@ pacman::p_load(
 
 ### Import {-}  
 
-Here we import the raw .xlsx case linelist using the `import()` function from the package **rio**, and save it as the data frame `linelist_raw`. If you want to download the data to follow step-by-step, see instructions in the [Datasets used] page.  
+Here we import the raw .xlsx case linelist using the `import()` function from the package **rio**, and save it as the data frame `linelist_raw`. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page.  
 
 If your dataset is large and takes a long time to import, it can be useful to have the import command be separate from the pipe chain and the "raw" saved as a distinct file. This also allows easy comparison between the original and cleaned versions.  
 
@@ -106,7 +109,7 @@ linelist_raw <- rio::import(here::here("data", "linelist_raw.xlsx"))
 linelist_raw <- import("linelist_raw.xlsx")
 ```
 
-You can view the first 50 rows of the the original "raw" dataset below: 
+You can view the first 50 rows of the the original "raw" dataset below. You can use the **base** R function `head(n)` to view just the first `n` lines in the console.  
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
@@ -114,15 +117,19 @@ DT::datatable(head(linelist_raw,50), rownames = FALSE, options = list(pageLength
 ```
 ### Review {-}  
 
-You can use the package **skimr** and its function `skim()` to get an overview of the entire dataframe (see page on [Descriptive analysis] for more info). Columns are summarised by class (character, numeric, POSIXct - a type of date class).  
+You can use the function `skim()` from the package **skimr** to get an overview of the entire dataframe (see page on [Descriptive tables] for more info). Columns are summarised by class (character, numeric, POSIXct - a type of date class).  
+
+
+```{r, eval=F}
+skimr::skim(linelist_raw)
+```
 
 ```{r, echo=F}
 skimr::skim_without_charts(linelist_raw)
 ```
 
-```{r, eval=F}
-skimr::skim_without_charts(linelist_raw)
-```
+
+
 
  
 
@@ -241,7 +248,9 @@ linelist_raw %>%
 
 #### Empty Excel column names {-} 
 
-If you are importing an Excel sheet with a missing column name, depending on the import function used, R will likely create a column name with a value like "...1" or "...2". You can clean these names manually by referencing their position number (see example above), or their name (`linelist_raw$...1`).  
+R cannot have dataset columns that do not have column names (headers). So, if you import an Excel dataset with data but no column headers, R will fill-in the headers with names like "...1" or "...2". The number represents the column number (e.g. if the 4th column in the dataset has no header, then R will name it "..4").  
+
+You can clean these names manually by referencing their position number (see example above), or their assigned name (`linelist_raw$...1`).  
 
 
 
@@ -277,7 +286,7 @@ linelist_raw <- openxlsx::readWorkbook("linelist_raw.xlsx", fillMergedCells = TR
 
 Use `select()` from **dplyr** to select the columns you want to retain, and specify their order in the data frame. 
 
-<span style="color: orange;">**_CAUTION:_** In the examples below, `linelist` is modified with `select()` but not over-written. The modified column names are only displayed via `names()` for purpose of example.</span>
+<span style="color: orange;">**_CAUTION:_** In the examples below, the `linelist` data frame is modified with `select()` and displayed, but not saved. This is for demonstration purposes. The modified column names are printed by piping the data frame to `names()`.</span>
 
 **Here are ALL the column names in the linelist at this point in the cleaning pipe chain:**
 
@@ -382,6 +391,14 @@ linelist %>%
   names()
 ```
 
+You can also remove a column using **base** R by defining it as `NULL`. For example:  
+
+```{r, eval=F}
+linelist$date_onset <- NULL   # deletes column with base R syntax 
+```
+
+
+
 ### Standalone {-}
 
 `select()` can also be used as an independent command (not in a pipe chain). In this case, the first argument is the original dataframe to be operated upon.  
@@ -433,9 +450,13 @@ linelist <- linelist_raw %>%
 ## Deduplication
 
 
-See the handbook page on [De-duplication]. Only a very simple de-duplication example is presented here.  
+See the handbook page on [De-duplication] for extensive options on how to de-duplicate data. Only a very simple row de-duplication example is presented here.  
 
-The package **dplyr** offers the `distinct()` function to reduce the dataframe to only unique rows - removing rows that are 100% duplicates. We just add the simple command `distinct()` to the pipe chain:  
+The package **dplyr** offers the `distinct()` function. This function examines every row and reduce the data frame to only the unique rows. That is, it removes rows that are 100% duplicates.  
+
+When evaluating duplicate rows, it takes into account a range of columns - by default it considers all columns. As shown in the de-duplication page, you can adjust this column range so that the uniqueness of rows is only evaluated in regards to certain columns.  
+
+In this simple example, we just add the empty command `distinct()` to the pipe chain. This ensures there are no rows that are 100% duplicates of other rows (evaluated across all columns).  
 
 We begin with `r nrow(linelist)` rows in `linelist`. 
 
@@ -444,7 +465,7 @@ linelist <- linelist %>%
   distinct()
 ```
 
-After de-duplication there are `r nrow(linelist)` rows. Any removed would have been rows that were 100% duplicates of other rows.  
+After de-duplication there are `r nrow(linelist)` rows. Any removed rows would have been 100% duplicates of other rows.  
 
 Below, the `distinct()` command is added to the cleaning pipe chain:
 
@@ -485,7 +506,7 @@ linelist <- linelist_raw %>%
 ## Column creation and transformation { }
 
 
-**The dplyr function `mutate()` is used to add a new column, or to modify an existing one.**  
+**We recommend using the dplyr function `mutate()` to add a new column, or to modify an existing one.**  
 
 Below is an example of creating a new column with `mutate()`. The syntax is: `mutate(new_column_name = value or transformation)`  
 
@@ -524,10 +545,10 @@ linelist <- linelist %>%
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
-DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(head(linelist,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-<span style="color: darkgreen;">**_TIP:_** The function `transmute()` adds new columns just like `mutate()` but also drops/removes all other columns that you do not mention.</span>
+<span style="color: darkgreen;">**_TIP:_** A variation on `mutate()` is the function `transmute()`. This function adds a new column just like `mutate()`, but also drops/removes all other columns that you do not mention within its parentheses.</span>
 
 
 ```{r, echo=F}
@@ -565,19 +586,12 @@ linelist <- linelist %>%
   mutate(age = as.numeric(age))
 ```
 
-Examples of other converting functions:  
+In a similar way, you can use `as.character()`, `as.double()`, `as.logical()`.  
 
-```{r, eval=F}
-# Examples of modifying class
-linelist <- linelist %>% 
-  mutate(date_var      = as.Date(date_var, format = "MM/DD/YYYY"),  # see page on Dates for details  
-         numeric_var   = as.numeric(numeric_var),
-         character_var = as.character(character_var),
-         factor_var    = as_factor(factor_var)        # see page on Factors for details  
-         )
-```
+To convert to class Factor, you can use `factor()` from **base** R or `as_factor()` from **forcats**. Read more about this in the [Factors] page.  
 
-Dates can be especially difficult to convert - there are several ways, but be careful with what you are doing. Typically, the raw date values must all be in the same format for conversion to work correctly (e.g "MM/DD/YYYY", or "DD MM YYYY"). See the page on [Working with dates] for details. Especially after converting to class date, check your data visually or with a cross-table to confirm that each value was converted correctly. For `as.Date()`, the `format = ` argument is often a source of errors. 
+Converting to class date you must take care. Several methods are explained on the page [Working with dates]. Typically, the raw date values must all be in the same format for conversion to work correctly (e.g "MM/DD/YYYY", or "DD MM YYYY"). After converting to class Date, check your data visually or with a cross-table to confirm that each value was converted correctly.  
+
 
 
 
@@ -588,12 +602,10 @@ If your dataframe is already *grouped* (see page on [Grouping data]), `mutate()`
 ```{r, eval=F}
 # age normalized to mean of ALL rows
 linelist %>% 
-  select(case_id, age, hospital) %>% 
   mutate(age_norm = age / mean(age, na.rm=T))
 
 # age normalized to mean of hospital group
 linelist %>% 
-  select(case_id, age, hospital) %>% 
   group_by(hospital) %>% 
   mutate(age_norm = age / mean(age, na.rm=T))
 ```
@@ -605,16 +617,19 @@ Read more about using mutate on grouped dataframes in this [tidyverse mutate doc
 ### Transform multiple columns {-}
 
 
-Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple columns at once using the `across()` function from the package **dplyr** (also contained within **tidyverse** package).  
+Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple columns at once using the `across()` function from the package **dplyr** (also contained within **tidyverse** package). `across()` can be used with any **dplyr** function, but commonly with `select()`, `mutate()`, `filter()`, or `summarise()`. See how it is applied to `summarise()` in the page on [Descriptive tables].  
 
-`across()` can be used with any **dplyr** function, but commonly with `mutate()`, `filter()`, or `summarise()`. 
-`across()` allows you to specify which columns you want a function to apply to. To specify the columns, you can name them indvidually, or use helper functions.  
+You specify the columns to `.cols = ` and the function(s) to `.fns`. Any additional arguments to provide to the function can be included after a comma, still within `across()`.   
 
-Here the transformation `as.character()` is applied to specific columns named within `across()`. Note that functions in `across()` are written *without* their parentheses ( )    
+#### `across()` column selection {-}  
+
+Specify the columns to the argument `.cols = ` - you can name them individually, or use helper functions. Specify the function to `.fns = `. Note that using the function mode demonstrated below, the function is written *without* its parentheses ( ).  
+
+Here the transformation `as.character()` is applied to specific columns named within `across()`. 
 
 ```{r, eval=F}
 linelist <- linelist %>% 
-  mutate(across(c(temp, ht_cm, wt_kg), as.character))
+  mutate(across(.cols = c(temp, ht_cm, wt_kg), .fns = as.character))
 ```
 
 There are helpers available to assist you in specifying columns:  
@@ -639,7 +654,7 @@ Here is an example of how one would change **all columns** to character class:
 ```{r, eval=F}
 #to change all columns to character class
 linelist <- linelist %>% 
-  mutate(across(everything(), as.character))
+  mutate(across(.cols = everything(), .fns = as.character))
 ```
 
 Columns where the name contains the string "date" (note placement of commas and parentheses):  
@@ -647,21 +662,29 @@ Columns where the name contains the string "date" (note placement of commas and 
 ```{r, eval=F}
 #to change all columns to character class
 linelist <- linelist %>% 
-  mutate(across(contains("date"), as.character))
+  mutate(across(.cols = contains("date"), .fns = as.character))
 ```
 
 Below, we want to mutate the columns where they are class POSIXct (a datetime class that shows timestamps) - in other words, where the function `is.POSIXct()` evaluates to `TRUE`. Then we want to apply the function `as.Date()` to these columns to convert them to a normal class Date.  
 
 ```{r, eval=F}
 linelist <- linelist %>% 
-  mutate(across(where(lubridate::is.POSIXct), as.Date))
+  mutate(across(.cols = where(lubridate::is.POSIXct), .fns = as.Date))
 ```
 
 * Note that within `across()` we also use the function `where()`  
 * Note that `is.POSIXct()` is from the package **lubridate**. Other similar functions (`is.character()`, `is.numeric()`, and `is.logical()`) are from **base R**  
 
+#### `across()` functions {-}
 
+You can read the documentation with `?across` for details on how to provide functions to `across()`. A few summary points: there are several ways to specify the function(s) to perform on a column and you can even define your own functions:  
 
+* You can provide the function name alone (e.g. `mean` or `as.character`)  
+* You can provide the function in **purrr**-style (e.g. `~ mean(.x, na.rm = TRUE)`)  
+* You can specify multiple functions by providing a list (e.g. `list(mean = mean, n_miss = ~ sum(is.na(.x))`).  
+  * If you provide multiple functions, multiple transformed columns will be returned with unique names (e.g. col_fn). You can adjust how the new columns are named with the `.names =` argument using **glue** syntax (see page on [Characters and strings]) where `{.col}` and `{.fn}` are shorthand for the column and function.  
+  
+  
 Here are a few online resources on using `across()`: [creator Hadley Wickham's thoughts/rationale](https://www.tidyverse.org/blog/2020/04/dplyr-1-0-0-colwise/)
 
 
@@ -727,12 +750,10 @@ cumsum(), cummean(), cummin(), cummax(), cumany(), cumall()
 
 ### Using **base** R {-}  
 
-To define a new column (or re-define a column) using **base** R, just use the assignment operator as below.
-Remember that when using **base** R you must specify the dataframe before writing the column name (e.g. `dataframe$column`). Here are two examples:  
+To define a new column (or re-define a column) using **base** R, write the name of data frame with the *new* column (or the column to be modified). Use the assignment operator `<-` to define the new value(s). Remember that when using **base** R you must specify the data frame name before the column name every time (e.g. `dataframe$column`). Here is an example of creating the `bmi` column using **base** R:  
 
 ```{r, eval=F}
-linelist$old_var <- linelist$old_var + 7
-linelist$new_var <- linelist$old_var + linelist$age
+linelist$bmi = linelist$wt_kg / (linelist$ht_cm / 100) ^ 2)
 ```
 
 
@@ -845,7 +866,9 @@ table(linelist$hospital, useNA = "always")
 
 ### Missing values {-} 
 
-See the page on [Missing data] for more detailed tips on handling missing values. **dplyr** offers two special functions for handling missing values:  
+See the page on [Missing data] for more detailed tips on identifying and handling missing values. For example, the `is.na()` function which logically tests for missingness. 
+
+**dplyr** offers two special functions for handling missing values in the context of data cleaning:  
 
 **`replace_na()`**  
 
@@ -1598,6 +1621,24 @@ linelist <- linelist %>%
 
 After the filter is applied, the number of rows in `linelist` is `r nrow(linelist)`. 
 
+#### Filter by row number {-}  
+
+In a data frame or tibble, each row will usually have a "row number" that (when seen in R Viewer) appears to the left of the first column. It is not itself a true column in the data, but it can be used in a filter statement.  
+
+To filter based on "row number", you can use the **dplyr** function `row_number()` with open parentheses as part of a logical filtering statement. Often you will use the `%in%` operator and a range of numbers as part of that logical statement, as shown below. To see the *first* N rows, you can also use the special **dplyr** function `head()`.   
+
+```{r, eval=F}
+# View first 100 rows
+linelist %>% head(100)
+
+# Show row 5 only
+linelist %>% filter(row_number() == 5)
+
+# View rows 2 through 20, and three specific columns
+linelist %>% filter(row_number() %in% 2:20) %>% select(date_onset, outcome, age)
+```
+
+You can also convert the row numbers to a true column by piping your data frame to the **tibble** function `rownames_to_column()` (do not put anything in the parentheses).  
 
 
 <!-- ======================================================= -->
