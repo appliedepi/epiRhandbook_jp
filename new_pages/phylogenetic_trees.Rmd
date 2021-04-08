@@ -42,68 +42,108 @@ scale_color_brewer(name = "Continent",  # name of your color scheme (will show u
 
 ## Preparation {}
 
+### Load packages {-}  
 
-This code chunk shows the loading of required packages:
+This code chunk shows the loading of required packages. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary and loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+
 ```{r, phylogenetic_trees_loading_packages}
-# First we load the pacman package:
-library(pacman)
-
-# This allows us to load multiple packages at the same time in one line of code:
-# Keep in mind that packages need to have been installed prior to loading, by the use of 'install.packages()' command
-pacman::p_load(here, ggplot2, dplyr, ape, ggtree, treeio, ggnewscale)
+pacman::p_load(
+  rio,             # import/export
+  here,            # relative file paths
+  tidyverse,       # general data management and visualization
+  ape,           
+  ggtree,
+  treeio,
+  ggnewscale)
 
 ```
 
-There are several different formats in which a phylogenetic tree can be stored (eg. Newick, NEXUS, Phylip). A common one, which we will also use here in this example is the Newick file format (.nwk), which is the standard for representing trees in computer-readable form. Which means, an entire tree can be expressed in a string format such as  "((t2:0.04,t1:0.34):0.89,(t5:0.37,(t4:0.03,t3:0.67):0.9):0.59); " listing all nodes and tips and their relationship (branch length) to each other. For convenience the Newick file can also be saved and stored as a .txt file.
+### Import data {-}  
+
+There are several different formats in which a phylogenetic tree can be stored (eg. Newick, NEXUS, Phylip). A common one, which we will also use here in this example is the Newick file format (.nwk), which is the standard for representing trees in computer-readable form. This means an entire tree can be expressed in a string format such as  "((t2:0.04,t1:0.34):0.89,(t5:0.37,(t4:0.03,t3:0.67):0.9):0.59); ", listing all nodes and tips and their relationship (branch length) to each other.  
 
 It is important to understand that the phylogenetic tree file in itself does not contain sequencing data, but is merely the result of the genetic distances between the sequences. We therefore cannot extract sequencing data from a tree file.
 
-We use the **ape()** package to import a phylogenetic tree file and store it in a list object of class "phylo". We inspect our tree object and see it contains 299 tips (or samples) and 236 nodes. 
+We use the **ape()** package to import a Newick phylogenetic tree file in .txt format, and store it in a list object of class "phylo". 
 
-```{r, phylogenetic_trees_loading_treefile}
-
+```{r, echo=F}
 # read in the tree: we use the here() package to specify the location of our R project and data files. In this case the newick tree is saved as a .txt file for easier handling and downloading.
 tree <- ape::read.tree(here::here("data", "Shigella_tree.txt"))
+```
 
+```{r, eval=F}
+# In this case the newick tree is saved as a .txt file for easier handling and downloading.
+tree <- ape::read.tree("Shigella_tree.txt")
+```
+
+We inspect our tree object and see it contains 299 tips (or samples) and 236 nodes.  
+
+```{r}
 # inspect the tree file:
 tree
-
 ```
 
-Second we import a table with additional information for each sequenced sample, such as gender, country of origin and attributes for antimicrobial resistance: 
-```{r, phylogenetic_trees_loading_sampledata}
+Second we import a table with additional information for each sequenced sample, such as gender, country of origin and attributes for antimicrobial resistance:  
 
+```{r, echo=F}
 # We read in a .csv file into a dataframe format:
-sample_data <- read.csv(here::here("data","sample_data_Shigella_tree.csv"),sep=",", na.strings=c("NA"), head = TRUE, stringsAsFactors=F)
+# sample_data <- read.csv(here::here("data","sample_data_Shigella_tree.csv"),sep=",", na.strings=c("NA"), head = TRUE, stringsAsFactors=F)
 
+sample_data <- import(here("data","sample_data_Shigella_tree.csv"))
 ```
 
-We clean and inspect our data: In order to assign the correct sample data to the phylogenetic tree, the Sample_IDs in the sample_data file need to match the tip labels in the tree file: 
+```{r, eval=F}
+# We read in a .csv file into a dataframe format:
+sample_data <- import("sample_data_Shigella_tree.csv")
+```
+
+Below are the first 50 rows of the data:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(head(sample_data,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+### Clean and inspect {-}  
+
+We clean and inspect our data: In order to assign the correct sample data to the phylogenetic tree, the values in the column `Sample_ID` in the `sample_data` data frame need to match the `tip.labels` values in the `tree` file: 
+
 ```{r, phylogenetic_trees_inspect_sampledata}
-
 # We check the formatting of the tip labels in the tree file: 
-
 head(tree$tip.label) # these are the sample names in the tree - we inspect the first 6 with head()
+```
 
-# We make sure the first column in our dataframe are the Sample_IDs:
+We also make sure the first column in our `sample_data` data frame is `Sample_ID`.  
+
+```{r}
 colnames(sample_data)   
+```
 
-# We look at the Sample_IDs in the dataframe to make sure the formatting is the same than in the tip.labels (eg. letters are all capital, no extra _ between letters and numbers etc.)
+We look at the `Sample_IDs` in the data frame to make sure the formatting is the same than in the `tip.label` (eg. letters are all capitals, no extra underscores `_` between letters and numbers, etc.)
+
+```{r}
 head(sample_data$Sample_ID) # we inspect only the first 6 using head()
+```
 
-#We can also compare if all samples are present in the tree file and vice versa by generating a logical vector of TRUE or FALSE where they do or do not match:
+We can also compare if all samples are present in the tree file and vice versa by generating a logical vector of TRUE or FALSE where they do or do not match. These are not printed here, for simplicity.  
+
+```{r, eval=F}
 sample_data$Sample_ID %in% tree$tip.label
 
 tree$tip.label %in% sample_data$Sample_ID
+```
 
-#This will tell you any sample IDs that are not on the tree:
+We can use these vectors to show any sample IDs that are not on the tree (there are none).  
+
+```{r}
 sample_data$Sample_ID[!tree$tip.label %in% sample_data$Sample_ID]
-
 ```
 
 Upon inspection we can see that the format of Sample_ID in the dataframe corresponds to the format of sample names at the tree tips. These do not have to be sorted in the same order to be matched.
 
 We are ready to go!
+
+
+
 
 <!-- ======================================================= -->
 
@@ -112,62 +152,84 @@ We are ready to go!
 
 ### Different tree layouts {-}  
 
-**ggtree()** offers many different layout formats and some may be more suitable for your specific purpose than others:
-```{r, phylogenetic_trees_example_formats, out.width=c('50%'), fig.show='hold'}
-# Examples:
-ggtree(tree) # most simple linear tree
-ggtree(tree,  branch.length = "none") # most simple linear tree with all tips aligned
-ggtree(tree, layout="circular") # most simple circular tree
-ggtree(tree, layout="circular", branch.length = "none") # most simple circular tree with all tips aligned
+**ggtree** offers many different layout formats and some may be more suitable for your specific purpose than others. Below are a few demonstrations. For other options see this [online book](http://yulab-smu.top/treedata-book/chapter4.html).  
 
-# for other options see online: http://yulab-smu.top/treedata-book/chapter4.html
+
+```{r, phylogenetic_trees_example_formats, out.width=c('50%'), fig.show='hold'}
+# Example tree layouts:
+ggtree(tree)                                            # simple linear tree
+ggtree(tree,  branch.length = "none")                   # simple linear tree with all tips aligned
+ggtree(tree, layout="circular")                         # simple circular tree
+ggtree(tree, layout="circular", branch.length = "none") # simple circular tree with all tips aligned
+
 
 ```
 
 ### Simple tree with addition of sample data {-}  
 
-The most easy annotation of your tree is the addition of the sample names at the tips, as well as coloring of tip points and if desired branches:
+The most easy annotation of your tree is the addition of the sample names at the tips, as well as coloring of tip points and if desired the branches:
 
-```{r, phylogenetic_trees_adding_sampledata, fig.align='center'}
+```{r, phylogenetic_trees_adding_sampledata, fig.align='center', warning=F, message=F}
 
 # A: Plot Circular tree:
-ggtree(tree, layout="circular", branch.length='none') %<+% sample_data + # the %<+% is used to add your dataframe with sample data to the tree
-  aes(color=I(Belgium))+ # color the branches according to a variable in your dataframe
-  scale_color_manual(name = "Sample Origin", # name of your color scheme (will show up in the legend like this)
-                    breaks = c("Yes", "No"), # the different options in your variable
-                   labels = c("NRCSS Belgium", "Other"), # how you want the different options named in your legend, allows for formatting
-                 values= c("blue", "black"), # the color you want to assign to the variable 
-                 na.value = "black") + # color NA values in black as well
-  new_scale_color()+ # allows to add an additional color scheme for another variable
-     geom_tippoint(aes(color=Continent), size=1.5)+ # color the tip point by continent, you may change shape adding "shape = "
-scale_color_brewer(name = "Continent",  # name of your color scheme (will show up in the legend like this)
-                       palette="Set1", # we choose a set of colors coming with the brewer package
-                   na.value="grey")+ # for the NA values we choose the color grey
-  geom_tiplab(color='black', offset = 1, size = 1, geom = "text" , align=TRUE)+ # add the name of the sample to the tip of its branch (you can add as many text lines as you like with the + , you just need to change the offset value to place them next to each other)
-  ggtitle("Phylogenetic tree of Shigella sonnei")+ # title of your graph
-  theme(axis.title.x=element_blank(), # removes x-axis title
-      axis.title.y=element_blank(), # removes y-axis title
-     legend.title=element_text(face="bold", size =12), # defines font size and format of the legend title
-       legend.text=element_text(face="bold", size =10), # defines font size and format of the legend text
-      plot.title = element_text(size =12, face="bold"),  # defines font size and format of the plot title
-     legend.position="bottom", # defines placement of the legend
-        legend.box="vertical", legend.margin=margin()) # defines placement of the legend
+ggtree(tree, layout = "circular", branch.length = 'none') %<+% sample_data + # %<+% adds dataframe with sample data to tree
+  aes(color = I(Belgium))+                       # color the branches according to a variable in your dataframe
+  scale_color_manual(
+    name = "Sample Origin",                      # name of your color scheme (will show up in the legend like this)
+    breaks = c("Yes", "No"),                     # the different options in your variable
+    labels = c("NRCSS Belgium", "Other"),        # how you want the different options named in your legend, allows for formatting
+    values= c("blue", "black"),                  # the color you want to assign to the variable 
+    na.value = "black") +                        # color NA values in black as well
+  new_scale_color()+                             # allows to add an additional color scheme for another variable
+    geom_tippoint(
+      mapping = aes(color = Continent),          # tip color by continent. You may change shape adding "shape = "
+      size = 1.5)+
+  scale_color_brewer(
+    name = "Continent",                    # name of your color scheme (will show up in the legend like this)
+    palette = "Set1",                      # we choose a set of colors coming with the brewer package
+    na.value = "grey")+                    # for the NA values we choose the color grey
+  geom_tiplab(                             # adds name of sample to tip of its branch 
+    color = 'black',                       # (add as many text lines as you wish with + , but you may need to adjust offset value to place them next to each other)
+    offset = 1,
+    size = 1,
+    geom = "text",
+    align = TRUE)+    
+  ggtitle("Phylogenetic tree of Shigella sonnei")+       # title of your graph
+  theme(
+    axis.title.x = element_blank(), # removes x-axis title
+    axis.title.y = element_blank(), # removes y-axis title
+    legend.title = element_text(    # defines font size and format of the legend title
+      face = "bold",
+      size =12),   
+    legend.text=element_text(       # defines font size and format of the legend text
+      face = "bold",
+      size =10),  
+    plot.title = element_text(      # defines font size and format of the plot title
+      size = 12,
+      face = "bold"),  
+    legend.position = "bottom",     # defines placement of the legend
+    legend.box = "vertical",        # defines placement of the legend
+    legend.margin = margin())   
+```
 
+You can export your tree plot with `ggsave()` as you would any other ggplot object. Writen this way, `ggsave()` saves the last image produced to the file path you specify. Remember that you can use `here()` and relative file paths to easily save in subfolders, etc.  
+
+```{r, eval=F}
 # Export your tree graph:
-ggsave(here::here("images", "example_tree_circular_1.png"), width = 12, height = 14)
+ggsave("example_tree_circular_1.png", width = 12, height = 14)
 
 ```
 
 
 <!-- ======================================================= -->
 
-## Manipulation of phylogenetic trees {}
+## Tree manipulation {}
 
 Sometimes you may have a very large phylogenetic tree and you are only interested in one part of the tree. For example if you produced a tree including historical or international samples to get a large overview of where your dataset might fit in the bigger picture. But then to look closer at your data you want to inspect only that portion of the bigger tree.
 
 Since the phylogenetic tree file is just the output of sequencing data analysis, we can not manipulate the order of the nodes and branches in the file itself. These have already been determined in previous analysis from the raw NGS data. We are able though to zoom into parts, hide parts and even subset part of the tree. 
 
-### Zooming in on one part of the tree {-}  
+### Zoom in {-}  
 
 If you don't want to "cut" your tree, but only inspect part of it more closely you can zoom in to view a specific part:
 
@@ -175,22 +237,29 @@ If you don't want to "cut" your tree, but only inspect part of it more closely y
 
 # First we plot the whole tree:
 p <- ggtree(tree,) %<+% sample_data +
-  geom_tiplab(size =1.5) + # labels the tips of all branches with the sample name in the tree file
-  geom_text2(aes(subset=!isTip, label=node), size =5, color = "darkred", hjust=1, vjust =1) # labels all the nodes in the tree
-p
+  geom_tiplab(size =1.5) +                # labels the tips of all branches with the sample name in the tree file
+  geom_text2(
+    mapping = aes(subset = !isTip,
+                  label=node),
+    size = 5,
+    color = "darkred",
+    hjust = 1,
+    vjust = 1)                            # labels all the nodes in the tree
+
+p  # print
 
 ```
 
-We want to zoom into the branch which is sticking out, after node number 452 to get a closer look:
+To zoom in to one particular branch (sticking out to the right), use `viewClade()` on the ggtree object `p` and provide the node number to get a closer look:
 ```{r phylogenetic_trees_zoom_in_452, out.width=c('50%'), fig.show='hold', fig.align='center'}
 
-viewClade(p , node=452)
+viewClade(p, node = 452)
 
 ```
 
-### Collapsing one part of the tree {-} 
+### Collapsing branches {-} 
 
-The other way around we may want to ignore this branch which is sticking out and can do so by collapsing it at the node (indicated here by the blue square):
+However, we may want to ignore this branch and can collapse it at that same node using `collapse()`. This tree is defined as `p_collapsed`. For clarity, when we print `p_collapsed`, we add a `geom_point2()` (a blue diamond) at the node of the collapsed branch.  
 
 ```{r phylogenetic_trees_collapse_452, out.width=c('50%'), fig.show='hold', fig.align='center'}
 #First we collapse at node 452
@@ -203,35 +272,64 @@ p_collapsed + geom_point2(aes(subset=(node == 452)), size=5, shape=23, fill="ste
 
 ### Subsetting a tree {-} 
 
-If we want to make a more permanent change and create a new tree to work with we can subset part of it and even save it as new newick tree file.  
+If we want to make a more permanent change and create a new, reduced tree to work with we can subset part of it with `tree_subset()`. Then you can save it as new newick tree file.  
+
+First, we inspect the tree nodes and tip labels in order to decide what to subset.  
+
 ```{r, phylogenetic_trees_subsetting, out.width=c('50%'), fig.show='hold', fig.align='center'}
+ggtree(
+  tree,
+  branch.length = 'none',
+  layout = 'circular') %<+% sample_data +
+  geom_tiplab(size = 1)+                                # label tips of all branches with sample name in tree file
+  geom_text2(
+    mapping = aes(subset = !isTip, label=node),
+    size = 3,
+    color = "darkred") +                                # labels all the nodes in the tree
+ theme(
+   legend.position = "none",                            # removes the legend all together
+   axis.title.x = element_blank(),
+   axis.title.y = element_blank(),
+   plot.title = element_text(size =12, face="bold"))
+```
 
-# To do so you can add the node and tip labels to your tree to see which part you want to subset:
-ggtree(tree, branch.length='none', layout='circular') %<+% sample_data +
-  geom_tiplab(size =1) + # labels the tips of all branches with the sample name in the tree file
-  geom_text2(aes(subset=!isTip, label=node), size =3, color = "darkred") +# labels all the nodes in the tree
- theme(legend.position = "none", # removes the legend all together
- axis.title.x=element_blank(),
-      axis.title.y=element_blank(),
-      plot.title = element_text(size =12, face="bold"))
+Now, say we have decided to subset the tree at node 528 (keep only tips within this branch after node 528).
 
+```{r}
 # A: Subset tree based on node:
-sub_tree1 <- tree_subset(tree, node = 528) # we subset the tree at node 528
-# lets have a look at the subset tree:
-ggtree(sub_tree1)+  geom_tiplab(size =3) +
-  ggtitle("Subset tree 1")
+sub_tree1 <- tree_subset(
+  tree,
+  node = 528)                                            # we subset the tree at node 528
+```
 
-# B: Subset the same part of the tree based on a sample, in this case S17BD07692:
-sub_tree2 <- tree_subset(tree,"S17BD07692", levels_back = 9) # levels back defines how many nodes backwards from the sample tip you want to go
-# lets have a look at the subset tree:
+Lets have a look at the subset tree:
+
+```{r}
+ggtree(sub_tree1)+
+  geom_tiplab(size =3) +
+  ggtitle("Subset tree 1")
+```
+
+You can also subset based on one particular sample, specifying how many nodes "backwards" you want to include. Let's subset the same part of the tree based on a sample, in this case S17BD07692, going back 9 nodes:  
+
+```{r}
+sub_tree2 <- tree_subset(
+  tree,
+  "S17BD07692",
+  levels_back = 9) # levels back defines how many nodes backwards from the sample tip you want to go
+```
+
+Lets have a look at the subset tree:
+
+```{r}
 ggtree(sub_tree2)+  geom_tiplab(size =3)  +
   ggtitle("Subset tree 2")
 
 ```
 
-You can also save your new tree either as a Newick type or even a text file:
-```{r,  phylogenetic_trees_write_tree}
+You can also save your new tree either as a Newick type or even a text file:  
 
+```{r, eval=F, phylogenetic_trees_write_tree}
 # to save in .nwk format
 ape::write.tree(sub_tree2, file='data/Shigella_subtree_2.nwk')
 
@@ -256,11 +354,11 @@ p
 
 We can then manipulate nodes by applying **ggtree::rotate()** or **ggtree::flip()**:
 
-```{r, phylogenetic_trees_rotating_2, out.width=c('50%'), fig.show='hold', fig.align='center'}
+```{r, phylogenetic_trees_rotating_2, eval=F, out.width=c('50%'), fig.show='hold', fig.align='center'}
 
 # here we apply the geom_hilight() function to highlight the samples in the nodes we are interested in 
-p1 <- p + geom_hilight(39, "steelblue", extend =0.0015)+ # highlights the node 39 in blue
-geom_hilight(37, "yellow", extend =0.0015)  + # highlights the node 37 in yellow
+p1 <- p + geom_hilight(39, "steelblue", extend =0.0015)+  # highlights the node 39 in blue
+geom_hilight(37, "yellow", extend =0.0015)  +             # highlights the node 37 in yellow
 ggtitle("Original tree")
 p1
 
@@ -283,22 +381,42 @@ Lets say we are investigating the cluster of cases with clonal expansion which o
 
 # Add sample data:
 ggtree(sub_tree2) %<+% sample_data + 
-   geom_tiplab(size =2.5, offset = 0.001, align = TRUE) + # labels the tips of all branches with the sample name in the tree file
+  geom_tiplab(                          # labels the tips of all branches with the sample name in the tree file
+    size = 2.5,
+    offset = 0.001,
+    align = TRUE) + 
   theme_tree2()+
-  xlim(0, 0.015)+ # set the x-axis limits of our tree
-  geom_tippoint(aes(color=Country), size=1.5)+ # color the tip point by continent
-  scale_color_brewer(name = "Country", 
-                       palette="Set1", 
-                     na.value="grey")+
-    geom_tiplab(aes(label = Year), color='blue', offset = 0.0045, size = 3, linetype = "blank" , geom = "text" , align=TRUE)+ # add isolation year
-    geom_tiplab(aes(label = Travel_history), color='red', offset = 0.006, size = 3, linetype = "blank" , geom = "text" , align=TRUE)+ # add travel history
-  ggtitle("Phylogenetic tree of Belgian S. sonnei strains with travel history")+   # add plot title
-  xlab("genetic distance (0.001 = 4 nucleotides difference)")+ # add a label to the x-axis 
-  theme(axis.title.x=element_text(size = 10),
-      axis.title.y=element_blank(),
-     legend.title=element_text(face="bold", size =12),
-       legend.text=element_text(face="bold", size =10),
-      plot.title = element_text(size =12, face="bold"))
+  xlim(0, 0.015)+                       # set the x-axis limits of our tree
+  geom_tippoint(aes(color=Country),     # color the tip point by continent
+                size=1.5)+ 
+  scale_color_brewer(
+    name = "Country", 
+    palette = "Set1", 
+    na.value = "grey")+
+  geom_tiplab(                          # add isolation year
+    aes(label = Year),
+    color='blue',
+    offset = 0.0045,
+    size = 3,
+    linetype = "blank" ,
+    geom = "text",
+    align=TRUE)+ 
+  geom_tiplab(                          # add travel history
+    aes(label = Travel_history),
+    color = 'red',
+    offset = 0.006,
+    size = 3,
+    linetype = "blank",
+    geom = "text",
+    align = TRUE)+ 
+  ggtitle("Phylogenetic tree of Belgian S. sonnei strains with travel history")+  # add plot title
+  xlab("genetic distance (0.001 = 4 nucleotides difference)")+                    # add a label to the x-axis 
+  theme(
+    axis.title.x=element_text(size = 10),
+    axis.title.y=element_blank(),
+    legend.title=element_text(face="bold", size =12),
+    legend.text=element_text(face="bold", size =10),
+    plot.title = element_text(size =12, face="bold"))
 
 ```
 
@@ -316,10 +434,15 @@ First we need to plot our tree (this can be either linear or circular): We will 
 # A: Circular tree:
 p <- ggtree(sub_tree2, branch.length='none', layout='circular') %<+% sample_data +
   geom_tiplab(size =3) + 
- theme(legend.position = "none",
- axis.title.x=element_blank(),
-      axis.title.y=element_blank(),
-      plot.title = element_text(size =12, face="bold",hjust = 0.5, vjust = -15))
+ theme(
+   legend.position = "none",
+    axis.title.x=element_blank(),
+    axis.title.y=element_blank(),
+    plot.title = element_text(
+      size = 12,
+      face = "bold",
+      hjust = 0.5,
+      vjust = -15))
 p
 
 ```
