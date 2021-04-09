@@ -1134,7 +1134,7 @@ Here we describe some special approaches for creating numeric categories. Common
 * `age_categories()`, from the **epikit** package  
 * `cut()`, from **base** R  
 * `case_when()`  
-* quantile breaks  
+* quantile breaks with `quantile()` and `ntile()` 
 
 
 ### Review distribution {-}
@@ -1424,20 +1424,41 @@ Read more about `cut()` in its Help page by entering `?cut` in the R console.
 
 ### Quantile breaks {-}  
 
-Make breaks from `quantile()`. This is from the **stats** package which comes in **base** R.  
+In common understanding, "quantiles" or "percentiles" typically refer to a value below which a proportion of values fall. For example, the 95th percentile of ages in `linelist` would be the age below which 95% of the age fall.  
+
+However in common speech, "quartiles" and "deciles" can also refer to the *groups of data* as equally divided into 4, or 10 groups (note there will be one more break point than group).    
+
+To get quantile break points, you can use `quantile()` from the **stats** package from **base** R. You provide a numeric vector (e.g. a column in a dataset) and vector of numeric probability values ranging from 0 to 1.0. The break points are returned as a numeric vector. Explore the details of the statistical methodologies by entering `?quantile`.  
+
+* If your input numeric vector has any missing values it is best to set `na.rm = TRUE`  
+* Set `names = FALSE` to get an un-named numeric vector  
 
 ```{r}
-age_quantiles <- quantile(linelist$age_years, c(0, .25, .50, .75, .90, .95), na.rm=T)
-age_quantiles
-
-# to return only the numbers use unname()
-age_quantiles <- unname(age_quantiles)
-age_quantiles
+quantile(linelist$age_years,               # specify numeric vector to work on
+  probs = c(0, .25, .50, .75, .90, .95),   # specify the percentiles you want
+  na.rm = TRUE)                            # ignore missing values 
 ```
 
-You can then use these as break points in `age_categories()` or `cut()`.  
+You can use the results of `quantile()` as break points in `age_categories()` or `cut()`. Below we create a new column `deciles` using `cut()` where the breaks are defined using `quantiles()` on `age_years`. below, We display the results using `tabyl()` from **janitor** so you can see the percentages (see the [Descriptive tables] page). Note how they are not exactly 10% in each group.  
 
+```{r}
+linelist %>%                                # begin with linelist
+  mutate(deciles = cut(age_years,           # create new column decile as cut() on column age_years
+    breaks = quantile(                      # define cut breaks using quantile()
+      age_years,                               # operate on age_years
+      probs = seq(0, 1, by = 0.1),             # 0.0 to 1.0 by 0.1
+      na.rm = TRUE),                           # ignore missing values
+    include.lowest = TRUE)) %>%             # for cut() include age 0
+  janitor::tabyl(deciles)                   # pipe to table to display
+```
 
+You can use the **dplyr** function `ntile()` to break your data into n groups. Provide the vector and then the number of groups. Note that the new column `deciles` created below contains just group "numbers" 1 to 10, not the range of values themselves as when using `quantile()`.  
+
+```{r}
+linelist %>% 
+  mutate(deciles = ntile(age_years, 10)) %>% 
+  janitor::tabyl(deciles)
+```
 
 
 <!-- ======================================================= -->

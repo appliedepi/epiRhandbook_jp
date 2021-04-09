@@ -3,8 +3,8 @@
 # See format and content choices below  
 
 ################################################################################
-# BS4 BOOKDOWN STYLE ##
-#######################
+# BS4 BOOKDOWN STYLE (WEBSITE VERSION) ##
+#########################################
 # WHOLE HANDBOOK
 # for online viewing only - not available as a self-contained file  
 bookdown::render_book(
