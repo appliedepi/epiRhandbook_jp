@@ -568,9 +568,9 @@ See the section on Date display for tips on how to adjust the *display* of dates
 
 See the page on [Grouping data] for a thorough explanation of grouping data with `count()`, `group_by()`, and `summarise()`. A brief example is below.  
 
-1) Create a new 'week' column with `mutate()`, using `floor_date()` with `unit = "week"  
+1) Create a new 'week' column with `mutate()`, using `floor_date()` with `unit = "week"`  
 2) Get counts of rows (cases) per week with `count()`; filter out any cases with missing date  
-3) Follow-up with `complete()` from **tidyr** to ensure that *all* weeks appear in the data - even those with no rows/cases.  
+3) Finish with `complete()` from **tidyr** to ensure that *all* weeks appear in the data - even those with no rows/cases. By default the count values for any "new" rows are NA, but you can make them 0 with the `fill = ` argument, which expects a named list (below, `n` is the name of the counts column).  
 
 ```{r}
 # Make aggregated dataset of weekly case counts
@@ -580,10 +580,12 @@ weekly_counts <- linelist %>%
     date_onset,
     unit = "week")) %>%            
   count(week) %>%                   # group data by week and count rows per group
-  tidyr::complete(week = seq.Date(  # ensure all weeks are present, even those with no cases reported
-    from = min(week),               
-    to = max(week),
-    by = "week"))
+  tidyr::complete(
+    week = seq.Date(                # ensure all weeks are present, even those with no cases reported
+      from = min(week),               
+      to = max(week),
+      by = "week"),
+    fill = list(n = 0))             # fill-in NAs in new weeks with 0
 ```
 
 Here are the first rows of the resulting data frame:  
@@ -659,7 +661,7 @@ counts <- import(here("data", "district_count_data.xlsx")) %>%
          week_start = lubridate::floor_date(Date, "week")) %>%
   group_by(week_start) %>% 
   summarize(cases_wk = sum(Cases, na.rm=T)) %>% 
-  complete(week_start = seq.Date(min(week_start), max(week_start), by = "week"))
+  complete(week_start = seq.Date(min(week_start), max(week_start), by = "week"), fill = list(cases_wk = 0))
 ```
 
 Let's say you want to calculate the difference in cases between a current week and the previous one. The data are initially provided in weekly counts as shown below. To learn how to aggregate counts from daily to weekly see the page on aggregating (LINK).  

@@ -269,10 +269,9 @@ linelist %>%                                  # case linelist
 
 ## Grouping by date  
 
-When grouping data by date, you must have or create a column for the date unit of interest, for example "day", "epiweek", "month", etc. You can make this column using `floor_date()` from **lubridate**, as explained in the page on [Working with dates] (Epidemiological weeks section). Once you have this column, you can use `count()` to group the rows and achieve aggregate counts. 
+When grouping data by date, you must have or create a column for the date unit of interest, for example "day", "epiweek", "month", etc. You can make this column using `floor_date()` from **lubridate**, as explained in the page on [Working with dates] (Epidemiological weeks section). Once you have this column, you can use `count()` from **dplyr** to group the rows by those date units and achieve aggregate counts. 
 
-One additional step that is particular to dates is to use `complete()` from **tidyr** so that the aggregated date series is *complete* including *all possible date units* within the range. Without this step, a week with no cases reported might not appear in your data! Within `complete()` you re-define the date column as a sequence of dates from the minimum to the maximum - thus the dates are expanded.  
-
+One additional step that is particular to dates is to use `complete()` from **tidyr** so that the aggregated date series is *complete* including *all possible date units* within the range. Without this step, a week with no cases reported might not appear in your data! Within `complete()` you re-define the date column as a sequence of dates from the minimum to the maximum (`seq.Date()`) - thus the dates are expanded. By default, the case count values in these new "expanded" rows will be `NA`. You can set them to 0 using the `fill = ` argument of `complete()`, which expects a named list (if your counts column is `n`, provide `list(n = 0)`. See `?complete` for details.  
 
 ### Linelist cases into days  {-}  
 
@@ -294,10 +293,12 @@ Below we add the `complete()` command to ensure every day in the range is repres
 daily_counts <- linelist %>% 
   filter(!is.na(date_onset)) %>%                  # remove case missing date_onset
   count(date_onset) %>%                           # count number of rows per unique date
-  complete(date_onset = seq.Date(min(date_onset), # ensure all days appear even if no cases
-                                 max(date_onset),
-                                 by="day")) %>% 
-  mutate(n = replace_na(n, 0))                    # replace NA counts with 0
+  complete(                                       # ensure all days appear even if no cases
+    date_onset = seq.Date(                          # re-define date colume as daily sequence of dates
+      from = min(date_onset, na.rm=T), 
+      to = max(date_onset, na.rm=T),
+      by = "day"),
+    fill = list(n = 0))                             # set new filled-in rows to display 0 in column n (not NA as default) 
 ```
 
 ```{r message=FALSE, echo=F}
@@ -312,13 +313,15 @@ The same principle can be applied for weeks. First create a new column that is t
 ```{r}
 # Make dataset of weekly case counts
 weekly_counts <- linelist %>% 
-  filter(!is.na(date_onset)) %>%                      # remove cases missing date_onset
+  filter(!is.na(date_onset)) %>%          # remove cases missing date_onset
   mutate(week = lubridate::floor_date(date_onset, unit = "week")) %>%  # new column of week of onset
-  count(week) %>%                                     # group data by week and count rows per group
-  complete(week = seq.Date(from = min(week),          # include all weeks, even if no cases
-                           to = max(week),
-                           by="week")) %>% 
-  mutate(n = replace_na(n, 0))                        # fill-in NA values with 0
+  count(week) %>%                         # group data by week and count rows per group
+  complete(                               # ensure all days appear even if no cases
+    week = seq.Date(                      # re-define date colume as daily sequence of dates
+      from = min(week, na.rm=T), 
+      to = max(week, na.rm=T),
+      by = "week"),
+    fill = list(n = 0))                   # set new filled-in rows to display 0 in column n (not NA as default) 
 ```
 
 Here are the first 50 rows of the resulting dataframe:  
@@ -342,10 +345,12 @@ monthly_counts <- linelist %>%
   filter(!is.na(date_onset)) %>% 
   mutate(month = lubridate::floor_date(date_onset, unit = "months")) %>%  # new column, 1st of month of onset
   count(month) %>%                          # count cases by month
-  complete(month = seq.Date(min(month),     # include all months with no cases reported
-                            max(month),
-                            by="month")) %>% 
-  mutate(month = replace_na(n, 0))          # replace NA with 0 for months with no cases
+  complete(
+    month = seq.Date(
+      min(month, na.rm=T),     # include all months with no cases reported
+      max(month, na.rm=T),
+      by="month"),
+    fill = list(n = 0))
 ```
 
 ```{r message=FALSE, echo=F}

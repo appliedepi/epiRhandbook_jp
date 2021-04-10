@@ -1944,10 +1944,12 @@ central_weekly <- linelist %>%
   mutate(week = lubridate::floor_date(date_onset, unit = "weeks")) %>%  
   count(week) %>%                              # summarize weekly case counts
   filter(!is.na(week)) %>%                     # remove cases with missing onset_date
-  complete(week = seq.Date(
-    from = min(week),   # fill-in all weeks with no cases reported
-    to   = max(week),
-    by   = "week"))
+  complete(                                    # fill-in all weeks with no cases reported
+    week = seq.Date(
+      from = min(week),   
+      to   = max(week),
+      by   = "week"),
+    fill = list(n = 0))                        # convert new NA values to 0 counts
 ```
 
 **Make plots**  
@@ -1960,7 +1962,9 @@ ggplot(central_weekly) +
             stat = "identity") +             # because line height is count number
   scale_x_date(date_labels="%b",             # date label format show month 
                date_breaks="month",          # date labels on 1st of each month
-               expand=c(0,0)) +              # remove excess space
+               expand=c(0,0)) +              # remove excess space on each end
+  scale_y_continuous(
+    expand  = c(0,0))+                       # remove excess space below x-axis
   facet_grid(~lubridate::year(week), # facet on year (of Date class column)
              space="free_x",                
              scales="free_x",                # x-axes adapt to data range (not "fixed")
@@ -1985,7 +1989,9 @@ ggplot(central_weekly,
   scale_x_date(date_labels="%b",            # date label format show month 
                date_breaks="month",         # date labels on 1st of each month
                expand=c(0,0)) +             # remove excess space
-  facet_grid(~lubridate::year(week),   # facet on year (of Date class column)
+  scale_y_continuous(
+    expand  = c(0,0))+                      # remove excess space below x-axis
+  facet_grid(~lubridate::year(week),        # facet on year (of Date class column)
              space="free_x",                
              scales="free_x",               # x-axes adapt to data range (not "fixed")
              switch="x") +                  # facet labels (year) on bottom
