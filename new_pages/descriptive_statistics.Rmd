@@ -103,9 +103,12 @@ summary(linelist$age_years)[[2]]
 
 You have several choices when producing tabulation and cross-tabulation summary tables. Some of the factors to consider include code simplicity and ease, the desired output (printed to R console, or as pretty HTML), and what you can do with the data afterward. Consider the thoughts below as you choose the tool for your situation.  
 
-* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations  
+* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations 
+  * Cons: requires post-processing (e.g with **flextable**) for publication ready tables. Does not accept multiple variables (need to use **purrr** to iterate)  
 * Use `count()` and `summarise()` from **dplyr** if preparing data for `ggplot()` or calculating more complex statistics  
+  * Cons: similar to above but requires even more manipulation  
 * Use `tbl_summary()` from **gtsummary** to produce detailed publication-ready tables  
+  * Cons: missings not automatically included in percentage calculations. To use for plotting need to extract tibble from list output. 
 
 
 ### **janitor** {-}
@@ -119,7 +122,8 @@ Below, we pipe the `linelist` data frame to **janitor** functions and print the 
 The default use of `tabyl()` on a specific column produces the unique values, counts, and column-wise "percents" (actually proportions). The proportions may have many digits. You can adjust this with `adorn_rounding()` as described below.   
 
 ```{r}
-linelist %>% tabyl(age_cat)
+linelist %>% 
+  tabyl(age_cat)
 ```
 As you can see above, if there are missing values they display in a row labeled `<NA>`. You can suppress them with `show_na = FALSE`. If there are no missing values, this row will not appear. If there are missing values, proportions are given as both raw (denominator inclusive of `NA` counts) and "valid" (denominator excludes `NA` counts).  
 
@@ -130,7 +134,8 @@ If the column is class Factor and only certain levels are present in your data, 
 Cross-tabulation counts are achieved by adding one or more additional within `tabyl()`. Note that only counts are returned - proportions and percents can be added with additional steps.  
 
 ```{r}
-linelist %>% tabyl(age_cat, gender)
+linelist %>% 
+  tabyl(age_cat, gender)
 ```
 #### "Adorning" the tabyl {-}  
 

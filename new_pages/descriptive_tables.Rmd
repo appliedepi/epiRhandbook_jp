@@ -103,10 +103,14 @@ You can return individual statistics with **base** R functions like `max()`, `mi
 
 You have several choices when producing tabulation and cross-tabulation summary tables. Some of the factors to consider include code simplicity and ease, the desired output (printed to R console, or as pretty HTML), and what you can do with the data afterward. Consider the points below as you choose the tool for your situation.  
 
-* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations  
+* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations. 
+  * Cons: requires post-processing (e.g with **flextable**) for publication ready tables. Does not accept multiple variables (need to use **purrr** to iterate)
 * Use `summarise()` and `count()` from **dplyr** if calculating more complex statistics or preparing data for `ggplot()`  
+  * Cons: similar to above but requires even more manipulation
 * Use `tbl_summary()` from **gtsummary** to produce detailed publication-ready tables  
-* Use `table()` from **base** R if you do not have access to the above packages  
+  * Cons: missings not automatically included in percentage calculations. To use for plotting need to extract tibble from list output. 
+* Use `table()` from **base** R if you do not have access to the above packages 
+  * Cons: requires the most manipulation and post-processing
 
 
 ## **janitor** package  
@@ -806,7 +810,7 @@ linelist %>%
       "{min}, {max}")                              # line 3: min and max
     )
 ```
-There are many other ways to modify these tables, including adding p-values, adjusting color and headings, etc. Many of these are described in the documentation (enter `?tbl_summary` in Console), and some are given in the section on statistical tests.  
+There are many other ways to modify these tables, including adding p-values, adjusting color and headings, etc. Many of these are described in the documentation (enter `?tbl_summary` in Console), and some are given in the section on [statistical tests](https://epirhandbook.com/simple-statistical-tests.html).  
 
 
 
@@ -819,6 +823,8 @@ There are many other ways to modify these tables, including adding p-values, adj
 You can use the function `table()` to tabulate and cross-tabulate columns. Unlike the options above, you must specify the dataframe, as shown below.  
 
 <span style="color: orange;">**_CAUTION:_** `NA` (missing) values will **not** be tabulated unless you include the argument `useNA = "always"` (which could also be set to "no" or "ifany").</span>
+
+<span style="color: darkgreen;">**_TIP:_** You can use the `%$%` from **magrittr** to remove the need for repeating dataframe calls within **base** functions. For example the below could be written `linelist %$% table(outcome, useNA = "always")` </span>
 
 ```{r}
 table(linelist$outcome, useNA = "always")
