@@ -1,4 +1,4 @@
-# Univariate and multivariate regression { }
+# Univariate and multivariable regression { }
 
 <!-- ======================================================= -->
 
@@ -13,6 +13,7 @@ ratios). It also uses functions like `tidy()` from the **broom** package to clea
 3.  Multivariable: variable selection, model selection, final table
 4.  Forest plots
 
+<span style="color: black;">**_NOTE:_** We use the term *multivariable* to refer to a regression with multiple explanatory variables. In this sense a *multivariate* model would be a regression with several outcomes - see this [editorial](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3518362/) for detail </span> 
 
 <!-- ======================================================= -->
 
@@ -112,7 +113,7 @@ The number of rows remaining in `linelist` is `r nrow(linelist)`.
 
 ## Univariate {  }
 
-Just like in the page on [Descriptive tables], your use case will determine which R package you use. We present two options for doing univariate analysis:  
+Just like in the page on [Descriptive tables](https://epirhandbook.com/descriptive-tables.html), your use case will determine which R package you use. We present two options for doing univariate analysis:  
 
 * Use functions available in **base** to quickly print results to the console. Use the **broom** package to tidy up the outputs.  
 * Use the **gtsummary** package to model and get publication-ready outputs  
@@ -125,7 +126,7 @@ Just like in the page on [Descriptive tables], your use case will determine whic
 
 The function `glm()` from the **stats** package (part of **base** R) is used to fit Generalized Linear Models (GLM).  
 
-`glm()` can be used for univariate and multivariate logistic regression (e.g. to get Odds Ratios). Here are the core parts:  
+`glm()` can be used for univariate and multivariable logistic regression (e.g. to get Odds Ratios). Here are the core parts:  
 
 ```{r, eval=F}
 # arguments for glm()
@@ -155,6 +156,8 @@ Family                 | Default link function
 
 When running `glm()` it is most common to save the results as a named R object. Then you can print the results to your console using `summary()` as shown below, or perform other operations on the results (e.g. exponentiate).  
 
+If you need to run a negative binomial regression you can use the **MASS** package; the `glm.nb()` uses the same syntax as `glm()`. 
+For a walk-through of different regressions, see the [UCLA stats page](https://stats.idre.ucla.edu/other/dae/). 
 
 #### Univariate `glm()` {-}
 
@@ -346,7 +349,7 @@ DT::datatable(univ_tab_base, rownames = FALSE, options = list(pageLength = 5, sc
 
 ### **gtsummary** package {-}
 
-Below we present the use of `tbl_uvregression()` from the **gtsummary** package. Just like in the page on [Descriptive tables], **gtsummary** functions do a good job of running statistics *and* producing professional-looking outputs. This function produces a table of univariate regression results.  
+Below we present the use of `tbl_uvregression()` from the **gtsummary** package. Just like in the page on [Descriptive tables](https://epirhandbook.com/descriptive-tables.html), **gtsummary** functions do a good job of running statistics *and* producing professional-looking outputs. This function produces a table of univariate regression results.  
 
 We select only the necessary columns from the `linelist` (explanatory variables and the outcome variable) and  pipe them into `tbl_uvregression()`. We are going to run univariate regression on each of the columns we defined as `explanatory_vars` in the data Preparation section (gender, fever, chills, cough, aches, vomit, and age_cat).  
 
@@ -398,9 +401,9 @@ TODO
 
 
 
-## Multivariate  
+## Multivariable  
 
-For multivariate analysis, we again present two approaches:  
+For multivariable analysis, we again present two approaches:  
 
 * `glm()` and `tidy()`  
 * **gtsummary** package  
@@ -408,7 +411,7 @@ For multivariate analysis, we again present two approaches:
 The workflow is similar for each, as shown below, and only the last step of pulling a final table together is different.
 
 
-### Conduct multivariate {-}  
+### Conduct multivariable {-}  
 
 Use `glm()` but add more variables to the right side of the equation, separated by plus symbols (`+`). 
 
@@ -444,6 +447,8 @@ mv_reg <- explanatory_vars %>%  ## begin with vector of explanatory column names
 #### Building the model {-}  
 
 You can build you model step-by-step, saving various models that include certain explanatory variables. You can compare these models with likelihood-ratio tests using `lrtest()` from the package **lmtest**, as below:  
+
+<span style="color: black;">**_NOTE:_** Using **base** `anova(model1, model2, test = "Chisq)` produces the same results </span> 
 
 ```{r}
 model1 <- glm(outcome ~ age_cat, family = "binomial", data = linelist)
@@ -492,7 +497,7 @@ DT::datatable(mv_tab_base, rownames = FALSE, options = list(pageLength = 10, scr
 
 <!-- ======================================================= -->
 
-### Combine univariate and multivariate {-}
+### Combine univariate and multivariable {-}
 
 #### Combine with **gtsummary**  {-}  
 
@@ -506,7 +511,7 @@ the `tbl_merge` function.
 mv_tab <- tbl_regression(final_mv_reg, exponentiate = TRUE)
 ```
 
-And now combine the univariate and multivariate results:  
+And now combine the univariate and multivariable results:  
 
 ```{r}
 ## combine with univariate results 
@@ -519,9 +524,9 @@ tbl_merge(
 
 #### Combine with **dplyr** {-}  
 
-An alternative way of combining the `glm()`/`tidy()` univariate and multivariate outputs is with the **dplyr** join functions.  
+An alternative way of combining the `glm()`/`tidy()` univariate and multivariable outputs is with the **dplyr** join functions.  
 
-* Join the univariate results from earlier (which contains counts) with the tidied multivariate results  
+* Join the univariate results from earlier (which contains counts) with the tidied multivariable results  
 * Use `select()` to keep only the columns we want, specify their order, and re-name them  
 * Use `round()` with two decimal places on all the column that are class Double  
 
@@ -562,7 +567,7 @@ meta-package called **easystats** (package that includes many packages).
 
 ### **ggplot2** package {-}
 
-You can build a forest plot with `ggplot()` by plotting elements of the multivariate regression results. Add the layers:  
+You can build a forest plot with `ggplot()` by plotting elements of the multivariable regression results. Add the layers:  
 
 * estimates with `geom_point()`  
 * confidence intervals with `geom_errorbar()`  
@@ -614,6 +619,8 @@ final_mv_reg %>%
 Much of the information in this page is adapted from these resources and vignettes online:  
 
 [gtsummary](http://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html)  
+
+[UCLA stats page](https://stats.idre.ucla.edu/other/dae/)  
 
 [sthda stepwise regression](http://www.sthda.com/english/articles/36-classification-methods-essentials/150-stepwise-logistic-regression-essentials-in-r/)   
 
