@@ -1,13 +1,682 @@
 
 # Shiny and dashboards { }  
 
-THIS PAGE IS UNDER CONSTRUCTION  
+THIS PAGE IS UNDER CONSTRUCTION
+
+One of the largest drawbacks of `R` is its usability for people who are new to or have no experience with programming languages. While these skills are very valuable, most people will find that this represents a barrier to sharing analyses, especially in multidisciplinary environments. It requires some work to maintain an `R` installation, and not everyone will be comfortable running shared code, even if it's well documented and easy to read. This is *especially* true when users have to change parameters of code! For this reason dashboards are often a great way to share results from analyses with others without having to interface with code itself. 
+
+R based dashboards are also advantageous in that they centralise how code is run - when the same code is run on different machines, often people will have to deal with differing file paths, different R versions, and different package installations. For this reason, dashboards are a great way to share code with others in a user friendly way!
+
+Despite this, making dashboards in `R` requires a relatively advanced knowledge of the language. For this reason, it is recommended that someone learning dashboards has good knowledge of data transformation and visualisation, and is comfortable debugging code, and writing functions. Working with dashboards is not intuitive when you're starting, and is difficult to understand at times, but is a great skill to learn and gets much easier with practice!
+
+This section will give a short overview of how you can use `R` to make dashboards, primarily by using the excellent `shiny` package, and its extensions.
 
 <!-- ======================================================= -->
-## Resources {  }
+## The structure of a shiny app {  }
 
-This tab should stay with the name "Resources".
-Links to other online tutorials or resources.
+### Basic file structures
+To understand `shiny`, we first need to understand the file structure of an app works! We should make a brand new directory before we start. This can actually be made easier by choosing _New project_ in _Rstudio_, and choosing _Shiny Web Application_. This will create the basic structure of a shiny app for you.
+
+Lets also install shiny before we go any further:
+
+```{r, eval = FALSE}
+install.packages("shiny")
+```
+
+When opening this project, you'll notice there is a `.R` file already present called _app.R_. It is *essential* that we either have one of two basic file structures in our file structure:
+
+1. A file called _app.R_
+2. Two files called _ui.R_ and _server.R_
+
+```{r, eval = FALSE}
+
+# an example of app.R
+
+ui <- fluidPage(
+
+    # Application title
+    titlePanel("My app"),
+
+    # Sidebar with a slider input widget
+    sidebarLayout(
+        sidebarPanel(
+            sliderInput("input_1")
+        ),
+
+        # Show a plot 
+        mainPanel(
+           plotOutput("my_plot")
+        )
+    )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+     
+     plot_1 <- reactive({
+          plot_func(param = input_1)
+     })
+     
+    output$my_plot <- renderPlot({
+       plot_1()
+    })
+}
+
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+
+```
+
+
+If you open this file, you'll notice that two different objects are defined one called `ui` and another called `server`. These objects *must* be defined in *every* shiny app and are central to the structure of the app itself! The only difference between the two structures above is that in structure 1, both `ui` and `server` are defined in one file, while they are defined in separate files in structure 2. We can also (and we should if we have a larger app) have other .R files in our structure that we can `source()` into our app, but we need these core files at all times.
 
 
 
+### The server and the ui
+
+We next need to understand what the server and ui objects actually _do_. Put simply, these are two objects that are interacting with each other whenever the user interacts with the shiny app.
+
+The UI element of a shiny app is, on a basic level, R code that creates an HTML interface. This means that everything that is *displayed* in the UI of an app. This largely includes:
+
+* "Widgets" - dropdown menus, check boxes, sliders, etc that can be interacted with by the user
+* Plots, tables, etc - outputs that are generated with R code
+* Navigation aspects of an app - tabs, panes, etc. 
+* Generic text, hyperlinks, etc
+* HTML and CSS elements (addressed later)
+
+The most important thing to understand about the UI is that it *receives inputs* from the user and *displays outputs* from the server. There is no *active* code running in the ui *at any time* - all changes seen in the UI are passed through the server (more or less). So we have to make our plots, downloads, etc in the server
+
+The server of the shiny app is where all code is being run once the app starts up. The way this works is a little confusing. The server function will effectively _react_ to the user interfacing with the UI, and run chunks of code in response. If things change in the server, these will be passed back up to the ui, where the changes can be seen. Importantly, the code in the server will be executed *non-consecutively* (or it's best to think of it this way). Basically, whenever a ui input affects a chunk of code in the server, it will run automatically, and the output will be produced.
+
+This all probably sounds very abstract for now, so we'll have to dive into some examples to get a clear idea of how this actually works. 
+
+
+### Before you start to build an app
+
+Before you begin to build an app, its immensely helpful to know *what* you want to build. Since your UI will be written in code, you can't really visualise what you're building unless you are aiming for something specific. For this reason, it is immensely helpful to look at lots of examples of shiny apps to get an idea of what you can make - even better if you can look at the source code behind these apps! Some great resources for this are:
+
+- [Rstudio app gallery](https://shiny.rstudio.com/gallery/)
+- 
+
+Once you get an idea for what is possible, it's also helpful to map out what you want yours to look like - you can do this in any drawing software (PowerPoint, MS paint, etc.). It's helpful to start simple for your first app! There's also no shame in using code you find online of a nice app as a template for your work - its much easier than building something from scratch!
+
+
+
+## Building a UI 
+
+When building our app, its easier to work on the UI first so we can see what we're making, and not risk the app failing because of any server errors. As mentioned previously, its often good to use a template when working on the UI. There are a number of standard layouts that can be used with shiny that are available from the base shiny package, but it's worth noting that there are also a number of package extensions such as `shinydashboard`. We'll use an example from base shiny to start with. 
+
+A shiny UI is generally defined as a series of nested functions, in the following order
+
+1. A function defining the general layout (the most basic is `fluidPage()`, but more are available)
+2. Panels within the layout such as:
+     - a sidebar (`sidebarPanel()`)
+     - a "main" panel (`mainPanel()`)
+     - a tab (`tabPanel()`)
+     - a generic "column" (`column()`)
+3. Widgets and outputs - these can confer inputs to the server (widgets) or outputs from the server (outputs)
+     - Widgets generally are styled as `xxxInput()` e.g. `selectInput()`
+     - Outputs are generally styled as `xxxOutput()` e.g. `plotOutput()`
+
+It's worth stating again that these can't be visualised easily in an abstract way, so it's best to look at an example! Lets consider making a basic app that visualises our malaria facility count data by district. This data has a lot of differnet parameters, so it would be great if the end user could apply some filters to see the data by age group/district as they see fit! We can use a very simple shiny layout to start - the sidebar layout. This is a layout where widgets are placed in a sidebar on the left, and the plot is placed on the right.
+
+Lets plan our app - we can start with a selector that lets us choose the district where we want to visualise data, and another to let us visualise the age group we are interested in. We'll aim to use these filters to show an epicurve that reflects these parameters. So for this we need:
+
+1. Two dropdown menus that let us choose the district we want, and the age group we're interested in. 
+2. An area where we can show our resulting epicurve.
+
+This might look something like this:
+
+```{r, eval = FALSE}
+
+ui <- fluidPage(
+
+  titlePanel("Malaria facility visualisation app"),
+
+  sidebarLayout(
+
+    sidebarPanel(
+         # selector for district
+         selectInput(
+              inputId = "select_district",
+              label = "Select district",
+              choices = c(
+                   "All",
+                   "Spring",
+                   "Bolo",
+                   "Dingo",
+                   "Barnard"
+              ),
+              selected = "All",
+              multiple = TRUE
+         ),
+         # selector for age group
+         selectInput(
+              inputId = "select_agegroup",
+              label = "Select age group",
+              choices = c(
+                   "All ages" = "malaria_tot",
+                   "0-4 yrs" = "malaria_rdt_0-4",
+                   "5-14 yrs" = "malaria_rdt_5-14",
+                   "15+ yrs" = "malaria_rdt_15"
+              ), 
+              selected = "All",
+              multiple = FALSE
+         )
+
+    ),
+
+    mainPanel(
+      # epicurve goes here
+      plotOutput("malaria_epicurve")
+    )
+    
+  )
+)
+
+
+```
+
+
+This layout looks something like this - note that there will be no plot if there is no server to render it, but our inputs are working!
+
+
+
+This is a good opportunity to discuss how widgets work - note that each widget is accepting an `inputId`, a `label`, and a series of other options that are specific to the widget type. This `inputId` is extremely important - these are the IDs that are used to pass information from the UI to the server. For this reason, they *must be unique*. You should make an effort to name them something sensible, and specific to what they are interacting with in cases of larger apps.
+
+You should read documentation carefully for full details on what each of these widgets do. Widgets will pass specific types of data to the server depending on the widget type, and this needs to be fully understood. For example, `selectInput()` will pass a character type to the server:
+
+- If we select _Spring_ for the first widget here, it will pass the character object `"Spring"` to the server. 
+- If we select two items from the dropdown menu, they will come through as a vector (e.g. `c("Spring", "Bolo")`).
+
+Other widgets will pass different types of object to the server! For example:
+
+- `numericInput()` will pass a numeric type object to the server
+- `checkboxInput()` will pass a logical type object to the server
+
+It's also worth noting the named vector used for the age data here. For many widgets, using a named vector as the choices will display the names of the objects, but pass the contents of the vector to the server. I.e. here we can select _15+_ and it will pass `"malaria_rdt_15"` to the server - which happens to be the name of the column we're interested in!
+
+
+There are loads of widgets that you can use to do lots of things with your app. Widgets also allow you to upload files into your app, and download outputs. There are also some excellent shiny extensions that give you access to more widgets than base shiny - `shinyWidgets` is a great example of this. To look at some examples you can look at the following links:
+
+- [base shiny widget gallery](https://shiny.rstudio.com/gallery/widget-gallery.html)
+- [shinyWidgets gallery](https://github.com/dreamRs/shinyWidgets)
+
+
+
+## Loading data into our app
+
+The next step in our development is getting a server up and running. To do this however, we need to get some data into our app, and figure out all the calculations we're going to do. A shiny app is not straightforward to debug, as it's often not clear where errors are coming from, so it's ideal to get all our data processing and visualisation code working before we start making the server itself.
+
+So given we want to make an app that shows epi curves that change based on user input, we should think about what code we would need to run this in a normal R script. We'll need to:
+
+1. Load our packages
+2. Load our data
+3. Transform our data
+4. Develop a _function_ to visualise our data based on user inputs
+
+This list is pretty straightforward, and shouldn't be too hard to do. It's now important to think about which parts of this process need to *be done only once* and which parts need to *run in response to user inputs*. This is because shiny apps generally run some code before running, which is only performed once. It will help our app's performance if as much of our code can be moved to this section. For this example, we only need to load our data/packages and do basic transformations once, so we can put that code *outside the server*. This means the only thing we'll need in the server is the code to visualise our data. Lets develop all of these componenets in a script first. However, since we're visualising our data with a function, we can also put the code _for the function_ outside the server so our function is in the environment when the app runs!
+
+First lets load our data. Since we're working with a new project, and we want to make it clean, we can create a new directory called data, and add our malaria data in there. We can run this code below in a testing script we will eventually delete when we clean up the structure of our app.
+
+```{r, echo = TRUE}
+pacman::p_load("tidyverse", "lubridate")
+
+# read data
+malaria_data <- rio::import(here::here("data", "facility_count_data.rds")) %>% 
+  as_tibble()
+
+print(malaria_data)
+
+
+```
+It will be easier to work with this data if we use tidy data standards, so we should also transform into a longer data format, where age group is a column, and cases is another column. We can do this easily using what we've learned in the xxx section:
+
+
+```{r, echo = TRUE}
+
+malaria_data <- malaria_data %>%
+  select(-newid) %>%
+  pivot_longer(cols = starts_with("malaria_"), names_to = "age_group", values_to = "cases_reported")
+
+print(malaria_data)
+
+```
+
+And with that we've finished preparing our data! This crosses items 1, 2, and 3 off our list of things to develop for our "testing R script". The last, and most difficult task will be building a function to produce an epicurve based on user defined parameters. As mentioned previously, it's *highly recommended* that anyone learning shiny first look at the section on functional programming to understand how this works!
+
+When defining out function, it might be hard to think about what parameters we want to include. For functional programming with shiny, every relevent parameter will generally have a widget associated with it, so thinking about this is usually quite easy! For example in our current app, we want to be able to filter by province, and have a widget for this, so we can add a province parameter to reflect this. We *don't* have any app functionality to filter by facility (for now), so we don't need to add this as a parameter. Lets start by making a function with three parameters:
+
+1. The core dataset
+2. The district of choice
+3. The age group of choice
+
+```{r}
+
+plot_epicurve <- function(data, district = "All", agegroup = "malaria_tot") {
+  
+  if (!("All" %in% district)) {
+    data <- data %>%
+      filter(District %in% district)
+    
+    plot_title_district <- stringr::str_glue("{paste0(district, collapse = ",")} districts")
+    
+  } else {
+    
+    plot_title_district <- "all districts"
+    
+  }
+  
+  # if no remaining data, return NULL
+  if (nrow(data) == 0) {
+    
+    return(NULL)
+  }
+  
+  data <- data %>%
+    filter(age_group == agegroup)
+  
+  
+  # if no remaining data, return NULL
+  if (nrow(data) == 0) {
+    
+    return(NULL)
+  }
+  
+  if (agegroup == "malaria_tot") {
+      agegroup_title <- "All ages"
+  } else {
+    agegroup_title <- stringr::str_glue("{str_remove(agegroup, 'malaria_rdt')} years")
+  }
+  
+  
+  ggplot(data, aes(x = data_date, y = cases_reported)) +
+    geom_bar(stat = "identity", fill = "darkred") +
+    theme_minimal() +
+    labs(
+      x = "date",
+      y = "number of cases",
+      title = stringr::str_glue("Malaria cases - {plot_title_district}"),
+      subtitle = 
+    )
+  
+  
+  
+}
+
+```
+
+
+We won't go into great detail about this function, as it's relatively simple in how it works. One thing to note however, is we handle errors by returning `NULL` when it would otherwise give an error. This is because when a shiny server produces a `NULL` object instead of a plot object, nothing will be shown in the ui! This is important, as otherwise errors will often cause your app to stop working.
+
+Let's test our function!
+
+```{r, echo = TRUE, warning = FALSE}
+
+plot_epicurve(malaria_data, district = "Bolo", agegroup = "malaria_rdt_0-4")
+
+```
+
+With our function working, we now have to understand how this all is going to fit into our shiny app. We mentioned the concept of _startup code_ before, but lets look at how we can actually incorporate this into the structure of our app. There are two ways we can do this!
+
+1. Put this code in your _app.R_ file at the start of the script
+2. Create a new file in your directory called _global.R_, and put the startup code in this file.
+
+It's worth noting at this point that it's generally easier, especially with bigger apps, to use the second file structure, as it lets you separate your file structure in a simple way. Lets fully develop a this global.R script now. Here is what it could look like:
+
+
+```{r, eval = F}
+# global.R script
+
+pacman::p_load("tidyverse", "lubridate", "shiny")
+
+# read data
+malaria_data <- rio::import(here::here("data", "facility_count_data.rds")) %>% 
+  as_tibble()
+
+
+malaria_data <- malaria_data %>%
+  select(-newid) %>%
+  pivot_longer(cols = starts_with("malaria_"), names_to = "age_group", values_to = "cases_reported")
+
+
+
+plot_epicurve <- function(data, district = "All", agegroup = "malaria_tot") {
+  
+  if (!("All" %in% district)) {
+    data <- data %>%
+      filter(District %in% district)
+    
+    plot_title_district <- stringr::str_glue("{paste0(district, collapse = ",")} districts")
+    
+  } else {
+    
+    plot_title_district <- "all districts"
+    
+  }
+  
+  # if no remaining data, return NULL
+  if (nrow(data) == 0) {
+    
+    return(NULL)
+  }
+  
+  data <- data %>%
+    filter(age_group == agegroup)
+  
+  
+  # if no remaining data, return NULL
+  if (nrow(data) == 0) {
+    
+    return(NULL)
+  }
+  
+  if (agegroup == "malaria_tot") {
+      agegroup_title <- "All ages"
+  } else {
+    agegroup_title <- stringr::str_glue("{str_remove(agegroup, 'malaria_rdt')} years")
+  }
+  
+  
+  ggplot(data, aes(x = data_date, y = cases_reported)) +
+    geom_bar(stat = "identity", fill = "darkred") +
+    theme_minimal() +
+    labs(
+      x = "date",
+      y = "number of cases",
+      title = stringr::str_glue("Malaria cases - {plot_title_district}"),
+      subtitle = 
+    )
+  
+  
+  
+}
+
+
+
+```
+
+
+Easy! One great feature of shiny is that it will understand what files named _app.R_, _server.R_, _ui.R_, and _global.R_ are for, so there is no need to connect them to each other via any code. So just by having this code in _global.R_ it will run before we start our app!. We should also note that it would improve our apps organisation if we moved this function to its own file - this will be especially helpful as apps become larger. To do this, we could make another directory called _funcs_, and put this function in as a file called _plot_epicurve.R_. We could then read this function in via the following command in _global.R_
+
+```{r, eval = F}
+
+source(here::here("funcs", "plot_epicurve.R"), local = TRUE)
+
+```
+
+Note that you should *always* specify `local = TRUE` in shiny apps, since it will affect sourcing when/if the app is published on a server. 
+
+## Developing an app server
+
+Now that we have most of our code, we just have to develop our server. This is the final piece of our app, and is probably the hardest to understand. The server is a large R function, but its helpful to think of it as a series of smaller functions, or tasks that the app can perform. It's important to understand that these functions are not executed in a linear order. There is an order to them, but it's not fully necessary to understand when starting out with shiny. At a very basic level, these tasks or functions will activate when there is a change in user inputs that affects them, *unless the developer has set them up so they behave differently*. Again, this is all quite abstract, but lets first go through the three basic types of shiny _objects_
+
+1. Reactive sources - this is another term for user inputs. The shiny server has access to the outputs from the UI through the widgets we've programmed. Every time the values for these are changed, this is passed down to the server.
+
+2. Reactive conductors - these are objects that exist *only* inside the shiny server. We don't actually need these for simple apps, but they produce objects that can only be seen inside the server, and used in other operations. They generally depend on reactive sources.
+
+3. Endpoints - these are outputs that are passed from the server to the UI. In our example, this would be the epi curve we are producing. 
+
+With this in mind lets construct our server step by step. We'll show our UI code again here just for reference:
+
+```{r, eval = FALSE}
+
+ui <- fluidPage(
+
+  titlePanel("Malaria facility visualisation app"),
+
+  sidebarLayout(
+
+    sidebarPanel(
+         # selector for district
+         selectInput(
+              inputId = "select_district",
+              label = "Select district",
+              choices = c(
+                   "All",
+                   "Spring",
+                   "Bolo",
+                   "Dingo",
+                   "Barnard"
+              ),
+              selected = "All",
+              multiple = TRUE
+         ),
+         # selector for age group
+         selectInput(
+              inputId = "select_agegroup",
+              label = "Select age group",
+              choices = c(
+                   "All ages" = "malaria_tot",
+                   "0-4 yrs" = "malaria_rdt_0-4",
+                   "5-14 yrs" = "malaria_rdt_5-14",
+                   "15+ yrs" = "malaria_rdt_15"
+              ), 
+              selected = "All",
+              multiple = FALSE
+         )
+
+    ),
+
+    mainPanel(
+      # epicurve goes here
+      plotOutput("malaria_epicurve")
+    )
+    
+  )
+)
+
+
+```
+
+From this code UI we have:
+
+- Two inputs:
+  - District selector (with an inputId of `select_district`)
+  - Age group selector (with an inputId of `select_agegroup`)
+- One output:
+  - The epicurve (with an outputId of `malaria_epicurve`)
+
+As stated previously, these unique names we have assigned to our inputs and outputs are crucial. They *must be unique* and are used to pass information between the ui and server. In our server, we access our inputs via the syntax `input$input_name` and outputs and passed to the ui through the syntax `output$output_name` Lets have a look at an example, because again this is hard to understand otherwise!
+
+```{r, eval = FALSE}
+
+server <- function(input, output, session) {
+  
+  output$malaria_epicurve <- renderPlot(
+    plot_epicurve(malaria_data, district = input$select_district, agegroup = input$select_agegroup)
+  )
+  
+}
+
+
+```
+
+
+The server for a simple app like this is actually quite straightforward! You'll notice that the server is a function with three parameters - `input`, `output`, and `session` - this isn't that important to understand for now, but its important to stick to this setup! In our server we only have one task - this renders a plot based on our function we made earlier, and the inputs from the server. Notice how the names of the input and output objects correspond exactly to those in the ui.
+
+To understand the basics of how the server reacts to user inputs, you should note that the output will know (through the underlying package) when inputs change, and rerun this function to create a plot every time they change. Note that we also use the `renderPlot()` function here - this is one of a family of class specific functions that pass those objects to an output. There are a number of functions that behave similar, but you need to ensure the function matches the class of object you're passing to the ui! For example:
+
+- `renderText()` - send text to the ui
+- `renderDataTable` - send an interactive table to the ui.
+
+Remember that these need to match the output function used in the ui - so `renderPlot()` is paired with `plotOutput()`, and `renderText()` is matched with `textOutput()`. 
+
+So we've finally made a functioning app! We can run this by pressing the Run App button on the top right of the script window in Rstudio. *ADD SOMETHING ON DOWNLOADING A ZIP FILE OF THE APP MAYBE?* 
+
+## Adding more functionality
+
+At this point we've finally got a running app, but we have very little functionality. We also haven't really scratched the surface of what shiny can do, so there's a lot more to learn about! Lets continue to build our existing app by adding some extra features. Some things that could be nice to add could be: 
+
+1. Some explanatory text 
+2. A download button for our plot - this would provide the user with a high quality version of the image that they're generating in the app
+3. A selector for specific facilities, and maybe one for dates as well
+4. Another dashboard page - this could show summary statistics for the full scope of the data.
+
+This is a lot to add, but we can use it to learn about a bunch of different shiny featues on the way. There is so much to learn about shiny (it can get *very* advanced, but its hopefully the case that once users have a better idea of how to use it they can become more comfortable using external learning sources as well).
+
+ADD IN SECTION ON ADDING TEXT p() etc.
+
+
+
+Lets move on to the second of the three features. A download button is a fairly common thing to add to an app and is fairly easy to make. We need to add another Widget to our ui, and we need to add another output to our server to attach to it. We can also introduce *reactive conductors* in this example!
+
+Lets update our ui first - this is easy as shiny comes with a widget called `downloadButton()` - lets give it an inputId and a label.
+
+```{r, eval = FALSE}
+
+ui <- fluidPage(
+
+  titlePanel("Malaria facility visualisation app"),
+
+  sidebarLayout(
+
+    sidebarPanel(
+         # selector for district
+         selectInput(
+              inputId = "select_district",
+              label = "Select district",
+              choices = c(
+                   "All",
+                   "Spring",
+                   "Bolo",
+                   "Dingo",
+                   "Barnard"
+              ),
+              selected = "All",
+              multiple = TRUE
+         ),
+         # selector for age group
+         selectInput(
+              inputId = "select_agegroup",
+              label = "Select age group",
+              choices = c(
+                   "All ages" = "malaria_tot",
+                   "0-4 yrs" = "malaria_rdt_0-4",
+                   "5-14 yrs" = "malaria_rdt_5-14",
+                   "15+ yrs" = "malaria_rdt_15"
+              ), 
+              selected = "All",
+              multiple = FALSE
+         ),
+         # horizontal line
+         hr(),
+         downloadButton(
+           inputId = "download_epicurve",
+           label = "Download plot"
+         )
+
+    ),
+
+    mainPanel(
+      # epicurve goes here
+      plotOutput("malaria_epicurve")
+    )
+    
+  )
+)
+
+
+```
+ 
+Note that we've also added in a `hr()` tag - this adds a horizontal line separating our control widgets from our download widgets. This is another one of the HTML tags that we discussed previously.
+
+Now that we have our ui ready, we need to add the server component. Downloads are done in the server with the `downloadHandler()` function. Similar to our plot, we need to attach it to an output that has the same inputId as the download button. This function takes two arguments - `filename` and `content` - these are both functions. As you might be able to guess, `filename` is used to specify the name of the downloaded file, and `content` is used to specify what should be downloaded. `content` contain a function that you would use to save data locally - so if you were downloading a csv file you could use `rio::export()`. Since we're downloading a plot, we'll use `ggplot2::ggsave()`. Lets look at how we would program this (we won't add it to the server yet). 
+
+```{r, eval = FALSE}
+
+server <- function(input, output, session) {
+  
+  output$malaria_epicurve <- renderPlot(
+    plot_epicurve(malaria_data, district = input$select_district, agegroup = input$select_agegroup)
+  )
+  
+  output$download_epicurve <- downloadHandler(
+    filename = function() {
+      stringr::str_glue("malaria_epicurve_{input$select_district}.png")
+    },
+    
+    content = function(file) {
+      ggsave(file, 
+             plot_epicurve(malaria_data, district = input$select_district, agegroup = input$select_agegroup),
+             width = 8, height = 5, dpi = 300)
+    }
+    
+  )
+  
+}
+
+
+```
+
+
+Note that the `content` function always takes a `file` argument, which we put where the output file name is specified. You might also notice that we're repeating code here - we are using our `plot_epicurve()` function twice in this server, once for the download and once for the image displayed in the app. While this wont massively affect performance, this means that the code to generate this plot will have to be run when the user changes the widgets specifying the district and age group, *and* again when you want to download the plot. In larger apps, suboptimal decisions like this one will slow things down more and more, so it's good to learn how to make our app more efficient in this sense. What would make more sense is if we had a way to run the epicurve code when the districts/age groups are changes, *and let that be used by* the renderPlot() and downloadHandler() functions. This is where reactive conductors come in! 
+
+Reactive conductors are objects that are created in the shiny server in a *reactive* way, but are not outputted - they can just be used by other parts of the server. There are a number of different kinds of *reactive conductors*, but we'll go through the basic two.
+
+1.`reactive()` - this is the most basic reactive conductor - it will react whenever any inputs used inside of it change (so our district/age group widgets)
+2. `eventReactive()`- this rective conductor works the same as `reactive()`, except that the user can specify which inputs cause it to rerun. This is useful if your reactive conductor takes a long time to process, but this will be explained more later.
+
+Lets look at the two examples:
+
+```{r, eval = FALSE}
+
+malaria_plot_r <- reactive({
+  
+  plot_epicurve(malaria_data, district = input$select_district, agegroup = input$select_agegroup)
+  
+})
+
+
+# only runs when the district selector changes!
+malaria_plot_er <- eventReactive(input$select_district, {
+  
+  plot_epicurve(malaria_data, district = input$select_district, agegroup = input$select_agegroup)
+  
+})
+
+
+
+```
+
+When we use the `eventReactive()` setup, we can specify which inputs cause this chunk of code to run - this isn't very useful to us at the moment, so we can leave it for now. Note that you can include multiple inputs with `c()`
+
+Lets look at how we can integrate this into our server code:
+
+
+```{r, eval = FALSE}
+
+server <- function(input, output, session) {
+  
+  malaria_plot <- reactive({
+    plot_epicurve(malaria_data, district = input$select_district, agegroup = input$select_agegroup)
+  })
+  
+  
+  
+  output$malaria_epicurve <- renderPlot(
+    malaria_plot()
+  )
+  
+  output$download_epicurve <- downloadHandler(
+    
+    filename = function() {
+      stringr::str_glue("malaria_epicurve_{input$select_district}.png")
+    },
+    
+    content = function(file) {
+      ggsave(file, 
+             malaria_plot(),
+             width = 8, height = 5, dpi = 300)
+    }
+    
+  )
+  
+}
+
+
+```
+
+You can see we're just calling on the output of our reactive we've defined in both our download and plot rendering functions. One thing to note that often trips people up is you have to use the outputs of reactives as if they were functions - so you *must add empty brackets at the end of them* (i.e. `malaria_plot()` is correct, and `malaria_plot` is not). Now that we've added this solution our app is a little tidyer, faster, and easier to change since all our code that runs the epicurve function is in one place. Great!
