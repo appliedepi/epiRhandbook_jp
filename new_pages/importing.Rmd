@@ -485,7 +485,7 @@ df_from_clipboard <- read.table(
 
 
 
-## Import most recent file {-}  
+## Import most recent file  
 
 Often you may receive daily updates to your datasets. In this case you will want to write code that imports the most recent file. Below we present two ways to approach this:  
 
@@ -501,11 +501,11 @@ This approach depends on three premises:
 2) The dates are numeric and appear in *generally* the same format (e.g. year then month then day)  
 3) There are no other numbers in the file name  
 
-We will explain each step, and then show you them combined at the end. First, use `dir()` from **base** R to extract just the file names for each file in the folder of interest. See the page on [Directory interactions] for more details about `dir()`. In this example, the folder of interest is the folder "linelists" within the folder "data" within the R project. 
+We will explain each step, and then show you them combined at the end. First, use `dir()` from **base** R to extract just the file names for each file in the folder of interest. See the page on [Directory interactions] for more details about `dir()`. In this example, the folder of interest is the folder "linelists" within the folder "example" within "data" within the R project. 
 
 ```{r}
-linelist_filenames <- dir(here("data", "linelists")) # get file names from folder
-linelist_filenames                                   # print
+linelist_filenames <- dir(here("data", "example", "linelists")) # get file names from folder
+linelist_filenames                                              # print
 ```
 
 Once you have this vector of names, you can extract the dates by applying `str_extract()` from **stringr** using this regular expression. It extracts any numbers in the file name (including any other characters in the middle such as dashes or slashes). You can read more about **stringr** in the [Strings and characters] page.  
@@ -543,11 +543,11 @@ pacman::p_load(
   fs)                # directory interactions
 
 # extract the file name of latest file
-latest_file <- dir(here("data", "linelists")) %>%  # file names from "linelists" sub-folder          
+latest_file <- dir(here("data", "example", "linelists")) %>%  # file names from "linelists" sub-folder          
   str_extract("[0-9].*[0-9]") %>%                  # pull out dates (numbers)
   ymd() %>%                                        # convert numbers to dates (assuming year-month-day format)
   which.max() %>%                                  # get index of max date (latest file)
-  dir(here("data", "linelists"))[[.]]              # return the filename of latest linelist
+  dir(here("data", "example", "linelists"))[[.]]              # return the filename of latest linelist
 
 latest_file  # print name of latest file
 ```
@@ -555,14 +555,14 @@ latest_file  # print name of latest file
 You can now use this name to finish the relative file path, with `here()`:  
 
 ```{r}
-here("data", "linelists", latest_file) 
+here("data", "example", "linelists", latest_file) 
 ```
 
 And you can now import the latest file:  
 
 ```{r, eval=F}
 # import
-import(here("data", "linelists", latest_file)) # import 
+import(here("data", "example", "linelists", latest_file)) # import 
 ```
 
  
@@ -573,12 +573,12 @@ import(here("data", "linelists", latest_file)) # import
 
 If your files do not have dates in their names (or you do not trust those dates), you can try to extract the last modification date from the file metadata. Use functions from the package **fs** to examine the metadata information for each file, which includes the last modification time and the file path.  
 
-Below, we provide the folder of interest to **fs**'s `dir_info()`. In this case, the folder of interest is the sub-folder "linelists" within the folder "data" within the R project. The result is a data frame with one line per file and columns for `modification_time`, `path`, etc. You can see a visual example of this in the page on [Directory interactions].    
+Below, we provide the folder of interest to **fs**'s `dir_info()`. In this case, the folder of interest is in the R project in the folder "data", the sub-folder "example", and its sub-folder "linelists".  The result is a data frame with one line per file and columns for `modification_time`, `path`, etc. You can see a visual example of this in the page on [Directory interactions].    
 
 We can sort this data frame of files by the column `modification_time`, and then keep only the top/latest row (file) with **base** R's `head()`. Then we can extract the file path of this latest file only with the **dplyr** function `pull()` on the column `path`. Finally we can pass this file path to `import()`. The imported file is saved as `latest_file`.  
 
 ```{r, eval=F}
-latest_file <- dir_info(here("data", "linelists")) %>%  # collect file info on all files in directory
+latest_file <- dir_info(here("data", "example", "linelists")) %>%  # collect file info on all files in directory
   arrange(desc(modification_time)) %>%      # sort by modification time
   head(1) %>%                               # keep only the top (latest) file
   pull(path) %>%                            # extract only the file path

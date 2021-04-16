@@ -4,13 +4,15 @@
 
 This page demonstrates use of the **stringr** package to evaluate and manage character (strings).  
 
-1. Evaluate and extract by position - `str_length()`, `str_sub()`, `word()`  
-2. Combine, order, arrange - `str_c()`, `str_glue()`, `str_order()`  
-3. Modify and replace - `str_sub()`, `str_replace_all()`  
-4. Adjust length - `str_pad()`, `str_trunc()`, `str_wrap()`  
-5. Change case - `str_to_upper()`, `str_to_title()`, `str_to_lower()`, `str_to_sentence()`  
-6. Search for patterns - `str_detect()`, `str_subset()`, `str_match()`  
-7. Regular expressions (regex)
+1. Combine, order, arrange - `str_c()`, `str_glue()`, `str_order()`  
+2. Clean and standardise  
+  * Adjust length - `str_pad()`, `str_trunc()`, `str_wrap()`  
+  * Change case - `str_to_upper()`, `str_to_title()`, `str_to_lower()`, `str_to_sentence()`  
+3. Evaluate and extract by position - `str_length()`, `str_sub()`, `word()`  
+4. Patterns  
+  * Detect and locate - `str_detect()`, `str_subset()`, `str_match()`, `str_extract()`  
+  * Modify and replace - `str_sub()`, `str_replace_all()`  
+7. Regular expressions ("regex")
 
 
 For ease of display most examples are shown acting on a short defined character vector, however they can easily be applied/adapted to a column within a dataset.  
@@ -34,108 +36,6 @@ pacman::p_load(
   tools)      # alternative for converting to title case
 
 ```
-
-
-
-
-
-
-<!-- ======================================================= -->
-## Handle by position { }
-
-
-### Extract by character position {-}  
-
-Use `str_sub()` to return only a part of a string. The function takes three main arguments:  
-
-1) the character vector(s)  
-2) start position  
-3) end position  
-
-A few notes on position numbers:  
-
-* If a position number is positive, the position is counted starting from the left end of the string.  
-* If a position number is negative, it is counted starting from the right end of the string.  
-* Position numbers are inclusive.  
-* Positions extending beyond the string will be truncated (removed).  
-
-Below are some examples applied to the string "pneumonia":  
-
-```{r}
-# start and end third from left (3rd letter from left)
-str_sub("pneumonia", 3, 3)
-
-# 0 is not present
-str_sub("pneumonia", 0, 0)
-
-# 6th from left, to the 1st from right
-str_sub("pneumonia", 6, -1)
-
-# 5th from right, to the 2nd from right
-str_sub("pneumonia", -5, -2)
-
-# 4th from left to a position outside the string
-str_sub("pneumonia", 4, 15)
-```
-
-
-
-### Extract by word position {-} 
-
-To extract the nth 'word', use `word()`, also from **stringr**. Provide the string(s), then the first word position to extract, and the last word position to extract.  
-
-By default, the separator between 'words' is assumed to be a space, unless otherwise indicated with `sep = ` (e.g. `sep = "_"` when words are separated by underscores.  
-
-
-```{r}
-# strings to evaluate
-chief_complaints <- c("I just got out of the hospital 2 days ago, but still can barely breathe.",
-                      "My stomach hurts",
-                      "Severe ear pain")
-
-# extract 1st to 3rd words of each string
-word(chief_complaints, start = 1, end = 3, sep = " ")
-```
-
-
-### Replace by character position {-} 
-
-`str_sub()` paired with the assignment operator (`<-`) can be used to modify a part of a string: 
-
-```{r}
-word <- "pneumonia"
-
-# convert the third and fourth characters to X 
-str_sub(word, 3, 4) <- "XX"
-
-word
-```
-
-An example applied to multiple strings (e.g. a column). Note the expansion in length of "HIV".  
-
-```{r}
-words <- c("pneumonia", "tubercolosis", "HIV")
-
-# convert the third and fourth characters to X 
-str_sub(words, 3, 4) <- "XX"
-
-words
-```
-
-
-
-
-
-### Evaluate length  {-}
-
-
-```{r}
-str_length("abc")
-```
-
-Alternatively, use `nchar()` from **base** R
-
-
 
 
 
@@ -470,15 +370,46 @@ paste("Regional hospital needs", n_beds, "beds and", n_masks, "masks.")
 
 
 
-
-
+## Clean and standardise  
 
 
 <!-- ======================================================= -->
-## Adjust length { }
+### Change case { }
+
+Often one must alter the case/capitalization of a string value, for example names of jursidictions. Use `str_to_upper()`, `str_to_upper()`, and `str_to_title()`, from **stringr**, as shown below:  
+
+```{r}
+str_to_upper("California")
+
+str_to_lower("California")
+```
+
+Using *base** R, the above can also be achieved with `toupper()`, `tolower()`.  
 
 
-### Pad  {-}
+**Title case**  
+
+Transforming the string so each word is capitalized can be achieved with `str_to_title()`:  
+
+```{r}
+str_to_title("go to the US state of california ")
+```
+
+Use `toTitleCase()` from the **tools** package to achieve more nuanced capitalization (words like "to", "the", and "of" are not capitalized).  
+
+```{r}
+tools::toTitleCase("This is the US state of california")
+```
+
+You can also use `str_to_sentence()`, which capitalizes only the first letter of the string.
+
+```{r}
+str_to_sentence("the patient must be transported")
+```
+
+
+
+### Pad length  {-}
 
 Use `str_pad()` to add characters to a string, to a minimum length. By default spaces are added, but you can also pad with other characters using the `pad = ` argument.  
 
@@ -585,42 +516,110 @@ cat(str_wrap(pt_course, 40))
 
 
 
+
+
+
+
+
+
+
 <!-- ======================================================= -->
-## Change case { }
-
-Often one must alter the case/capitalization of a string value, for example names of jursidictions. Use `str_to_upper()`, `str_to_upper()`, and `str_to_title()`, as shown below:  
-
-```{r}
-str_to_upper("California")
-
-str_to_lower("California")
-```
-
-Using *base** R, the above can also be achieved with `toupper()`, `tolower()`.  
+## Handle by position { }
 
 
-**Title case**  
+### Extract by character position {-}  
 
-Transforming the string so each word is capitalized can be achieved with `str_to_title()`:  
+Use `str_sub()` to return only a part of a string. The function takes three main arguments:  
 
-```{r}
-str_to_title("go to the US state of california ")
-```
+1) the character vector(s)  
+2) start position  
+3) end position  
 
-Use `toTitleCase()` from the **tools** package to achieve more nuanced capitalization (words like "to", "the", and "of" are not capitalized).  
+A few notes on position numbers:  
+
+* If a position number is positive, the position is counted starting from the left end of the string.  
+* If a position number is negative, it is counted starting from the right end of the string.  
+* Position numbers are inclusive.  
+* Positions extending beyond the string will be truncated (removed).  
+
+Below are some examples applied to the string "pneumonia":  
 
 ```{r}
-tools::toTitleCase("This is the US state of california")
+# start and end third from left (3rd letter from left)
+str_sub("pneumonia", 3, 3)
+
+# 0 is not present
+str_sub("pneumonia", 0, 0)
+
+# 6th from left, to the 1st from right
+str_sub("pneumonia", 6, -1)
+
+# 5th from right, to the 2nd from right
+str_sub("pneumonia", -5, -2)
+
+# 4th from left to a position outside the string
+str_sub("pneumonia", 4, 15)
 ```
 
-You can also use `str_to_sentence()`, which capitalizes only the first letter of the string.
+
+
+### Extract by word position {-} 
+
+To extract the nth 'word', use `word()`, also from **stringr**. Provide the string(s), then the first word position to extract, and the last word position to extract.  
+
+By default, the separator between 'words' is assumed to be a space, unless otherwise indicated with `sep = ` (e.g. `sep = "_"` when words are separated by underscores.  
+
 
 ```{r}
-str_to_sentence("the patient must be transported")
+# strings to evaluate
+chief_complaints <- c("I just got out of the hospital 2 days ago, but still can barely breathe.",
+                      "My stomach hurts",
+                      "Severe ear pain")
+
+# extract 1st to 3rd words of each string
+word(chief_complaints, start = 1, end = 3, sep = " ")
 ```
 
 
- 
+### Replace by character position {-} 
+
+`str_sub()` paired with the assignment operator (`<-`) can be used to modify a part of a string: 
+
+```{r}
+word <- "pneumonia"
+
+# convert the third and fourth characters to X 
+str_sub(word, 3, 4) <- "XX"
+
+word
+```
+
+An example applied to multiple strings (e.g. a column). Note the expansion in length of "HIV".  
+
+```{r}
+words <- c("pneumonia", "tubercolosis", "HIV")
+
+# convert the third and fourth characters to X 
+str_sub(words, 3, 4) <- "XX"
+
+words
+```
+
+
+
+### Evaluate length  {-}
+
+
+```{r}
+str_length("abc")
+```
+
+Alternatively, use `nchar()` from **base** R
+
+
+
+
+
 
 
 <!-- ======================================================= -->
