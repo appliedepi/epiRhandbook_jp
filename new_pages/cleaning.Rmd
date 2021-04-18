@@ -22,6 +22,7 @@ Function       | Utility                               | Package
 `select()`|to select or re-name columns| "
 `filter()`|to keep certain rows| " 
 `across()`|to transform multiple columns at one time| " 
+`rowwise()`|operations across one row| "  
 `rename()`|to rename columns| " 
 `add_row()`|to add rows manually| " 
 `distinct()`|to de-duplicate rows| " 
@@ -31,7 +32,7 @@ Function       | Utility                               | Package
 `replace_na()`, `na_if()`, `coalesce()`|special functions for re-coding|**tidyr** (also **tidyverse**)
 `as.character()`, `as.numeric()`, `as.Date()`, etc.|to convert the class of a column|**base** R
 `clean_data()`|to re-code/clean using a data dictionary|**linelist**
-`age_categories()` and `cut()`|to create categorical groups from a numeric column|**epikit** and **base** R
+`age_categories()` and `cut()`|to create categorical groups from a numeric column|**epikit** and **base** R  
 
 
 If you want to see how these functions compare to Stata or SAS, see the page on [Transition to R].  
@@ -1870,18 +1871,45 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 ## Row-wise calculations  
 
-If you want to perform a calculation within a row, you can use `rowwise()` from **dplyr**. See the vignette on [row-wise calculations](https://cran.r-project.org/web/packages/dplyr/vignettes/rowwise.html)
+If you want to perform a calculation within a row, you can use `rowwise()` from **dplyr**. See the vignette on [row-wise calculations](https://cran.r-project.org/web/packages/dplyr/vignettes/rowwise.html).  
 
-For example, this code applies `rowwise()` and then creates a new column that sums the number of symptoms per case:  
+`rowwise()` is essentially a special kind of `group_by()`, so it is best to use `ungroup()` when you are done.  
+
+For example, this code applies `rowwise()` and then creates a new column that sums the number of the specified symptom columns that have value "yes", for each row in the linelist. The columns by name within a normal vector `c()`.  
 
 ```{r, eval=F}
-linelist <- linelist %>%
+linelist %>%
   rowwise() %>%
-  mutate(num_symptoms = sum(c(fever, chills, cough, aches, vomit) == "yes"))
+  mutate(num_symptoms = sum(c(fever, chills, cough, aches, vomit) == "yes")) %>% 
+  ungroup() %>% 
+  select(fever, chills, cough, aches, vomit, num_symptoms) # for display
 ```
 
+To specify columns, you may want to use the helper functions detailed in the `select()` section of this page ("tidy select semantics)". You just have to make one adjustment (because you are not using them within `select()` or `summarise()`).  
 
+Put the column-specification criteria within the **dplyr** function `c_across()`. `c_across` ([documentation](https://dplyr.tidyverse.org/reference/c_across.html)) is designed to work with `rowwise()` specifically. For example, the following code:  
 
+* Applies `rowwise()` so the following operation (`sum()`) is applied within each row (not summing entire columns)  
+* Creates new column `num_NA_dates`, defined for each row as the number of columns (with name containing "date") for which `is.na()` evaluated to TRUE (they are missing data).  
+* `ungroup()` to remove the effects of `rowwise()` for subsequent steps  
+
+```{r, eval=F}
+linelist %>%
+  rowwise() %>%
+  mutate(num_NA_dates = sum(is.na(c_across(contains("date"))))) %>% 
+  ungroup() %>% 
+  select(num_NA_dates, contains("date")) # for display
+```
+
+You could also provide other functions, such as `max()` to get the latest or most recent date for each row:  
+
+```{r}
+linelist %>%
+  rowwise() %>%
+  mutate(latest_date = max(c_across(contains("date")), na.rm=T)) %>% 
+  ungroup() %>% 
+  select(latest_date, contains("date"))  # for display
+```
 
 
 
