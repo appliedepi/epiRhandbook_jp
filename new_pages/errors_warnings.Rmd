@@ -1,32 +1,45 @@
 
-# Errors & warnings  
+# Errors & help  
+
+THIS PAGE IS UNDER CONSTRUCTION
+
+This page covers:  
+
+* Common errors and suggests solutions for troubleshooting them  
+* How to get help by posting a reproducible example ("reprex") to an online forum  
 
 
-This page lists common errors and suggests solutions for troubleshooting them
+
+## Interpreting error messages  
+
+R errors can be cryptic at times, so Google is your friend. Search the error message with "R" and look for recent posts in [StackExchange.com](StackExchange.com), [stackoverflow.com](stackoverflow.com), [community.rstudio.com](community.rstudio.com), twitter (#rstats), and other forums used by programmers to filed questions and answers. Try to find recent posts that have solved similar problems.  
+
+If after much searching you cannot find an answer to your problem, consider creating a *reproducible example* ("reprex") and posting the question yourself. See the sections below on posting reproducible examples to forums. 
 
 
-## Data management errors {}  
+## Common errors  
+
+Below, we list some common errors and potential explanations/solutions. Some of these are borrowed from Noam Ross who analyzed the most common forum posts on Stack Overflow about R error messages (see analysis [here](https://github.com/noamross/zero-dependency-problems/blob/master/misc/stack-overflow-common-r-errors.md))  
 
 
+### Typo errors {-}  
 
 ```
-No such file or directory:
+Error: unexpected symbol in:
+"  geom_histogram(stat = "identity")+
+  tidyquant::geom_ma(n=7, size = 2, color = "red" lty"
 ```
-If you see an error like this when you try to export or import: Check the spelling of the file and filepath, and if the path contains slashes make sure they are forward `/` and not backward `\`. Also make sure you used the correct file extension (e.g. .csv, .xlsx).  
+If you see "unexpected symbol", check for missing commas  
 
 
+
+### Package errors {-}  
 
 ```
-#Tried to add a value ("Missing") to a factor (with replace_na operating on a factor)
-Problem with `mutate()` input `age_cat`.
-i invalid factor level, NA generated
-i Input `age_cat` is `replace_na(age_cat, "Missing")`.invalid factor level, NA generated
+could not find function "x"...
 ```
+This likely means that you typed the function name incorrectly, or forgot to install or load a package.
 
-You likely have a column of class Factor (which contains pre-defined levels) and tried to add a new value to it. Convert it to class Character before adding a new value.  
-
-
-## Package masked errors {}  
 
 ```
 Error in select(data, var) : unused argument (var)
@@ -36,8 +49,29 @@ You think you are using `dplyr::select()` but the `select()` function has been m
 Other common masking errors stem from: `plyr::summarise()` and `stats::filter()`. Consider using the [**conflicted** package](https://www.tidyverse.org/blog/2018/06/conflicted/).
 
 
-## Plotting errors {}  
+### Object errors {-}  
 
+```
+No such file or directory:
+```
+If you see an error like this when you try to export or import: Check the spelling of the file and filepath, and if the path contains slashes make sure they are forward `/` and not backward `\`. Also make sure you used the correct file extension (e.g. .csv, .xlsx).  
+
+
+```
+object 'x' not found 
+```
+This means that an object you are referencing does not exist. Perhaps code above did not run properly?  
+
+
+```
+Error in 'x': subscript out of bounds
+```
+This means you tried to access something (an element of a vector or a list) that was not there.  
+
+
+
+
+### Function syntax errors {-}
 
 ```
 # ran recode without re-stating the x variable in mutate(x = recode(x, OLD = NEW)
@@ -45,27 +79,166 @@ Error: Problem with `mutate()` input `hospital`.
 x argument ".x" is missing, with no default
 i Input `hospital` is `recode(...)`.
 ```
+This error above (`argument .x is missing, with no default`) is common in `mutate()` if you are supplying a function like `recode()` or `replace_na()` where it expects you to provide the column name as the first argument. This is easy to forget.  
 
+
+
+### Logic errors {-}  
+
+```
+Error in if
+```
+
+This likely means an `if` statement was applied to something that was not TRUE or FALSE.  
+
+
+### Factor errors {-}  
+
+```
+#Tried to add a value ("Missing") to a factor (with replace_na operating on a factor)
+Problem with `mutate()` input `age_cat`.
+i invalid factor level, NA generated
+i Input `age_cat` is `replace_na(age_cat, "Missing")`.invalid factor level, NA generated
+```
+If you see this error about invalid factor levels, you likely have a column of class Factor (which contains pre-defined levels) and tried to add a new value to it. Convert it to class Character before adding a new value.  
+
+
+### Plotting errors {-}  
 
 `Error: Insufficient values in manual scale. 3 needed but only 2 provided.`
 ggplot() scale_fill_manual() values = c("orange", "purple") ... insufficient for number of factor levels ... consider whether NA is now a factor level...
 
-
 ```
-Error: unexpected symbol in:
-"  geom_histogram(stat = "identity")+
-  tidyquant::geom_ma(n=7, size = 2, color = "red" lty"
+Can't add x object
 ```
-If you see "unexpected symbol" check for missing commas  
+You probably have an extra `+` at the end of a ggplot command that you need to delete.
 
 
+### Miscellaneous {-}  
 
-consider whether you re-arranged dplyr verbs and didn't replace a pipe in the middle, or didn't remove a pipe from the end.
+Consider whether you re-arranged piped **dplyr** verbs and didn't replace a pipe in the middle, or didn't remove a pipe from the end after re-arranging.
 
-
-Can't add x object ... Have a `+` at the end of a ggplot command that you need to delete.
  
 
+
+
+## Github issues  
+
+Many R packages and projects have their code hosted on the website Github.com. You can communicate directly with authors via this website by posting an "Issue".  
+
+Read more about how to store your work on Github in the page [Collaboration and Github]. 
+
+On Github, each project is contained within a *repository*. Each repository contains code, data, outputs, help documentation, etc. There is also a vehicle to communicate with the authors called "Issues".  
+
+See below the Github page for the **incidence2** package (used to make epidemic curves). You can see the "Issues" tab highlighted in yellow. You can see that there are 5 open issues.  
+
+```{r, warning=F, message=F, echo=F}
+knitr::include_graphics(here::here("images", "errors_Github_issues.png"))
+```
+
+Once in the Issues tab, you can see the open issues. Review them to ensure your problem is not already being addressed. You can open a new issue by clicking the green button on the right. You will need a Github account to do this. 
+
+```{r, warning=F, message=F, echo=F}
+knitr::include_graphics(here::here("images", "errors_Github_issues2.png"))
+```
+In your issue, follow the instructions below to provide a minimal, reproducible example. And please be courteous! Most people developing R packages and projects are doing so in their spare time (like this handbook!).  
+
+To read more advanced materials about handling issues in your own Github repository, check out the Github [documentation on Issues](https://guides.github.com/features/issues/).  
+
+
+
+## Reproducible example  
+
+Providing a reproducible example ("reprex") is key to getting help when posting in a forum or in a Github issue. People want to help you, but you have to give them an example that they can work with on their own computer. The example should:  
+
+* Demonstrate the problem you encountered  
+* Be *minimal*, in that it includes only the data and code required to reproduce your problem  
+* Be *reproducible*, such that all objects (e.g. data), package calls (e.g. `library()` or `p_load()`) are included
+
+*Also, be sure you do not post any sensitive data with the reprex!* You can create example data frames, or use one of the data frames built into R (enter `data()` to open a list of these datasets).  
+
+
+
+### The **reprex** package {-}  
+
+The **reprex** package can assist you with making a reproducible example:  
+
+1) **reprex** is installed with **tidyverse**, so load either package  
+
+```{r, eval=F}
+# install/load tidyverse (which includes reprex)
+pacman::p_load(tidyverse)
+```
+
+2) Begin an R script that creates your problem, step-by-step, starting from loading packages and data.  
+
+```{r, eval=F}
+# load packages
+pacman::p_load(
+     tidyverse,  # data mgmt and vizualization
+     outbreaks)  # example outbreak datasets
+
+# flu epidemic case linelist
+outbreak_raw <- outbreaks::fluH7N9_china_2013  # retrieve dataset from outbreaks package
+
+# Clean dataset
+outbreak <- outbreak_raw %>% 
+     mutate(across(contains("date"), as.Date))
+
+# Plot epidemic
+
+ggplot(data = outbreak)+
+     geom_histogram(
+          mapping = aes(x = date_of_onset),
+          binwidth = 7
+     )+
+  scale_x_date(
+    date_format = "%d %m"
+  )
+
+```
+*Copy* all the code to your clipboard, and run the following command:  
+
+```{r, eval=F}
+reprex::reprex()
+```
+
+You will see an HTML output appear in the RStudio Viewer pane. It will contain all your code and any warnings, errors, or plot outputs. This output is also copied to your clipboard, so you can post it directly into a Github issue or a forum post.  
+
+```{r, warning=F, message=F, echo=F}
+knitr::include_graphics(here::here("images", "errors_reprex_RStudio1.png"))
+```
+
+
+* If you set `session_info = TRUE` the output of `sessioninfo::session_info()` with your R and R package versions will be included  
+* You can provide a working directory to `wd = `  
+* You can read more about the arguments and possible variations at the [documentation]() or by entering `?reprex`
+
+In the example above, the `ggplot()` command did not run because the arguemnt `date_format =` is not correct - it should be `date_labels = `.  
+
+
+## Posting to a forum  
+
+Read lots of forum posts. Get an understanding for which posts are well-written, and which ones are not.  
+
+1) First, decide whether to ask the question at all. Have you *thoroughly* reviewed the forum website, trying various search terms, to see if your question has already been asked?  
+
+2) Give your question an informative title (not "Help! this isn't working").  
+
+3) Write your question:  
+
+* Introduce your situation and problem  
+* Link to posts of similar issues and explain how they do not answer your question  
+* Include any relevant information to help someone who does not know the context of your work  
+* Give a minimal reproducible example with your R session information  
+* Use proper spelling, grammar, punctuation, and break your question into paragraphs so that it is easier to read  
+
+4) Monitor your question once posted to respond to any requests for clarification. Be courteous and gracious - often the people answering are volunteering their time to help you. If you have a follow-up question consider whether it should be a separate posted question.  
+
+5) Mark the question as answered, *if* you get an answer that meets the *original* request. This helps others later quickly recognize the solution.  
+
+
+Read these posts about [how to ask a good question](https://stackoverflow.com/help/how-to-ask) the [Stack overflow code of conduct](https://stackoverflow.com/conduct).  
 
 
 <!-- ======================================================= -->
@@ -74,4 +247,4 @@ Can't add x object ... Have a `+` at the end of a ggplot command that you need t
 
 https://www.r-bloggers.com/2016/06/common-r-programming-errors-faced-by-beginners/
 
-
+Tidyverse how to [get help!](https://www.tidyverse.org/help/#:~:text=When%20you%20want%20to%20make,to%20load%20the%20reprex%20package.&text=Enter%20reprex()%20in%20the,preview%20of%20your%20rendered%20reprex.)

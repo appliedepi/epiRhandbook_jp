@@ -33,7 +33,7 @@ We import the dataset of cases from a simulated Ebola epidemic. If you want to d
 
 ```{r, echo=F}
 # import the linelist into R
-linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
+linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
@@ -441,7 +441,133 @@ To see the `hosp_info` records that were excluded in the inner join, we could al
 
 
 
+## Binding and aligning  
 
+Another method of combining two data frames is "binding" them. You can also think of this as "appending" or "adding" rows/columns.  
+
+In some circumstances, it is necessary to "align" the rows of one data frame in the same order as in another data frame. This topic is also discussed below in the Bind columns section.  
+
+
+
+### Bind rows {-}
+
+To bind rows of one data frame to the bottom of another data frame, use `bind_rows()` from **dplyr**. It is very inclusive, so any column present in either data frame will be included in the output. A few notes:  
+
+* Unlike the **base** R version `row.bind()`, `bind_rows()` does not require that the order of columns be the same in both data frames. As long as the column names are spelled identically, it will align them correctly.  
+* You can optionally specify the argument `.id = `. Provide a character column name. This will produce a data frame identifier column so that you can know which rows came from which data frame.  
+* You can use `bind_rows()` on a list of dataframes to collapse them into one data frame. See an example in the [Iteration, loops, and lists] page involving importing and combining multiple linelists with **purrr**.  
+
+One common example of row binding is to bind a "total" row onto a descriptive table made with **dplyr**. Below we create a table of case counts and median CT values by hospital. Since `summarise()` do not automatically produce a "totals" row, we create it by summarising a different table (not grouped by hospital), and then row-binding the data frames together.  
+
+See other worked examples like this in the [Descriptive tables] and [Tables for presentation] pages.  
+
+
+```{r}
+# Create core table
+###################
+table <- linelist %>% 
+  group_by(hospital) %>%                              # Group data by hospital
+  summarise(                                          # Create new summary columns of indicators of interest
+    N = n(),                                            # Number of rows per hospital-outcome group     
+    ct_value_med = median(ct_blood, na.rm=T))           # median CT value per group
+```
+
+Here is the `table` data frame:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(table, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+Create a data frame with the "total" statistics (not grouped by hospital). This should be just one row.  
+
+```{r}
+# create totals
+###############
+totals <- linelist %>% 
+  summarise(
+    N = n(),                                       # Number of rows for whole dataset     
+    ct_value_med = median(ct_blood, na.rm=T))      # Median CT for whole dataset
+```
+
+And below is that `totals` data frame. Note how there are only two columns. These columns are also in `table`, but there is one column in `table` that is not in `totals` (`hospital`).  
+
+```{r message=FALSE, echo=F}
+DT::datatable(totals, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+Now we can bind the rows together with `bind_rows()`.  
+
+```{r}
+# Bind rows together
+####################
+combined <- bind_rows(table, totals)
+```
+
+Now we can view the result. See how in the final row, an empty `NA` value fills in for the column `hospital` that was not in `totals`. As explained in the [Tables for presentation] page, you could "fill-in" this value with "Total" using `replace_na()`.  
+
+```{r message=FALSE, echo=F}
+DT::datatable(combined, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+
+### Bind columns {-}
+
+There is a similar **dplyr** function `bind_cols()` which you can use to combine two data frames sideways. Note that rows are matched *by position* (not like a *join* above) - so for example the 12th row in each data frame will be aligned.  
+
+For an example, we bind several summary tables together. In order to do this, we also demonstrate how to re-arrange the order of rows in one data frame to match the order in another dataframe, with `match()`.    
+
+
+
+```{r}
+# Case information
+case_info <- linelist %>% 
+  group_by(hospital) %>% 
+  summarise(
+    cases = n(),
+    deaths = sum(outcome == "Death", na.rm=T)
+  )
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(case_info, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+And let's say that here is a table of information on contact follow-up by hospital. 
+
+```{r}
+contact_fu <- data.frame(
+  hospital = c("St. Mark's Maternity Hospital (SMMH)", "Military Hospital", "Missing", "Central Hospital", "Port Hospital", "Other"),
+  investigated = c("80%", "82%", NA, "78%", "64%", "55%"),
+  per_fu = c("60%", "25%", NA, "20%", "75%", "80%")
+)
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(contact_fu, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+Note that the hospitals are the same, but are in different orders in each data frame. A simple `bind_cols()` would result in a mis-match of data. We can use `match()` from **base** R to align the rows of data frame two in the same order by hospital as in data frame 1. We assume for this approach that there are no duplicate values in either data frame.  
+
+When we use `match()`, the syntax is `match(TARGET ORDER VECTOR, DATA FRAME COLUMN TO CHANGE)`, where the first argument is the desired order (either a stand-alone vector, or in this case a column in a data frame), and the second argument is the data frame column in the data frame that will be re-ordered. The output of `match()` is a vector of numbers representing the correct position ordering. You can read more with `?match`.  
+
+```{r}
+match(case_info$hospital, contact_fu$hospital)
+```
+
+You can use this numeric vector to re-order the data frame - place it with subset brackets `[ ]` *before the comma*. Read more about **base** R subsetting syntax in the [R basics] page. The command below creates a new data frame, defined as the old one in which the rows are ordered in the numeric vector above.  
+
+```{r}
+contact_fu_aligned <- contact_fu[match(case_info$hospital, contact_fu$hospital),]
+
+contact_fu_aligned
+```
+
+Now we can bind the data frame columns together, with the correct row order:  
+
+```{r}
+bind_cols(case_info, contact_fu)
+```
+
+A **base** R alternative to `bind_cols` is `cbind()`, which performs the same operation.  
 
 
 <!-- ======================================================= -->
@@ -672,7 +798,6 @@ cases_dup <- tribble(
   "M",     "Michael",   "Murphy",     "O'Calaghan",1969, 04, 12,      "Rural", 
   "M",     "Oliver",    "Laurent",    "De Bordow" , 1971, 02, 04,     "River",
   "F",      "Blessing",  NA,          "Adebayo",   1955,  02, 14,     "Rural",
-  
   "M",     "Tony",   "B.",        "Smith",         1970, 09, 19,      "River", 
   "F",     "Maria",  "Contreras", "Rodriguez",     1972, 04, 15,      "River",
 )
@@ -684,22 +809,19 @@ DT::datatable(cases_dup, rownames = FALSE, options = list(pageLength = nrow(case
 ```
 
 
-Run the same `fastLink()` command as before, but compare the `cases_dup` dataframe to itself. When the two dataframes provided are identical, the function assumes you want to de-duplicate.  
+Run `fastLink()` like before, but compare the `cases_dup` dataframe to itself. When the two dataframes provided are identical, the function assumes you want to de-duplicate. Note we do not specify `stringdist.match = ` or `numeric.match = ` as we did previously.  
 
 ```{r, message = F, warning = F}
 ## Run fastLink on the same dataset
 dedupe_output <- fastLink(
   dfA = cases_dup,
   dfB = cases_dup,
-  varnames = c("gender", "first", "middle", "last", "yr", "mon", "day", "district"),
-  stringdist.match = c("first", "middle", "last", "district"),
-  numeric.match = c("yr", "mon", "day")
+  varnames = c("gender", "first", "middle", "last", "yr", "mon", "day", "district")
 )
 ```
 
-`fl.out` must be of class `fastLink.dedupe`, or in other words, the result of either `fastLink()`.  
+Now, you can review the potential duplicates with `getMatches()`. Provide the dataframe as both `dfA = ` and `dfB = `, and provide the output of the `fastLink()` function as `fl.out = `.  `fl.out` must be of class `fastLink.dedupe`, or in other words, the result of `fastLink()`.  
 
-Now, you can review the potential duplicates with `getMatches()`. Provide the dataframe as both `dfA = ` and `dfB = `, and provide the output of the `fastLink()` function as `fl.out = `.  
 
 ```{r}
 ## Run getMatches()
@@ -739,9 +861,11 @@ cases_dedupe[cases_dedupe$dedupe.ids == 2,]
 
 The [dplyr page on joins](https://dplyr.tidyverse.org/reference/join.html)  
 
+Th [dplyr page](https://dplyr.tidyverse.org/reference/bind.html) on binding  
+
 See this vignette on [fastLink](https://github.com/kosukeimai/fastLink) at the package's Github page  
 
-Publication describing methodolgy of [fastLink](https://imai.fas.harvard.edu/research/files/linkage.pdf)  
+Publication describing methodology of [fastLink](https://imai.fas.harvard.edu/research/files/linkage.pdf)  
 
 Publication describing [RecordLinkage package](https://journal.r-project.org/archive/2010/RJ-2010-017/RJ-2010-017.pdf)
 

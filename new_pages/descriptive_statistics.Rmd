@@ -31,7 +31,7 @@ We import the dataset of cases from a simulated Ebola epidemic. If you want to d
 
 ```{r, echo=F}
 # import the linelist into R
-linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
+linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
@@ -81,7 +81,7 @@ summary(linelist)
 
 You can use **base** R functions to return summary statistics on a numeric column. These functions are also often used within more complex code operations, for example if grouping and summarising columns, or referencing a `max()` value to calibrate plot height.  
 
-See the [R Basics] page for a complete list of mathematical operators such as `max()`, `min()`, `median()`, `mean()`, `quantile()`, `sd()`, and `range()`.
+See the [R basics] page for a complete list of mathematical operators such as `max()`, `min()`, `median()`, `mean()`, `quantile()`, `sd()`, and `range()`.
 
 <span style="color: orange;">**_CAUTION:_** If your data contain missing values, R wants you to know this and so will return `NA` unless you specify to the above mathematical functions that you want R to ignore missing values, via the argument `na.rm = TRUE`.</span>
 
@@ -103,9 +103,12 @@ summary(linelist$age_years)[[2]]
 
 You have several choices when producing tabulation and cross-tabulation summary tables. Some of the factors to consider include code simplicity and ease, the desired output (printed to R console, or as pretty HTML), and what you can do with the data afterward. Consider the thoughts below as you choose the tool for your situation.  
 
-* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations  
+* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations 
+  * Cons: requires post-processing (e.g with **flextable**) for publication ready tables. Does not accept multiple variables (need to use **purrr** to iterate)  
 * Use `count()` and `summarise()` from **dplyr** if preparing data for `ggplot()` or calculating more complex statistics  
+  * Cons: similar to above but requires even more manipulation  
 * Use `tbl_summary()` from **gtsummary** to produce detailed publication-ready tables  
+  * Cons: missings not automatically included in percentage calculations. To use for plotting need to extract tibble from list output. 
 
 
 ### **janitor** {-}
@@ -119,7 +122,8 @@ Below, we pipe the `linelist` data frame to **janitor** functions and print the 
 The default use of `tabyl()` on a specific column produces the unique values, counts, and column-wise "percents" (actually proportions). The proportions may have many digits. You can adjust this with `adorn_rounding()` as described below.   
 
 ```{r}
-linelist %>% tabyl(age_cat)
+linelist %>% 
+  tabyl(age_cat)
 ```
 As you can see above, if there are missing values they display in a row labeled `<NA>`. You can suppress them with `show_na = FALSE`. If there are no missing values, this row will not appear. If there are missing values, proportions are given as both raw (denominator inclusive of `NA` counts) and "valid" (denominator excludes `NA` counts).  
 
@@ -130,7 +134,8 @@ If the column is class Factor and only certain levels are present in your data, 
 Cross-tabulation counts are achieved by adding one or more additional within `tabyl()`. Note that only counts are returned - proportions and percents can be added with additional steps.  
 
 ```{r}
-linelist %>% tabyl(age_cat, gender)
+linelist %>% 
+  tabyl(age_cat, gender)
 ```
 #### "Adorning" the tabyl {-}  
 
@@ -206,7 +211,7 @@ You can use **janitor**'s `adorn_*()` functions on other tables, such as those c
 
 #### Saving the tabyl {-}  
 
-If you convert the table to HTML with a package like **flextable**, you can save it with functions `save_as_html()`, `save_as_word()`, `save_as_ppt`, and `save_as_image()`, as discussed more extensively in the [HTML tables] page. Below, the table is saved as a Word document in which it can be hand-edited.  
+If you convert the table to HTML with a package like **flextable**, you can save it with functions `save_as_html()`, `save_as_word()`, `save_as_ppt`, and `save_as_image()`, as discussed more extensively in the [Tables for presentation] page. Below, the table is saved as a Word document in which it can be hand-edited.  
 
 ```{r, eval=F}
 linelist %>%
@@ -583,7 +588,7 @@ Converting a `table()` object directly to a data frame is not straight-forward. 
 2) Add totals (optional) by piping to `addmargins()`  
 3) Pipe to the **base** R function `as.data.frame.matrix()`  
 4) Pipe the table to the **dplyr** function `add_rownames()`, specifying the name for the first column  
-5) Print, View, or export as desired. In this example we use `flextable()` from package **flextable** as described in the [HTML tables] page. This will print to the RStudio viewer pane as a pretty HTML.  
+5) Print, View, or export as desired. In this example we use `flextable()` from package **flextable** as described in the [Tables for presentation] page. This will print to the RStudio viewer pane as a pretty HTML.  
 
 ```{r, warning=F, message=F}
 table(fct_explicit_na(linelist$age_cat), fct_explicit_na(linelist$outcome)) %>% 
@@ -746,7 +751,7 @@ linelist %>%
 
 Performing statistical tests in `dplyr` alone is very dense, again because it 
 does not fit within the tidy-data framework. It requires using `purrr` to create
-a list of dataframes for each of the subgroups you want to compare. See the page on [Iteration and loops] to learn about **purrr**.  
+a list of dataframes for each of the subgroups you want to compare. See the page on [Iteration, loops, and lists] to learn about **purrr**.  
 
 An easier alternative may be the `rstatix` package. 
 

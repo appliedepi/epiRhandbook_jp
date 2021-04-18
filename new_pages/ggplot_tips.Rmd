@@ -46,7 +46,7 @@ pacman::p_load(
 We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, eval=T, echo=F}
-linelist_cleaned <- rio::import(here::here("data", "linelist_cleaned.rds"))
+linelist_cleaned <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 
 ```
 
@@ -332,7 +332,7 @@ Faceting is a very specific way to obtain multiple plots - by definition, to fac
 This can quickly become an overwhelming amount of information - its good to ensure you don't have too many levels of each variable that you choose to facet by! Here are some quick examples with the malaria dataset:
 
 ```{r, eval = TRUE, warning=F, message=F}
-malaria_data <- rio::import(here::here("data", "facility_count_data.rds")) 
+malaria_data <- rio::import(here::here("data", "malaria_facility_count_data.rds")) 
 
 # show a wrapped plot with facets by district
 
@@ -613,18 +613,16 @@ The `gghighlight` package uses the `gghighlight()` function to achieve this effe
 # load gghighlight
 library(gghighlight)
 
-
 # replace NA values with unknown in the outcome variable
 linelist_cleaned <- linelist_cleaned %>%
   mutate(outcome = replace_na(outcome, "Unknown"))
 
 # produce a histogram of all cases by age
-ggplot(linelist_cleaned, 
-       aes(x = age_years, fill = outcome)) +
+ggplot(
+  data = linelist_cleaned,
+  mapping = aes(x = age_years, fill = outcome)) +
   geom_histogram() + 
-  # highlight instances where the patient has died.
-  gghighlight::gghighlight(outcome == "Death")
-
+  gghighlight::gghighlight(outcome == "Death")     # highlight instances where the patient has died.
 
 ```
 
@@ -633,12 +631,12 @@ This also works well with faceting functions - it allows the user to produce fac
 ```{r, eval = T, warning=F, message=F}
 
 # produce a histogram of all cases by age
-ggplot(linelist_cleaned, 
-       aes(x = age_years, fill = outcome)) +
-  geom_histogram() + 
-  # highlight instances where the patient has died.
-  gghighlight::gghighlight() +
-  facet_wrap(~outcome)
+ggplot(
+  data = linelist_cleaned,
+  mapping = aes(x = age_years, fill = outcome)) +
+  geom_histogram() +                                # make the histogram
+  gghighlight::gghighlight() +                      # highlight instances where the patient has died
+  facet_wrap(~outcome)                              # make facets by outcome
 
 
 ```
@@ -768,6 +766,52 @@ ggplot(malaria_facility_1, aes(x = data_date)) +
 
 
 ```
+
+
+## Combine plots  
+
+UNDER CONSTRUCTION
+
+**cowplot**  
+
+**patchwork**  
+
+
+
+
+
+
+
+
+## Packages to help you  
+
+UNDER CONSTRUCTION  
+
+There are some really neat R packages specifically designed to help you navigate **ggplot2**:  
+
+### `gghelp()` from **ggx**  
+
+Converts a normal language query into a ggplot command.  
+
+https://rdrr.io/github/brandmaier/ggx/man/gghelp.html
+
+
+
+### Point-and-click with **equisse**  
+
+https://github.com/dreamRs/esquisse
+
+
+"This addin allows you to interactively explore your data by visualizing it with the ggplot2 package. It allows you to draw bar plots, curves, scatter plots, histograms, boxplot and sf objects, then export the graph or retrieve the code to reproduce the graph."
+
+Documentation:https://dreamrs.github.io/esquisse/index.html
+
+Install and then launch the addin via the RStudio menu or with esquisse::esquisser().
+
+
+
+
+
 
 
 
