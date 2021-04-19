@@ -253,73 +253,82 @@ knitr::include_graphics(here::here("images", "markdown/3_chunktext.png"))
 ```
 
 
-<!-- ======================================================= -->
-## R Markdown structure {}
+### Images {-}  
 
-
-### Self-contained {-}  
-
-For a relatively simple report, you may elect to organize your R Markdown script such that it is "self-contained" and does not involve any external scripts.  
-In this scenario, one logical flow to consider might be:  
-
-1) Set global **knitr** options  
-2) Load packages  
-3) Import data  
-4) Process data  
-5) Produce outputs (tables, plots, etc.)  
-6) Save outputs, if applicable (.csv, .png, etc.)  
-
-However, the above flow may not align with the needs of your report output - say you need to show your final figures "up front" at the beginning of the report.  
-
-One solution is to break your code into other script, and have the final R Markdown simply combine the pre-processed outputs into a document.  
-
-### Collect pre-processed outputs {-}  
-
-In this approach, treat your R Markdown not as an engine to run a lot of R code, but more as a final collector document where you print outputs that have been created in other places. You can run / "source" these other scripts with the `source()` function from **base** R - R objects and figures created will be available to print in your final R Markdown.  
-
-This approach can simplify your code and de-bugging, but you must be aware of various R *environments*. Objects created within an environment will not necessarily be available to the environment used by the R Markdown.  
+You can include images in your R Markdown one of two ways:  
 
 ```{r, eval=F}
-source("your-script.R", local = knitr::knit_global())
-# or sys.source("your-script.R", envir = knitr::knit_global())
-```
+![]("path/to/image.png")  
 ```
 
-
-<!-- ======================================================= -->
-## Producing an R markdown output {  }
-
-Production of an R Markdown will depend on how you design it. We describe these options below: 
-
-* **“Self-contained” R markdown**: This is when everything you need to run the R markdown is contained within the Rmd file, including all the code chunks and package loading. This can also include sourcing other scripts, but they will still be run during the course of knitting your Rmd file. These are appropriate when you do not need to do much data processing (e.g. it brings in a clean or semi-clean data file) and the running of the file will not take too long.  
-
-* **R markdown combined with pre-processing**: This is when you pre-process objects that feed into your R markdown. For instance, you can load the packages, load and clean the data, and even create the graphs of interest. As long as this occurs in the same RStudio session and objects are saved to the environment, they can be called within the Rmd content. Then the R markdown itself will only be used for the final step, to produce the output with all the pre-processed objects. This is much easier to de-bug if something goes wrong.
-
-
-
-### Self-contained script {-}  
-
-For simple report, we recommend splitting up your code into different files, as it is horrible having to debug extremely long script, and especially horrible to debug an extremely long Rmd file. For example if there is an error within a code chunk, R will tell you which chunk had a problem, but will not tell you which line. 
-The workflow also concerns the overall folder structure, such as having an 'output' folder for created documents and an 'input' folder for cleaned data. We do not go into further detail of further structure here, but the [Organizing routine reports] page discusses this further. 
-
-### Producing a complete document {-} 
-
-Now that you know the above, you can produce the document in the following ways:
-
-#### Option 1: Render command {-}
-
-One way to produce your R Markdown output is to run the `render()` function from the **rmarkdown** package. You would do this from the R Console or from a separate R script. In the example below, we have a separate R script in which we pre-process a `data` object into the R Environment and then render the "create_output.Rmd" using `render()`.  
+If the above does not work, try using `knitr::include_graphics()`  
 
 ```{r, eval=F}
-data <- import("datafile.csv") %>%       # Load data and save to environment
-  select(age, hospital, weight)          # Select limited columns
-
-rmarkdown::render(input = "create_output.Rmd")   # Create Rmd file
+knitr::include_graphics("path/to/image.png")
 ```
 
-In its simplest form, this approach will save the Rmd output to the same folder as your Rmd script, with the same file name aside from the file extension. For instance “create_output.Rmd” when knitted will create “create_output.docx” if you are knitting to a word document. 
+(remember, your file path could be written using the **here** package)
 
-For better version control, you can add further options to `render()` for the file name and save location. For instance, the following command will save the output file within an ‘outputs’ sub-folder, with the current date in the file name. We use the `str_glue()` function from **stringr** to do this, which will 'glue' together different character strings (written plainly) with R code (written in curly brackets). For instance if it is April 10th 2021, the file name from below will be “Report_2021-04-10.docx”. See the page on [Characters and strings] for more details.  
+```{r, eval=F}
+knitr::include_graphics(here::here("path", "to", "image.png"))
+```
+
+
+### Tables {-}  
+
+Create a table using hyphens ( - ) and bars ( | ). The number of hyphens before/between bars allow the number of spaces in the cell before the text begins to wrap.  
+
+
+```md
+Column 1 |Column  2 |Column 3
+---------|----------|--------
+Cell A   |Cell B    |Cell C
+Cell D   |Cell E    |Cell F
+```
+
+The above code produces the table below:  
+
+Column 1 |Column  2 |Column 3
+---------|----------|--------
+Cell A   |Cell B    |Cell C
+Cell D   |Cell E    |Cell F
+
+
+
+
+
+
+
+## Producing the document {-} 
+
+You can produce the document in the following ways:  
+
+* By command via the `render()` function from the **rmarkdown** package (executed outside the R Markdown script)  
+* Manually by pressing the "Knit" button at the top of the RStudio script editor  
+
+
+
+### Option 1: `render()` command {-}
+
+One way to produce your R Markdown output is to run the `render()` function from the **rmarkdown** package. You must execute this command *outside* the R Markdown script - so either in a separate R script (often called a "run file"), or as a stand-alone command in the R Console. 
+
+```{r, eval=F}
+rmarkdown::render(input = "my_report.Rmd")
+```
+
+With its default settings, running this command will save the Rmd output to the same folder as the Rmd script, with the same file name (aside from the file extension). For instance “my_report.Rmd” when knitted will create “my_report.docx” if you are knitting to a word document. 
+
+`render()` can accept other optional arguments, including:  
+
+* `output_format = ` This is the output format to convert to (e.g. `"html_document"`, `"pdf_document"`, `"word_document"`, or `"all"`). You can also specify this in the YAML inside the R Markdown script.  
+* `output_file = ` This is the name of the output file (and file path). This can be created via R functions like `here()` or `str_glue()` as demonstrated below.  
+* `output_dir = ` This is an output directory (folder) to save the file. This allows you to chose an alternative other than the directory the Rmd file is saved to.  
+* `output_options = ` You can provide a list of options that will override those in the script YAML (e.g. )
+* `output_yaml = ` You can provide path to a .yml file that contains YAML specifications  
+* `params = ` See the section on parameters below  
+* See the complete list [](https://pkgs.rstudio.com/rmarkdown/reference/render.html)  
+
+As one example, to improve version control, the following command will save the output file within an ‘outputs’ sub-folder, with the current date in the file name. To create the file name, the function `str_glue()` from the **stringr** package is use to 'glue' together static strings (written plainly) with dynamic R code (written in curly brackets). For instance if it is April 10th 2021, the file name from below will be “Report_2021-04-10.docx”. See the page on [Characters and strings] for more details on `str_glue()`.  
 
 ```{r, eval=F}
 rmarkdown::render(
@@ -327,15 +336,15 @@ rmarkdown::render(
   output_file = stringr::str_glue("outputs/Report_{Sys.Date()}.docx")) 
 ```
 
-As this file renders, the RStudio console will show you the rendering progress up to 100%, and a final message to indicate that the rendering is complete. 
+As the file renders, the RStudio Console will show you the rendering progress up to 100%, and a final message to indicate that the rendering is complete. 
 
 
-#### Option 2: Knit button within R markdown  
 
-When you have the Rmd file open, press the 'Knit' icon/button at the top of the file. This is RStudio’s shortcut button for the `render` function of **rmarkdown**. This is only compatible with a self-contained R markdown, where all the needed components are within the file.  It will not work to pre-process data or graphs and save them to the environment - the knitting will ignore these 'external' objects. 
+### Option 2: "Knit" button  
 
-Just like knitting with a separate script, R Studio will you show the progress of the Rmd file. Except this time, this will appear within an ‘R Markdown’ tab in the same panel as your console. A complete document will automatically open when complete and this document will be saved in the same folder as your markdown, and with the same file name aside from the file extension. This is obviously not ideal for version control, as you will then rename the file yourself.
+When you have the Rmd file open, press the 'Knit' icon/button at the top of the file. This is RStudio’s shortcut button for the `render()` function of **rmarkdown**. This is only compatible with a self-contained R markdown, where all the needed components exist or are sourced within the file.  
 
+Just like knitting with a separate script, R Studio will you show the progress of the Rmd file. Except this time, this will appear within an ‘R Markdown’ tab in the same panel as your console. A complete document will automatically open when complete and this document will be saved in the same folder as your markdown, and with the same file name aside from the file extension. This is obviously not ideal for version control, as you will then need to rename the file yourself.
 
 ```{r out.width = "90%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "markdown/4_progress.png"))
@@ -343,20 +352,30 @@ knitr::include_graphics(here::here("images", "markdown/4_progress.png"))
 
 
 
+
+
+
+
+
 <!-- ======================================================= -->
 ## Parameterised reports {  }
 
-We can use parameterisation to make our report dynamic, such that it can be run for a specific date or place or with certain knitting options. We focus on the basics here but there is a good amount of detail online: https://bookdown.org/yihui/rmarkdown/parameterized-reports.html.
+You can use parameterisation to make a report dynamic, such that it can be run with specific setting (e.g. a specific date or place or with certain knitting options). Below, we focus on the basics, but there is more [detail online](https://bookdown.org/yihui/rmarkdown/parameterized-reports.html) about parameterized reports.
 
 Using the Ebola linelist as an example, let’s say we want to run a standard surveillance report for each hospital each day. We show how one can do this using parameters.
 
-**Important: it is possible to do this using simple R objects rather than using the parameter structure, which we explain at the end of this section (Parameterisation without the params object). **
+*Important: dynamic reports are also possible without the formal parameter structure (without `params:`), using simple R objects in an adjacent R script. This is explain at the end of this section.*
+
+
 
 ### Setting parameters {-}
 
-#### Option 1: Declare parameters within the YAML {-}
+You have several options for specifying parameter values for your R Markdown output.  
 
-Edit the YAML to specify that `hospital` and `date` are parameters that are subject to change each time the report is run.
+#### Option 1: Set parameters within YAML {-}
+
+Edit the YAML to include a `params: ` option, with indented statements for each parameter you want to define. In this example we create parameters `date` and `hospital`, for which we specify values. These values are subject to change each time the report is run. If you use the "Knit" button to produce the output, the parameters will have these default values. Likewise, if you use `render()` the parameters will have these default values unless otherwise specified in the `render()` command.  
+
 
 ```yaml
 ---
@@ -368,17 +387,22 @@ params:
 ---
 ```
 
-#### Option 2: Use parameters within the .Rmd text and code {-}
+In the background, these parameter values are contained within a read-only list called `params`. Thus, you can insert the parameter values in R code as you would another R object/value in your environment. Simply type `params$` followed by the parameter name. For example `params$hospital` to represent the hospital name ("Central Hospital" by default).  
 
-These parameters are contained within a read-only list called `params`. To use these parameters in the code, you refer to them with the object name. Continuing the example, `params$hospital` will load “Central Hospital”. 
+Note that parameters can also hold values `true` or `false`, and so these can be included in your **knitr** options for a R chunk. For example, you can set `{r, eval=params$run}` instead of `{r, eval=FALSE}`, and now whether the chunk runs or not depends on the value of a parameter `run:`.  
 
-Note that the `params$date` example saves the date as a string. You will need to use a function such as `as.Date` to change this to a date class. 
+Note that for parameters that are dates, they will be input as a string. So for `params$date` to be interpreted in R code it will likely need to be wrapped with `as.Date()` or a similar function to convert to class Date.  
 
-#### Option 3: Run the Rmd file - basic {-}  
 
-As mentioned above, to produce the output we can Knit from within the document by simply clicking the ‘Knit’ button, or we can use the `render()` function from a separate script. In this later case, you can specify the parameters to be used in that rendering to the `params = ` arguement of `render()`. 
 
-Note than any parameter values provided here will *overwrite* the default values written within the YAML. We write the values in quotation marks as in this case they should be defined as character/string values.
+
+#### Option 2: Set parameters within `render()` {-}  
+
+As mentioned above, as alternative to pressing the "Knit" button to produce the output is to execute the `render()` function from a separate script. In this later case, you can specify the parameters to be used in that rendering to the `params = ` argument of `render()`. 
+
+Note than any parameter values provided here will *overwrite* their default values if written within the YAML. We write the values in quotation marks as in this case they should be defined as character/string values.  
+
+The below command renders "surveillance_report.Rmd", specifies a dynamic output file name and folder, and provides a `list()` of two parameters and their values to the argument `params = `.  
 
 ```{r, eval=F}
 rmarkdown::render(
@@ -388,9 +412,17 @@ rmarkdown::render(
 ```
 
 
-#### Option 4: Run the Rmd file - using the graphical user interface {-}  
+#### Option 3: Set parameters using a Graphical User Interface {-}  
 
-For a more interactive feel, we can also use the graphical user interface (GUI). To do this we can click the drop-down menu next to ‘knit’ and choose ‘knit with parameters’, or we can specify `params = "ask" within the `render()` function.  
+For a more interactive feel, you can also use the Graphical User Interface (GUI) to manually select values for parameters. To do this we can click the drop-down menu next to the ‘Knit’ button and choose ‘Knit with parameters’. 
+
+A pop-up will appear allowing you to type in values for the parameters that are established in the document's YAML. 
+
+```{r out.width = "50%", fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "markdown/5_parametersGUI.png"))
+```
+
+You can achieve the same through a `render()` command by specifying `params = "ask"`, as demonstrated below.  
 
 ```{r, eval=F}
 rmarkdown::render(
@@ -399,13 +431,15 @@ rmarkdown::render(
   params = “ask”)
 ```
 
-Either way a pop-up will appear allowing us to type in the date and hospital of interest. 
 
-```{r out.width = "50%", fig.align = "center", echo=F}
-knitr::include_graphics(here::here("images", "markdown/5_parametersGUI.png"))
-```
+However, typing values into this pop-up window is subject to error and spelling mistakes. You may prefer to add restrictions to the values that can be entered through drop-down menus. You can do this by adding in the YAML several specifications for each `params: ` entry. 
 
-However, as this is subject to error and spelling mistakes, you may prefer to add restrictions to the parameters that can be selected. For instance we can introduce a drop-down with `choices: ` so that only the possible hospitals can be selected. We do this again in the YAML:
+* `label: ` is how the title for that particular drop-down menu  
+* `value: ` is the default (starting) value  
+* `input: ` set to `select` for drop-down menu  
+* `choices: ` Give the eligible values in the drop-down menu  
+
+Below, these specifications are written for the `hospital` parameter.  
 
 ```yaml
 ---
@@ -421,23 +455,20 @@ params:
 ---
 ```
 
-When knitting with the 'knit parameters' dropdown button or by running the render function, a window with a drop-down will then pop up:
+When knitting (either via the 'knit with parameters' button or by `render()`), the pop-up window will have drop-down options to select from.  
 
 ```{r out.width = "50%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "markdown/5_parametersGUIB.png"))
 ```
 
-### Using parameters {-}  
 
-You can use the parameters value in the R code chunks as you would another R object/value in your environment. Simply type `params$` followed by the parameter names. For example `params$hospital` to represent the hospital name. 
 
-#### Use parameters in **knitr** options {-}  
 
-Note that parameters can also hold values `true` or `false`, and so these can be included in your **knitr** options for an R chunk. For example, you can set `{r, eval=params$run}` instead of `{r, eval=FALSE}`, and now whether the chunk runs or not depends on the value of the parameter `run:`.  
+### Parameterized example {-} 
 
-#### Example {-} 
+The following code creates parameters for `date` and `hospital`, which are used in the R Markdown as `params$date` and `params$hospital`, respectively.  
 
-The following code uses basic parameters. We can see how the data is filtered to the specific hospital, and the titles refer to the correct hospital and date. We use the linelist_cleaned.rds file here, but it would be particularly appropriate if the linelist itself also had a datestamp within it to align with paramterised date. 
+In the resulting report output, see how the data are filtered to the specific hospital, and the plot title refers to the correct hospital and date. We use the "linelist_cleaned.rds" file here, but it would be particularly appropriate if the linelist itself also had a datestamp within it to align with parameterised date. 
 
 ```{r out.width = "100%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "markdown/6_Rmdexample.png"))
@@ -450,24 +481,25 @@ knitr::include_graphics(here::here("images", "markdown/6_RmdexampleB.png"))
 ```
 
 
+### Parameterisation without `params` {-}
 
+If you are rendering a R Markdown file with `render()` from a separate script, you can actually create the impact of parameterization without using the `params:` functionality.  
 
+For instance, in the *R script* that contains the `render()` command, you can simply define `hospital` and `date` as two R objects (values) before the `render()` command. In the R Markdown, you would not need to have a `params:` section in the YAML, and we would refer to the `date` object rather than `params$date` and `hospital` rather than `params$hospital`. 
 
-### Parameterisation without the params object {-}
+```{r, eval=F}
+# This is a R script that is separate from the R Markdown
 
-If rendering a Rmd file from a separate script, it is not actually essential to use the parameterisation options to run the Rmd file for subsets of data. 
-
-For instance, we can simply specify the hospital and date as two objects before rendering the Rmd file. Within the Rmd file, we would not need to have a params section in the YAML, and we would refer to the `date` object rather than `params$date` and `hospital` rather than `params$hospital`. 
-
-```md
+# define R objects
 hospital <- "Central Hospital"
 date <- "2021-04-10"
 
-rmarkdown::render(("create_output.Rmd"),  
-                        output_file = paste0("outputs/Report_", Sys.Date(), ".docx")) 
+# Render the R markdown
+rmarkdown::render(input = "create_output.Rmd") 
 ```
 
-This means you will not be able to “knit with parameters” and use the GUI, or to include knitting options within the parameters. However it allows for simpler code which may be sufficient.
+Following this approach means means you can not “knit with parameters”, use the GUI, or include knitting options within the parameters. However it allows for simpler code, which may be advantageous.  
+
 
 <!-- ======================================================= -->
 
@@ -482,7 +514,6 @@ hospital_list <- c(“Central Hospital”,
                    St. Mark's Maternity Hospital (SMMH)”) 
 
 refdate <- Sys.Date() # today’s date
-
 
 ```
 We then feed this into the markdown using a loop, where we go through each item of the list. The letter `i` represents which item of the list is currently being iterated, such that `hospital_list[1]` would be “Central Hospital”. This information is also fed into the file name, such that the file name of the first iteration produced on April 10th 2021 would be “Report_Central Hospital2021-04-10.docx”, saved in the ‘output’ subfolder. In our examples, four files would be created for each day.
@@ -508,6 +539,87 @@ rmarkdown::render("surveillance_report.Rmd",
 }       
 ```
 The text within the markdown would then need to refer to `hospital_list[i]` and `refdate`. 
+
+
+
+<!-- ======================================================= -->
+## File structure {}
+
+There are several ways to structure your R Markdown and any associated R scripts. Each has advantages and disadvantages:  
+
+* Self-contained R Markdown - everything needed for the report is imported or created within the R Markdown  
+  * Source other files - You can run external R scripts with the `source()` command and use their outputs in the Rmd  
+  * Child scripts - an alternate mechanism for `source()`  
+* Utilize a "runfile" - Run commands in an R script *prior to* rendering the R Markdown  
+
+
+### Self-contained Rmd {-}  
+
+For a relatively simple report, you may elect to organize your R Markdown script such that it is "self-contained" and does not involve any external scripts.  
+
+Everything you need to run the R markdown is imported or created within the Rmd file, including all the code chunks and package loading. This "self-contained" approach is appropriate when you do not need to do much data processing (e.g. it brings in a clean or semi-clean data file) and the rendering of the R Markdown will not take too long.
+
+In this scenario, one logical organization of the R Markdown script might be:  
+
+1) Set global **knitr** options  
+2) Load packages  
+3) Import data  
+4) Process data  
+5) Produce outputs (tables, plots, etc.)  
+6) Save outputs, if applicable (.csv, .png, etc.)  
+
+#### Source other files {-}
+
+One variation of the "self-contained" approach is to have R Markdown code chunks "source" (run) other R scripts. This can make your R Markdown script less cluttered, more simple, and easier to organize. It can also help if you want to display final figures at the beginning of the report. In this approach, the final R Markdown script simply combines pre-processed outputs into a document.  
+
+One way to do this is by providing the R scripts (file path and name with extension) to the **base** R command `source()`.  
+
+```{r, eval=F}
+source("your-script.R", local = knitr::knit_global())
+# or sys.source("your-script.R", envir = knitr::knit_global())
+```
+
+Note that when using `source()` *within* the R Markdown, the external files will still be run *during the course of rendering your Rmd file*. Therefore, each script is run every time you render the report. Thus, having these `source()` commands *within* the R Markdown does not speed up your run time, nor does it greatly assist with de-bugging, as error produced will still be printed when producing the R Markdown.  
+
+An alternative is to utilize the `child = ` **knitr** option. EXPLAIN MORE TO DO
+
+You must be aware of various R *environments*. Objects created within an environment will not necessarily be available to the environment used by the R Markdown.  
+
+
+
+### Runfile {-}  
+
+This approach involves utilizing the R script that contains the `render()` command(s) to pre-process objects that feed into the R markdown.  
+
+For instance, you can load the packages, load and clean the data, and even create the graphs of interest prior to `render()`. These steps can occur in the R script, or in other scripts that are sourced. As long as these commands occur in the same RStudio session and objects are saved to the environment, the objects can then be called within the Rmd content. Then the R markdown itself will only be used for the final step - to produce the output with all the pre-processed objects. This is much easier to de-bug if something goes wrong.
+
+This approach is helpful for the following reasons:  
+
+* More informative error messages - these messages will be generated from the R script, not the R Markdown. R Markdown errors tend to tell you which chunk had a problem, but will not tell you which line.  
+* If applicable, you can run long processing steps in advance of the `render()` command - they will run only once. 
+
+
+In the example below, we have a separate R script in which we pre-process a `data` object into the R Environment and then render the "create_output.Rmd" using `render()`.  
+
+```{r, eval=F}
+data <- import("datafile.csv") %>%       # Load data and save to environment
+  select(age, hospital, weight)          # Select limited columns
+
+rmarkdown::render(input = "create_output.Rmd")   # Create Rmd file
+```
+
+
+
+
+
+### Folder strucutre {-}  
+
+Workflow also concerns the overall folder structure, such as having an 'output' folder for created documents and figures, and 'data' or 'inputs' folders for cleaned data. We do not go into further detail here, but check out the [Organizing routine reports] page.  
+
+
+
+
+
 
 <!-- ======================================================= -->
 ## Formatting and aesthetics {  }
