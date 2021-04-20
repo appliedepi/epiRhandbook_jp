@@ -7,19 +7,18 @@ THIS PAGE IS UNDER CONSTRUCTION
 knitr::include_graphics(here::here("images", "flexdashboard_output.png"))
 ```
 
-This page will cover the basic use of the **flexdashboard** package. This package allows you to easily format R Markdown output as a dashboard with panels and pages. The dashboard content can be text, static images or interactive graphics.  
+This page will cover the basic use of the **flexdashboard** package. This package allows you to easily format R Markdown output as a dashboard with panels and pages. The dashboard content can be text, static figures/tables or interactive graphics.  
 
 Advantages of **flexdashboard**:  
 
-* Very little User Interface (UI) or non-standard R coding required  
-* Requires minimal up-front knowledge - an hour of practice and you can likely create a dashboard  
-* The outputs can be emailed as an HTML report - no server required  
-* You can combine **flexdashboard** with **shiny**, **ggplotly**, and other *htmlwidgets* to add interactivity to a static report dashboard  
+* Requires minimal non-standard R coding - with very little practice you can likely create a dashboard  
+* The dashboard can be emailed as an HTML report - no server required  
+* You can combine **flexdashboard** with **shiny**, **ggplotly**, and other *"html widgets"* to add interactivity  
 
 Disadvantages of **flexdashboard**:  
 
 * Interactivity can be constrained  
-* Less customization less possible than if using Shiny directly  
+* Less customization possible than if using Shiny directly to create the dashboard  
 
 Very comprehensive tutorials on using **flexdashboard** that informed this page can be found in the Resources section. Below we describe the core features and give an example of building a dashboard to explore an outbreak, using the case `linelist` data.  
 
@@ -28,16 +27,16 @@ Very comprehensive tutorials on using **flexdashboard** that informed this page 
 
 ### Load packages {-}  
 
-In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary and loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
 ```{r}
 pacman::p_load(
-  rio,            
-  here,
-  tidyverse,
+  rio,             # data import/export     
+  here,            # locate files
+  tidyverse,       # data management and visualization
   flexdashboard,   # dashboard versions of R Markdown reports
-  shiny,           # interactive 
-  plotly 
+  shiny,           # interactive figures
+  plotly           # interactive figures
 )
 ```
 
@@ -84,7 +83,7 @@ knitr::include_graphics(here::here("images", "flexdashboard_new2.png"))
 
 ## The script  
 
-The script is a R Markdown script, and so has the same components and organization:  
+The script is a R Markdown script, and so has the same components and organization as described in the page on [R Markdown reports]. We briefly re-visit these below:  
 
 ### YAML {-}  
 
@@ -92,7 +91,7 @@ At the top, the "YAML" header must begin with three dashes `---` and must close 
 
 The YAML should begin with metadata for the document. The order of these primary YAML parameters (not indented) does not matter. For example:  
 
-```yaml
+```{r, eval=F}
 title: "My document"
 author: "Me"
 date: "`r Sys.Date()`"
@@ -100,9 +99,9 @@ date: "`r Sys.Date()`"
 
 You can use R code in YAML values by putting it like in-line code (preceeded by `r` within backticks) but also within quotes (see above for Date).  
 
-A required YAML parameter is `output: `, which specifies the type of file to be produced (e.g. `html_document`, `pdf_document`, `word_document`, or `powerpoint_presentation`). For **flexdashboard** this parameter value is a bit confusing - it must be set as `output:flexdashboard::flex_dashboard`. Not the single and double colons. It is often followed by an additional colon and indented sub-parameters.  
+A required YAML parameter is `output: `, which specifies the type of file to be produced (e.g. `html_document`, `pdf_document`, `word_document`, or `powerpoint_presentation`). For **flexdashboard** this parameter value is a bit confusing - it must be set as `output:flexdashboard::flex_dashboard`. Note the single and double colons. This YAML parameter is often followed by an additional colon and indented sub-parameters (see `orientation: ` and `vertical_layout: ` parameters below).  
 
-```yaml
+```{r, eval=F}
 title: "My dashboard"
 author: "Me"
 date: "`r Sys.Date()`"
@@ -114,7 +113,7 @@ output:
 
 As shown above, indentations (2 spaces) are used for sub-parameters. In this case, do not forget to put an additional colon after the primary, like `key:value:`.  
 
-If appropriate, logical values should be given in lowercase (`true`, `false`, `null`). If a colon is part of your value (e.g. in the title) put it the value in quotes. See the examples in sections below.  
+If appropriate, logical values should be given in lowercase (`true`, `false`, `null`). If a colon is part of your value (e.g. in the title) put the value in quotes. See the examples in sections below.  
 
 
 ### Narrative text {-}  
@@ -129,33 +128,32 @@ You can also insert in-line R code into text as described in the [R Markdown rep
 
 Different heading levels are established with different numbers of hash symbols, as described in the [R Markdown reports] page.  
 
-In **flexdashboard**, a primary heading (one #) creates a "page" of the dashboard. Second-level headings (##) create a column or a row depending on your `orientation:` parameter (see details below). Third-level headings create panels for plots, charts, tables, text, etc. and are made with ###.   
+In **flexdashboard**, a primary heading (#) creates a "page" of the dashboard. Second-level headings (##) create a column or a row depending on your `orientation:` parameter (see details below). Third-level headings create panels for plots, charts, tables, text, etc. and are made with ###.   
 
 ```md
 # First-level heading (page)
 
 ## Second level heading (row or column)  
 
-### Third-level heading (plot, chart, etc.)
+### Third-level heading (pane for plot, chart, etc.)
 ```
 
 ### Code chunks {-}  
 
-"Chunks" of R code work just like R scripts. They are created with three back-ticks and curly brackets with a lowercase r within. The chunk is closed with three backticks. See the examples below, or the page on [R Markdown reports] for more information.  
-
+"Chunks" of R code work just like R scripts. They are created with three back-ticks and curly brackets with a lowercase r within. The chunk is closed with three backticks. You can create a new chunk by typing it out yourself, by using the keyboard shortcut "Ctrl + Alt + i" (or Cmd + Shift + r in Mac), or by clicking the green 'insert a new code chunk' icon at the top of your script editor.  
 
 
 
 
 ## Attributes 
 
-As in a normal R markdown, you can specify attributes to apply to parts of your dashboard by including specifications with curly brackets `{ }` after a heading. For example, in a typical HTML R Markdown report you might organize content into tabs with `## My heading {.tabset}`. 
+As in a normal R markdown, you can specify attributes to apply to parts of your dashboard by including `key=value` options after a heading within curly brackets `{ }`. For example, in a typical HTML R Markdown report you might organize sub-headings into tabs with `## My heading {.tabset}`. 
 
 Attributes specific to **flexdashboard** include:  
 
 * `{data-width = }` and `{data-height = }` set relative size of charts, columns, rows laid out in the same dimension (horizontal or vertical). Absolute sizes are adjusted to best fill the space on any display device thanks to the [flexbox](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flexible_Box_Layout/Using_CSS_flexible_boxes) engine.  
      * Height of charts also depends on whether you set the YAML parameter `vertical_layout: fill` or `vertical_layout: scroll`. If set to scroll, height will reflect the traditional `fig.height = ` option in the R code chunk.  
-     * See complete size documentation at the [flexdashboard site](https://rmarkdown.rstudio.com/flexdashboard/using.html#sizing)  
+     * See complete size documentation at the [flexdashboard website](https://rmarkdown.rstudio.com/flexdashboard/using.html#sizing)  
      
 * `{data-orientation=}` Set to either `rows` or `columns`. If your dashboard has multiple pages, add this attribute to each page to indicate orientation.  
 * `{.hidden}` Use this to exclude a specific page from the navigation bar  
@@ -176,8 +174,8 @@ Adjust the layout of your dashboard in the following ways:
 
 First-level headings (#) in the R Markdown will represent "pages" of the dashboard. By default pages will appear in a navigation bar along the top of the dashboard.  
 
-```{r, echo=F}
-#knitr::include_graphics(here::here("images", "flexdashboard_pages_top_script.png"))
+```{r, out.height = c('100%'), out.width = c('100%'), echo=F}
+knitr::include_graphics(here::here("images", "flexdashboard_pages_top_script.png"))
 knitr::include_graphics(here::here("images", "flexdashboard_pages_top_view.png"))
 ```
 
@@ -185,94 +183,96 @@ knitr::include_graphics(here::here("images", "flexdashboard_pages_top_view.png")
 
 You can group pages into a "menu" within the navigaton bar by adding the attribute `{data-navmenu=}` to the page heading. Be careful - do not include spaces around the equals sign otherwise it will not work!  
 
-```{r, out.width = c('100%'), out.height = c('200%'), echo=F}
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_navmenu_script.png"))
+
 knitr::include_graphics(here::here("images", "flexdashboard_navmenu_view.png"))
 ```
 
-You can also transfer the navigation bar into a "sidebar" on the left side of the dashboard. 
+You can also transfer a page into a "sidebar" on the left side of the dashboard by adding the `{.sidebar}` attribute. It can hold text (viewable from any page), or if you have integrated **shiny** interactivity it could hold user-input controls such as sliders or drop-down menus.  
 
-```{r, out.width = c('100%'), echo=F}
-#knitr::include_graphics(here::here("images", "flexdashboard_sidebar_script.png"))
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
+knitr::include_graphics(here::here("images", "flexdashboard_sidebar_script.png"))
 knitr::include_graphics(here::here("images", "flexdashboard_sidebar_view.png"))
 ```
 
-```md
----
-title: "Outbreak dashboard"
-date: "`r Sys.Date()`"
-output: 
-  flexdashboard::flex_dashboard
----
-
-# Outbreak dashboard
-
-This dashboard is produced for the leadership of Tenaya County.
-It aims to advise them on the status of the COVID-19 pandemic. 
-
-## Epidemic Curve
-
-# Overview {.sidebar}
-
-This is a sidebar that can be viewed from all pages.  
-
-You could just have text here. 
-
-Or if using **shiny** within **flexdashboard**, you might put your input controls here (e.g. via `selectInput()` or `sliderInput()`).  
-
-
-# Health indicators {data-navmenu="Indicators"} 
-
-
-# Economic indicators {data-navmenu="Indicators"}  
-
-
-# Appleville {data-navmenu="Towns"}
-
-
-# Orangetown {data-navmenu="Towns"}
-
-
-# New Kiwi {data-navmenu="Towns"}
-
-```
 
 
 
 ### Orientation {-}  
 
-Set the `orientation:` yaml parameter to indicate how your R Markdown headings should be interpreted - as either `orientation: columns` or `orientation: rows`. 
+Set the `orientation:` yaml parameter to indicate how your second-level (##) R Markdown headings should be interpreted - as either `orientation: columns` or `orientation: rows`. 
 
 Second-level headings (##) will be interpreted as new columns or rows based on this `orientation` setting.  
 
-#### Column orientation {-} 
+If you set `orientation: columns`, second-level headers will create new columns in the dashboard. The below dashboard has one page, containing two columns, with a total of three panels. You can adjust the relative width of the columns with `{data-width=}` as shown below.  
 
-If you set `orientation: columns`, second-level headers will create new columns in the dashboard. The below dashboard has:  
-
-* Code chunks at the beginning to load packages and data - these are not under any header and do not appear in the dashboard  
-* Three columns:  
-     * The first is named "Intro text" and has no panels. It does have R Markdown narrative text including an example of dynamic text that includes R code to display the  has no 
-
-Below is the output  
-
-
-```{r, echo=F}
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_columns_script.png"))
+
 knitr::include_graphics(here::here("images", "flexdashboard_columns_view.png"))
 ```
 
+If you set `orientation: rows`, second-level headers will create new rows instead of columns. Below is the same script as above, but `orientation: rows` so that second-level headings produce rows instead of columns. You can adjust the relative *height* of the rows with `{data-height=}` as shown below.  
 
-## Interactive
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
+knitr::include_graphics(here::here("images", "flexdashboard_rows_script.png"))
+
+knitr::include_graphics(here::here("images", "flexdashboard_rows_view.png"))
+```
+
+If your dashboard has multiple pages, you can designate the orientation for each specific page by adding the `{data-orientation=}` attribute the header of each page (specify either `rows` or `columns` without quotes).  
+
+### Tabbed panels  
+
+You can divide content into tabs with the `{.tabset}` attribute, as in other HTML R Markdown outputs.  
+
+Simply add this attribute to the desired heading. Sub-headings under that heading will be displayed as tabs. For example, in the example script below the right-most column (##) is modified so that the epidemic curve and table panes (###) are displayed in tabs.  
+
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
+knitr::include_graphics(here::here("images", "flexdashboard_tabs_script.png"))
+
+knitr::include_graphics(here::here("images", "flexdashboard_tabs_view.png"))
+```
+
+If you want a single pane (###) to have tabs, you can add the `{.tabset}` attribute to it, and include the pane-tab content beneath it under sub-headings (####).  
+
+## Adding content  
+
+Just like another R Markdown output, content can be created or imported using R code chunks.  
+
+You may elect to have all code within the R Markdown **flexdashboard** script. Alternatively, to have a more clean and concise dashboard script you may choose to call upon code/figures that are hosted or created in external R scripts. This is described in greater detail in the [R Markdown reports] page. 
+
+Below we give brief examples of both approaches.  
+
+
+### Code in the R Markdown {-} 
+
+
+
+
+### Source external code {-}
+
+
+
+## Interactive figures  
+
+
+htmlwidgets
+shiny embedded
+visNetwork
 
 ### Add plotly {-}
 
 ### Add shiny {-}  
 
 
+## Sharing  
 
-htmlwidgets
-shiny embedded
-visNetwork
+### By email {-}  
+
+### Online {-}  
+
 
 
 ## Resources  

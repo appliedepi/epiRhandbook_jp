@@ -19,7 +19,7 @@ Along the way, we'll show examples like:
      
 ### Load packages {-}  
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary and loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
 ```{r}
 pacman::p_load(
@@ -415,20 +415,20 @@ Now that we have this vector of names, `map()` can provide them one-by-one to th
 
 Recall from the [Import and export] page that when used on Excel workbooks, `import()` can accept the argument `which = ` specifying the sheet to import. Within the `.f` function `import()`, we provide `which = .x`, whose value will change with each iteration through the vector `sheet_names` - first "Central Hospital", then "Military Hospital", etc.  
 
-Of note - because we have used `map()`, the data in each Excel sheet will be saved as a separate data frame within a list. We want each of these list elements (data frames) to have a *name*, so before we pass `sheet_names` to `map()` we pass it through `set_names()`, which ensures that each list element gets the appropriate name.  
+Of note - because we have used `map()`, the data in each Excel sheet will be saved as a separate data frame within a list. We want each of these list elements (data frames) to have a *name*, so before we pass `sheet_names` to `map()` we pass it through `set_names()` from **purrr**, which ensures that each list element gets the appropriate name.  
 
 
 We save the output list as `combined`.  
 
 ```{r, echo=F}
 combined <- sheet_names %>% 
-  set_names() %>% 
+  purrr::set_names() %>% 
   map(.f = ~import(here::here("data", "example", "hospital_linelists.xlsx"), which = .x))
 ```
 
 ```{r, eval=F}
 combined <- sheet_names %>% 
-  set_names() %>% 
+  purrr::set_names() %>% 
   map(.f = ~import("hospital_linelists.xlsx", which = .x))
 ```
 
@@ -447,7 +447,7 @@ Below is the whole sequence of commands:
 sheet_names <- readxl::excel_sheets(here::here("data", "example", "hospital_linelists.xlsx"))
 
 combined <- sheet_names %>% 
-  set_names() %>% 
+  purrr::set_names() %>% 
   map(.f = ~import(here::here("data", "example", "hospital_linelists.xlsx"), which = .x)) %>% 
   bind_rows(.id = "origin_sheet")
 ```
@@ -457,7 +457,7 @@ combined <- sheet_names %>%
 sheet_names <- readxl::excel_sheets("hospital_linelists.xlsx")
 
 combined <- sheet_names %>% 
-  set_names() %>% 
+  purrr::set_names() %>% 
   map(.f = ~import("hospital_linelists.xlsx", which = .x)) %>% 
   bind_rows(.id = "origin_sheet") # provide name for new column that contains the name of the original list element  
 ```
@@ -479,7 +479,7 @@ Lets use an example where we didn't want to read the first sheet of hospital dat
 sheet_names <- readxl::excel_sheets(here::here("data", "example", "hospital_linelists.xlsx"))
 
 combined <- sheet_names %>% 
-     set_names() %>% 
+     purrr::set_names() %>% 
      # exclude the first sheet
      map_at(.f = ~import(here::here("data", "example", "hospital_linelists.xlsx"), which = .x),
             .at = c(-1))
@@ -490,7 +490,7 @@ combined <- sheet_names %>%
 sheet_names <- readxl::excel_sheets("hospital_linelists.xlsx")
 
 combined <- sheet_names %>% 
-     set_names() %>% 
+     purrr::set_names() %>% 
      # exclude the first sheet
      map_at(.f = ~import( "hospital_linelists.xlsx", which = .x),
             .at = c(-1))

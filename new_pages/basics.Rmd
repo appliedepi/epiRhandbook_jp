@@ -38,7 +38,7 @@ The R community of users is enormous and collaborative. New packages and tools t
 
 ## Key terms  
 
-**RStudio** - RStudio is an interface (GUI) for easier use of **R**. Read more [in this section](#rstudio).  
+**RStudio** - RStudio is a Graphical User Interface (GUI) for easier use of **R**. Read more [in this section](#rstudio).  
 
 **Objects** - Everything you store in R - datasets, variables, a list of village names, a total population number, even outputs such as graphs - are *objects* which are *assigned a name* and *can be referenced* in later commands. Read more [in this section](#objects).  
 
@@ -46,7 +46,7 @@ The R community of users is enormous and collaborative. New packages and tools t
 
 **Packages** - An R package is a shareable bundle of functions. Read more [in this section](#packages).  
 
-**Scripts** - Scripts are the document files that hold your commands. Read more [in this section](#scripts)
+**Scripts** - A script is the document file that hold your commands. Read more [in this section](#scripts)
 
 
 
@@ -277,7 +277,7 @@ Shift + Alt + l|Cmd + Shift + Option+l|Unfold selected code
 <!-- ======================================================= -->
 ## Functions {#functions}  
 
-Functions are at the core of using R. Functions are how you perform tasks and operations. Many functions come installed with R, many more are available for download in *packages* (explained in the [next section](#packages)), and you can even write your own custom functions! 
+Functions are at the core of using R. Functions are how you perform tasks and operations. Many functions come installed with R, many more are available for download in *packages* (explained in the [packages](#packages) section), and you can even write your own custom functions! 
 
 This basics section on functions explains:  
 
@@ -395,52 +395,66 @@ On installation, R contains **"base"** packages and functions that perform commo
 
 ### Install and load {-}  
 
-*Functions* are contained within **packages** which can be downloaded ("installed") to your computer from the internet. Once a package is downloaded, you can access its functions during your current R session by loading the package with the `library()` command (from **base** R) at the beginning of each R session. In this handbook, we advocate for use of `p_load()` instead of `library()`, but `library()` is still a very common approach.  
+*Functions* are contained within **packages** which can be downloaded ("installed") to your computer from the internet. Once a package is downloaded, it is stored in your "library". You can then access the functions it contains during your current R session by "loading" the package.
 
 *Think of R as your personal library*: When you download a package, your library gains a new book of functions, but each time you want to use a function in that book, you must borrow that book from your library.  
 
-
-**Your library**  
-
-Your "library" is actually a folder on your computer, containing a folder for each package that has been installed. Find out where R is installed in your computer, and look for a folder called "win-library". For example: `R\win-library\4.0` (the 4.0 is the R version - you'll have a different library for each R version you've downloaded). As a last-case measure, you can remove a package by manually deleting it from here (but it is better to use `remove.packages("packagename")`).  
-
-
-**CRAN**  
-
-CRAN (Comprehensive R Archive Network) is a public warehouse of R packages that have been published by R community members. Most often, R users download packages from CRAN.  
- 
-
-**Install vs. Load**
-
-To use a package, 2 steps must be implemented:  
+In summary: to use the functions available in a R package, 2 steps must be implemented:  
 
 1) The package must be **installed** (once), *and*  
 2) The package must be **loaded** (each R session)  
 
-The **base** R function for installing a package is `install.packages()`, where the name of the package is provided *in quotes*. This can also be accomplished point-and-click by going to the RStudio "Packages" pane and clicking "Install" and typing the package name. Note all this is case-sensitive. 
 
-```{r, eval=F}
-install.packages("tidyverse")
+#### Your library {-}  
+
+Your "library" is actually a folder on your computer, containing a folder for each package that has been installed. Find out where R is installed in your computer, and look for a folder called "win-library". For example: `R\win-library\4.0` (the 4.0 is the R version - you'll have a different library for each R version you've downloaded).  
+
+You can print the file path to your library by entering `.libPaths()` (empty parentheses). This becomes especially important if working on network drives.   
+
+
+#### Install from CRAN {-}  
+
+Most often, R users download packages from CRAN. CRAN (Comprehensive R Archive Network) is an online public warehouse of R packages that have been published by R community members. 
+
+Are you worried about viruses and security when downloading a package from CRAN? Read [this article](https://support.rstudio.com/hc/en-us/articles/360042593974-R-and-R-Package-Security) on the topic.  
+ 
+
+#### How to install and load {-}  
+
+In this handbook, we suggest using the **pacman** package (short for "package manager"). It offers a convenient function `p_load()` which will install a package if necessary *and* load it for use in the current R session.  
+
+The syntax quite simple. Just list the names of the packages within the `p_load()` parentheses, separated by commas. If someone on another computer runs the script, this command will install the **rio**, **tidyverse**, and **here** packages if they are not yet installed, and will load them for use. Note that package names are case-sensitive. 
+
+```{r}
+# Install (if necessary) and load packages for use
+pacman::p_load(rio, tidyverse, here)
 ```
 
-The basic function to **load** a package for use (after it has been installed) is `library()`, with the name of the package *NOT in quotes*.  
+Note that we have used the syntax `pacman::p_load()` which explicitly writes the package name prior to the function name, connected by two colons `::`. This syntax is useful because it also loads the **pacman** package (assuming it is already installed).  
+
+There are alternative **base** R functions that you will see often. The **base** R function for installing a package is `install.packages()`. The name of the package to install must be provided *in quotes*. If you want to install multiple packages, they must be listed within a character vector `c()`.    
 
 ```{r, eval=F}
+# install a single package with base R
+install.packages("tidyverse")
+
+# install multiple packages with base R
+install.packages(c("tidyverse", "rio", "here"))
+```
+
+Installation can also be accomplished point-and-click by going to the RStudio "Packages" pane and clicking "Install" and typing the package name.  
+
+The **base** R function to **load** a package for use (after it has been installed) is `library()`. It loads only one package at a time (another reason to use `p_load()`). You can provide the package name with or without quotes.    
+
+```{r, eval=F}
+# load packages for use, with base R
 library(tidyverse)
+library(rio)
+library(here)
 ```
 
 To check whether a package in installed or loaded, you can view the Packages pane in RStudio. If the package is installed, it is shown there with version number. If the box is checked, it is loaded for the current session. 
 
-
-**We suggest using pacman**  
-
-This handbook emphasizes use of the package **pacman** (abbreviation for "package manager"), which offers the useful function `p_load()`. **This function combines the above two steps into one -  it *installs and/or loads packages*, depending on what is needed.** If the package has not yet been installed, it will attempt to install from CRAN, and then will load it for use. This is really useful if sharing your script with someone else who may not have all the packages.  
-
-Below, we use `p_load()` on three packages often used in this handbook. Note that we have used the syntax `pacman::p_load()` which explicitly writes the package name prior to the function name, connected by two colons `::`. This syntax is useful in that it also functions to load the package (**pacman** in this case), so this command can stand alone at the top of your script. You do not need to load **pacman** before running this command to load the other three packages.  
-
-```{r}
-pacman::p_load(tidyverse, rio, here)
-```
 
 
 **Install from Github**
