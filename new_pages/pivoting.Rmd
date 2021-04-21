@@ -198,7 +198,8 @@ One particularly common problem you will encounter will be the storing of differ
 
 Take a situation in which there have been a series of observations at different time steps for each of three items A, B and C. Examples of such items could be individuals (e.g. contacts of an Ebola case being traced each day for 21 days) or remote village health posts being monitored once per year to ensure they are still functional. Let's use the contact tracing example. Imagine that the dataare stored as follows:
 
-```{r}
+
+```{r, message=FALSE, echo=F}
 
 df <- 
   tibble::tribble(
@@ -208,11 +209,11 @@ df <-
      "C", "2021-04-23",    "Missing", "2021-04-24",    "Healthy", "2021-04-25",    "Healthy"
      ) 
 
-df
+DT::datatable(df, rownames = FALSE)
 
 ```
 
-As can be seen, the data are a bit messy, with each row referring to one item, but the time series running further and further away to the right as time progresses. One particularly bad example of this encountered by this author involved cholera data, in which 8 new columns of observations were added each day over the course of 4 years. Simply opening the Excel file in which these data were stored took >10 mins on my laptop!
+As can be seen, the data are a bit messy, with each row referring to one item, but the time series running further and further away to the right as time progresses. One particularly bad example of this encountered by this author involved cholera surveillance data, in which 8 new columns of observations were added *each day* over the course of __4 years__. Simply opening the Excel file in which these data were stored took >10 mins on my laptop!
 
 In order to work with these data, we need to transform the dataframe to long format, but keeping the separation between a `date` column and a `character` (status) column, for each observation for each item. If we don't, we might end up with a mixture of variable types in a single column (a very big no-no when it comes to data management and tidy data):
 
@@ -243,17 +244,16 @@ df_long
 
 ```
 
-Finishing touches:
+__Finishing touches__:
 
-Note that the `date` column is currently in character format - we can easily convert this into it's proper `date` format using the `mutate()` function encountered elsewhere. We may also want to convert the `observation` column to a `numeric` format by dropping the `obs` prefix and converting to `numeric`: 
+Note that the `date` column is currently in `character` format - we can easily convert this into it's proper `date` format using the `mutate()` function encountered elsewhere. We may also want to convert the `observation` column to a `numeric` format by dropping the `obs` prefix and converting to `numeric`: 
 
 ```{r}
 
 df_long <- 
   df_long %>% 
   mutate(
-    date = 
-      date %>% lubridate::as_date(),
+    date = date %>% lubridate::as_date(),
     observation = 
       observation %>% 
       str_remove_all("obs") %>% 
