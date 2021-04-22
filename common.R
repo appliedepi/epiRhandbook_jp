@@ -24,7 +24,7 @@ pacman::p_load(
 )
 
 # import the cleaned ebola linelist
-linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))
+linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 
 # import the count data - facility level
 #count_data <- rio::import(here::here("data", "facility_count_data.rds"))

@@ -1,23 +1,9 @@
 
 # ggplot tips {}
 
+In this page we will cover tips and tricks to make your plots sharp and fancy. See the page on [Plotting with ggplot] for the fundamentals.  
 
-<!-- ======================================================= -->
-## Overview {}
-
-**ggplot2** is the most popular data visualisation package in R, and is generally used instead of **base** `R` for creating figures. **ggplot2** benefits from a wide variety of supplementary packages that further enhance its functionality. Despite this, ggplot syntax is significantly different from **base** `R` plotting, and has a learning curve associated with it. Using **ggplot2** generally requires the user to format their data in a way that is highly **tidyverse** compatible, which ultimately makes using these packages together very effective.
-
-<!-- One of the best resources is the official ggplot cheatsheet, shown here: -->
-
-<!-- ```{r, include=TRUE, fig.align="center", fig.cap=c("ggplot cheatsheet"), echo=FALSE} -->
-<!-- knitr::include_graphics("./images/imagename.pdf") -->
-<!-- ``` -->
-
-<!-- ``` -->
-
-You can also download this [data visualization with ggplot cheatsheet](https://rstudio.com/resources/cheatsheets/) from the RStudio website.  
-
-If you want inspiration for ways to creatively visualise your data, we suggest reviewing websites like the [R graph gallery](https://www.r-graph-gallery.com/) and [Data-to-viz](https://www.data-to-viz.com/caveats.html). 
+There a several extensive **ggplot2** tutorials linked in the resources section. You can also download this [data visualization with ggplot cheatsheet](https://rstudio.com/resources/cheatsheets/) from the RStudio website. If you want inspiration for ways to creatively visualise your data, we suggest reviewing websites like the [R graph gallery](https://www.r-graph-gallery.com/) and [Data-to-viz](https://www.data-to-viz.com/caveats.html). 
 
 
 
@@ -26,7 +12,7 @@ If you want inspiration for ways to creatively visualise your data, we suggest r
 
 ### Load packages {-}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary and loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
 ```{r}
 pacman::p_load(
@@ -43,248 +29,78 @@ pacman::p_load(
 
 ### Import data {-}  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, eval=T, echo=F}
-linelist_cleaned <- rio::import(here::here("data", "linelist_cleaned.rds"))
+linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 
 ```
 
 ```{r, eval=F}
-linelist_cleaned <- rio::import("linelist_cleaned.xlsx")
-
+linelist <- rio::import("linelist_cleaned.xlsx")
 ```
 
-### General cleaning {-}
+The first 50 rows of the linelist are displayed below. We will focus on the continuous variables `age`, `wt_kg` (weight in kilos), `ct_blood` (CT values), and `days_onset_hosp` (difference between onset date and hospitalisation).  
 
-When preparing data to plot, it is best to make the data adhere to ["tidy" data standards](https://r4ds.had.co.nz/tidy-data.html) as much as possible. How to achieve this is expanded on in the data management pages of this handbook, such as [Cleaning data and core functions]. 
-
-Some simple ways we can prepare our data to make it better for plotting can include making the contents of the data better for display - this does not necessarily mean its better for data manipulation! For example:  
-
-* Replace `NA` values in a character column with the string "Unknown"  
-* Clean some columns so that their "data friendly" values with underscores etc are changed to normal text or title case (see [Characters and strings])  
-
-Here are some examples of this in action:
-
-```{r, eval = TRUE}
-linelist_cleaned <- linelist_cleaned %>%
-  # make display version of columns with more friendly names
-  mutate(
-    # f to Male, f to Female, NA to Unknown
-    gender_disp = case_when(gender == "m" ~ "Male",
-                            gender == "f" ~ "Female",
-                            is.na(gender) ~ "Unknown"),
-    # replace NA with unknown for outcome
-    outcome_disp = replace_na(outcome, "Unknown")
-  )
-```
-
-### Pivoting longer {-}
-
-As a matter of data structure, for **ggplot2** we often also want to pivot our data into *longer* formats, which will allow us to use a set of variables as a single variable. Read more about this is the page on [Pivoting data].  
-
-For example, if we wanted to show the number of cases with specific symptoms, we are limited by the fact that each symptom is a specific column. We can pivot this to a longer format like this:
-
-```{r, eval = T}
-
-linelist_sym <- linelist_cleaned %>%
-  pivot_longer(cols = c("fever", "chills", "cough", "aches", "vomit"),
-               names_to = "symptom_name",
-               values_to = "symptom_is_present") %>%
-  mutate(symptom_is_present = replace_na(symptom_is_present, "unknown"))
-
-```
-
-Note that this format is not very useful for other operations, and should just be used for the plot it was made for. However, users should endeavor to use these practices as much as possible for the base dataset, as they are more tidyverse compliant, and will make working with the data easier.
-
-
-
-
-
-<!-- ======================================================= -->
-## Basics of ggplot {}
-
-**"Grammar of graphics" - ggplot2**  
-
-Plotting with **ggplot2** is based on defining base attributes to a plot, and "adding" layers on top. In addition, the user can change various plot attributes like axis settings, colour schemes, and labels with additional objects that are "added" to the plot. While ggplot objects can be highly complex, the basic order of creating a ggplot looks something like this:
-
-1. Define base/default plot attributes and aesthetics with `ggplot()` function
-2. Add geometric objects to the plot - i.e. is the plot a bar graph, a line plot, a scatter plot, or a histogram? Or is it a combination of these? These functions all start with `geom_` as a prefix.
-3. Change plot aesthetics e.g. changing the axes, labels, colour scheme, background etc.
-
-In code, this might look like this:
-
-```{r, eval = TRUE, warning=F, message=F}
-
-# define base plot attributes and dataset
-ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
-  # add a geometric object with some parameters
-  geom_histogram(binwidth = 10, fill = "red", col = "black") +
-  # add labels to the axes
-  labs(x = "Age in years", y = "Number of cases")
-  
-
-```
-
-With this code, the most important things to note are:
-
-  1. When making a ggplot, all objects are combined with a `+` sign.
-  2. Understand the principles behind aesthetic mapping with the `mappping = aes()` argument is essential to using ggplot. This can be done in the `ggplot()` function as well as every geometric object. Mapping with `aes()` is used to define which variables are assigned to each axis (these can be continuous or categorical variables). It is also used to define whether a variable can be used to create different plot aesthetics. This can apply to the:
-  
-a. line colour (`col = `)  
-b. filled colour (`fill = `)  
-c. linetype (e.g. dotted, dashed) (`linetype =`)  
-d. size of an object (`size = `)  
-
-This list is not exhaustive, but is enough to give a rough overview.
-  
-  3. Aesthetics of geometric objects can be defined *explicitly* as in the code above - this is different from assigning them to a variable. In cases where this is done, it must be *outside* the `mapping` argument. 
-  
-```{r, eval = FALSE}
-# correct
-ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
-  geom_histogram(col = "black")
-
-# incorrect
-# correct
-ggplot(data = linelist_cleaned, mapping = aes(x = age)) +
-  geom_histogram(mapping = aes(col = "black"))
-
-```
-
-An example of defining aesthetics with a variable can be seen here:
-
-```{r, eval = TRUE, warning=F, message=F}
-# define base plot attributes and dataset
-ggplot(data = linelist_cleaned, mapping = aes(x = age, fill = outcome)) +
-  # add a geometric object with some parameters (NO FILL GIVEN)
-  geom_histogram(binwidth = 10, col = "black") +
-  # add labels to the axes
-  labs(x = "Age in years", y = "Number of cases")
+```{r, message=FALSE, echo=F}
+# display the linelist data as a table
+DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-There are a huge number of different geoms that can be used, and they are all used with similar attribute names. While not exhaustive, some of the shapes that can be used are:
 
-  1. Histograms - `geom_histogram()`
-  2. Barcharts - `geom_bar()`
-  3. Boxplots - `geom_boxplot()`
-  4. Dot plots (for scatterplots or with discrete variables) - `geom_point()`
-  5. Line graphs - `geom_line()` or `geom_path()`
-  6. Trend lines - `geom_smooth()`
-
-You can also add straight lines to your plot with `geom_hline()` (horizontal), `geom_vline()` (vertical) or `geom_abline()` (with a specified y intercept and slope)
-
-There is much more detail we could show here, but we'll finish with an example that ties these concepts together by plotting a correlation between height and weight of all the patients. We can also colour the points by age in years
-  
-```{r, eval = TRUE, cache.vars = TRUE}
-
-
-# set up the plot and define key variables
-# colour is the outcome
-wt_ht_plot <- ggplot(data = linelist_cleaned,
-                     aes(y = wt_kg, x = ht_cm, col = age_years)) +
-  # define aspects of the geom that are NOT included specific to variables
-  # other attributes are inherited
-  geom_point(size = 1, alpha = 0.5) +
-  # add a trend line
-  # use a linear method
-  geom_smooth(method = "lm")
-wt_ht_plot
-
-```
-
-
-<!-- ======================================================= -->
-## Themes and Labels {}
-
-One of the most important aspects of data visualisation is presenting data in a clear way with nice aesthetics. The plot we made previously looks ok, but we could make the theme a little nicer. `ggplot2` comes with some preset themes that can be used to change the theme of the plot. We can also edit themes of the plot with extreme detail with the `theme()` function. We can also add some nicer labels to the plot with the `labs()` function. There are 5 standard labeling locations:
-
-  1. `x` - the x-axis
-  2. `y` - the y-axis
-  3. `title` - the main plot title
-  4. `subtitle` - directly underneath the plot title in smaller text (by default)
-  5. `caption` - bottom of plot, on the right by default
-  
-For example, we can update the plot we previously plotted with nice labels like this:
-
-```{r, eval = TRUE}
-
-wt_ht_plot <- wt_ht_plot + 
-  # set the theme to classic
-  theme_classic() +
-  # further edit the theme to move the legend position
-  # add nicer labels
-  labs(y = "Weight (kg)", 
-       x = "height (cm)",
-       title = "Patient height and weight",
-       subtitle = glue::glue("total patients {nrow(linelist_cleaned)}"),
-       caption = "produced by me!")
-wt_ht_plot
-
-```
-
-The `theme()` function can also be used to edit the defaults of these elements. This function can take an extremely large number of arguments, each of which can be used to edit very specific aspects of the plot. We won't go through all examples, look at how editing aspects of text elements is done. The basic way this is done is:
-
-  1. Calling the specific argument of `theme()` for the element we want to edit (e.g. `plot.title` for the plot title)
-  2. Supplying the `element_text()` function to the argument (there are other versions of this e.g. `element_rect()` for editing the plot background aesthetics)
-  3. Changing the arguments in `element_text()`
-  
-For example, we increase the size of the plot title with `size`, make the subtitle italicised with `face`, and right
-justify the caption with `hjust`. We'll also change the legend location for good measure!
-
-```{r,eval=T}
-wt_ht_plot + 
-    theme(legend.position = "bottom",
-          # size of title is 30
-          plot.title = element_text(size = 30),
-          # right justify caption
-          plot.caption = element_text(hjust = 0),
-          # subtitle is italicised
-          plot.subtitle = element_text(face = "italic"))
-
-
-```
-
-If you ever want to remove an element of a plot, you can also do it through `theme()`! Just pass `element_blank()` to an argument in theme to have it disappear completely!
 
 <!-- ======================================================= -->
 ## Colour schemes {}
 
 One thing that can initially be difficult to understand with `ggplot2` is control of colour schemes when passing colour or fill as a variable rather than defining them explicitly within a geom. There are a few simple tricks that can be used to achieve this however. Remember that when setting colours, you can use colour names (as long as they are recognised) like `"red"`, or a specific hex colour such as `"#ff0505"`.
 
-One of the most useful tricks is using manual scaling functions to explicity define colours. These are functions with the syntax `scale_xxx_manual()` (e.g. `scale_colour_manual()`). In this function you can explicitly define which colours map to which factor using the `values` argument. You can control the legend title with the `name` argument, and the order of factors with `breaks`. 
+One of the most useful tricks is using manual scaling functions to explicitly define colours. These are functions with the syntax `scale_xxx_manual()` (e.g. `scale_colour_manual()` or `scale_fill_manual()`). In this function you can explicitly define which colours map to which value using the `values =` argument. You can control the legend title with the `name =` argument, and the order of factors with `breaks =`. 
 
-If you want predefined palettes, you can use the `scale_xxx_brewer` or `scale_xxx_viridis_y` functions. The brewer functions can draw from colorbrewer.org palettes, and the viridis functions can draw from viridis (colourblind friendly!) palettes. Remember to define if the palette is discrete, continuous, or binned by specifying this at the end of the function (e.g. discrete is `scale_xxx_viridis_d`)
+If you want predefined palettes, you can use the `scale_xxx_brewer` or `scale_xxx_viridis_y` functions.  
 
-We can see this by using the symptom-specific dataframe we made in the previous section:
-```{r,eval = TRUE} 
+The 'brewer' functions can draw from [colorbrewer.org](colorbrewer.org) palettes.  
+The 'viridis' functions draw from viridis (colourblind friendly!) palettes, which "provide colour maps that are perceptually uniform in both colour and black-and-white. They are also designed to be perceived by viewers with common forms of colour blindness." (read more [here](https://ggplot2.tidyverse.org/reference/scale_viridis.html) and [here](https://bids.github.io/colormap/)). Define if the palette is discrete, continuous, or binned by specifying this at the end of the function (e.g. discrete is `scale_xxx_viridis_d`).
 
+Test your image in this [color blindness simulator](https://www.color-blindness.com/coblis-color-blindness-simulator/). If you have a red/green color scheme, try a "hot-cold" (red-blue) scheme instead as described [here](https://www.visualisingdata.com/2019/08/five-ways-to-design-for-red-green-colour-blindness/#:~:text=The%20pink%2Dred%20through%20to,green%20hues%20used%20by%20default.)  
 
+Here is an example from the [Plotting with ggplot] page, saved as ```using various color schemes. 
 
-symp_plot <- ggplot(linelist_sym, aes(x = symptom_name, fill = symptom_is_present)) +
-  # show as a portion of all
-  geom_bar(position = "fill", col = "black") +
+```{r, out.width=c('33%'), fig.show='hold', warning=F, message=F} 
+symp_plot <- linelist %>%                                         # begin with linelist
+  select(c(case_id, fever, chills, cough, aches, vomit)) %>%     # select columns
+  pivot_longer(                                                  # pivot longer
+    cols = -case_id,                                  
+    names_to = "symptom_name",
+    values_to = "symptom_is_present") %>%
+  mutate(                                                        # replace missing values
+    symptom_is_present = replace_na(symptom_is_present, "unknown")) %>% 
+  ggplot(                                                        # begin ggplot!
+    mapping = aes(x = symptom_name, fill = symptom_is_present))+
+  geom_bar(position = "fill", col = "black") +                    
   theme_classic() +
+  theme(legend.position = "bottom")+
   labs(
     x = "Symptom",
     y = "Symptom status (proportion)"
   )
 
-symp_plot
+symp_plot  # print with default colors
 
+#################################
+# print with manually-specified colors
 symp_plot +
   scale_fill_manual(
-    # explicitly define colours
-    values = c("yes" = "black",
+    values = c("yes" = "black",         # explicitly define colours
                "no" = "white",
                "unknown" = "grey"),
-    # order the factors correctly
-    breaks = c("yes", "no", "unknown"),
-    # legend has no title
-    name = ""
+    breaks = c("yes", "no", "unknown"), # order the factors correctly
+    name = ""                           # set legend to no title
+
   ) 
 
+#################################
+# print with viridis discrete colors
 symp_plot +
   scale_fill_viridis_d(
     breaks = c("yes", "no", "unknown"),
@@ -297,7 +113,8 @@ symp_plot +
 
 
 <!-- ======================================================= -->
-## Change order of discrete variables {}
+## Change order of discrete variables {}  
+
 Changing the order that discrete variables appear in is often difficult to understand for people who are new to `ggplot2` graphs. It's easy to understand how to do this however once you understand how `ggplot2` handles discrete variables under the hood. Generally speaking, if a discrete varaible is used, it is automatically converted to a `factor` type - which orders factors by alphabetical order by default. To handle this, you simply have to reorder the factor levels to reflect the order you would like them to appear in the chart. For more detailed information on how to reorder `factor` objects, see the factor section of the guide. 
 
 We can look at a common example using age groups - by default the 5-9 age group will be placed in the middle of the age groups (given alphabetical order), but we can move it behind the 0-4 age group of the chart by releveling the factors.
@@ -305,7 +122,7 @@ We can look at a common example using age groups - by default the 5-9 age group 
 ```{r, eval = T, warning=F, message=F}
 
 # remove the instances of age_cat5 where data is missing
-ggplot(linelist_cleaned %>%
+ggplot(linelist %>%
          filter(!is.na(age_cat5)),
        # relevel the factor within the ggplot call (can do externally as well)
        aes(x = forcats::fct_relevel(age_cat5, "5-9", after = 1))) +
@@ -319,70 +136,9 @@ ggplot(linelist_cleaned %>%
 
 
 <!-- ======================================================= -->
-## Multiple plots {}
+## Combining multiple plots {}
 
-Often its useful to show multiple graphs on one page, or one super-figure. There are a few ways to achieve this and a lot of packages that can help to facilitate it. However, while external packages are nice, it is often easier to use faceting as an alternative that is prebuilt into `ggplot2`. Faceting plots is extremely easy to do in terms of code, and produces plots with more predictable aesthetics - you wont have to wrangle legends and ensure that axes are aligned etc.
-
-Faceting is a very specific way to obtain multiple plots - by definition, to facet you have to show the same type of plot in each facet, where every plot is specific to a level of a variable. This is done with one of two functions:
-
-  1. `facet_wrap()` This is used when you want to show a different graph for each level of a *single* variable. One example of this could be showing a different epidemic curve for each hospital in a region. 
-  
-  2. `facet_grid()` This is used when you want to bring a second variable into the faceting arrangement. Here each element of a grid is shows the intersection between an x or y element of a grid. For example, this could involve showing a different epidemic curve for each hospital in a region, shown horizontally, for each age group, shown vertically.
-  
-This can quickly become an overwhelming amount of information - its good to ensure you don't have too many levels of each variable that you choose to facet by! Here are some quick examples with the malaria dataset:
-
-```{r, eval = TRUE, warning=F, message=F}
-malaria_data <- rio::import(here::here("data", "facility_count_data.rds")) 
-
-# show a wrapped plot with facets by district
-
-ggplot(malaria_data, aes(x = data_date, y = malaria_tot, fill = District)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "date of data collection",
-    y = "malaria cases",
-    title = "Malaria cases by district"
-  ) +
-  facet_wrap(~District) +
-  theme_minimal()
-
-```
-
-We can also use a `facet_grid()` approach with the different age groups - we need to do some data transformations first however, as the age groups all are in their own columns - we want them in a single column. When you pass the two variables to `facet_grid()`, you can use formula notation (e.g. `x ~ y`) or wrap the variables in `vars()`. For reference, this: `facet_grid(x ~ y)` is equivalent to `facet_grid(rows = vars(x), cols = vars(y))` Here's how we can do this:
-
-```{r, eval = T, warning=F, message=F}
-
-malaria_age <- malaria_data %>%
-  pivot_longer(
-    # choose all the columns that start with malaria rdt (age group specific)
-    cols = starts_with("malaria_rdt_"),
-    # column names become age group
-    names_to = "age_group",
-    # values to a single column (num_cases)
-    values_to = "num_cases"
-  ) %>%
-  # clean up age group column - replace "malaria_rdt_" to leave only age group
-  # then replace 15 with 15+
-  # then refactor the age groups so they are in order
-  mutate(age_group = str_replace(age_group, "malaria_rdt_", "") %>%
-           ifelse(. == "15", "15+", .) %>%
-           forcats::fct_relevel(., "5-14", after = 1))
-
-
-# make the same plot as before, but show in a grid
-ggplot(malaria_age, aes(x = data_date, y = num_cases, fill = age_group)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "date of data collection",
-    y = "malaria cases",
-    title = "Malaria cases by district and age group"
-  ) +
-  facet_grid(rows = vars(District), cols = vars(age_group)) +
-  theme_minimal()
-
-
-
-```
+Faceting is described in the [Plotting with ggplot] page.  
 
 While faceting is a convenient approach to plotting, sometimes its not possible to get the results you want from its relatively restrictive approach. Here, you may choose to combine plots by sticking them together into a larger plot. There are three well known packages that are great for this - `cowplot`, `gridExtra`, and `patchwork`. However, these packages largely do the same things, so we'll focus on `cowplot` for this section. 
 
@@ -390,6 +146,7 @@ The `cowplot` package has a fairly wide range of functions, but the easiest use 
 
 
 ```{r, eval = T, warning=F, message=F}
+malaria_data <- rio::import(here::here("data", "malaria_facility_count_data.rds")) 
 
 # bar chart of total cases by district
 p1 <- ggplot(malaria_data, aes(x = District, y = malaria_tot)) +
@@ -493,7 +250,8 @@ ggMarginal(
 
 
 <!-- ======================================================= -->
-## Smart Labeling {}
+## Smart Labeling {}  
+
 In `ggplot2`, it is also possible to add text to plots. However, this comes with the notable limitation where text labels often clash with data points in a plot, making them look messy or hard to read. There is no ideal way to deal with this in the base package, but there is a `ggplot2` add-on, known as `ggrepel` that makes dealing with this very simple! 
 
 The `ggrepel` package provides two new functions, `geom_label_repel()` and `geom_text_repel()`, which replace `geom_label()` and `geom_text()`. Simply use these functions instead of the base functions to produce neat labels. Within the function, map the aesthetics `aes()` as always, but include the argument `label = ` to which you provide a column name containing the values you want to display (e.g. patient id, or name, etc.). You can make more complex labels by combining columns and newlines (`\n`) within `str_glue()` as shown below.  
@@ -539,20 +297,20 @@ You can label only a subset of the data points - by using standard `ggplot()` sy
 ggplot()+
   # All points in grey
   geom_point(
-    data = linelist_cleaned,                                   # all data provided to this layer
+    data = linelist,                                   # all data provided to this layer
     mapping = aes(x = ht_cm, y = wt_kg),
     color = "grey",
     alpha = 0.5)+                                              # grey and semi-transparent
   
   # Few points in black
   geom_point(
-    data = linelist_cleaned %>% filter(days_onset_hosp > 15),  # filtered data provided to this layer
+    data = linelist %>% filter(days_onset_hosp > 15),  # filtered data provided to this layer
     mapping = aes(x = ht_cm, y = wt_kg),
     alpha = 1)+                                                # default black and not transparent
   
   # point labels for few points
   geom_label_repel(
-    data = linelist_cleaned %>% filter(days_onset_hosp > 15),  # filter the data for the labels
+    data = linelist %>% filter(days_onset_hosp > 15),  # filter the data for the labels
     mapping = aes(
       x = ht_cm,
       y = wt_kg,
@@ -588,7 +346,7 @@ The single most useful set of functions for working with dates in `ggplot2` are 
 
 ```{r, eval = T, warning=F, message=F}
 # make epi curve by date of onset when available
-ggplot(linelist_cleaned, aes(x = date_onset)) +
+ggplot(linelist, aes(x = date_onset)) +
   geom_bar(stat = "count") +
   scale_x_date(
     # 1 break every 1 month
@@ -614,12 +372,12 @@ The `gghighlight` package uses the `gghighlight()` function to achieve this effe
 library(gghighlight)
 
 # replace NA values with unknown in the outcome variable
-linelist_cleaned <- linelist_cleaned %>%
+linelist <- linelist %>%
   mutate(outcome = replace_na(outcome, "Unknown"))
 
 # produce a histogram of all cases by age
 ggplot(
-  data = linelist_cleaned,
+  data = linelist,
   mapping = aes(x = age_years, fill = outcome)) +
   geom_histogram() + 
   gghighlight::gghighlight(outcome == "Death")     # highlight instances where the patient has died.
@@ -632,7 +390,7 @@ This also works well with faceting functions - it allows the user to produce fac
 
 # produce a histogram of all cases by age
 ggplot(
-  data = linelist_cleaned,
+  data = linelist,
   mapping = aes(x = age_years, fill = outcome)) +
   geom_histogram() +                                # make the histogram
   gghighlight::gghighlight() +                      # highlight instances where the patient has died
@@ -778,6 +536,43 @@ UNDER CONSTRUCTION
 
 
 
+
+
+
+
+
+## Packages to help you  
+
+UNDER CONSTRUCTION  
+
+There are some really neat R packages specifically designed to help you navigate **ggplot2**:  
+
+### `gghelp()` from **ggx**  
+
+Converts a normal language query into a ggplot command.  
+
+https://rdrr.io/github/brandmaier/ggx/man/gghelp.html
+
+
+
+### Point-and-click with **equisse**  
+
+https://github.com/dreamRs/esquisse
+
+
+"This addin allows you to interactively explore your data by visualizing it with the ggplot2 package. It allows you to draw bar plots, curves, scatter plots, histograms, boxplot and sf objects, then export the graph or retrieve the code to reproduce the graph."
+
+Documentation:https://dreamrs.github.io/esquisse/index.html
+
+Install and then launch the addin via the RStudio menu or with `esquisse::esquisser()`.
+
+
+
+
+
+
+
+
 ## Miscellaneous  
 
 
@@ -839,6 +634,11 @@ Cheatsheets
 
 
 TO DO - Under construction
+
+
+* Straight horizontal, vertical, or other line
+
+You can also add straight lines to your plot with `geom_hline()` (horizontal), `geom_vline()` (vertical) or `geom_abline()` (with a specified y intercept and slope)
 
 
 Using option `label_wrap_gen` in facet_wrap to have multiple strip lines

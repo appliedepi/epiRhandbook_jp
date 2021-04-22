@@ -72,7 +72,7 @@ Remember that you can summarise spatial data without using the mapping tools sho
 
 ### Load packages {-}  
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary and loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
 ```{r}
 pacman::p_load(
@@ -92,13 +92,13 @@ You can see an overview of all the R packages that deal with spatial data at the
 
 ### Sample case data {-}
 
-For demonstration purposes, we will work with a random sample of 1000 cases from the simulated Ebola epidemic `linelist` dataframe (computationally, working with fewer cases is easier to display in this handbook). If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page.  
+For demonstration purposes, we will work with a random sample of 1000 cases from the simulated Ebola epidemic `linelist` dataframe (computationally, working with fewer cases is easier to display in this handbook). If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page.  
 
 The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, echo=F}
 # import clean case linelist
-linelist <- rio::import(here::here("data", "linelist_cleaned.rds"))  
+linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))  
 ```
 
 ```{r, eval=F}
@@ -141,10 +141,10 @@ Now we are going to do the following to save the Admin Level 3 shapefile in R:
 2) Clean the column names  
 3) Filter rows to keep only areas of interest  
 
-To import a shapefile we use the `read_sf()` function from **sf**. It is provided the filepath via `here()`. - in this case the file is within our R project in the "Data" and "shp" subfolders, with filename "sle_adm3.shp" (see pages on [Import and export] and [R projects] for more information).  
+To import a shapefile we use the `read_sf()` function from **sf**. It is provided the filepath via `here()`. - in this case the file is within our R project in the "data", "gis", and "shp" subfolders, with filename "sle_adm3.shp" (see pages on [Import and export] and [R projects] for more information).  
 
 ```{r}
-sle_adm3_raw <- sf::read_sf(here::here("data", "shp", "sle_adm3.shp"))
+sle_adm3_raw <- sf::read_sf(here::here("data", "gis", "shp", "sle_adm3.shp"))
 ```
 
 
@@ -174,11 +174,11 @@ Again, we import data that we have downloaded from HDX (link [here](https://data
 
 ```{r}
 # Population by ADM3
-sle_adm3_pop <- rio::import(here::here("data/population", "sle_admpop_adm3_2020.csv")) %>%
+sle_adm3_pop <- rio::import(here::here("data", "gis", "population", "sle_admpop_adm3_2020.csv")) %>%
   janitor::clean_names()
 ```
 
-Here is what the populaton file looks like. Scroll to the right to see how each jurisdiction has columns with `male` population, `female` populaton, `total` population, and the population break-down in columns by age group.  
+Here is what the population file looks like. Scroll to the right to see how each jurisdiction has columns with `male` population, `female` populaton, `total` population, and the population break-down in columns by age group.  
 
 ```{r message=FALSE, echo=F}
 # display the population as a table
@@ -200,7 +200,7 @@ We import their shapefile with `read_sf()`, again clean the column names, and th
 
 ```{r}
 # OSM health facility shapefile
-sle_hf <- sf::read_sf(here::here("data/shp", "sle_hf.shp")) %>% 
+sle_hf <- sf::read_sf(here::here("data", "gis", "shp", "sle_hf.shp")) %>% 
   janitor::clean_names() %>%
   filter(amenity %in% c("hospital", "clinic", "doctors"))
 ```
@@ -305,7 +305,7 @@ Below, we will spatially intersect our case locations (points) with the ADM3 bou
 linelist_adm <- linelist_sf %>%
   
   # join the administrative boundary file to the linelist, based on spatial intersection
-  sf::st_join(sle_adm3,   join = st_intersects)
+  sf::st_join(sle_adm3, join = st_intersects)
 ```
 
 All the columns from `sle_adms` have been added to the linelist! Each case now has columns detailing it's administrative units. For this example, we only want to keep two of the new columns, so we `select()` the old column names and just the two additional of interest:  
@@ -606,7 +606,7 @@ map <- openmap(
   upperLeft = c(max(linelist$lat, na.rm=T), max(linelist$lon, na.rm=T)),   # limits of basemap tile
   lowerRight = c(min(linelist$lat, na.rm=T), min(linelist$lon, na.rm=T)),
   zoom = NULL,
-  type = c("osm", "stamen-toner", "stamen-terrain","stamen-watercolor", "esri","esri-topo")[1])
+  type = c("osm", "stamen-toner", "stamen-terrain", "stamen-watercolor", "esri","esri-topo")[1])
 ```
 
 If we plot this basemap right now, using `autoplot.OpenStreetMap()` from **OpenStreetMap** package, you see that the units on the axes are not latitude/longitude coordinates. It is using a different coordinate system. To correctly display the case residences (which are stored in lat/long), this must be changed.  
