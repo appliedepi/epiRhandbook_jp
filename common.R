@@ -31,4 +31,4 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 
 # Settings
 
-options(scipen=1, digits=3)
+options(scipen=1, digits=7)

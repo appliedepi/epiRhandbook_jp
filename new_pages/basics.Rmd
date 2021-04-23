@@ -392,50 +392,75 @@ age_pyramid(
 
 
 
-
-
-
-
 <!-- ======================================================= -->
 
 ### Writing Functions {-}  
 
-Writing your own functions is an incredibly useful skill, with many advantages:
+R is a language that is oriented around functions, so you should feel empowered to write your own functions. Creating functions brings several advantages:  
 
-* They facilitate modular programming, that is, they allow the separation of code in to independent and manageable pieces. 
-* With custom functions, you can give these pieces of code memorable names that are easy to interpret.
-* They can also replace repetitive copy and pasting which can be error prone.
+* To facilitate modular programming - the separation of code in to independent and manageable pieces  
+* Replace repetitive copy-and-paste, which can be error prone  
+* Give pieces of code memorable names  
 
-Using the previous toy example, to create the oven_bake function, the syntax may look something like this:
+How to write a function is covered in-depth in the [Writing functions] page.  
 
-```{r basics_functions_image2, echo=F, out.width = "70%", fig.align = "center"}
-knitr::include_graphics(here::here("images", "Function_Syntax_Bread_Example.png"))
+<!-- A function is given a name and defined with the assignment operator `<-` to a special **base** R function called `function()`. Within the parentheses, the arguments that the function will accept are defined. This is followed by curly brackets `{ }`, within which the actual code of the function is written.     -->
+
+```{r, eval=F, echo=F}
+my_function <- function( ARGUMENTS HERE ){ CODE HERE }
 ```
 
-Here is an example of a real function, where we are simulating a staffing calculator for covid-19 contact tracing calls. The inputs, number_of_daily_covid_cases, call_length_per_case, call_length_per_contact and working_hours_per_day are used to calculate the number of staff required (per day) to make the calls. Defaults are set in the round brackets; the length of time to call a contact is 15 mins (0.25 hours), to call a case is 30 mins (0.5 hours) and the staff working day is 8 hours. In the curly brackets we perform the calculation:
+<!-- The arguments should be provided in the syntax `argument = default`, separated by commas.   -->
 
-```{r message=FALSE, warning=FALSE, out.width = "75%", out.height="75%"}
-contact_tracing_staff_calculator <- function(daily_covid_cases, call_length_per_case = 0.5, call_length_per_contact = 0.25, working_hours_per_day = 8){ #the defaults are set in the round brackets
-  
-  case_hours <- daily_covid_cases * call_length_per_case 
-  contact_hours <- daily_covid_cases * call_length_per_contact
-  
-  staff_required <- (case_hours + contact_hours)/working_hours_per_day
-  
-  print(staff_required)
-  
+<!-- Here is an example where we create a function `staff_calc()` to serve as a staffing calculator for COVID-19 case investigation and contact tracing calls.   -->
 
-}
+<!-- The arguments (inputs) and their default values will be:   -->
 
+<!-- * `daily_cases = NULL` The number of new COVID-19 cases per day   -->
+<!-- * `contacts_each = 5` The number contacts enumerated for each case   -->
+<!-- * `time_case = 0.5`  Number of hours to complete a case investigaton by phone   -->
+<!-- * `time_contact = 0.25`  Number of hours to complete a contact follow-up by phone   -->
+<!-- * `time_day = 8` The number of hours one staff works per day   -->
+
+<!-- Below, the function is created. The code ends with the special function `return()`, which is what the function produces.    -->
+
+<!-- ```{r message=FALSE, warning=FALSE, out.width = "75%", out.height="75%"} -->
+<!-- staff_calc <- function(daily_cases = NULL, contacts_each = 5, -->
+<!--                        time_case = 0.5, time_contact = 0.25, time_day = 8){ -->
+
+<!--   # Define total daily hours for calling cases -->
+<!--   case_hours <- daily_cases * time_case  -->
+
+<!--   # Define total daily hours for calling contacts -->
+<!--   contact_hours <- daily_cases * contacts_each * time_contact -->
+
+<!--   # Calculate number of staff required -->
+<!--   staff_required <- (case_hours + contact_hours)/time_day -->
+
+<!--   return(staff_required) -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- Once this code is run, the function will be defined and will appear in the R Environment. We can run the function. Below all the default values are used and the `daily_cases = ` is set to 150.   -->
+
+```{r eval=F, echo=F, message=FALSE, warning=FALSE, out.width = "75%", out.height="75%"}
+staff_calc(daily_cases = 150)
 ```
 
-As the number of daily covid cases is not set in the function we must specify it when we call the function. To calculate the number of staff required if the number of daily covid cases is 5,500 the function is called as follows:
+```{r, eval=F, echo=F}
+case_incidence <- tibble(
+  dates = seq.Date(from = as.Date("2020-05-01"), to = as.Date("2020-05-21"), by = 1),
+  projected_incidence = c(102,110,50,37,106,190,146,138,135,111,60,43,189,184,185,80,44,97,254,291,288),
+  staff_needed = staff_calc(projected_incidence)
+)
 
-```{r message=FALSE, warning=FALSE, out.width = "75%", out.height="75%"}
-contact_tracing_staff_calculator(daily_covid_cases = 5500)
+ggplot(case_incidence, aes(x = dates))+
+  geom_line(aes(y = projected_incidence))+
+  geom_line(aes(y = staff_needed))
 ```
 
-Writing functions is covered further in chapter 44, [Writing functions].
+<!-- There are many other nuances to understand when writing functions, as discussed in the page [Writing functions].   -->
+
 
 <!-- ======================================================= -->
 <!-- ======================================================= -->
@@ -1447,6 +1472,7 @@ natural logarithm  | log(x)
 log base 10        | log10(x)
 log base 2         | log2(x)
 
+Note: for `round()` the `digits = ` specifies the number of decimal placed. Use `signif()` to round to a number of significant figures.  
 
 
 #### Scientific notation {-}

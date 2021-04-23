@@ -1,18 +1,9 @@
 
 # Tables for presentation { }  
 
-This section demonstrates how to create publication-ready tables, which can be inserted directly into shareable documents, including R Markdown outputs.  
+This section demonstrates how to convert summary data frames into presentation-ready tables with the **flextable** package. These tables can be inserted into powerpoint slides, HTML pages, PDF or Word documents, etc.  
 
-See the [Descriptive tables] page for instruction on how to make tabulations, cross-tabulations, and descriptive summary tables.  
-
-<!-- ======================================================= -->
-## Overview {  }
-
-We build on previous sections on basic statistics and creating summary tables (e.g. using **dplyr** and **gtsummary** and show how to create publication-read tables. The primary package we use is **flextable**, which is compatible with multiple R Markdown formats, including html and word documents. 
-
-Example: 
-
-**Table of Ebola patients with outcome information: Number, proportion, and CT values of cases who recovered and died** (with Military hospital highlighted)
+Understand that *before* using **flextable**, you must create the summary table as a data frame. Use methods from the [Descriptive tables] and [Pivoting data] pages such as tabulations, cross-tabulations, pivoting, and calculating descriptive statistics. The resulting data frame can then be passed to **flextable** for display formatting.  
 
 ```{r echo=FALSE, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
 
@@ -30,7 +21,7 @@ pacman::p_load(
 table <- linelist %>% 
   # filter
   ########
-  filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
+  #filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
   
   # Get summary values per hospital-outcome group
   ###############################################
@@ -56,9 +47,9 @@ table <- linelist %>%
     values_from = c(ct_value, N),                       # new values are from ct and count columns
     names_from = outcome) %>%                           # new column names are from outcomes
   mutate(                                              # Add new columns
-    N_Known = N_Death + N_Recover,                      # number with known outcome
-    Pct_Death = N_Death / N_Known * 100,               # percent cases who died
-    Pct_Recover = N_Recover/N_Known * 100) %>%         # percent who recovered
+    N_Known = N_Death + N_Recover,                               # number with known outcome
+    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # percent cases who died (to 1 decimal)
+    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # percent who recovered (to 1 decimal)
   select(                                              # Re-order columns
     hospital, N_Known,                                   # Intro columns
     N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
@@ -109,12 +100,14 @@ table
 ```
 
 
+
+
 <!-- ======================================================= -->
 ## Preparation {  }
 
 ### Load packages {-} 
 
-Load, and install if necessary, **flextable**, which we will use to convert the above table into a fully formatted and presentable table. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+Install and load **flextable**. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
 ```{r}
 pacman::p_load(
@@ -149,15 +142,15 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 ### Prepare table {-}  
 
-*Before* beginning to use **flextable** you will need to *create* your table contents. Use packages discussed in other sections such as **janitor** or **dplyr** to create a table with the content of interest, with the correct columns and rows. 
+*Before* beginning to use **flextable** you will need to *create* your table as a data frame. See the page on [Descriptive tables] and [Pivoting data] to learn how to create a data frame using packages such as **janitor** and **dplyr**. You must arrange the content in rows and columns as you want it displayed. Then, the data frame will be passed to **flextable** to display it with colors, headers, fonts, etc. 
   
-Below is an example - we create a simple summary table of patient outcomes. We are interested in knowing the number and proportion of patients that recover or died, as well as their median CT values, by hospital of admission. 
+Below is an example from the [Descriptive tables] page of converting the case `linelist` into a data frame that summarises patient outcomes and CT values by hospital.  
 
 ```{r message=FALSE, warning=FALSE}
 table <- linelist %>% 
   # filter
   ########
-  filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
+  #filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
   
   # Get summary values per hospital-outcome group
   ###############################################
@@ -183,9 +176,9 @@ table <- linelist %>%
     values_from = c(ct_value, N),                       # new values are from ct and count columns
     names_from = outcome) %>%                           # new column names are from outcomes
   mutate(                                              # Add new columns
-    N_Known = N_Death + N_Recover,                      # number with known outcome
-    Pct_Death = N_Death / N_Known * 100,               # percent cases who died
-    Pct_Recover = N_Recover/N_Known * 100) %>%         # percent who recovered
+    N_Known = N_Death + N_Recover,                               # number with known outcome
+    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # percent cases who died (to 1 decimal)
+    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # percent who recovered (to 1 decimal)
   select(                                              # Re-order columns
     hospital, N_Known,                                   # Intro columns
     N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
@@ -373,26 +366,124 @@ my_table
 <!-- ======================================================= -->
 ## Conditional flextable formatting {  }
 
-We can  highlight all values in a column that meet a certain rule, e.g. where more than 55% of cases died. 
+We can highlight all values in a column that meet a certain rule, e.g. where more than 55% of cases died. 
 
 ```{r}
 
 my_table %>% 
-  bg(j=7, i= ~ Pct_Death >=55, part = "body", bg = "red") 
+  bg(j = 7, i= ~ Pct_Death >=55, part = "body", bg = "red") 
 
 ```
 
 
 
-Or, we can higlight the entire row meeting a certain criterion, such as a hospital of interest. This is particularly helpful when looping through e.g. reports per geographical area, to highlight in tables where the current iteration compares to the other geographies. To do this we just remove the column (`j`) specification.
+Or, we can highlight the entire row meeting a certain criterion, such as a hospital of interest. To do this we just remove the column (`j`) specification so the criteria apply to all columns.
 
 
 ```{r}
 
 my_table %>% 
-  bg(., j=c(1:8), i= ~ hospital == "Military Hospital", part = "body", bg = "#91c293") 
+  bg(., i= ~ hospital == "Military Hospital", part = "body", bg = "#91c293") 
 
 ```
+
+## All code together  
+
+
+Below we show all the code from the above sections together in command.  
+
+```{r}  
+
+border_style = officer::fp_border(color="black", width=1)
+
+pacman::p_load(
+  rio,            # import/export
+  here,           # file pathways
+  flextable,      # make HTML tables 
+  officer,        # helper functions for tables
+  tidyverse)      # data management, summary, and visualization
+
+table <- linelist %>% 
+  # filter
+  ########
+  #filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
+  
+  # Get summary values per hospital-outcome group
+  ###############################################
+  group_by(hospital, outcome) %>%                      # Group data
+  summarise(                                           # Create new summary columns of indicators of interest
+    N = n(),                                            # Number of rows per hospital-outcome group     
+    ct_value = median(ct_blood, na.rm=T)) %>%           # median CT value per group
+  
+  # add totals
+  ############
+  bind_rows(                                           # Bind the previous table with this mini-table of totals
+    linelist %>% 
+      filter(!is.na(outcome) & hospital != "Missing") %>%
+      group_by(outcome) %>%                            # Grouped only by outcome, not by hospital    
+      summarise(
+        N = n(),                                       # Number of rows for whole dataset     
+        ct_value = median(ct_blood, na.rm=T))) %>%     # Median CT for whole dataset
+  
+  # Pivot wider and format
+  ########################
+  mutate(hospital = replace_na(hospital, "Total")) %>% 
+  pivot_wider(                                         # Pivot from long to wide
+    values_from = c(ct_value, N),                       # new values are from ct and count columns
+    names_from = outcome) %>%                           # new column names are from outcomes
+  mutate(                                              # Add new columns
+    N_Known = N_Death + N_Recover,                               # number with known outcome
+    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # percent cases who died (to 1 decimal)
+    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # percent who recovered (to 1 decimal)
+  select(                                              # Re-order columns
+    hospital, N_Known,                                   # Intro columns
+    N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
+    N_Death, Pct_Death, ct_value_Death)  %>%             # Death columns
+  arrange(N_Known) %>%                                 # Arrange rows from lowest to highest (Total row at bottom)
+
+  # formatting
+  ############
+  flextable() %>% 
+  add_header_row(
+    top = TRUE,                # New header goes on top of existing header row
+    values = c("Hospital",     # Header values for each column below
+               "Total cases with known outcome", 
+               "Recovered",    # This will be the top-level header for this and two next columns
+               "",
+               "",
+               "Died",         # This will be the top-level header for this and two next columns
+               "",             # Leave blank, as it will be merged with "Died"
+               "")) %>% 
+    set_header_labels(         # Rename the columns in original header row
+      hospital = "", 
+      N_Known = "",                  
+      N_Recover = "Total",
+      Pct_Recover = "% of cases",
+      ct_value_Recover = "Median CT values",
+      N_Death = "Total",
+      Pct_Death = "% of cases",
+      ct_value_Death = "Median CT values")  %>% 
+  merge_at(i = 1, j = 3:5, part = "header") %>% # Horizontally merge columns 3 to 5 in new header row
+  merge_at(i = 1, j = 6:8, part = "header") %>%  
+  border_remove() %>%  
+  theme_booktabs() %>% 
+  vline(part = "all", j = 2, border = border_style) %>%   # at column 2 
+  vline(part = "all", j = 5, border = border_style) %>%   # at column 5
+  merge_at(i = 1:2, j = 1, part = "header") %>% 
+  merge_at(i = 1:2, j = 2, part = "header") %>% 
+  width(j=1, width = 2.7) %>% 
+  width(j=2, width = 1.5) %>% 
+  width(j=c(4,5,7,8), width = 1) %>% 
+  flextable::align(., align = "center", j = c(2:8), part = "all") %>% 
+  bg(., part = "body", bg = "gray95")  %>% 
+  bg(., j=c(1:8), i= ~ hospital == "Military Hospital", part = "body", bg = "#91c293") %>% 
+  colformat_num(., j = c(4,7), digits = 1) %>%
+  bold(i = 1, bold = TRUE, part = "header") %>% 
+  bold(i = 6, bold = TRUE, part = "body")
+
+table
+```
+
 
 <!-- ======================================================= -->
 ## Saving your table {  }
