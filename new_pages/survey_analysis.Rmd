@@ -1,19 +1,414 @@
 
 # Survey analysis { }  
 
-THIS PAGE IS UNDER CONSTRUCTION
-
 <!-- ======================================================= -->
 ## Overview {  }
+
+This tab demonstrates the use of several packages for survey analysis. 
+Most packages rely on the [**survey** package](https://cran.r-project.org/web/packages/survey/index.html) 
+for doing weighted analysis. 
+We will use **survey** as well as [**srvyr**](https://cran.r-project.org/web/packages/srvyr/index.html) 
+(a wrapper for **survey** allowing for tidyverse-style coding) and
+[**gtsummary**](https://cran.r-project.org/web/packages/gtsummary/index.html) 
+(a wrapper for **survey** allowing for publication ready tables). 
+We will also demonstrate using a function from the [**sitrep**](https://github.com/R4EPI/sitrep)
+package to create sampling weights (*n.b* this package is currently not yet on CRAN, 
+but can be installed from github).
+
+Most of this page is based off work done for the ["R4Epis" project](https://r4epis.netlify.app/). 
+
+At current this page does not address sample size calculations or sampling. 
+For a simple to use sample size calculator see [OpenEpi](https://www.openepi.com/Menu/OE_Menu.htm). 
+The [GIS basics](https://epirhandbook.com/gis-basics.html) page of the handbook 
+will eventually have a section on spatial random sampling, and this page will 
+eventually have a section on sampling frames as well as sample size calculations. 
+
+
+
+1.  Survey data 
+2.  Observation time 
+3.  Weighting 
+4.  Survey design objects
+5.  Descriptive analysis 
+6.  Weighted proportions
+
 
 <!-- ======================================================= -->
 ## Preparation {  }
 
+### Packages {-}
+
+This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+Here we also demonstrate using the `p_load_gh()` function from **pacman** to install a load a package from github which has not yet been published on CRAN. 
+
+```{r load_packages}
+
+## load packages from CRAN
+pacman::p_load(rio,          # File import
+               here,         # File locator
+               tidyverse,    # data management + ggplot2 graphics
+               tsibble,      # handle time series datasets
+               survey,       # for survey functions
+               srvyr,        # dplyr wrapper for survey package
+               gtsummary,    # wrapper for survey package to produce tables
+               linelist      # has function to "guess" messy dates
+               )
+
+## load packages from github
+pacman::p_load_gh(
+     "R4EPI/sitrep"          # for observation time / weighting functions
+)
+
+``` 
+
+### Load data {-}
+
+The example dataset used in this section:
+
+-   fictional mortality survey data.
+-   fictional population counts for the survey area. 
+-   data dictionary for the fictional mortality survey data. 
+
+This is based off the MSF OCA ethical review board pre-approved survey. The 
+fictional dataset was produced as part of the ["R4Epis" project](https://r4epis.netlify.app/). 
+This is all based off data collected using [KoboToolbox](https://www.kobotoolbox.org/), 
+which is a data collection software based off [Open Data Kit](https://opendatakit.org/).
+
+Kobo allows you to export both the collected data, as well as the data dictionary 
+for that dataset. We strongly recommend doing this as it simplifies data cleaning 
+and is useful for looking up variables/questions. 
+
+
+<span style="color: darkgreen;">**_TIP:_** The Kobo data dictionary has variable
+names in the "name" column of the survey sheet. 
+Possible values for each variable are specified in choices sheet. 
+In the choices tab, "name" has the shortened value and the "label::english" and 
+"label::french" columns have the appropriate long versions. 
+Using the **epidict** package `msf_dict_survey()` function to import a Kobo 
+dictionary excel file will re-format this for you so it can be used easily to recode.  </span>
+
+<span style="color: orange;">**_CAUTION:_** The example dataset is not the same 
+as an export (as in Kobo you export different questionnaire levels individually) 
+- see the survey data section below to merge the different levels.</span>
+
+
+The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export](https://epirhandbook.com/import-and-export.html) for various ways to import data.
+
+```{r read_data_hide, echo = FALSE}
+# import the survey into R
+survey_data <- rio::import(here::here("data", "surveys", "survey_data.xlsx"))
+
+# import the dictionary into R
+survey_dict <- rio::import(here::here("data", "surveys", "survey_dict.xlsx")) 
+
+# import the population in to R 
+population <- rio::import(here::here("data", "surveys", "population.xlsx"))
+```
+
+```{r read_data_show, eval = FALSE}
+# import the survey data
+survey_data <- rio::import("survey_data.xlsx")
+
+# import the dictionary into R
+survey_dict <- rio::import("survey_dict.xlsx") 
+```
+
+The first 10 rows of the survey are displayed below.
+
+```{r inspect_data, message = FALSE, echo = FALSE}
+# display the survey data as a table
+DT::datatable(head(survey_data, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+We also want to import the data on sampling population so that we can produce 
+appropriate weights. This data can be in different formats, however we would 
+suggest to have it as seen below (this can just be typed in to an excel). 
+
+
+```{r read_data_pop_show, eval = FALSE}
+# import the population data
+population <- rio::import("population.xlsx")
+```
+
+The first 10 rows of the survey are displayed below.
+
+```{r inspect_data, message=FALSE, echo=F}
+# display the survey data as a table
+DT::datatable(head(population, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+For cluster surveys you may want to add survey weights at the cluster level. 
+You could read this data in as above. 
+Alternatively if there are only a few counts, these could be entered as below
+in to a tibble. 
+In any case you will need to have one column with a cluster identifier which 
+matches your survey data, and another column with the number of households in 
+each cluster. 
+
+```{r cluster_counts}
+
+## define the number of households in each cluster
+cluster_counts <- tibble(cluster = c("village_1", "village_2", "village_3", "village_4", 
+                                     "village_5", "village_6", "village_7", "village_8",
+                                     "village_9", "village_10"), 
+                         households = c(700, 400, 600, 500, 300, 
+                                        800, 700, 400, 500, 500))
+
+```
+
+### Clean data {-}
+
+The below makes sure that the date column is in the appropriate format. 
+There are several other ways of doing this (see the [Working with dates](https://epirhandbook.com/working-with-dates.html)
+page for details), however using the dictionary to define dates is quick and easy. 
+
+We also create an age group variable using the `age_categories()` function from 
+**epikit** - see [cleaning data](https://epirhandbook.com/cleaning-data-and-core-functions.html#num_cats)
+handbook section for details. 
+
+Finally, we create a character variable defining which district the various clusters
+are in. 
+```{r clean_data}
+
+## select the date variable names from the dictionary 
+DATEVARS <- survey_dict %>% 
+  filter(type == "date") %>% 
+  filter(name %in% names(survey_data)) %>% 
+  ## filter to match the column names of your data
+  pull(name) # select date vars
+  
+## change to dates 
+survey_data <- survey_data %>%
+  mutate(across(all_of(DATEVARS), guess_dates))
+
+
+## define age group variable
+survey_data <- survey_data %>% 
+     mutate(age_group = age_categories(age_years, 
+                                    breakers = c(0, 3, 15, 30, 45)
+                                    ))
+
+
+## create a character variable based off groups of a different variable 
+survey_data <- survey_data %>% 
+  mutate(health_district = case_when(
+    cluster_number %in% c(1:5) ~ "district_a", 
+    TRUE ~ "district_b"
+  ))
+
+
+```
+
+
+
+<!-- ======================================================= -->
+## Survey data {  }
+
+There numerous different sampling designs that can be used for surveys. Here 
+we will demonstrate code for: 
+- Stratified 
+- Cluster 
+- Stratified and cluster 
+
+As described above (depending on how you design your questionnaire) the data for 
+each level would be exported as a separate dataset from Kobo. In our example there
+is one level for households and one level for individuals within those households. 
+
+These two levels are linked by a unique identifier. 
+For a Kobo dataset this variable is "_index" at the household level, which 
+matches the "_parent_index" at the individual level.
+This will create new rows for household with each matching individual, 
+see the handbook section on [joining](https://epirhandbook.com/joining-data.html)
+for details. 
+
+```{r merge_data_levels, eval = FALSE}
+
+## join the individual and household data to form a complete data set
+survey_data <- left_join(survey_data_hh, 
+                         survey_data_indiv,
+                         by = c("_index" = "_parent_index"))
+
+
+## create a unique identifier by combining indeces of the two levels 
+survey_data <- survey_data %>% 
+     mutate(uid = str_glue("{index}_{index_y}"))
+
+```
+
+<!-- ======================================================= -->
+## Observation time {  }
+
+For mortality surveys we want to now how long each individual was present for in 
+the location to be able to calculate an appropriate mortality rate for our period 
+of interest. This is not relevant to all surveys, but particularly for mortality
+surveys this is important as they are conducted frequently among mobile or displaced
+populations. 
+
+To do this we first define our time period of interest, also known as a recall 
+period (i.e. the time that participants are asked to report on when answering 
+questions). 
+We can then use this period to set inappropriate dates to missing, i.e. if deaths
+are reported from outside the period of interest. 
+
+```{r recall_period}
+
+## set the start/end of recall period
+## can be changed to date variables from dataset 
+## (e.g. arrival date & date questionnaire)
+survey_data <- survey_data %>% 
+  mutate(recall_start = as.Date("2018-02-01"), 
+         recall_end   = as.Date("2018-05-01")
+  )
+
+
+# set inappropriate dates to NA based on rules 
+## e.g. arrivals before start, departures departures after end
+survey_data <- survey_data %>%
+      mutate(
+           arrived_date = if_else(arrived_date < recall_start, 
+                                 as.Date(NA),
+                                 arrived_date),
+           birthday_date = if_else(birthday_date < recall_start,
+                                  as.Date(NA),
+                                  birthday_date),
+           left_date = if_else(left_date > recall_end,
+                              as.Date(NA),
+                              left_date),
+           death_date = if_else(death_date > recall_end,
+                               as.Date(NA),
+                               death_date)
+           )
+
+```
+
+
+We can then use our date variables to define start and end dates for each individual. 
+We can use the `find_start_date()` function from **sitrep*** to fine the causes for 
+the dates and then use that to calculate the difference between days (person-time). 
+
+start date: 
+Earliest appropriate arrival event within your recall period
+Either the beginning of your recall period (which you define in advance), or a 
+date after the start of recall if applicable (e.g. arrivals or births)
+
+end date: 
+Earliest appropriate departure event within your recall period
+Either the end of your recall period, or a date before the end of recall 
+if applicable (e.g. departures, deaths)
+
+```{r observation_time}
+
+## create new variables for start and end dates/causes
+survey_data <- survey_data %>% 
+     ## choose earliest date entered in survey
+     ## from births, household arrivals, and camp arrivals 
+     find_start_date("birthday_date",
+                  "arrived_date",
+                  period_start = "recall_start",
+                  period_end   = "recall_end",
+                  datecol      = "startdate",
+                  datereason   = "startcause" 
+                 ) %>%
+     ## choose earliest date entered in survey
+     ## from camp departures, death and end of the study
+     find_end_date("left_date",
+                "death_date",
+                period_start = "recall_start",
+                period_end   = "recall_end",
+                datecol      = "enddate",
+                datereason   = "endcause" 
+               ) %>%
+     ## label those that were present at the start/end (except births/deaths)
+     mutate(startcause = if_else(startdate == recall_start & startcause != "birthday_date",
+                              "Present at start", startcause)) %>%
+     mutate(endcause = if_else(enddate == recall_end & endcause != "death_date", 
+                            "Present at end", endcause))
+
+
+## Define observation time in days
+survey_data <- survey_data %>% 
+  mutate(obstime = as.numeric(enddate - startdate))
+
+```
+
+
 <!-- ======================================================= -->
 ## Weighting {  }
 
-<!-- ======================================================= -->
-## Random selection {  }
+It is important that you drop erroneous observations before adding survey weights. 
+For example if you have observations with negative observation time, you will need
+to check those. 
+Another thing is if you want to drop empty rows (e.g. with `filter(!is.na(uid))`)
+or remove duplicates (see handbook section on [de-duplication](https://epirhandbook.com/de-duplication.html)
+for details). 
+Those without consent need to be dropped too. 
+
+In this example we filter for the cases we want to drop and store them in a separate
+data frame - this way we can describe those that were excluded from the survey. 
+We then use the `anti_join()` function from **dplyr** to remove these dropped cases
+from our survey data. 
+
+```{r remove_unused_data}
+
+## store the cases that you drop so you can describe them (e.g. non-consenting 
+## or wrong village/cluster)
+dropped <- survey_data %>% 
+  filter(consent != "yes" | is.na(startdate) | is.na(enddate) | village_name == "other")
+
+## use the dropped cases to remove the unused rows from the survey data set  
+survey_data <- anti_join(survey_data, dropped, by = names(dropped))
+
+```
+
+As mentioned above we demonstrate how to add weights for three different study 
+designs (stratified, cluster and stratified cluster). These require information 
+on the source population and/or the clusters surveyed. 
+We will use the stratified cluster code for this example, but use whichever is
+most appropriate for your study design. 
+
+```{r survey_weights}
+
+## stratified ------------------------------------------------------------------
+## create a variable called "surv_weight_strata" 
+## contains weights for each individual - by age group, sex and health district
+survey_data <- add_weights_strata(x = survey_data, 
+                                         p = population, 
+                                         surv_weight = "surv_weight_strata",
+                                         surv_weight_ID = "surv_weight_ID_strata",
+                                         age_group, sex, health_district)
+
+## cluster ---------------------------------------------------------------------
+
+## get the number of people of individuals interviewed per household 
+## adds a variable with counts of the household (parent) index variable
+survey_data <- survey_data %>% 
+  add_count(index, name = "interviewed")
+
+
+## create cluster weights 
+survey_data <- add_weights_cluster(x = survey_data, 
+                                          cl = cluster_counts, 
+                                          eligible = member_number, 
+                                          interviewed = interviewed,
+                                          cluster_x = village_name, 
+                                          cluster_cl = cluster,
+                                          household_x = index, 
+                                          household_cl = households, 
+                                          surv_weight = "surv_weight_cluster", 
+                                          surv_weight_ID = "surv_weight_ID_cluster", 
+                                          ignore_cluster = FALSE, 
+                                          ignore_household = FALSE)
+
+
+## stratified and cluster ------------------------------------------------------
+## create a survey weight for cluster and strata 
+survey_data <- survey_data %>% 
+  mutate(surv_weight_cluster_strata = surv_weight_strata * surv_weight_cluster)
+
+```
+
+
+
 
 <!-- ======================================================= -->
 ## Resources {  }
