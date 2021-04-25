@@ -1,8 +1,6 @@
 
 # Dashboards with R Markdown { }
 
-THIS PAGE IS UNDER CONSTRUCTION
-
 ```{r out.width = "100%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_output.png"))
 ```
@@ -147,7 +145,7 @@ In **flexdashboard**, a primary heading (#) creates a "page" of the dashboard. S
 
 ## Attributes 
 
-As in a normal R markdown, you can specify attributes to apply to parts of your dashboard by including `key=value` options after a heading within curly brackets `{ }`. For example, in a typical HTML R Markdown report you might organize sub-headings into tabs with `## My heading {.tabset}`. 
+As in a normal R markdown, you can specify attributes to apply to parts of your dashboard by including `key=value` options after a heading within curly brackets `{ }`. For example, in a typical HTML R Markdown report you might set figure height with `### Epicurve {out.height = "75%"}` or organize sub-headings into tabs with `## My heading {.tabset}`. 
 
 Attributes specific to **flexdashboard** include:  
 
@@ -181,7 +179,7 @@ knitr::include_graphics(here::here("images", "flexdashboard_pages_top_view.png")
 
 
 
-You can group pages into a "menu" within the navigaton bar by adding the attribute `{data-navmenu=}` to the page heading. Be careful - do not include spaces around the equals sign otherwise it will not work!  
+You can group pages into a "menu" within the top navigation bar by adding the attribute `{data-navmenu=}` to the page heading. Be careful - do not include spaces around the equals sign otherwise it will not work!  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_navmenu_script.png"))
@@ -223,11 +221,12 @@ knitr::include_graphics(here::here("images", "flexdashboard_rows_view.png"))
 
 If your dashboard has multiple pages, you can designate the orientation for each specific page by adding the `{data-orientation=}` attribute the header of each page (specify either `rows` or `columns` without quotes).  
 
-### Tabbed panels  
+### Tabs {-} 
 
 You can divide content into tabs with the `{.tabset}` attribute, as in other HTML R Markdown outputs.  
 
 Simply add this attribute to the desired heading. Sub-headings under that heading will be displayed as tabs. For example, in the example script below the right-most column (##) is modified so that the epidemic curve and table panes (###) are displayed in tabs.  
+You can do the same with rows if your orientation is rows.  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_tabs_script.png"))
@@ -235,43 +234,103 @@ knitr::include_graphics(here::here("images", "flexdashboard_tabs_script.png"))
 knitr::include_graphics(here::here("images", "flexdashboard_tabs_view.png"))
 ```
 
-If you want a single pane (###) to have tabs, you can add the `{.tabset}` attribute to it, and include the pane-tab content beneath it under sub-headings (####).  
 
 ## Adding content  
 
-Just like another R Markdown output, content can be created or imported using R code chunks.  
+### Static R content {-}  
+
+You can easily include standard R outputs such as text, ggplots, and tables (see [Tables for presentation] page). Simply code them with R code chunk as you would for any other R Markdown script.  
+
+Let's begin to build a dashboard. Our simple dashboard will have 1 page, 2 columns, and 4 panels. We will build the panels one piece-by-piece for demonstration. 
+
+#### Text {-}  
+
+You can type in Markdown text and include *in-line* code as for any other R Markdown output. See the [R Markdown reports] page for details. 
+
+In this dashboard we include a summary text panel that includes dynamic text showing the latest hospitalisation date and number of cases reported in the outbreak. 
+
+#### Tables {-}  
+
+You can include R code chunks that print outputs such as tables. But the output will look best and respond to the window size if you use the `kable()` function from **knitr** to display your tables. The **flextable** functions may produce tables that are shortened / cut-off.  
+
+For example, below we feed the `linelist()` through a `count()` command to produce a summary table of cases by hospital. Ultimately, the table is piped to `knitr::kable()` and the result has a scroll bar on the right. You can read more about customizing your table with `kable()` and **kableExtra** [here](https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html).  
+
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
+knitr::include_graphics(here::here("images", "flexdashboard_tables_script.png"))
+
+knitr::include_graphics(here::here("images", "flexdashboard_tables_view.png"))
+```
+
+
+If you want to show a dynamic tables that allows the user to filter, sort, and/or click through "pages" of the data frame, use the package **DT** and it's function `datatable()`, as in the code below.  
+
+The example code below, the data frame `linelist` is printed. Specifications used include `rownames = FALSE` to conserve horizontal space, and a list provided to `options = ` including setting that 5 rows appear, and that the user can use a scroll bar on the bottom to scroll horizontally. The argument `class = 'white-space: nowrap'` ensures that each row is only one line (not multiple lines). You can read about other possible arguments and values [here](https://rstudio.github.io/DT/?_ga=2.2810736.1321860763.1619286819-369061888.1601594705) or by entering `?datatable`
+
+```{r, eval=F}
+DT::datatable(linelist, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+### Plots  
+
+You can print plots to a dashboard pane. In our example, we use the **incidence2** package to create an "epicurve" by age group with two simple commands (see [Epidemic curves] page). However, you could use `ggplot()` and print a plot in the same manner.  
+
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
+knitr::include_graphics(here::here("images", "flexdashboard_plots_script.png"))
+
+knitr::include_graphics(here::here("images", "flexdashboard_plots_view.png"))
+```
+
+You can also pass your plot to `ggplotly()` from the **plotly** package (see the [Interactive plots] page). This will make your plot interactive, allow the reader to "zoom in", and show-on-hover the value of every data point (in this scenario the number of cases per week and age group in the curve).  
+
+```{r, eval=F}
+age_outbreak <- incidence(linelist, date_onset, "week", groups = age_cat)
+plot(age_outbreak, fill = age_cat, col_pal = muted, title = "") %>% 
+  plotly::ggplotly()
+```
+
+Here is what this looks like in the dashboard (gif):  
+
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
+knitr::include_graphics(here::here("images", "flexdashboard_ggplotly.gif"))
+```
+
+### HTML widgets 
+
+[HTML widgets for R](http://www.htmlwidgets.org/) are a special class of R packages that utilize JavaScript libraries. You can embed them in R Markdown outputs (such as a flexdashboard) and in Shiny dashboards.  
+
+Some common examples of these widgets include:  
+
+* Plotly (used in this handbook page and in the [Interative plots] page)
+* visNetwork (used in the [Transmission Chains] page of this handbook)  
+* Leaflet (used in the [GIS Basics] page of this handbook)  
+* dygraphs (useful for interactively showing time series data)  
+* DT (`datatable()`) (used to show dynamic tables with filter, sort, etc.)  
+
+Below we demonstrate adding an epidemic transmission chain which uses visNetwork to the dashboard. The script shows only the new code added to the "Column 2" section of the R Markdown script. You can find the code in the [Transmission chains] page of this handbook.  
+
+```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
+knitr::include_graphics(here::here("images", "flexdashboard_chain_script.png"))
+
+knitr::include_graphics(here::here("images", "flexdashboard_chain.gif"))
+```
+
+
+
+## Code organization
 
 You may elect to have all code within the R Markdown **flexdashboard** script. Alternatively, to have a more clean and concise dashboard script you may choose to call upon code/figures that are hosted or created in external R scripts. This is described in greater detail in the [R Markdown reports] page. 
 
-Below we give brief examples of both approaches.  
 
+## Shiny  
 
-### Code in the R Markdown {-} 
+See the page [Dashboards with Shiny].  
+Read the extensive documentation available online [here](https://rmarkdown.rstudio.com/flexdashboard/shiny.html).  
 
-
-
-
-### Source external code {-}
-
-
-
-## Interactive figures  
-
-
-htmlwidgets
-shiny embedded
-visNetwork
-
-### Add plotly {-}
-
-### Add shiny {-}  
 
 
 ## Sharing  
 
-### By email {-}  
-
-### Online {-}  
+The dashboards will save as an HTML file (.html), which can be emailed (if size permits). This is useful, as you can send the "dashboard" report and not have to set up a server to host the dashboard as a website.  
 
 
 
