@@ -13,34 +13,13 @@ Spatial aspects of your data can provide a lot of insights into the situation of
 In this section, we will explore basic spatial data visualization methods using **tmap** and **ggplot2** packages.
 We will also walk through some of the basic spatial data management and querying methods with the **sf** package.
 
-Here are some example outputs:  
-
-**Choropleth map**  
-
-```{r, fig.align = "center", fig.show='hold', echo=F}
-knitr::include_graphics(here::here("images", "gis_choropleth.png"))
-```
-
-**Case density heatmap**  
-
-```{r, fig.align = "center", echo=F}
-knitr::include_graphics(here::here("images", "gis_heatmap.png"))
-```
-
-**Health facility catchment areas**
-
-```{r, fig.align = "center", echo=F}
-knitr::include_graphics(here::here("images", "gis_hf_catchment.png"))
-```
-
-
 ## Key terms {}  
-
-THIS KEY TERMS SECTION IS UNDER CONSTRUCTION  
 
 Below we introduce some key terminology. For a thorough introduction to GIS and spatial analysis, we suggest that you review one of the longer tutorials or courses listed in the References section.  
 
-**Geographic Information System (GIS)** - A GIS is a framework or environment for gathering, managing, analyzing, and visualizing spatial data.   
+**Geographic Information System (GIS)** - A GIS is a framework or environment for gathering, managing, analyzing, and visualizing spatial data.
+
+### GIS software
 
 Some popular GIS software allow point-and-click interaction for map development and spatial analysis. These tools comes with advantages such as not needing to learn code and the ease of manually selecting and placing icons and features on a map. Here are two popular ones:  
 
@@ -49,11 +28,31 @@ Some popular GIS software allow point-and-click interaction for map development 
 
 Using R as a GIS can seem more intimidating at first because instead of "point-and-click", it has a "command-line interface" (you must code to acquire the desired outcome). However, this is a major advantage if you need to repetitively produce maps or have an analysis that is reproducible.  
 
+### Spatial data
+
+The two primary forms of spatial data used in GIS are vector and raster data:
+
+**Vector Data** - The most common format of spatial data used in GIS, vector data are comprised of geometric features of vertices and paths. Vector spatial data can be further divided into three widely-used types:
+
+  * *Points* - A point consists of a coordinate pair (x,y)  representing a specific location in a coordinate system. Points are the most basic form of spatial data, and may be used to denote a case (i.e. patient home) or a location (i.e. hospital) on a map.
+
+  * *Lines* - A line is composed of two connected points. Lines have a length, and may be used to denote things like roads or rivers.
+
+  * *Polygons* - A polygon is composed of at least three line segments connected by points. Polygon features have a length (i.e. the perimeter of the area) as well as an area measurement. Polygons may be used to note an area (i.e. a village) or a structure (i.e. the actual area of a hospital). 
+
+**Raster Data** - An alternative format for spatial data, raster data is a matrix of cells (e.g. pixels) with each cell containing information such as height, temperature, slope, forest cover, etc. These are often aerial photographs, satellite imagery, etc. Rasters can also be used as “base maps” below vector data.
+
+### Visualizing spatial data
+
+To visually represent spatial data on a map, GIS software requires you to provide sufficient information about where different features should be, in relation to one another. If you are using vector data, which will be true for most use cases, this information will typically be stored in a shapefile:
+
 **Shapefiles** - A shapefile is a common data format for storing "vector" spatial data consisting or lines, points, or polygons. A single shapefile is actually a collection of at least three files - .shp, .shx, and .dbf. All of these sub-component files must be present in a given directory (folder) for the shapefile to be readable. These associated files can be compressed into a ZIP folder to be sent via email or download from a website.  
+
+The shapefile will contain information about the features themselves, as well as where to locate them on the Earth’s surface. This is important because while the Earth is a globe, maps are typically two-dimensional; choices about how to “flatten” spatial data can have a big impact on the look and interpretation of the resulting map.
 
 **Coordinate Reference Systems (CRS)** - A CRS is a coordinate-based system used to locate geographical features on the Earth's surface. It has a few key components:  
 
-  * *Coordinate System** - There are many many different coordinate systems, so make sure you know which system your coordinates are from. Degrees of latitude/longitude are common, but you could also see [UTM](https://www.maptools.com/tutorials/utm/quick_guide) coordinates.  
+  * *Coordinate System* - There are many many different coordinate systems, so make sure you know which system your coordinates are from. Degrees of latitude/longitude are common, but you could also see [UTM](https://www.maptools.com/tutorials/utm/quick_guide) coordinates.  
   
   * *Units* - Know what the units are for your coordinate system (e.g. decimal degrees, meters)  
 
@@ -61,11 +60,52 @@ Using R as a GIS can seem more intimidating at first because instead of "point-a
 
   * *Projection* - A reference to the mathematical equation that was used to project the truly round earth onto a flat surface (map).  
 
-**Raster** - An alternative format for spatial data, raster data is a matrix of cells (e.g. pixels) with each cell containing information such as height, temperature, slope, forest cover, etc. These are often aerial photographs, satellite imagery, etc. Rasters can also be used as "base maps" below vector data.   
-
-
 Remember that you can summarise spatial data without using the mapping tools shown below. Sometimes a simple table by geography (e.g. district, country, etc.) is all that is needed!  
 
+## Getting started with GIS
+There are a couple of key items you will need to have and to think about to make a map. These include:
+
+  * A **dataset** -- this can be in a spatial data format (such as shapefiles, as noted above) or it may not be in a spatial format (for instance just as a csv).
+  
+  * If your dataset is not in a spatial format you will also need a **reference dataset**. Reference data consists of the spatial representation of the data and the related attribute table, which would include material containing the location and address information of specific features.
+  
+    + If you are working with pre-defined geographic boundaries (for example, administrative regions), reference shapefiles are often freely available to download from a government agency or data sharing organization. When in doubt, a good place to start is to Google “[regions] shapefile”
+    
+    + If you have address information, but no latitude and longitude, you may need to use a **geocoding engine** to get the spatial reference data for your records. 
+    
+  * An idea about **how you want to present** the information in your datasets to your target audience. There are many different types of maps, and it is important to think about which type of map best fits your needs.
+
+### Types of maps for visualizing your data
+
+**Choropleth map** - a type of thematic map where colors, shading, or patterns are used to represent geographic regions in relation to their value of an attribute. For instance a larger value could be indicated by a darker colour than a smaller value. This type of map is particularly useful when visualizing a variable and how it changes across defined regions or geopolitical areas.
+
+```{r, fig.align = "center", fig.show='hold', echo=F}
+knitr::include_graphics(here::here("images", "gis_choropleth.png"))
+```
+
+**Case density heatmap** - a type of thematic map where colours are used to represent intensity of a value, however, it does not use defined regions or geopolitical boundaries to group data. This type of map is typically used for showing ‘hot spots’ or areas with a high density or concentration of points. 
+
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "gis_heatmap.png"))
+```
+
+**Dot density map** - a thematic map type that uses dots to represent attribute values in your data. This type of map is best used to visualize the scatter of your data and visually scan for clusters.
+
+```{r, fig.align = "center", echo=F}
+# dot density img here
+```
+
+**Proportional symbols map (graduated symbols map)** - a thematic map similar to a choropleth map, but instead of using colour to indicate the value of an attribute it uses a symbol (usually a circle) in relation to the value. For instance a larger value could be indicated by a larger symbol than a smaller value. This type of map is best used when you want to visualize the size or quantity of your data across geographic regions. 
+
+```{r, fig.align = "center", echo=F}
+# proportional symbols img here
+```
+
+You can also combine several different types of visualizations to show complex geographic patterns; for example, the map below shows **health facility catchment areas**:
+
+```{r, fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "gis_hf_catchment.png"))
+```
 
 <!-- ======================================================= -->
 ## Preparation {  }
@@ -125,8 +165,6 @@ We use the package **sf** (spatial features) and its function `st_as_sf()` to cr
 linelist_sf <- linelist %>%
      sf::st_as_sf(coords = c("lon", "lat"), crs = 4326)
 ```
-
-
 
 
 ### Admin boundary shapefiles {-}  
@@ -747,10 +785,70 @@ autoplot.OpenStreetMap(map_latlon)+
 
 ```
 
+## Mapping with ggplot2
+If you are already familiar with using **ggplot2**, you can use that package instead to create static maps of your data. The `geom_sf()` function will draw different objects based on which features (points, lines, or polygons) are in your data. For example, you can use `geom_sf()` in a `ggplot()` using `sf` data with polygon geometry to create a choropleth map.
 
+To illustrate how this works, we can start with the ADM3 polygons shapefile that we used earlier. Recall that these are Admin Level 3 regions in Sierra Leone:
 
+```{r}
+sle_adm3
+```
+We can use the `left_join()` function from **dplyr** to add the data we would like to map to the shapefile object. In this case, we are going to use the `case_adm3` data frame that we created earlier to summarize case counts by administrative region; however, we can use this same approach to map any data stored in a data frame.
+```{r}
+sle_adm3_dat <- sle_adm3 %>% 
+  inner_join(case_adm3, by = "admin3name") # inner join = retain only if in both data objects
 
+select(sle_adm3_dat, admin3name, cases) # print selected variables to console
+```
 
+To make a column chart of case counts by region, using **ggplot2**, we could then call `geom_col()` as follows:
+
+```{r, fig.align = "center"}
+ggplot(data=sle_adm3_dat) +
+  geom_col(aes(x=fct_reorder(admin3name, cases, .desc=T),   # reorder x axis by descending 'cases'
+               y=cases)) +                                  # y axis is number of cases by region
+  theme_bw() +
+  labs(                                                     # set figure text
+    title="Number of cases, by administrative unit",
+    x="Admin level 3",
+    y="Number of cases"
+  ) + 
+  guides(x=guide_axis(angle=45))                            # angle x-axis labels 45 degrees to fit better
+
+```
+
+If we want to use **ggplot2** to instead make a choropleth map of case counts, we can use similar syntax to call the `geom_sf()` function:
+
+```{r, fig.align = "center"}
+ggplot(data=sle_adm3_dat) + 
+  geom_sf(aes(fill=cases))    # set fill to vary by case count variable
+
+```
+
+We can then customize the appearance of our map using grammar that is consistent across **ggplot2**, for example:
+```{r, fig.align = "center"}
+ggplot(data=sle_adm3_dat) +                           
+  geom_sf(aes(fill=cases)) +						
+  scale_fill_continuous(high="#54278f", low="#f2f0f7") +    # change color gradient
+  theme_bw() +
+  labs(title = "Number of cases, by administrative unit",   # set figure text
+       subtitle = "Admin level 3"
+  )
+```
+
+For R users who are comfortable working with **ggplot2**, `geom_sf()` offers a simple and direct implementation that is suitable for basic map visualizations. To learn more, read the [geom_sf() vignette](https://ggplot2.tidyverse.org/reference/ggsf.html) or the [ggplot2 book](https://ggplot2-book.org/maps.html). 
+
+<!-- SPATIAL STATISTICS SECTION IS UNDER DEVELOPMENT
+## Spatial statistics
+Most of our discussion so far has focused on visualization of spatial data. In some cases, you may also be interested in using *spatial statistics* to quantify the spatial relationships of attributes in your data. This section will provide a very brief overview of some key concepts in spatial statistics, and suggest some resources that will be helpful to explore if you wish to do more comprehensive spatial analyses. 
+
+### Spatial relationships
+We can quantify adjacency relationships between administrative region polygons in the `sle_adm3` data we have been using with the **spdep** package:
+
+### Spatial autocorrelation
+
+### Spatial regression
+-->
 
 <!-- ======================================================= -->
 ## Resources {  }
