@@ -838,17 +838,43 @@ ggplot(data=sle_adm3_dat) +
 
 For R users who are comfortable working with **ggplot2**, `geom_sf()` offers a simple and direct implementation that is suitable for basic map visualizations. To learn more, read the [geom_sf() vignette](https://ggplot2.tidyverse.org/reference/ggsf.html) or the [ggplot2 book](https://ggplot2-book.org/maps.html). 
 
-<!-- SPATIAL STATISTICS SECTION IS UNDER DEVELOPMENT
+<!-- SPATIAL STATISTICS SECTION IS UNDER DEVELOPMENT --> 
 ## Spatial statistics
 Most of our discussion so far has focused on visualization of spatial data. In some cases, you may also be interested in using *spatial statistics* to quantify the spatial relationships of attributes in your data. This section will provide a very brief overview of some key concepts in spatial statistics, and suggest some resources that will be helpful to explore if you wish to do more comprehensive spatial analyses. 
 
 ### Spatial relationships
-We can quantify adjacency relationships between administrative region polygons in the `sle_adm3` data we have been using with the **spdep** package:
+Before we can calculate any spatial statistics, we need to specify the relationships between features in our data. There are many ways to conceptualize spatial relationships, but a simple and commonly-applicable model to use is that of *adjacency* - specifically, that we expect a geographic relationship between areas that share a border or “neighbour” one another. 
+
+We can quantify adjacency relationships between administrative region polygons in the `sle_adm3` data we have been using with the **spdep** package. We will specify *queen* contiguity, which means that regions will be neighbors if they share at least one point along their borders. The alternative would be *rook* contiguity, which requires that regions share an edge - in our case, with irregular polygons, the distinction is trivial, but in some cases the choice between queen and rook can be influential.
+```{r}
+sle_nb <- spdep::poly2nb(sle_adm3_dat, queen=T) # create neighbors 
+sle_adjmat <- spdep::nb2mat(sle_nb)    # create matrix summarizing neighbor relationships
+
+sle_nb
+round(sle_adjmat, digits = 2)
+```
+
+The matrix printed above shows the relationships between the 9 regions in our `sle_adm3` data. A score of 0 indicates two regions are not neighbors, while any value other than 0 indicates a neighbor relationship. The values in the matrix are scaled so that each region has a total row weight of 1.
+
+A better way to visualize these neighbor relationships is by plotting them:
+```{r, fig.align='center', results='hide'}
+plot(sle_adm3_dat$geometry) +                                           # plot region boundaries
+  spdep::plot.nb(sle_nb,as(sle_adm3_dat, 'Spatial'), col='grey', add=T) # add neighbor relationships
+```
+
+We have used an adjacency approach to identify neighboring polygons; the neighbors we identified are also sometimes called **contiguity-based neighbors**. But this is just one way of choosing which regions are expected to have a geographic relationship. The most common alternative approaches for identifying geographic relationships generate **distance-based neighbors**; briefly, these are:
+  
+  * **K-nearest neighbors** - Based on the distance between centroids (the geographically-weighted center of each polygon region), select the *n* closest regions as neighbors. A maximum-distance proximity threshold may also be specified. In **spdep**, you can use `knearneigh()` (see [documentation](https://r-spatial.github.io/spdep/reference/knearneigh.html)).
+  
+  * **Distance threshold neighbors** - Select all neighbors within a distance threshold. In **spdep**, these neighbor relationships can be identified using `dnearneigh()` (see [documentation](https://www.rdocumentation.org/packages/spdep/versions/1.1-7/topics/dnearneigh)).
 
 ### Spatial autocorrelation
 
+```{r}
+
+```
+
 ### Spatial regression
--->
 
 <!-- ======================================================= -->
 ## Resources {  }
