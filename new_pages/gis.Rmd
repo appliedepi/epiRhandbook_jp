@@ -795,14 +795,14 @@ We can use the `left_join()` function from **dplyr** to add the data we would li
 sle_adm3_dat <- sle_adm3 %>% 
   inner_join(case_adm3, by = "admin3pcod") # inner join = retain only if in both data objects
 
-select(sle_adm3_dat, admin3name, cases) # print selected variables to console
+select(sle_adm3_dat, admin3name.x, cases) # print selected variables to console
 ```
 
 To make a column chart of case counts by region, using **ggplot2**, we could then call `geom_col()` as follows:
 
 ```{r, fig.align = "center"}
 ggplot(data=sle_adm3_dat) +
-  geom_col(aes(x=fct_reorder(admin3name, cases, .desc=T),   # reorder x axis by descending 'cases'
+  geom_col(aes(x=fct_reorder(admin3name.x, cases, .desc=T),   # reorder x axis by descending 'cases'
                y=cases)) +                                  # y axis is number of cases by region
   theme_bw() +
   labs(                                                     # set figure text
@@ -932,22 +932,21 @@ As you can see, the map of Getis-Ord Gi* looks slightly different from the map o
 
 **Lee's L test** - This is a statistical test for bivariate spatial correlation. It allows you to test whether the spatial pattern for a given variable *x* is similar to the spatial pattern of another variable, *y*, that is hypothesized to be related spatially to *x*. 
 
-To give an example, let's test whether the spatial pattern of Ebola cases from the simulated epidemic is correlated with the spatial pattern of population. To start, we need to add a `population` variable to our existing `sle_adm3` data. We can use the `sle_adm3_pop` dataframe that we created earlier.
+To give an example, let's test whether the spatial pattern of Ebola cases from the simulated epidemic is correlated with the spatial pattern of population. To start, we need to have a `population` variable in our `sle_adm3` data. We can use the `total` variable from the `sle_adm3_pop` dataframe that we loaded earlier.
 
 ```{r}
 sle_adm3_dat <- sle_adm3_dat %>% 
-  left_join(select(sle_adm3_pop, adm3_pcode, total),  # add population variable 'total'
-            by=c("admin3pcod" = "adm3_pcode")) %>%    
-  rename(population = total)                          # rename to 'population'
+  rename(population = total)                          # rename 'total' to 'population'
 ```
 
 We can quickly visualize the spatial patterns of the two variables side by side, to see whether they look similar:
 ```{r, fig.align='center', warning=F, message=F}
 tmap_mode("plot")
 
-par(mfrow=c(2,1))
-tm_shape(sle_adm3_dat) + tm_polygons("cases") + tm_layout(main.title="Cases")
-tm_shape(sle_adm3_dat) + tm_polygons("population") + tm_layout(main.title="Population")
+cases_map <- tm_shape(sle_adm3_dat) + tm_polygons("cases") + tm_layout(main.title="Cases")
+pop_map <- tm_shape(sle_adm3_dat) + tm_polygons("population") + tm_layout(main.title="Population")
+
+tmap_arrange(cases_map, pop_map, ncol=2)   # arrange into 2x1 facets
 ```
 
 Visually, the patterns seem dissimilar. We can use the `lee.test()` function in **spdep** to test statistically whether the pattern of spatial autocorrelation in the two variables is related. The L statistic will be close to 0 if there is no correlation between the patterns, close to 1 if there is a strong positive correlation (i.e. the patterns are similar), and close to -1 if there is a strong negative correlation (i.e. the patterns are inverse). 
@@ -960,7 +959,6 @@ lee_test <- spdep::lee.test(
 )
 
 lee_test
-
 ```
 
 The output above shows that the Lee's L statistic for our two variables was `r round(lee_test$estimate[1],2)`, which indicates weak negative correlation. This confirms our visual assessment that the pattern of cases and population are not related to one another, and provides evidence that the spatial pattern of cases is not strictly a result of population density in high-risk areas.
@@ -982,7 +980,7 @@ The details of spatial regression approaches are beyond the scope of this handbo
 
 The **spdep** package contains several useful diagnostic tests for deciding between standard OLS, spatial lag, and spatial error models. These tests, called *Lagrange Multiplier diagnostics*, can be used to identify the type of spatial dependence in your data and choose which model is most appropriate. The function `lm.LMtests()` can be used to calculate all of the Lagrange Multiplier tests. Anselin (1988) also provides a useful flow chart tool to decide which spatial regression model to use based on the results of the Lagrange Multiplier tests:
 
-```{r, fig.align='center, echo=F}
+```{r, fig.align='center', echo=F}
 knitr::include_graphics(here::here("images", "gis_lmflowchart.jpg"))
 ```
 
