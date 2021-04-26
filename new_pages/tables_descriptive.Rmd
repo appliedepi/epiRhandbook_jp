@@ -21,7 +21,7 @@ pacman::p_load(
   gtsummary,    # summary statistics and tests
   janitor,      # adding totals and percents to tables
   scales,       # easily convert proportions to percents  
-  flextable     # converting tables to HTML
+  flextable     # converting tables to pretty images
   )
 ```
 
@@ -99,19 +99,26 @@ You can return individual statistics with **base** R functions like `max()`, `mi
 
 
 
-<!-- ======================================================= -->
+
+
+
 ## Descriptive tables {}
 
-You have several choices when producing tabulation and cross-tabulation summary tables. Some of the factors to consider include code simplicity and ease, the desired output (printed to R console, or as pretty HTML), and what you can do with the data afterward. Consider the points below as you choose the tool for your situation.  
+You have several choices when producing tabulation and cross-tabulation summary tables. Some of the factors to consider include code simplicity and ease, the desired output (printed to R console, or as "pretty" .png/.jpeg/.html image), and what you can do with the data afterward. Consider the points below as you choose the tool for your situation.
 
-* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations. 
-  * Cons: requires post-processing (e.g with **flextable**) for publication ready tables. Does not accept multiple variables (need to use **purrr** to iterate)
-* Use `summarise()` and `count()` from **dplyr** if calculating more complex statistics or preparing data for `ggplot()`  
+* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations.
+  * Cons: requires post-processing (e.g with **flextable**) for publication-ready tables. Does not accept multiple variables (need to use **purrr** to iterate)
+* Use `summarise()` and `count()` from **dplyr** if calculating more complex statistics or preparing data for `ggplot()`
   * Cons: similar to above but requires even more manipulation
-* Use `tbl_summary()` from **gtsummary** to produce detailed publication-ready tables  
-  * Cons: missings not automatically included in percentage calculations. To use for plotting need to extract tibble from list output. 
-* Use `table()` from **base** R if you do not have access to the above packages 
+* Use `tbl_summary()` from **gtsummary** to produce detailed publication-ready tables
+  * Cons: missings not automatically included in percentage calculations. To use for plotting need to extract tibble from list output.
+* Use `table()` from **base** R if you do not have access to the above packages
   * Cons: requires the most manipulation and post-processing
+
+
+
+
+
 
 
 ## **janitor** package  
@@ -189,7 +196,9 @@ linelist %>%                                  # case linelist
 
 ### Printing the tabyl {-}
 
-By default, the tabyl will print raw to your R console. Alternatively, you can pass the tabyl to **flextable**  or other package to print as HTML in the RStudio Viewer. Note that if using `adorn_titles()`, you must specify `placement = "combined"` in order to print in this manner.
+By default, the tabyl will print raw to your R console.  
+
+Alternatively, you can pass the tabyl to **flextable**  or similar package to print as a "pretty" image in the RStudio Viewer, which could be exported as .png, .jpeg, .html, etc. This is discussed in the page [Tables for presentation. Note that if printing in this manner and using `adorn_titles()`, you must specify `placement = "combined"`.
 
 ```{r}
 linelist %>%
@@ -201,19 +210,27 @@ linelist %>%
   adorn_title(
     row_name = "Age Category",
     col_name = "Gender",
-    placement = "combined") %>% # this is necessary to print to HTML 
-  flextable::flextable() %>%    # convert to HTML
+    placement = "combined") %>% # this is necessary to print as image
+  flextable::flextable() %>%    # convert to pretty image
   flextable::autofit()          # format to one line per row 
 
 ```
+
+
 ### Use on other tables {-}  
 
-You can use **janitor**'s `adorn_*()` functions on other tables, such as those created by `summarise()`, `count()`, or `table()`.  
+You can use **janitor**'s `adorn_*()` functions on other tables, such as those created by `summarise()`, `count()`, or `table()`. Simply pipe the table to the desired **janitor** function. For example:  
+
+```{r}
+linelist %>% 
+  count(hospital) %>%   # dplyr function
+  adorn_totals()        # janitor function
+```
 
 
 ### Saving the tabyl {-}  
 
-If you convert the table to HTML with a package like **flextable**, you can save with its functions `save_as_html()`, `save_as_word()`, `save_as_ppt()`, and `save_as_image()`, as discussed more extensively in the [Tables for presentation] page. Below, the table is saved as a Word document, in which it can be further hand-edited.  
+If you convert the table to a "pretty" image with a package like **flextable**, you can save with its functions `save_as_html()`, `save_as_word()`, `save_as_ppt()`, and `save_as_image()`, as discussed more extensively in the [Tables for presentation] page. Below, the table is saved as a Word document, in which it can be further hand-edited.  
 
 ```{r, eval=F}
 linelist %>%
@@ -226,7 +243,7 @@ linelist %>%
     row_name = "Age Category",
     col_name = "Gender",
     placement = "combined") %>% 
-  flextable::flextable() %>%                     # convert to HTML flextable
+  flextable::flextable() %>%                     # convert to image
   flextable::autofit() %>%                       # ensure only one line per row
   flextable::save_as_docx(path = "tabyl.docx")   # save as Word document
 ```
@@ -274,6 +291,7 @@ The most simple function to apply within `summarise()` is `n()`. Leave the paren
 linelist %>%                 # begin with linelist
   summarise(n_rows = n())    # return new summary dataframe with column n_rows
 ```
+
 This gets more interesting if we have grouped the data beforehand.  
 
 ```{r}
@@ -281,12 +299,14 @@ linelist %>%
   group_by(age_cat) %>%     # group data by unique values in column age_cat
   summarise(n_rows = n())   # return number of rows *per group*
 ```
+
 The above command can be shortened by using the `count()` function instead. `count()` groups the data by the columns provided to it, summarises them with `n()` (creating column `n`), and finishes by un-grouping the data.  
 
 ```{r}
 linelist %>% 
   count(age_cat)
 ```
+
 Tabulations of two or more columns in this manner are still returned in “long” format, with the counts in the `n` column.
 
 ```{r}
@@ -372,19 +392,23 @@ Some tips:
 * Use `sum()` with a logic statement to "count" rows that meet certain criteria (`==`)  
 * Note the use of `na.rm = TRUE` within mathematical functions like `sum()`, otherwise `NA` will be returned if there are any missing values  
 * Use the function `percent()` from the **scales** package to easily convert to percents  
+  * Set `accuracy = ` to 0.1 or 0.01 to ensure 1 or 2 decimal places respectively  
 * Use `round()` from **base** R to specify decimals  
 * To calculate these statistics on the entire dataset, use `summarise()` without `group_by()`  
+* You may have created column for the purposes of calculation (e.g. denominators) that you eventually drop from your final data frame (e.g. with `select()`).  
 
 
 #### Glueing together {-}  
 
-You can also use `str_glue()` from **stringr** to combine columns into one new column - typically used *after* the `summarise()` command.  
+The function `str_glue()` from **stringr** is useful to combine columns into one new column - typically used *after* the `summarise()` command.  
+
+In the [Characters and strings] page, various options for combining columns are discussed, including `unite()`, and `paste0()`. In this use case, we advocate for `str_glue()` because it is more flexible than `unite()` and has more simple syntax than `paste0()`.  
 
 Below, the `summary_table` data frame created above is mutated such that columns `delay_mean` and `delay_sd` are combined, parentheses formating is added to the new column, and their respective old columns are removed.  
 
 Then, to make the table more presentable, a total row is added with `adorn_totals()` from **janitor** (which ignores non-numeric columns). Lastly, we use `rename()` from **dplyr** to make the column names nicer.  
 
-Now you could pass to **flextable** and print the table to Word, HTML, Powerpoint, RMarkdown, etc.! (see the **janitor** section above and the [Tables for presentation] page).  
+Now you could pass to **flextable** and print the table to Word, .png, .jpeg, .html, Powerpoint, RMarkdown, etc.! (see the **janitor** section above and the [Tables for presentation] page).  
 
 ```{r}
 summary_table %>% 
@@ -452,10 +476,10 @@ linelist_agg %>%
 
 ### `across()` multiple columns {-}  
 
-You can use summarise across multiple columns using `across()`. This makes life easier when you want to calculate same statistics for many columns. To specify which columns to operate across, either:  
+You can use summarise across multiple columns using `across()`. This makes life easier when you want to calculate the same statistics for many columns. To specify which columns to operate across, either:  
 
-* provide `.cols = ` as either a vector of column names `c()` or `select()` semantic helper functions (explained below)  
-* provide `.fns = ` the function to perform (no parenthese) - you can provide multiple within a `list()`
+* provide `.cols = ` as either a vector of column names `c()` or "tidyselect" helper functions (explained below)  
+* provide `.fns = ` the function to perform (no parentheses) - you can provide multiple within a `list()`
 
 Below, `mean()` is applied to several numeric columns. A vector of columns are named explicitly and a single function `mean` is specified (no parentheses). Any additional arguments for the function (e.g. `na.rm=TRUE`) are provided afterwards.  
 
@@ -479,7 +503,7 @@ linelist %>%
                    na.rm=T))                                 # extra arguments
 ```
 
-Here are those `select()` helper functions that you can place *within* `across()`:  
+Here are those "tidyselect" helper functions that you can place *within* `across()`:  
 
 These are helper functions available to assist you in specifying columns:  
 
@@ -510,7 +534,20 @@ linelist %>%
 
 If you prefer your table in "wide" format you can transform it using the **tidyr** `pivot_wider()` function. You will likely need to re-name the columns with `rename()`. For more information see the page on [Pivoting data].  
 
-The example below begins with the "long" table `age_by_outcome` from above. The new column names are specified to `names_from = ` while the values are specified to come from column `n`. The only column not mentioned is `outcome`, which remains on the far left.  
+The example below begins with the "long" table `age_by_outcome` from above. We create it again and print, for clarity:  
+
+```{r}
+age_by_outcome <- linelist %>%                  # begin with linelist
+  group_by(outcome) %>%                         # group by outcome 
+  count(age_cat) %>%                            # group and count by age_cat, and then remove age_cat grouping
+  mutate(percent = scales::percent(n / sum(n))) # calculate percent - note the denominator is by outcome group
+```
+
+```{r, echo=F}
+DT::datatable(age_by_outcome, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+In the wider version, the new column names are specified to `names_from = ` while the values are specified to come from column `n`. The columns not mentioned (`outcome` in this case) will remain unchanged on the far left.  
 
 ```{r}
 age_by_outcome %>% 
@@ -597,9 +634,9 @@ table_long %>%
     values_from = c(ct_value, N),                       # new values are from ct and count columns
     names_from = outcome) %>%                           # new column names are from outcomes
   mutate(                                              # Add new columns
-    N_Known = N_Death + N_Recover,                      # number with known outcome
-    Pct_Death = N_Death / N_Known * 100,               # percent cases who died
-    Pct_Recover = N_Recover/N_Known * 100) %>%         # percent who recovered
+    N_Known = N_Death + N_Recover,                               # number with known outcome
+    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # percent cases who died (to 1 decimal)
+    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # percent who recovered (to 1 decimal)
   select(                                              # Re-order columns
     hospital, N_Known,                                   # Intro columns
     N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
@@ -608,7 +645,7 @@ table_long %>%
 
 ```
 
-And then you can print this nicely with HTML - below is the output printed with **flextable**. You can read more in depth about this example and how to achieve this nice table in the [Tables for presentation] page.  
+And then you can print this nicely as an image - below is the output printed with **flextable**. You can read more in depth about this example and how to achieve this "pretty" table in the [Tables for presentation] page.  
 
 ```{r echo=FALSE, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
 
@@ -619,14 +656,14 @@ border_style = officer::fp_border(color="black", width=1)
 pacman::p_load(
   rio,            # import/export
   here,           # file pathways
-  flextable,      # make HTML tables 
+  flextable,      # make pretty images of tables 
   officer,        # helper functions for tables
   tidyverse)      # data management, summary, and visualization
 
 table <- linelist %>% 
   # filter
   ########
-  filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
+  #filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
   
   # Get summary values per hospital-outcome group
   ###############################################
@@ -652,9 +689,9 @@ table <- linelist %>%
     values_from = c(ct_value, N),                       # new values are from ct and count columns
     names_from = outcome) %>%                           # new column names are from outcomes
   mutate(                                              # Add new columns
-    N_Known = N_Death + N_Recover,                      # number with known outcome
-    Pct_Death = N_Death / N_Known * 100,               # percent cases who died
-    Pct_Recover = N_Recover/N_Known * 100) %>%         # percent who recovered
+    N_Known = N_Death + N_Recover,                               # number with known outcome
+    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # percent cases who died (to 1 decimal)
+    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # percent who recovered (to 1 decimal)
   select(                                              # Re-order columns
     hospital, N_Known,                                   # Intro columns
     N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
@@ -708,7 +745,7 @@ table
 
 ## **gtsummary** package   
 
-If you want to print your summary statistics in a pretty, publication-ready graphic, you can use the **gtsummary** package and its function `tbl_summary()`. The code can seem complex at first, but the outputs look very nice and print to your RStudio Viewer panel as HTML. Read a [vignette here](http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html).    
+If you want to print your summary statistics in a pretty, publication-ready graphic, you can use the **gtsummary** package and its function `tbl_summary()`. The code can seem complex at first, but the outputs look very nice and print to your RStudio Viewer panel as an HTML image. Read a [vignette here](http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html).    
 
 To introduce `tbl_summary()` we will show the most basic behavior first, which actually produces a large and beautiful table. Then, we will examine in detail how to make adjustments and more tailored tables. 
 
@@ -863,7 +900,7 @@ Converting a `table()` object directly to a data frame is not straight-forward. 
 2) Add totals (optional) by piping to `addmargins()`  
 3) Pipe to the **base** R function `as.data.frame.matrix()`  
 4) Pipe the table to the **tibble** function `rownames_to_column()`, specifying the name for the first column  
-5) Print, View, or export as desired. In this example we use `flextable()` from package **flextable** as described in the [Tables for presentation] page. This will print to the RStudio viewer pane as a pretty HTML.  
+5) Print, View, or export as desired. In this example we use `flextable()` from package **flextable** as described in the [Tables for presentation] page. This will print to the RStudio viewer pane as a pretty HTML image.  
 
 ```{r, warning=F, message=F}
 table(fct_explicit_na(linelist$age_cat), fct_explicit_na(linelist$outcome)) %>% 

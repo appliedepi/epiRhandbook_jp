@@ -168,7 +168,7 @@ A blank canvas is not sufficient! We need to create geometries from our data! Ba
 This is done by adding layers of geometry to the initial `ggplot()` command. There are many **ggplot2** functions that create "geoms". Each of these functions begins with "geom_", so we will refer to them generically as `geom_XXXX()`. There are over 40 geoms in **ggplot2** and many others created by fans. View them at the [ggplot2 gallery](https://exts.ggplot2.tidyverse.org/gallery/). Some common geoms are listed below:  
 
 * Histograms - `geom_histogram()`  
-* Bar charts - `geom_bar()`  
+* Bar charts - `geom_bar()` or `geom_col()`  
 * Box plots - `geom_boxplot()`  
 * Points (e.g. scatter plots) - `geom_point()`  
 * Line graphs - `geom_line()` or `geom_path()`  
@@ -176,16 +176,21 @@ This is done by adding layers of geometry to the initial `ggplot()` command. The
 
 In one plot you can display one or multiple geoms. Each is added with a `+`, and they are plotted sequentially such that later geoms are plotted on top of previous ones.  
 
+There are two bar plots functions - `geom_bar()` and `geom_col()` which are discussed in more depth in a later section.  
+
 But simply knowing these geom functions is not sufficient to produce a plot! We must also *map* the data to the plot...
+
 
 
 ## Mapping plot aesthetics to data  
 
-The next core component of a `ggplot()` object is how plot "aesthetics" are mapped to columns in the data. By a plot "aesthetic", we mean a visual property of an object in the plot. The two essential "aesthetics" are the x-axis, and (if necessary) the y-axis.  
+The next core component of a `ggplot()` object is how plot "aesthetics" are mapped to columns in the data. By a plot "aesthetic", we mean a visual property of an object in the plot. 
 
-For aesthetics that are "mapped" to columns of the data are given to the `mapping = ` argument, but the actual assignments are listed within `aes()`, as shown below. 
+For most geoms, the essential aesthetics that must be mapped to columns in the data are the x-axis, and (if necessary) the y-axis.  
 
-Below, in the `ggplot()` command the data are set as the case `linelist`, and then the column `age` is mapped to the x-axis, and the column `wt_kg` is mapped to the y-axis. A `+` continues the plotting command and leads to `geom_point()`. This geom *inherits* the mapped aesthetics from the `ggplot()` command - it know the axis-column assignments and proceeds to visualize those relationships as *points* on the canvas.  
+Aesthetics that are "mapped" to columns of the data are specified to the `mapping = ` argument. The exact assignments are made within `aes()`, which is provided as `mapping = aes()`, as shown below.  
+
+Below, in the `ggplot()` command the data are set as the case `linelist`, and then within `aes()` the column `age` is mapped to the x-axis, and the column `wt_kg` is mapped to the y-axis. A `+` continues the plotting command and leads to `geom_point()`. This geom *inherits* the mapped aesthetics from the `ggplot()` command - it know the axis-column assignments and proceeds to visualize those relationships as *points* on the canvas.  
 
 ```{r, warning=F, message=F}
 ggplot(data = linelist, mapping = aes(x = age, y = wt_kg))+
@@ -209,7 +214,7 @@ ggplot(data = linelist, mapping = aes(x = age))+
 
 Likewise, `data = ` specified in the top `ggplot()` will apply by default to any geom below, but you can also specify data for each geom, if desired (this is one way to create a plot that combines multiple datasets).  
 
-Thus, both of the following commands will create the same plot:  
+Thus, each of the following commands will create the same plot:  
 
 ```{r, eval=F, warning=F, message=F}
 # These commands will produce the exact same plot
@@ -218,11 +223,14 @@ ggplot(data = linelist, mapping = aes(x = age))+
 
 ggplot(data = linelist)+
   geom_histogram(mapping = aes(x = age))
+
+ggplot()+
+  geom_histogram(data = linelist, mapping = aes(x = age))
 ```
 
 ## Other aesthetics   
 
-There are other aesthetics, which can be specific to the type of geom. Some examples:  
+There are other aesthetics, which are often specific to the type of geom. Some examples:  
 
 * `shape =` Display of a point (`geom_point()`) as a dot, star, triangle, square, etc.  
 * `fill = ` The interior color (e.g. of a bar or boxplot)  
@@ -232,7 +240,9 @@ There are other aesthetics, which can be specific to the type of geom. Some exam
 * `binwidth = ` Width of histogram bins  
 * `linetype =` Line type (e.g. solid, dashed, dotted)  
 
-*Assignments for these kinds of aesthetics (non-axes) can be placed inside or outside the `aes()`.* This depends on whether you want their value to be static or to be scaled/depend on the values in each row of data.  
+*These non-axis aesthetics can be assigned static values (e.g. `size = 1`) or can be mapped to a column (e.g. `size = age`).* If you want the aesthetic to be assigned a static value, the assignment is placed *outside* the `mapping = aes()`. If you want the aesthetic to be scaled/depend on the value in each row of data, the assignment is made *inside* the `mapping = aes()`.  
+
+### Assigned a static value {-}  
 
 If you want the value to be static, you would write its assignment within the `geom_XXXX()` but *outside* of a `mapping = aes()` statement (there may not even be one in the geom). The assignment values would be unchanging - for example, `size = 1` or `color = "blue"`.  
 
@@ -255,13 +265,15 @@ ggplot(data = linelist)+       # set data
 ```
 
 
-But you can instead map these aesthetics to columns in the data. In this case, their display is scaled and depends on the value in each row of data. Essentially, the data are grouped by the values in that column. If the column is continuous, as in the examples below, the aesthetic scale is continuous. If the column you assign is discrete, then the groups/colors/sizes/etc. will display by group (read more in the [grouping](#ggplotgroups) section).      
+### Assigned to a column {-}  
+
+You can map non-axis aesthetics (size, color, fill, alpha...) to columns in the data. In this case, their display is scaled and depends on the value in each row of data. Essentially, the data are grouped by the values in the assigned column. If the column values are continuous, as in the examples below, the aesthetic scale used is continuous. If the column you assign is discrete, then the scaled colors/sizes/etc. will display in a discrete scale by group (read more in the [grouping](#ggplotgroups) section).      
 
 In this case, you assign these aesthetics *within* the `aes()`, alongside the axes assignments. The assignments are now made to column names, not to static values. And finally, like the axes assignments, if you choose to put these in an `aes()` in the top `ggplot()` command these assignments will apply by default to any geoms below.  
 
 Two examples are below.  
 
-Note in the first example how the color of each point reflects the age value - and a scale has appeared in a legend! For now just note that the scale exists - we will show how to modify it in later sections. The second example highlights two new mapped aesthetics (color *and* size), while shape and alpha remain mapped to static values outside of any `aes()`.  
+Note in the first example how the color of each point reflects the age value - and a scale has appeared in a legend! For now just note that the scale exists - we will show how to modify it in later sections. The second example highlights two new aesthetics mapped to columns (color *and* size), while shape and alpha remain mapped to static values outside of any `aes()`.  
 
 ```{r, out.width=c('50%', '50%'), fig.show='hold', warning=F, message=F}
 # scatterplot
@@ -290,7 +302,7 @@ It becomes important to track your layers and aesthetics when making more comple
 
 In the example below, the `size = ` aesthetic is assigned twice - once for `geom_point()` and once for `geom_smooth()` - both times as a static value.  
 
-```{r, warn=F, message=F}
+```{r, warning=F, message=F}
 ggplot(data = linelist,
        mapping = aes(x = age, y = wt_kg, color = age_years)) + # map aesthetics to columns
   geom_point(size = 1, alpha = 0.5) +  # add points for each row of data
@@ -299,162 +311,29 @@ ggplot(data = linelist,
 
 Note that propoerly aligning axes to plot from multiple dataset on top of one another can be difficult. Consider instead using **cowplot** or a similar package to combine two plots - as described in that section of the [ggplot tips] page.  
 
-## Storing plots  
-
-### Saving plots {-}
-
-Plots can be printed to the Plots RStudio pane, as we have done until now, by simply beginning the command with `ggplot()`. However, you can also save the plot as an object by using the assignment operator `<-` and giving it a name. It will not print unless the object name itself is run. You can also print it by wrapping the plot name with `print()`, but this is only necessary in certain circumstances like if the plot is created inside a *for loop*.  
-
-```{r, warning=F, message=F}
-# define plot
-age_by_wt <- ggplot(data = linelist, mapping = aes(x = age_years, y = wt_kg, color = age_years))+
-  geom_point(alpha = 0.1)
-
-age_by_wt    # print
-```
-
-
-### Modifying saved plots {-}  
-
-One nice thing about **ggplot2** is that you can define a plot (as above), and then add layers to it starting with its name. You do not have to repeat all the commands that created the original plot! 
-
-For example, to modify the plot `age_by_wt` that was defined above, to include a vertical line at age 50, we would just add a `+` and continue....
-
-```{r, warning=F, message=F}
-age_by_wt+
-  geom_vline(xintercept = 50)
-```
-
-
-
-## Labels 
-
-Surely you will want to add or adjust the plot's labels. These are most easily done with the `labs()` function, added with `+` just as the geoms were.  
-
-Within `labs()` you can provide character strings to these arguements:  
-
-* `x = ` and `y = ` The x-axis and y-axis title (labels)  
-* `title = ` The main plot title  
-* `subtitle = ` The subtitle of the plot, in smaller text below the title  
-* `caption = ` The caption of the plot, or bottom-right by default  
-
-Here is a plot we made earlier, but with nicer labels:  
-
-```{r, warning=F, message=F}
-age_by_wt <- ggplot(
-  data = linelist,   # set data
-  mapping = aes(     # map aesthetics to column values
-         x = age,           # map x-axis to age            
-         y = wt_kg,         # map y-axis to weight
-         color = age))+     # map color to age
-  geom_point()+           # display data as points
-  labs(
-    title = "Age and weight distribution",
-    subtitle = "Fictional Ebola outbreak, 2014",
-    x = "Age in years",
-    y = "Weight in kilos",
-    caption = stringr::str_glue("Data as of {max(linelist$date_hospitalisation, na.rm=T)}"))
-
-age_by_wt
-```
-Note how in the caption assignment we used `str_glue()` from the **stringr** package to implant dynamic R code within the string text. The caption will display the maximum hospitalization date in the linelist. Read more about this in the page on [Characters and strings].  
-
-You can also use `labs()` to adjust the legend title(s), but this is a bit more complicated. See the section on legends in the [ggplot tips] page.  
-
-
-## Themes 
-
-One of the best parts of **ggplot2** is the amount of control you have over the plot - you can define anything! Generally this done by adjusting the "theme" arguments for the plot. This is done in one of two ways:  
-
-* Adding pre-defined `theme_XXXX()` functions to make sweeping adjustments  
-  * These include `theme_classic()`, `theme_minimal()`, `theme_dark()`, `theme_light()` `theme_grey()`, `theme_bw()` and others  
-* Adjusting each tiny aspect of the plot individually within `theme()`  
-
-We have mention the pre-defined `theme_XXXX()` functions above, will demonstrate them below, and will not describe them further here.  
-
-The `theme()` function can take a large number of arguments, each of which edits a very specific aspects of the plot. We won't go through all examples, but will describe the general pattern and show you how to find the argument you need. The basic syntax is this:
-
-1. Add `theme()` as you would a geom or `labs()`  
-2. Within `theme()`, provide the specific argument name for the element you want to edit (e.g. `plot.title = ` for the plot title)  
-3. Supply the `element_XXXX()` function as the value for the argument  
-  * Most of the time this is `element_text()`, but other versions include `element_rect()` for editing the plot canvas background colors, or even `element_blank()` to remove plot elements  
-4. Within the `element_XXXX()` give arguments to make fine adjustments  
-
-That was quite abstract and convoluted, so here are some examples.  
-
-The below plot looks quite silly, but it serves to show you a variety of the ways you can adjust your plot.  We begin with the plot `age_by_wt` (that we defined above), and add `+` `theme_classic()` (with empty parentheses) to enact several adjustments in one command. Then, for finer adjustments, we add a `theme()` command. Within it, we list the arguments for each aspect we want to adjust - in this case there are many. It can be nice to organize them into sub-grounds with new lines.  
-
-To describe just some of them: The `legend.position = ` is unique in that it accepts simple values like "bottom", but generally text-related arguements require that you place the details within `element_text()`. See how we adjust the title size with `size = `, the caption horizontal alignment with `hjust = 0` (from right to left), and make the subtitle italicized with `face = `.  
-
-```{r, eval=TRUE, warning=F, message=F}
-age_by_wt + 
-  theme_classic()+                                 # pre-defined theme adjustments
-  theme(
-    legend.position = "bottom",                    # move legend to bottom
-    
-    plot.title = element_text(size = 30),          # size of title to 30
-    plot.caption = element_text(hjust = 0),        # left-align caption
-    plot.subtitle = element_text(face = "italic"), # italicize subtitle
-    
-    axis.text.x = element_text(color = "red", size = 15, angle = 90), # adjusts only x-axis text
-    axis.text.y = element_text(size = 15),         # adjusts only y-axis text
-    
-    axis.title = element_text(size = 20)           # adjusts both axes titles
-    )     
-```
-
-Here are some especially common `theme()` arguments. You will recognize some patterns, such as appending `.x` or `.y` to apply the change only to one axis.  
-
-
-`theme()` argument                 |What it adjusts
------------------------------------|----------------------------------
-`plot.title = element_text()`      |The title
-`plot.subtitle = element_text()`   |The subtitle
-`plot.caption = element_text()`    |The caption (family, face, color, size, angle, vjust, hjust...) 
-`axis.title = element_text()`      |Axis titles (both x and y) (size, face, angle, color...)
-`axis.title.x = element_text()`    |Axis title x-axis only (use `.y` for y-axis only)
-`axis.text = element_text()`       |Axis text (both x and y)
-`axis.ticks = element_blank()`     |Remove axis ticks
-`axis.line = element_line()`       |Axis lines (colour, size, linetype: solid dashed dotted etc)
-`strip.text = element_text()`      |Facet strip text (colour, face, size, angle...)
-`strip.background = element_rect()`|facet strip (fill, colour, size...)  
-
-But there are so many theme arguments! How could I remember them all??? Do not worry - it is impossible to remember them all. Luckily there are a few tools to help you:  
-
-See the **tidyverse** documentation on [modifying theme](https://ggplot2.tidyverse.org/reference/theme.html) has a complete list.  
-
-<span style="color: darkgreen;">**_TIP:_** Run `theme_get()` from **ggplot2** to print a list of all 90+ `theme()` arguments to the console.</span>  
-
-<span style="color: darkgreen;">**_TIP:_** If you ever want to remove an element of a plot, you can also do it through `theme()`! Just pass `element_blank()` to an argument to have it disappear completely!</span>  
 
 
 ## Groups {#ggplotgroups}  
 
-You can easily group the data and "plot by group". This is demonstrated more extensively in the pages on [Plot continuous data] and [Plot discrete data], but we describe the mechanism briefly below.  
+You can easily group the data and "plot by group". In fact, you have already done this! You simply assign the grouping column to the appropriate plot aesthetic, within `mapping = aes()`. Above, we demonstrated this using continuous values, but it works the same way for discrete/categorical values. 
 
-
-A very simple way to group the data is to add the `color = ` or `fill = ` arguments *within* the `mapping = aes()`, and assign the discrete column name to group the data by. Each unique value in the grouping column will be plotted separately (`NA` missing values will appear as a group).  
-
-In fact, you have already done this! Above, we moved the `color = ` argument within `aes()` and assigned it the column `age`. This effectively grouped the data by age, which was a continuous scale. In contrast, here we discuss grouping by discrete columns.  
-
-Below we show the scatter plot of age and weight, but we have set `color = ` to the column `gender`. A legend automatically appears.  
+For example, if you want the groups to be represented by different color points by gender, you would have `color = gender` within the geom's `aes()`, as shown below. As before, a legend automatically appears.  
 
 ```{r, warning=F, message=F}
 ggplot(data = linelist,
        mapping = aes(x = age, y = wt_kg, color = gender))+
   geom_point(alpha = 0.5)
-
 ```
-Note that depending on the geom, you may need to use different arguments to group the data. `fill = ` or `color = ` are appropriate for most cases, but you could also adjust by `shape = ` etc.  
-
-The most basic way of grouping the data is by adding the `group = ` argument within the `mapping = aes()` and assigning it to a discrete column. However, this by itself will not change the colors, fill, or shapes. Nor will it create a legend. Yet it is good to be aware of this argument in case you want to use it.  
-
-There are many examples of grouped plot in the pages on plotting continuous and discrete variables.  
-
-To adjust the order and presentaton of groups in a plot, see the [ggplot tips] page or the page on [Working with factors].  
 
 
-### Facets / Multiple plots {-}  
+Note that depending on the geom, you may need to use different arguments to group the data. For `geom_point()` you will most likely use `color =`, `shape = ` or `size = `. Whereas for `geom_bar()` you are more likely to use `fill = `.  
+
+For information - the most basic way of grouping the data is by adding only the `group = ` argument within the `mapping = aes()` and assigning it to a column. However, this by itself will not change the colors, fill, or shapes. Nor will it create a legend. Yet it is good to be aware of this argument in case you want to use it.  
+
+There are many examples of grouped plot in the pages on plotting continuous and categorical data. To adjust the order and presentation of groups in a plot, see the [ggplot tips] page or the page on [Working with factors].  
+
+
+## Facets / Small-multiples {-}  
 
 Often its useful to show multiple graphs on one page, or one super-figure. There are a few ways to achieve this and a lot of packages that can help to facilitate it. However, while external packages are nice, it is often easier to use faceting as an alternative that is prebuilt into `ggplot2`. Faceting plots is extremely easy to do in terms of code, and produces plots with more predictable aesthetics - you wont have to wrangle legends and ensure that axes are aligned etc.
 
@@ -521,7 +400,240 @@ ggplot(malaria_age, aes(x = data_date, y = num_cases, fill = age_group)) +
 
 
 
-### Piping into **ggplot2** {-}  
+
+## Storing plots  
+
+### Saving plots {-}
+
+By default when you run a `ggplot()` command, the plot will be printed to the Plots RStudio pane. However, you can also save the plot as an object by using the assignment operator `<-` and giving it a name. It will not print unless the object name itself is run. You can also print it by wrapping the plot name with `print()`, but this is only necessary in certain circumstances such as if the plot is created inside a *for loop*.  
+
+```{r, warning=F, message=F}
+# define plot
+age_by_wt <- ggplot(data = linelist, mapping = aes(x = age_years, y = wt_kg, color = age_years))+
+  geom_point(alpha = 0.1)
+
+# print
+age_by_wt    
+```
+
+
+### Modifying saved plots {-}  
+
+One nice thing about **ggplot2** is that you can define a plot (as above), and then add layers to it starting with its name. You do not have to repeat all the commands that created the original plot! 
+
+For example, to modify the plot `age_by_wt` that was defined above, to include a vertical line at age 50, we would just add a `+` and continue....
+
+```{r, warning=F, message=F}
+age_by_wt+
+  geom_vline(xintercept = 50)
+```
+
+
+
+## Labels 
+
+Surely you will want to add or adjust the plot's labels. These are most easily done with the `labs()` function, added with `+` just as the geoms were.  
+
+Within `labs()` you can provide character strings to these arguements:  
+
+* `x = ` and `y = ` The x-axis and y-axis title (labels)  
+* `title = ` The main plot title  
+* `subtitle = ` The subtitle of the plot, in smaller text below the title  
+* `caption = ` The caption of the plot, or bottom-right by default  
+
+Here is a plot we made earlier, but with nicer labels:  
+
+```{r, warning=F, message=F}
+age_by_wt <- ggplot(
+  data = linelist,   # set data
+  mapping = aes(     # map aesthetics to column values
+         x = age,           # map x-axis to age            
+         y = wt_kg,         # map y-axis to weight
+         color = age))+     # map color to age
+  geom_point()+           # display data as points
+  labs(
+    title = "Age and weight distribution",
+    subtitle = "Fictional Ebola outbreak, 2014",
+    x = "Age in years",
+    y = "Weight in kilos",
+    color = "Age",
+    caption = stringr::str_glue("Data as of {max(linelist$date_hospitalisation, na.rm=T)}"))
+
+age_by_wt
+```
+
+Note how in the caption assignment we used `str_glue()` from the **stringr** package to implant dynamic R code within the string text. The caption will display the maximum hospitalization date in the linelist. Read more about this in the page on [Characters and strings].  
+
+To adjust the legend title, provide the argument that you used to create it to `labs()`. So for the example above we assigned `color = age` to create the legend. Therefore, we provide `color = ` to `labs()` and assigned the legend title desired ("Age" with capital A). If you create the legend with `aes(fill = COLUMN)`, then in `labs()` you would edit `fill = ` to adjust that legend title. See the section on legends in the [ggplot tips] page for more details on editing the legend.  
+
+
+
+## Themes 
+
+One of the best parts of **ggplot2** is the amount of control you have over the plot - you can define anything! Generally this done by adjusting the "theme" arguments for the plot. This is done in one of two ways:  
+
+* Adding pre-defined `theme_XXXX()` functions to make sweeping adjustments  
+  * These include `theme_classic()`, `theme_minimal()`, `theme_dark()`, `theme_light()` `theme_grey()`, `theme_bw()` and others  
+* Adjusting each tiny aspect of the plot individually within `theme()`  
+
+As they are quite straight-forward, we will demonstrate the pre-defined `theme_XXXX()` functions below and will not describe them further here.  
+
+The `theme()` function can take a large number of arguments, each of which edits a very specific aspects of the plot. We won't go through all examples, but will describe the general pattern and show you how to find the argument you need. The basic syntax is this:
+
+1. Add `theme()` as you would a geom or `labs()`  
+2. Within `theme()`, provide the specific argument name for the plot element you want to edit (e.g. `plot.title = ` for the plot title)  
+3. Supply the `element_XXXX()` function as the value for the argument  
+  * Most of the time this is `element_text()`, but other versions include `element_rect()` for editing the plot canvas background colors, or even `element_blank()` to remove plot elements  
+4. Within the `element_XXXX()` give arguments to make fine adjustments  
+
+That description was quite abstract and convoluted, so here are some examples.  
+
+The below plot looks quite silly, but it serves to show you a variety of the ways you can adjust your plot.  We begin with the plot `age_by_wt` (that we defined above), and add `+` `theme_classic()` (with empty parentheses) to enact several adjustments in one command. Then, for finer adjustments, we add a `theme()` command. Within it, we list the arguments for each plot element we want to adjust - in this case there are many. It can be nice to organize them into sub-sections with new lines.  
+
+To describe just some of them: The `legend.position = ` is unique in that it accepts simple values like "bottom", "top", "left", and "right". But generally, text-related arguments require that you place the details *within* `element_text()`. See how we adjust the title size with `element_text(size = 30)`, the caption horizontal alignment with `element_text(hjust = 0)` (from right to left), and make the subtitle italicized with `element_text(face = "italic")`.  
+
+```{r, eval=TRUE, warning=F, message=F}
+age_by_wt + 
+  theme_classic()+                                 # pre-defined theme adjustments
+  theme(
+    legend.position = "bottom",                    # move legend to bottom
+    
+    plot.title = element_text(size = 30),          # size of title to 30
+    plot.caption = element_text(hjust = 0),        # left-align caption
+    plot.subtitle = element_text(face = "italic"), # italicize subtitle
+    
+    axis.text.x = element_text(color = "red", size = 15, angle = 90), # adjusts only x-axis text
+    axis.text.y = element_text(size = 15),         # adjusts only y-axis text
+    
+    axis.title = element_text(size = 20)           # adjusts both axes titles
+    )     
+```
+
+Here are some especially common `theme()` arguments. You will recognize some patterns, such as appending `.x` or `.y` to apply the change only to one axis.  
+
+
+`theme()` argument                 |What it adjusts
+-----------------------------------|----------------------------------
+`plot.title = element_text()`      |The title
+`plot.subtitle = element_text()`   |The subtitle
+`plot.caption = element_text()`    |The caption (family, face, color, size, angle, vjust, hjust...) 
+`axis.title = element_text()`      |Axis titles (both x and y) (size, face, angle, color...)
+`axis.title.x = element_text()`    |Axis title x-axis only (use `.y` for y-axis only)
+`axis.text = element_text()`       |Axis text (both x and y)
+`axis.text.x = element_text()`     |Axis text x-axis only (use `.y` for y-axis only)  
+`axis.ticks = element_blank()`     |Remove axis ticks
+`axis.line = element_line()`       |Axis lines (colour, size, linetype: solid dashed dotted etc)
+`strip.text = element_text()`      |Facet strip text (colour, face, size, angle...)
+`strip.background = element_rect()`|facet strip (fill, colour, size...)  
+
+But there are so many theme arguments! How could I remember them all??? Do not worry - it is impossible to remember them all. Luckily there are a few tools to help you:  
+
+See the **tidyverse** documentation on [modifying theme](https://ggplot2.tidyverse.org/reference/theme.html) has a complete list.  
+
+<span style="color: darkgreen;">**_TIP:_** Run `theme_get()` from **ggplot2** to print a list of all 90+ `theme()` arguments to the console.</span>  
+
+<span style="color: darkgreen;">**_TIP:_** If you ever want to remove an element of a plot, you can also do it through `theme()`! Just pass `element_blank()` to an argument to have it disappear completely!</span>  
+
+
+## "Bar plots" {-}  
+
+Geoms for "bar plots" deserve special mention, as they are easily confused. 
+
+### `geom_bar()` {-}  
+
+Use `geom_bar()` if you want bar height (or stacked bar components) to reflect *the number of relevant rows in the data*.  
+
+* Provide only one axis column assignment (typically x-axis). If you provide x and y, you will get `Error: stat_count() can only have an x or y aesthetic.`  
+* You can create stacked bars by adding a `fill = ` column assignment, as explained below.  
+* The automatic title of the opposite axis will be "count", because it represents the number of rows  
+
+```{r, eval=F}
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(y = hospital, fill = gender))
+```
+
+
+### `geom_col()` {-}  
+
+Use `geom_col()` if you want bar height (or stacked bar height) to reflect a pre-calculated *value* that exists in the data. Often, this is a proportion or summary count value.  
+
+* Provide column assignments for *both* axes. Typically your x-axis is discrete and your y-axis is assigned to the column with the values. 
+* The automatic title of the opposite axis will be the assigned y-axis column  
+
+```{r, eval=F}
+
+proportion_died <- linelist %>%
+  group_by(hospital) %>% 
+  summarise(
+    n_rows = n(),
+    n_died = sum(outcome == "Death", na.rm=TRUE),
+    p_died = n_died / n_rows
+  )
+
+proportion_died
+```
+
+```{r, warning=F, message=F}
+ggplot(data = proportion_died)+
+  geom_col(mapping = aes(x = hospital, y = p_died))
+```
+If you want stacked bars using `geom_col()`, you must take additional steps (often, pivoting) to ensure that the data are in "long" format (see [Pivoting data]). There should be one column containing the categories (e.g. stacks) and another column with the heights.    
+
+```{r, eval=F}
+proportion_outcome <- linelist %>%
+  group_by(hospital) %>% 
+  summarise(
+    
+    # rows denominator per hospital
+    n_rows = n(),
+    
+    # counts per hospital
+    n_died = sum(outcome == "Death", na.rm=TRUE),
+    n_alive = sum(outcome == "Recover", na.rm=TRUE),
+    n_unk = sum(is.na(outcome), na.rm=TRUE),
+
+    
+    # proportions per hospital
+    p_died = n_died / n_rows,
+    p_alive = n_alive / n_rows,
+    p_unk = n_unk / n_rows
+  ) %>% 
+  
+  # pivot the proportions columns so that they are condensed to two columns (category and value)
+  pivot_longer(starts_with("p_"), names_to = "proportion_cat")
+
+proportion_outcome
+```
+
+```{r, warning=F, message=F}
+ggplot(data = proportion_outcome)+
+  geom_col(mapping = aes(x = hospital, y = value, fill = proportion_cat))
+```
+
+
+
+### `geom_histogram()` {-}  
+
+Histograms may look like bar charts, but are distinct because they measure distribution of a continuous variable. There are no spaces between the "bars", and only one column is provided to `geom_histogram()`. There are arguments specific to histograms such as `bin_width = ` and `breaks = ` to specify how the data should be binned. The page on [Epidemic curves] provides additional detail.  
+
+You can plot a traditional histogram with `geom_histogram()` (y-axis represents counts per bin) or the relative density with `geom_density()` (y-axis represents proportion of all rows with that value):  
+
+```{r, warning=F, message=F, out.width=c('50%', '50%'), fig.show='hold'}  
+# raw counts per bin
+ggplot(data = linelist)+
+  geom_histogram(mapping = aes(x = date_onset))
+
+# density plot
+ggplot(data = linelist)+
+  geom_density(mapping = aes(x = date_onset))
+
+```
+
+
+
+
+
+## Piping into **ggplot2** {-}  
 
 When using pipes to clean and transform your data, it is easy to pass the transformed data into `ggplot()`. The pipes that pass the dataset from function-to-function will transition to `+` once the `ggplot()` function is called. Note that in this case, there is no need to specify the `data = ` argument, as this is automatically defined as the piped-in dataset.  
 
@@ -547,7 +659,7 @@ linelist %>%                                                     # begin with li
 ```
 
 
-### Exporting plots {-}  
+## Exporting plots {-}  
 
 Exporting ggplots is made easy with the `ggsave()` function from **ggplot2**. It can work in two ways, either:  
 

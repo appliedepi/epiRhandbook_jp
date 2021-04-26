@@ -530,13 +530,140 @@ ggplot(malaria_facility_1, aes(x = data_date)) +
 
 UNDER CONSTRUCTION
 
-**cowplot**  
+Two packages that are very useful for combining plots are **cowplot** and **patchwork**. In this section we will mostly focus on **cowplot**, with occassional use of **patchwork**.  
 
-**patchwork**  
+Here is the online [introduction to cowplot](https://cran.r-project.org/web/packages/cowplot/vignettes/introduction.html). You can read the more extensive documentation for each function online [here](https://www.rdocumentation.org/packages/cowplot/versions/1.1.1). We will cover a few of the most common use cases and functions below.  
+
+The **cowplot** package works in tandem with **ggplot2** - essentially, you use it to arrange and combine ggplots and their legends into compound figures. It can also accept **base** R graphics.  
+
+```{r}
+pacman::p_load(
+  tidyverse,      # data manipulation and visualisation
+  cowplot,        # combine plots
+  patchwork       # combine plots
+)
+```
+
+
+### `plot_grid()`  {-}  
+
+A very useful function is `plot_grid()`, which arranges multiple plots into a grid. It can also align plot elements (e.g. axes) vertically and/or horizontally across the sub-plots.  
+
+First, 
+
+
+
+```{r}
+
+
+```
 
 
 
 
+
+### Combine legends {-}  
+
+If your plots have the same legend, combining is relatively straight-forward.
+
+UNDER CONSTRUCTION
+
+If your plots have different legends, you must use an alternative approach:  
+
+1) Create and save your plots *without legends* using `theme(legend.position = "none")`  
+2) Extract the legends from each plot using `get_legend()` as shown below - *but extract legends from the plots modified to actually show the legend*  
+3) Combine the legends into a legends panel  
+4) Combine the plots and legends panel  
+
+
+For demonstration we show the two plots arranged in a grid with their own legends showing (ugly and inefficient use of space):  
+
+```{r, out.width=c('50%'), fig.show='hold',}
+p1 <- linelist %>% 
+  mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
+  count(hospital, outcome) %>% 
+  ggplot()+
+  geom_col(mapping = aes(x = hospital, y = n, fill = outcome))+
+  coord_flip()+
+  theme_minimal()
+
+p2 <- linelist %>% 
+  mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
+  count(hospital, age_cat) %>% 
+  ggplot()+
+  geom_col(mapping = aes(x = hospital, y = n, fill = age_cat))+
+  coord_flip()+
+  theme_minimal()+
+    theme(
+    axis.text.y = element_blank()
+  )
+
+p1
+
+p2
+
+cowplot::plot_grid(p1, p2, rel_widths = c(0.3))
+```
+
+And now we show how to combine the legends:  
+
+```{r, out.width=c('50%'), fig.show='hold',}
+p1 <- linelist %>% 
+  mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
+  count(hospital, outcome) %>% 
+  ggplot()+
+  geom_col(mapping = aes(x = hospital, y = n, fill = outcome))+
+  coord_flip()+
+  theme_minimal()+
+  theme(
+    legend.position = "none")+
+  labs(title = "Cases by outcome")
+
+
+
+p2 <- linelist %>% 
+  mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
+  count(hospital, age_cat) %>% 
+  ggplot()+
+  geom_col(mapping = aes(x = hospital, y = n, fill = age_cat))+
+  coord_flip()+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank()
+  )+
+  labs(title = "Cases by age")
+
+
+# extract legend from p1
+leg_p1 <- cowplot::get_legend(p1 + theme(legend.position = "right",  # extract vertical legend
+                                         legend.justification = c(0,0.5))) # so legends align
+# extract legend from p2
+leg_p2 <- cowplot::get_legend(p2 + theme(legend.position = "right", # extract vertical legend   
+                                         legend.justification = c(0,0.5))) # so legends align
+
+# create a blank plot for legend alignment
+#blank_p <- patchwork::plot_spacer() + theme_void()
+
+# create legends panel, 3 rows one of which is empty
+legends <- cowplot::plot_grid(leg_p1, leg_p2, nrow = 2, rel_heights = c(.3, .7))
+
+# combine two plots and legends panel
+combined <- cowplot::plot_grid(p1, p2, legends, ncol = 3, rel_widths = c(.4, .4, .2))
+
+combined
+
+
+```
+
+
+
+
+This solution was learned from [this post](https://stackoverflow.com/questions/52060601/ggplot-multiple-legends-arrangement) with a minor fix to align legends from [this post](https://github.com/wilkelab/cowplot/issues/33).  
+
+
+<span style="color: darkgreen;">**_TIP:_** Fun note - the "cow" in **cowplot** comes from the creator's name - Claus O. Wilke.</span>  
 
 
 
