@@ -3,7 +3,9 @@
 
 THIS PAGE IS UNDER CONSTRUCTION
 
-Hi Sara, some notes for you:
+This page walks through some key considerations when analyzing and visualizing contact tracing data. Many core R competencies and tools are covered in other sections as the same desired functionalities apply (i.e. data cleaning; pivoting; tables; epi-curves) but we will highlight key examples specific to contact tracing that have been useful for operational decision making (i.e. visualizing contact tracing follow-up data over time or across geographic areas).
+
+For demonstration purposes we will be reading in sample contact tracing data from the [Go.Data](https://www.who.int/tools/godata) platform; although the same principles could apply for other structured contact tracing data. You can read more about the Go.Data project on the [Github Documentation site](https://worldhealthorganization.github.io/godata/) or [Community of Practice](https://community-godata.who.int/). 
 
 
 include static images or GIFs like this:
@@ -12,76 +14,289 @@ include static images or GIFs like this:
 knitr::include_graphics(here::here("images", "flexdashboard_output.png"))
 ```
 
-Write package names with bold **dplyr** **tidyverse** **rio**
-
-Write functions in code text with open parentheses `filter()`, `import()` `ggplot()`. Write arguments also in code text with equals sign `size = `, `data =`, `color = `, etc.
 
 Link to other pages by exact name in brackets like the [Import and export] page. Or give them a custom link text like this, with brackets following brackets:   See [the importing page][Import and export]  
 
-Link to a website [secondary attack rate](https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2774102)
-
-Be explicit about which functions belong to which packages (either noting in the text, or using `::`)
-Use `pacman::p_load()`
-
-No need to give chunk labels
-
 Please place {-} after any heading level-3 or more (###) so the numbers don't appear in the TOC
-
 
 Please include a preparation section like below. You can display interactive data frames/tibbles with DT as shown below.
 
 If you want to preview the page, you can just press Knit. Or use the combination of bookdown_runfile.R and bookdown_small.yml in the root folder to see website layout. Ping me with questions.  
 
 
-
-
 ## Preparation
 
-### Load packages {-}  
+This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
-In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
-
-```{r}
+```{r, message = F}
 pacman::p_load(
-  rio,             # data import/export     
-  here,            # locate files
-  tidyverse        # data management and visualization
+  rio,        # importing data  
+  here,       # relative file pathways  
+  janitor,    # data cleaning and tables
+  lubridate,  # working with dates
+  epikit,     # age_categories() function
+  apyramid,   # age pyramids
+  tidyverse,  # data manipulation and visualization
+  RColorBrewer # color palettes
 )
 ```
 
+
 ### Import data {-}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We will import the sample datasets of contacts and contact followups that have been retrieved and un-nested from the Go.Data API and stored as .rds output files.
+
+```{r out.width = "100%", fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "godata_api_github.png"))
+```
+
+If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data. For the full steps on how to retrieve data collections from your Go.Data instance, view the Github documentation [here](https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting)
+
+Below we import the .rds files, located in the 'godata' sub-folder within the 'data' folder.  
 
 ```{r, echo=F}
-# import the linelist into R
-linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
+# import the data collections
+cases <- rio::import(here::here("data", "godata", "cases_clean.rds"))
+contacts <- rio::import(here::here("data", "godata", "contacts_clean.rds"))
+followups <- rio::import(here::here("data", "godata", "followups_clean.rds"))
+relationships <- rio::import(here::here("data", "godata", "relationships_clean.rds"))
 ```
 
-```{r, eval=F}
-# import the linelist
-linelist <- import("linelist_cleaned.xlsx")
-```
-
-The first 50 rows of the linelist are displayed below.
+Let's start with the contact linelist - the first 50 rows of the registered linelist are displayed below.
 
 ```{r, message=FALSE, echo=F}
-# display the first 50 rows of linelist data as a table
-DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+# display the first 50 rows of contact linelist data as a table
+DT::datatable(head(contacts, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+### Basic Demographics {-}
+
+Following instructions from previous pages, we can view some basic tables and plots of case and contact demographics. For instance, we can see age/sex breakdown (using *apyramid* package described earlier)
+
+```{r, warning=F, message=F}
+contact_unknown_age <- sum(contacts$age_class == "unknown") # count unknown
+
+contact_age_pyramid <-
+apyramid::age_pyramid(data = contacts,
+                      age_group = "age_class",
+                      split_by = "gender") +
+       labs(
+       fill = "Gender",
+       title = "Age/Sex Pyramid of COVID-19 contacts",
+       subtitle = paste0("n = ", contact_unknown_age," without age recorded,")) +
+     theme_minimal() # cleaner theme
+
+contact_age_pyramid
+
+```
+
+We can also view other demographics such as occupational breakdown of registered contacts (in form of a pie chart).
+
+```{r, warning=F, message=F}
+contacts$occupation <- as.factor(contacts$occupation) # ensure occupation is a factor
+contact_unknown_occupation <- sum(is.na(contacts$occupation) | contacts$occupation == "UNKNOWN") # count unknown
+getPalette = colorRampPalette(brewer.pal(9, "Set1"))
+color_count = length(unique(contacts$occupation)) # for color palette
+
+contact_occupation_breakdown <- contacts %>%
+  group_by(occupation) %>%
+  count() 
+
+contact_occupation_pie_chart <-
+  ggplot(subset(contact_occupation_breakdown, !is.na(occupation)), aes(x = "", y = n, fill = occupation)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  theme_minimal() +
+  scale_fill_manual(values = getPalette(color_count)) +
+  labs(
+       fill = "Occupation",
+       title = "Occupational breakdown of COVID-19 contacts",
+       subtitle = paste0("n = ", contact_unknown_occupation," without occupation recorded,")
+       ) +
+  theme(axis.line = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank())
+
+contact_occupation_pie_chart
+
+```
+
+#### Contact Follow Up Data {-}
+
+We can also view the longitudinal follow-up data by summarizing it for a given contact or looking at the discrete follow up events over time. This could be viewed by contact tracer, supervision team and geographic area; and also by day and week.
+
+A sample follow-up list could look like this, with one row for each follow-up generated.
+
+```{r, message=FALSE, echo=FALSE}
+# display the first 50 rows of contact linelist data as a table
+DT::datatable(head(followups, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+For each follow-up, we have a follow-up STATUS (such as whether it was performed and if so, did they have symptoms or not). We can group by `followup_status` to see the frequency of each:
+
+```{r, warning=F, message=F}
+
+followup_status <- followups %>%
+     group_by(followup_status) %>%
+     count()
+
+followup_status
+
 ```
 
 
+#### KPI Tables {-}
 
+```{r, warning=F, message=F}
+
+```
+
+#### Transmission Matrices {-}
+
+As discussed in the [Heat plots] page, you can view a matrix of "who infected whom".
+
+When new contacts are created, Go.Data stores this relationship information in the "relationships" API endpoint; and we can see the dataset below. This means that we can create a heatmap with relatively few steps given each contact is already joined to it's source case.
+
+```{r, warning=F, message=F}
+# display the first 50 rows of relationships data as a table
+DT::datatable(head(relationships, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+We can grab the few variables we need and add age-categories for sources (cases) and targets (contacts).
+
+
+```{r}
+heatmap_ages <- relationships %>% 
+  filter(!is.na(source_visualid) & !is.na(target_visualid)) %>%
+  select(source_visualid, source_age, target_visualid, target_age) %>% 
+  # WHO recommended age categories, updated Sept 2020
+  mutate(
+    source_age_class = factor(
+      case_when(
+        source_age <= 4 ~ "0-4",
+        source_age <= 9 ~ "5-9",
+        source_age <= 14 ~ "10-14",
+        source_age <= 19 ~ "15-19",
+        source_age <= 29 ~ "20-29",
+        source_age <= 39 ~ "30-39",
+        source_age <= 49 ~ "40-49",
+        source_age <= 59 ~ "50-59",
+        source_age <= 64 ~ "60-64",
+        source_age <= 69 ~ "65-69",
+        source_age <= 74 ~ "70-74",
+        source_age <= 79 ~ "75-79",
+        is.finite(source_age) ~ "80+",
+        TRUE ~ "unknown"
+      ), levels = c(
+        "0-4",
+        "5-9",
+        "10-14",
+        "15-19",
+        "20-29",
+        "30-39",
+        "40-49",
+        "50-59",
+        "60-64",
+        "65-69",
+        "70-74",
+        "75-79",
+        "80+",
+        "unknown"
+      )),
+    source_age_class = factor(
+      source_age_class,
+      levels = rev(levels(source_age_class)))) %>%
+     
+     mutate(
+    target_age_class = factor(
+      case_when(
+        target_age <= 4 ~ "0-4",
+        target_age <= 9 ~ "5-9",
+        target_age <= 14 ~ "10-14",
+        target_age <= 19 ~ "15-19",
+        target_age <= 29 ~ "20-29",
+        target_age <= 39 ~ "30-39",
+        target_age <= 49 ~ "40-49",
+        target_age <= 59 ~ "50-59",
+        target_age <= 64 ~ "60-64",
+        target_age <= 69 ~ "65-69",
+        target_age <= 74 ~ "70-74",
+        target_age <= 79 ~ "75-79",
+        is.finite(target_age) ~ "80+",
+        TRUE ~ "unknown"
+      ), levels = c(
+        "0-4",
+        "5-9",
+        "10-14",
+        "15-19",
+        "20-29",
+        "30-39",
+        "40-49",
+        "50-59",
+        "60-64",
+        "65-69",
+        "70-74",
+        "75-79",
+        "80+",
+        "unknown"
+      )),
+    target_age_class = factor(
+      target_age_class,
+      levels = rev(levels(target_age_class))))
+
+```
+
+```{r message=FALSE, echo=F}
+# display the shapefile as a table
+DT::datatable(head(heatmap_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
+
+As described previously, we create cross-tabulation; 
+
+```{r, warning=F, message=FALSE}
+
+cross_tab <- 
+      table(source_cases = heatmap_ages$source_age_class,
+      target_cases = heatmap_ages$target_age_class)
+
+```
+
+convert into long format with proportions;
+
+```{r, warning=FALSE, message=FALSE}
+
+long_prop <- data.frame(prop.table(cross_tab))
+
+```
+
+and create a heat-map.
+
+
+```{r, warning=F, message=F}
+
+ggplot(data = long_prop)+       # use long data, with proportions as Freq
+  geom_tile(                    # visualize it in tiles
+    aes(
+      x = target_cases,         # x-axis is case age
+      y = source_cases,     # y-axis is infector age
+      fill = Freq))+            # color of the tile is the Freq column in the data
+  scale_fill_gradient(          # adjust the fill color of the tiles
+    low = "blue",
+    high = "orange")+
+  labs(                         # labels
+    x = "Target case age",
+    y = "Source case age",
+    title = "Who infected whom - Go.Data Relationships Linelist",
+    subtitle = "Frequency matrix of transmission events",
+    fill = "Proportion of all\ntranmsission events"     # legend title
+  )
+
+```
 
 
 ## Resources  
 
-Excellent tutorials that informed this page can be found below. If you review these, most likely within an hour you can have your own dashboard.  
+https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting
 
-https://bookdown.org/yihui/rmarkdown/dashboards.html
+https://worldhealthorganization.github.io/godata/
 
-https://rmarkdown.rstudio.com/flexdashboard/
-
-https://rmarkdown.rstudio.com/flexdashboard/using.html
-
-https://rmarkdown.rstudio.com/flexdashboard/examples.html
+https://community-godata.who.int/
