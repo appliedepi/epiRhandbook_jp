@@ -31,7 +31,8 @@ eventually have a section on sampling frames as well as sample size calculations
 3.  Weighting 
 4.  Survey design objects
 5.  Descriptive analysis 
-6.  Weighted proportions
+6.  Weighted rates 
+7.  Weighted proportions
 
 
 <!-- ======================================================= -->
@@ -362,7 +363,6 @@ survey_data <- anti_join(survey_data, dropped, by = names(dropped))
 
 ```
 
-
 As mentioned above we demonstrate how to add weights for three different study 
 designs (stratified, cluster and stratified cluster). These require information 
 on the source population and/or the clusters surveyed. 
@@ -427,8 +427,6 @@ There are four options, comment out those you do not use:
 For this template - we will pretend that we cluster surveys in two separate 
 strata (health districts A and B). 
 So to get overall estimates we need have combined cluster and strata weights. 
-
-
 
 ```{r survey_design}
 ## simple random ---------------------------------------------------------------
@@ -554,7 +552,9 @@ and sex by survey strata.
 We will demonstrate using the **apyramid** package as it allows for weighted 
 proportions using our survey design object created above. Other options for creating
 [demographic pyramids](https://epirhandbook.com/demographic-pyramids-and-likert-scales.html)
-are covered extensively in that chapter of the handbook.  
+are covered extensively in that chapter of the handbook. We will also use a 
+wrapper function from **sitrep** called `plot_age_pyramid()` which saves a few lines
+of coding for producing a plot with proportions. 
 
 As with the formal binomial test of difference, seen above in the sampling bias 
 section, we are interested here in visualising whether our sampled population 
@@ -569,42 +569,113 @@ You may also consider visualising by each strata of your survey - in our example
 here that would be by using the argument `stack_by  = "health_district"` 
 (see `?plot_age_pyramid` for details). 
 
+<span style="color: black;">**_NOTE:_** The x and y axes are flipped in pyramids </span>
+
+```{r age_pyramids}
+
+## define x-axis limits and labels ---------------------------------------------
+## (update these numbers to be the values for your graph)
+max_prop <- 35      # choose the highest proportion you want to show 
+step <- 5           # choose the space you want beween labels 
+
+## this part defines vector using the above numbers with axis breaks
+breaks <- c(
+    seq(max_prop/100 * -1, 0 - step/100, step/100), 
+    0, 
+    seq(0 + step / 100, max_prop/100, step/100)
+    )
+
+## this part defines vector using the above numbers with axis limits
+limits <- c(max_prop/100 * -1, max_prop/100)
+
+## this part defines vector using the above numbers with axis labels
+labels <-  c(
+      seq(max_prop, step, -step), 
+      0, 
+      seq(step, max_prop, step)
+    )
 
 
-```{r}
+## create plots individually  --------------------------------------------------
 
-plot_age_pyramid(population, 
-                 age_group = "age_group", 
-                 split_by = "sex", 
-                 proportion = TRUE)
-
-plot_age_pyramid(survey_data, 
+## plot the source population 
+## nb: this needs to be collapsed for the overall population (i.e. removing health districts)
+source_population <- population %>%
+  ## ensure that age and sex are factors
+  mutate(age_group = factor(age_group, 
+                            levels = c("0-2", 
+                                       "3-14", 
+                                       "15-29",
+                                       "30-44", 
+                                       "45+")), 
+         sex = factor(sex)) %>% 
+  group_by(age_group, sex) %>% 
+  ## add the counts for each health district together 
+  summarise(population = sum(population)) %>% 
+  ## remove the grouping so can calculate overall proportion
+  ungroup() %>% 
+  mutate(proportion = population / sum(population)) %>% 
+  ## plot pyramid 
+  age_pyramid(
+            age_group = age_group, 
+            split_by = sex, 
+            count = proportion, 
+            proportional = TRUE) +
+  ## only show the y axis label (otherwise repeated in all three plots)
+  labs(title = "Source population", 
+       y = "", 
+       x = "Age group (years)") + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+  
+  
+## plot the unweighted sample population 
+sample_population <- plot_age_pyramid(survey_data, 
                  age_group = "age_group", 
                  split_by = "sex",
                  proportion = TRUE) + 
-  labs(y = "Proportion", x = "Age group (years)") +                 # change axis labels
-  theme(legend.position = "bottom",     # move legend to bottom
-        legend.title = element_blank(), # remove title
-        text = element_text(size = 18)  # change text size
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Unweighted sample population", 
+       y = "Proportion (%)", 
+       x = "") + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+
+
+## plot the weighted sample population 
+weighted_population <- survey_design %>% 
+  ## make sure the variables are factors
+  mutate(age_group = factor(age_group), 
+         sex = factor(sex)) %>%
+  plot_age_pyramid(
+    age_group = "age_group",
+    split_by = "sex", 
+    proportion = TRUE) +
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Weighted sample population", 
+       y = "", 
+       x = "")  + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+
+## combine all three plots  ----------------------------------------------------
+## combine three plots next to eachother using + 
+source_population + sample_population + weighted_population + 
+  ## only show one legend and define theme 
+  ## note the use of & for combining theme with plot_layout()
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom",                    # move legend to bottom
+        legend.title = element_blank(),                # remove title
+        text = element_text(size = 18),                # change text size
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1) # turn x-axis text
        )
-
-
-plot_age_pyramid(survey_design,
-                 age_group = "age_group",
-                 split_by = "sex", 
-                 proportion = TRUE) +
-  labs(y = "Proportion", x = "Age group (years)") +                 # change axis labels
-  theme(legend.position = "bottom",     # move legend to bottom
-        legend.title = element_blank(), # remove title
-        text = element_text(size = 18)  # change text size
-       )
-
 ```
-
-
-
-
-
 
 
 ### Alluvial/sankey diagram
