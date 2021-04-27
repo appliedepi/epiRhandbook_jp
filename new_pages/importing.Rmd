@@ -211,13 +211,54 @@ Scraping data from a website - TBD - Under construction
 <!-- ======================================================= -->
 ## API {}
 
-TBD - Under construction
+TBD - Under construction (Sara has added some API retrieval snippets for Go.Data in case useful but feel free to disregard)
 
 An Automated Programming Interface (API) is commonly used to directly request clean data from a website. You can use R with the packages **httr** and **jsonlite** to pull directly via an API.  
 
 
 This section was informed by [this tutorial](https://www.dataquest.io/blog/r-api-tutorial/) and [this tutorial](https://medium.com/@traffordDataLab/querying-apis-in-r-39029b73d5f1).  
 
+Below is some sample code using *httr* and *jsonlite* for connecting to the Go.Data API to pull in contact lists.
+
+```{r, eval=F}
+# load packages
+pacman::p_load("httr")
+pacman::p_load("jsonlite")      
+
+# set credentials for authorization
+url <- "https://godatasampleURL.int/"        # insert Go.Data instance url
+username <- "username"                       # valid username 
+password <- "password"                       # valid password 
+outbreak_id <- "xxxxxx-xxxx-xxxx-xxxx-xxxxxxx"  # insert your outbreak ID for data you want to pull (find in URL)
+
+# get access token
+url_request <- paste0(url,"api/oauth/token?access_token=123") # define base URL request
+
+response <- POST(url=url_request,  
+                 body = list(
+                   username = username,    # use username/password above to authorize                                   
+                   password = password),                                       
+                 encode = "json")
+
+content <-
+  content(response, as = "text") %>%
+  fromJSON(flatten = TRUE) %>%          # flatten nested JSON
+  glimpse()
+
+access_token <- content$access_token    # this is your access token !!! that allows subsequent API calls below
+
+# import outbreak contacts 
+response_contacts <- GET(paste0(url,"api/outbreaks/",outbreak_id,"/contacts"),          # GET request
+                      add_headers(Authorization = paste("Bearer", access_token, sep = " ")))
+json_contacts <- content(response_contacts, as = "text")    # convert to text JSON
+contacts <- as_tibble(fromJSON(json_contacts, flatten = TRUE))   # flatten JSON to tibble
+
+
+```
+
+<span style="color: orange;">**_CAUTION:_** If you are importing large amounts of data from the API, it will likely time-out. To avoid this, retrieve access_token again before each API GET request and try using filters or limits in the query. For more details, view [Contact Tracing] page or API tips on [Go.Data Github Repository](https://worldhealthorganization.github.io/godata/api-docs/) </span> 
+
+<span style="color: darkgreen;">**_TIP:_** The `fromJSON()` function in the *jsonlite* package does not fully un-nest so you will still have list items in your resulting tibble. You will need to further un-nest for certain variables. To view more info on this, view the [Contact Tracing] page. </span>
 
 
 <!-- ======================================================= -->
