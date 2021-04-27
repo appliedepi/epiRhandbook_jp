@@ -333,72 +333,157 @@ For information - the most basic way of grouping the data is by adding only the 
 There are many examples of grouped plot in the pages on plotting continuous and categorical data. To adjust the order and presentation of groups in a plot, see the [ggplot tips] page or the page on [Working with factors].  
 
 
-## Facets / Small-multiples {-}  
+## Facets / Small-multiples  
 
-Often its useful to show multiple graphs on one page, or one super-figure. There are a few ways to achieve this and a lot of packages that can help to facilitate it. However, while external packages are nice, it is often easier to use faceting as an alternative that is prebuilt into `ggplot2`. Faceting plots is extremely easy to do in terms of code, and produces plots with more predictable aesthetics - you wont have to wrangle legends and ensure that axes are aligned etc.
+Facets, or "small-multiples", are used to split one plot into a multi-panel figure, with one panel ("facet") per group. The same dataset is used for each facet, and the same type of plot is shown in each facet, but every facet is specific to a level of a variable. Faceting is a functionality that comes with **ggplot2**, and the legends and axes of panels are automatically aligned.
 
-Faceting is a very specific way to obtain multiple plots - by definition, to facet you have to show the same type of plot in each facet, where every plot is specific to a level of a variable. This is done with one of two functions:
+There are other packages discussed in the [ggplot tips] page that are used to combine completely different plots (**cowplot** and **patchwork**) into one figure.  
 
-  1. `facet_wrap()` This is used when you want to show a different graph for each level of a *single* variable. One example of this could be showing a different epidemic curve for each hospital in a region. 
+Faceting is done with one of two functions:
+
+  1. `facet_wrap()` To show a different facet for each level of a *single* variable. One example of this could be showing a different epidemic curve for each hospital in a region. Facets are ordered alphabetically, unless the variable has other factor order.  
+  * You can invoke certain options to determine the look of the facets, e.g. `nrow=1` or `ncol=1` to control the number of rows or columns that the faceted plots are arranged within.  
   
-  2. `facet_grid()` This is used when you want to bring a second variable into the faceting arrangement. Here each element of a grid is shows the intersection between an x or y element of a grid. For example, this could involve showing a different epidemic curve for each hospital in a region, shown horizontally, for each age group, shown vertically.
+  2. `facet_grid()` This is used when you want to bring a second variable into the faceting arrangement. Here each element of a grid is shows the intersection between an x or y element of a grid. For example, this could involve showing a different epidemic curve for each hospital in a region, shown horizontally, for each age group, shown vertically.  
+  * `nrow` and `ncol` are not relevant, as the subgroups are presented in a grid  
+
+You can use a formala synatx for either function. You can stipulate up to two faceting variables, with a '~' between them. If only one faceting variable, a '.' is used as a placeholder for a non-used second faceting variable - see code examples.
+
+
   
-This can quickly become an overwhelming amount of information - its good to ensure you don't have too many levels of each variable that you choose to facet by! Here are some quick examples with the malaria dataset:
+This can quickly become an overwhelming amount of information - its good to ensure you don't have too many levels of each variable that you choose to facet by! Here are some quick examples with the malaria dataset (see [Download book and data]) which consists of daily case counts of malaria for facilities, by age group.  
+
+Below we import and do some quick modifications for simplicity:  
 
 ```{r, eval = TRUE, warning=F, message=F}
-malaria_data <- rio::import(here::here("data", "malaria_facility_count_data.rds")) 
-
-# show a wrapped plot with facets by district
-
-ggplot(malaria_data, aes(x = data_date, y = malaria_tot, fill = District)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "date of data collection",
-    y = "malaria cases",
-    title = "Malaria cases by district"
-  ) +
-  facet_wrap(~District) +
-  theme_minimal()
-
+# These data are daily counts of malaria cases, by facility-day
+malaria_data <- import(here("data", "malaria_facility_count_data.rds")) %>%  # import
+  select(-submitted_date, -Province, -newid)# %>%                             # remove unneeded columns
+  # group_by(District, data_date) %>%
+  # summarise(                                                                 # summarise facility-counts up to District level
+  #   malaria_tot = sum(malaria_tot, na.rm=T),
+  #   malaria_0_4 = sum(`malaria_rdt_0-4`, na.rm=T),
+  #   malaria_5_14 = sum(`malaria_rdt_5-14`, na.rm=T),
+  #   malaria_15 = sum(`malaria_rdt_15`, na.rm=T)
+  # )
 ```
 
-We can also use a `facet_grid()` approach with the different age groups - we need to do some data transformations first however, as the age groups all are in their own columns - we want them in a single column. When you pass the two variables to `facet_grid()`, you can use formula notation (e.g. `x ~ y`) or wrap the variables in `vars()`. For reference, this: `facet_grid(x ~ y)` is equivalent to `facet_grid(rows = vars(x), cols = vars(y))` Here's how we can do this:
+The first 50 rows of the malaria data are below. Note there is a column `malaria_tot`, but also columns for counts by age group (these will be used in the second, `facet_grid()` example).  
 
-```{r, eval = T, warning=F, message=F}
+```{r, message=FALSE, echo=F}
+DT::datatable(head(malaria_data, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
 
+### `facet_wrap()` {-}
+
+For the moment, let's focus on the columns `malaria_tot` and `District`. Ignore the age-specific count columns for now. We will plot epidemic curves with `geom_col()`, which produces a bar for each day at the specified y-axis height in column `malaria_tot` (we use `geom_col()` because the data are daily counts, not one row per case - see [Plot categorical data]).  
+
+When we add the command `facet_wrap()`, we specify a tilde and then the column to facet on (`District` in this case). You can place another column on the left side of the tilde, - this will create one facet for each combination - but we recommend you do this with `facet_grid()` instead. In this use case, one facet is created for each unique value of `District`.  
+
+```{r, warning=F, message=F}
+# A plot with facets by district
+ggplot(malaria_data, aes(x = data_date, y = malaria_tot)) +
+  geom_col(width = 1, fill = "darkred") +       # plot the count data as columns
+  theme_minimal()                               # simplify the background panels
+  labs(                                         # add plot labels, title, etc.
+    x = "Date of report",
+    y = "Malaria cases",
+    title = "Malaria cases by district") +
+  facet_wrap(~District)                       # the facets are created
+```
+
+### `facet_grid()` {-}  
+
+We can use a `facet_grid()` approach to cross two variables. Let's say we want to cross `District` and age. Well, we need to do some data transformations on the age columns to get these data into ggplot-preferred "long" format. The age groups all have their own columns - we want them in a single column called `age_group` and another called `num_cases`. See the page on [Pivoting data] for more information on this process.  
+
+```{r, message=F, warning=F}
 malaria_age <- malaria_data %>%
+  select(-malaria_tot) %>% 
   pivot_longer(
-    # choose all the columns that start with malaria rdt (age group specific)
-    cols = starts_with("malaria_rdt_"),
-    # column names become age group
-    names_to = "age_group",
-    # values to a single column (num_cases)
-    values_to = "num_cases"
+    cols = c(starts_with("malaria_rdt_")),  # choose columns to pivot longer
+    names_to = "age_group",      # column names become age group
+    values_to = "num_cases"      # values to a single column (num_cases)
   ) %>%
-  # clean up age group column - replace "malaria_rdt_" to leave only age group
-  # then replace 15 with 15+
-  # then refactor the age groups so they are in order
-  mutate(age_group = str_replace(age_group, "malaria_rdt_", "") %>%
-           ifelse(. == "15", "15+", .) %>%
-           forcats::fct_relevel(., "5-14", after = 1))
+  mutate(
+    age_group = str_replace(age_group, "malaria_rdt_", ""),
+    age_group = forcats::fct_relevel(age_group, "5-14", after = 1))
+```
+
+Now the first 50 rows of data look like this:  
+
+```{r, message=FALSE, echo=F}
+DT::datatable(head(malaria_age, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
 
 
-# make the same plot as before, but show in a grid
-ggplot(malaria_age, aes(x = data_date, y = num_cases, fill = age_group)) +
-  geom_bar(stat = "identity") +
+When you pass the two variables to `facet_grid()`, easiest is to use formula notation (e.g. `x ~ y`) where x is rows and y is columns. Here is the plot, using `facet_grid()` to show the plots for each combination of the columns `age_group` and `District`.
+
+```{r, message=F, warning=F}
+ggplot(malaria_age, aes(x = data_date, y = num_cases)) +
+  geom_col(fill = "darkred", width = 1) +
+  theme_minimal()+
   labs(
-    x = "date of data collection",
-    y = "malaria cases",
+    x = "Date of report",
+    y = "Malaria cases",
     title = "Malaria cases by district and age group"
   ) +
-  facet_grid(rows = vars(District), cols = vars(age_group)) +
-  theme_minimal()
+  facet_grid(District ~ age_group)
+```
 
+### Free or fixed axes {-}  
 
+The axes scales displayed when faceting are by default the same (fixed) across all the facets. This is helpful for comparison, but not always appropriate or optimal.  
+
+When using `facet_wrap()` or `facet_grid()`, we can add `scales = "free_y"` (plot A) so that the heights of the faceted histograms are standardised and the shapes are easier to compare. This is particularly useful if the actual counts are small for one of the subcategories and trends are otherwise hard to see. Instead of `free_y` we can also write `free_x` to do the same for the x axis or `free` for both axes. Note that in `facet_grid`, the y scales will be the same for facets in the same row, and the x scales will be the same for facets in the same column.
+
+When using `facet_grid` only, we can add `space = "free_y"` or `space = "free_x"` so that the actual height or width of the facet is weighted to the values of the figure within. This only works if `scales = "free"` (y or x) already applies. 
+
+```{r fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
+
+# Free y-axis
+ggplot(malaria_age, aes(x = data_date, y = num_cases)) +
+  geom_col(fill = "darkred", width = 1) +
+  theme_minimal()+
+  labs(
+    x = "Date of report",
+    y = "Malaria cases",
+    title = "Malaria cases by district and age group"
+  ) +
+  facet_grid(District ~ age_group, scales = "free_y")
+
+# Free x-axis (date axis)
+ggplot(malaria_age, aes(x = data_date, y = num_cases)) +
+  geom_col(fill = "darkred", width = 1) +
+  theme_minimal()+
+  labs(
+    x = "Date of report",
+    y = "Malaria cases",
+    title = "Malaria cases by district and age group"
+  ) +
+  facet_grid(District ~ age_group, scales = "free_x")
 
 ```
 
 
+<!-- ```{r fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')} -->
+<!-- # A) Facet hospitalsation date by hospital, free y axis -->
+<!-- ggplot(data = linelist %>% filter(hospital != "Missing"), # filter removes unknown hospital -->
+<!--        aes(x = date_hospitalisation ))+ -->
+<!--   geom_histogram(binwidth=7) + # Bindwidth = 7 days -->
+<!--   labs(title = "A) Histogram with free y axis scales")+ -->
+<!--   facet_grid(hospital~., # Facet with hospital as the row  -->
+<!--              scales = "free_y") # Free the y scale of each facet -->
+
+<!-- # B) Facet hospitalisation date by hospital, free y axis and vertical spacing -->
+<!-- ggplot(data = linelist %>% filter(hospital != "Missing"), # filter removes unknown hospital -->
+<!--        aes(x = date_hospitalisation ))+ -->
+<!--   geom_histogram(binwidth=7) + # Bindwidth = 7 days -->
+<!--   labs(title = "B) Histogram with free y axis scales and spacing")+ -->
+<!--   facet_grid(hospital~., # Facet with hospital as the row  -->
+<!--              scales = "free_y", # Free the y scale of each facet -->
+<!--              space = "free_y") # Free the vertical spacing of each facet to optimise space -->
+
+<!-- ``` -->
 
 
 ## Storing plots  
@@ -535,7 +620,7 @@ See the **tidyverse** documentation on [modifying theme](https://ggplot2.tidyver
 <span style="color: darkgreen;">**_TIP:_** If you ever want to remove an element of a plot, you can also do it through `theme()`! Just pass `element_blank()` to an argument to have it disappear completely!</span>  
 
 
-## "Bar plots" {-}  
+## "Bar plot" geoms  
 
 Geoms for "bar plots" deserve special mention, as they are easily confused. 
 
@@ -560,7 +645,7 @@ Use `geom_col()` if you want bar height (or stacked bar height) to reflect a pre
 * Provide column assignments for *both* axes. Typically your x-axis is discrete and your y-axis is assigned to the column with the values. 
 * The automatic title of the opposite axis will be the assigned y-axis column  
 
-```{r, eval=F}
+```{r, warning=F, message=F}
 
 proportion_died <- linelist %>%
   group_by(hospital) %>% 
@@ -579,7 +664,7 @@ ggplot(data = proportion_died)+
 ```
 If you want stacked bars using `geom_col()`, you must take additional steps (often, pivoting) to ensure that the data are in "long" format (see [Pivoting data]). There should be one column containing the categories (e.g. stacks) and another column with the heights.    
 
-```{r, eval=F}
+```{r, warning=F, message=F}
 proportion_outcome <- linelist %>%
   group_by(hospital) %>% 
   summarise(
@@ -633,7 +718,7 @@ ggplot(data = linelist)+
 
 
 
-## Piping into **ggplot2** {-}  
+## Piping into **ggplot2**   
 
 When using pipes to clean and transform your data, it is easy to pass the transformed data into `ggplot()`. The pipes that pass the dataset from function-to-function will transition to `+` once the `ggplot()` function is called. Note that in this case, there is no need to specify the `data = ` argument, as this is automatically defined as the piped-in dataset.  
 
@@ -659,7 +744,7 @@ linelist %>%                                                     # begin with li
 ```
 
 
-## Exporting plots {-}  
+## Exporting plots   
 
 Exporting ggplots is made easy with the `ggsave()` function from **ggplot2**. It can work in two ways, either:  
 
