@@ -11,12 +11,17 @@ We will use **survey** as well as [**srvyr**](https://cran.r-project.org/web/pac
 (a wrapper for **survey** allowing for tidyverse-style coding) and
 [**gtsummary**](https://cran.r-project.org/web/packages/gtsummary/index.html) 
 (a wrapper for **survey** allowing for publication ready tables). 
+While the original **survey** package does not allow for tidyverse-style coding, 
+it does have the added benefit of allowing for survey-weighted generalised linear 
+models (which will be added to this page at a later date). 
 We will also demonstrate using a function from the [**sitrep**](https://github.com/R4EPI/sitrep)
 package to create sampling weights (*n.b* this package is currently not yet on CRAN, 
 but can be installed from github).
 
 Most of this page is based off work done for the ["R4Epis" project](https://r4epis.netlify.app/); 
 for detailed coe and R-markdown templates see the ["R4Epis" github page](https://github.com/R4EPI/sitrep). 
+Some of the **survey** package based code is based off early versions of 
+[EPIET case studies](https://github.com/EPIET/RapidAssessmentSurveys).
 
 At current this page does not address sample size calculations or sampling. 
 For a simple to use sample size calculator see [OpenEpi](https://www.openepi.com/Menu/OE_Menu.htm). 
@@ -31,8 +36,8 @@ eventually have a section on sampling frames as well as sample size calculations
 3.  Weighting 
 4.  Survey design objects
 5.  Descriptive analysis 
-6.  Weighted rates 
-7.  Weighted proportions
+6.  Weighted proportions
+7.  Weighted rates 
 
 
 <!-- ======================================================= -->
@@ -54,7 +59,8 @@ pacman::p_load(rio,          # File import
                srvyr,        # dplyr wrapper for survey package
                gtsummary,    # wrapper for survey package to produce tables
                apyramid,     # a package dedicated to creating age pyramids
-               patchwork     # for combining ggplots 
+               patchwork,    # for combining ggplots 
+               ggforce       # for alluvial/sankey plots
                )
 
 ## load packages from github
@@ -168,9 +174,12 @@ page for details), however using the dictionary to define dates is quick and eas
 We also create an age group variable using the `age_categories()` function from 
 **epikit** - see [cleaning data](https://epirhandbook.com/cleaning-data-and-core-functions.html#num_cats)
 handbook section for details. 
-
-Finally, we create a character variable defining which district the various clusters
+In addition, we create a character variable defining which district the various clusters
 are in. 
+
+Finally, we recode all of the yes/no variables to TRUE/FALSE variables - otherwise
+these cant be used by the **survey** proportion functions. 
+
 ```{r clean_data}
 
 ## select the date variable names from the dictionary 
@@ -182,7 +191,7 @@ DATEVARS <- survey_dict %>%
   
 ## change to dates 
 survey_data <- survey_data %>%
-  mutate(across(all_of(DATEVARS), guess_dates))
+  mutate(across(all_of(DATEVARS), as.Date))
 
 
 ## define age group variable
@@ -199,6 +208,19 @@ survey_data <- survey_data %>%
     TRUE ~ "district_b"
   ))
 
+
+## select the yes/no variable names from the dictionary 
+YNVARS <- survey_dict %>% 
+  filter(type == "yn") %>% 
+  filter(name %in% names(survey_data)) %>% 
+  ## filter to match the column names of your data
+  pull(name) # select yn vars
+  
+## change to dates 
+survey_data <- survey_data %>%
+  mutate(across(all_of(YNVARS), 
+                str_detect, 
+                pattern = "yes"))
 
 ```
 
@@ -259,7 +281,7 @@ are reported from outside the period of interest.
 ## can be changed to date variables from dataset 
 ## (e.g. arrival date & date questionnaire)
 survey_data <- survey_data %>% 
-  mutate(recall_start = as.Date("2018-02-01"), 
+  mutate(recall_start = as.Date("2018-01-01"), 
          recall_end   = as.Date("2018-05-01")
   )
 
@@ -356,7 +378,7 @@ from our survey data.
 ## store the cases that you drop so you can describe them (e.g. non-consenting 
 ## or wrong village/cluster)
 dropped <- survey_data %>% 
-  filter(consent != "yes" | is.na(startdate) | is.na(enddate) | village_name == "other")
+  filter(!consent | is.na(startdate) | is.na(enddate) | village_name == "other")
 
 ## use the dropped cases to remove the unused rows from the survey data set  
 survey_data <- anti_join(survey_data, dropped, by = names(dropped))
@@ -408,6 +430,13 @@ survey_data <- add_weights_cluster(x = survey_data,
 survey_data <- survey_data %>% 
   mutate(surv_weight_cluster_strata = surv_weight_strata * surv_weight_cluster)
 
+
+## TODO DELETE THIS 
+
+## drop those that are missing weights 
+
+survey_data <- survey_data %>% 
+  filter(!is.na(surv_weight_cluster_strata))
 ```
 
 
@@ -428,7 +457,61 @@ For this template - we will pretend that we cluster surveys in two separate
 strata (health districts A and B). 
 So to get overall estimates we need have combined cluster and strata weights. 
 
+As mentioned previously, there are two packages available for doing this. The 
+classic one is **survey** and then there is a wrapper package called **srvyr** 
+that makes tidyverse-friendly objects and functions. We will demonstrate both, 
+but note that most of the code in this chapter will use **srvyr** based objects. 
+The one exception is that the **gtsummary** package only accepts **survey** objects. 
+
+### **Survey** package  
+
+The **survey** package effectively uses **base** *R* coding, and so it is not 
+possible to use pipes (`%>%`) or other **dplyr** syntax. 
+With the **survey** package we use the `svydesign()` function to define a survey
+object with appropriate clusters, weights and strata. 
+
+<span style="color: black;">**_NOTE:_** we need to use the tilde (`~`) in front of variables, this is because the package uses the **base** *R* syntax of assigning variables based on formulae. </span>
+
 ```{r survey_design}
+
+## simple random ---------------------------------------------------------------
+base_survey_design_simple <- svydesign(ids = ~1, # 1 for no cluster ids 
+                   weights = NULL,               # No weight added
+                   strata = NULL,                # sampling was simple (no strata)
+                   data = survey_data            # have to specify the dataset
+                  )
+
+## stratified ------------------------------------------------------------------
+base_survey_design_strata <- svydesign(ids = ~1,  # 1 for no cluster ids 
+                   weights = ~surv_weight_strata, # weight variable created above
+                   strata = ~health_district,     # sampling was stratified by district
+                   data = survey_data             # have to specify the dataset
+                  )
+
+## cluster ---------------------------------------------------------------------
+base_survey_design_cluster <- svydesign(ids = ~village_name, # cluster ids
+                   weights = ~surv_weight_cluster, # weight variable created above 
+                   strata = ~NULL,                 # sampling was simple (no strata)
+                   data = survey_data              # have to specify the dataset
+                  )
+
+## stratified cluster ----------------------------------------------------------
+base_survey_design <- svydesign(ids = ~village_name,      # cluster ids
+                   weights = ~surv_weight_cluster_strata, # weight variable created above  
+                   strata = ~health_district,             # sampling was stratified by district
+                   data = survey_data                     # have to specify the dataset
+                  )
+```
+
+
+
+### **Srvyr** package  
+
+With the **srvyr** package we can use the `as_survey_design()` function, which 
+has all the same arguments as above but allows pipes (`%>%`), and so we do not 
+need to use the tilde (`~`). 
+
+```{r survey_design_srvyr}
 ## simple random ---------------------------------------------------------------
 survey_design_simple <- survey_data %>% 
   as_survey_design(ids = 1, # 1 for no cluster ids 
@@ -679,6 +762,294 @@ source_population + sample_population + weighted_population +
 
 
 ### Alluvial/sankey diagram
+
+Visualising starting points and outcomes for individuals can be very helpful to 
+get an overview. There is quite an obvious application for mobile populations, 
+however there are numerous other applications such as cohorts or any other situation
+where there are transitions in states for individuals. These diagrams have several
+different names including alluvial, sankey and parallel sets - the details are 
+in the handbook chapter on [diagrams and charts](https://epirhandbook.com/diagrams-and-charts.html#alluvialsankey-diagrams). 
+
+
+```{r visualise_population_flow}
+
+## summarize data
+flow_table <- survey_data %>%
+  count(startcause, endcause, sex) %>%  # get counts 
+  gather_set_data(x = c("startcause", "endcause")) %>%     # change format for plotting
+  mutate(x = fct_relevel(x, c("startcause", "endcause")),  # set startcause as first level
+         x = fct_recode(x, 
+                        "Start \n cause" = "startcause",   # add line break (\n) after start
+                        "End \n cause"   = "endcause")
+        )
+
+
+## plot your dataset 
+  ## on the x axis is the start and end causes
+  ## gather_set_data generates an ID for each possible combination
+  ## splitting by y gives the possible start/end combos
+  ## value as n gives it as counts (could also be changed to proportion)
+ggplot(flow_table, aes(x, id = id, split = y, value = n)) +
+  ## colour lines by sex 
+  geom_parallel_sets(aes(fill = sex), alpha = 0.5, axis.width = 0.2) +
+  ## fill in the label boxes grey
+  geom_parallel_sets_axes(axis.width = 0.15, fill = "grey80", color = "grey80") +
+  ## change text colour and angle (needs to be adjusted)
+  geom_parallel_sets_labels(color = "black", angle = 0, size = 5) +
+  ## adjusted y and x axes (probably needs more vertical space)
+  scale_x_discrete(name = NULL, expand = c(0, 0.2)) + 
+  ## remove axis labels
+  theme(
+    title = element_text(size = 26),
+    text = element_text(size = 26),
+    axis.line = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text.y = element_blank(),
+    panel.background = element_blank(),
+    legend.position = "bottom",                    # move legend to bottom
+    legend.title = element_blank(),                # remove title
+  )
+
+```
+
+
+<!-- ======================================================= -->
+## Weighted proportions {  }
+
+This section will detail how to produce tables for weighted counts and proportions,
+with associated confidence intervals and design effect. 
+There are four different options using functions from the following packages: 
+**survey**, **srvyr**, **sitrep** and **gtsummary**. 
+For minimal coding to produce a standard epidemiology style table, we would 
+recommend the **sitrep** function - which is a wrapper for **srvyr** code; note 
+however that this is not yet on CRAN and may change in the future. 
+Otherwise, the **survey** code is likely to be the most stable long-term, whereas 
+**srvyr** will fit most nicely within tidyverse work-flows. While **gtsummary** 
+functions hold a lot of potential, they appear to be experimental and incomplete
+at the time of writing. 
+
+
+### **Survey** package 
+
+We can use the `svyciprop()` function from **survey** to get weighted proportions 
+and accompanying 95% confidence intervals. An appropriate design effect can be 
+extracted using the `svymean()` rather than `svyprop()` function. 
+It is worth noting that `svyprop()` only appears to accept variables between 0 and
+1 (or TRUE/FALSE), so categorical variables will not work.
+
+<span style="color: black;">**_NOTE:_** Functions from **survey** also accept **srvyr** design objects, but here we have used the **survey** design object just for consistency </span>
+
+
+```{r survey_props}
+
+## produce weighted counts 
+svytable(~died, base_survey_design)
+
+## produce weighted proportions
+svyciprop(~died, base_survey_design, na.rm = T)
+
+## get the design effect 
+svymean(~died, base_survey_design, na.rm = T, deff = T) %>% 
+  deff()
+
+```
+
+We can combine the functions from **survey** shown above in to a function which 
+we define ourselves below, called `svy_prop`; and we can then use that function 
+together with `map()` from the purrr package to iterate over several variables 
+and create a table. See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) 
+chapter for details on **purrr**. 
+
+```{r survey_prop_fun}
+# Define function to calculate weighted counts, proportions, CI and design effect
+# x is the variable in quotation marks 
+# design is your survey design object
+
+svy_prop <- function(design, x) {
+  
+  ## put the variable of interest in a formula 
+  form <- as.formula(paste0( "~" , x))
+  ## only keep the TRUE column of counts from svytable
+  weighted_counts <- svytable(form, design)[[2]]
+  ## calculate proportions (multiply by 100 to get percentages)
+  weighted_props <- svyciprop(form, design, na.rm = TRUE) * 100
+  ## extract the confidence intervals and multiply to get percentages
+  weighted_confint <- confint(weighted_props) * 100
+  ## use svymean to calculate design effect and only keep the TRUE column
+  design_eff <- deff(svymean(form, design, na.rm = TRUE, deff = TRUE))[[TRUE]]
+  
+  ## combine in to one data frame
+  full_table <- cbind(
+    "Variable"        = x,
+    "Count"           = weighted_counts,
+    "Proportion"      = weighted_props,
+    weighted_confint, 
+    "Design effect"   = design_eff
+    )
+  
+  ## return table as a dataframe
+  full_table <- data.frame(full_table, 
+             ## remove the variable names from rows (is a separate column now)
+             row.names = NULL)
+  
+  ## change numerics back to numeric
+  full_table[ , 2:6] <- as.numeric(full_table[, 2:6])
+  
+  ## return dataframe
+  full_table
+}
+
+## iterate over several variables to create a table 
+purrr::map(
+  ## define variables of interest
+  c("left", "died", "arrived"), 
+  ## state function using and arguments for that function (design)
+  svy_prop, design = base_survey_design) %>% 
+  ## collapse list in to a single data frame
+  bind_rows() %>% 
+  ## round 
+  mutate(across(where(is.numeric), round, digits = 1))
+
+```
+
+
+
+### **Srvyr** package 
+
+With **srvyr** we can use **dplyr** syntax to create a table. Note that the 
+`survey_mean()` function is used and the proportion argument is specified, and 
+also that the same function is used to calculate design effect. This is because 
+**srvyr** wraps around both of the **survey** package functions `svyciprop()` and 
+`svymean()`, which are used in the above section. 
+
+<span style="color: black;">**_NOTE:_** It does not seem to be possible to get proportions from categorical variables using **srvyr** either, if you need this then check out the section below using **sitrep** </span>
+
+```{r srvyr_prop}
+
+## use the srvyr design object
+survey_design %>% 
+  summarise(
+    ## produce the weighted counts 
+    counts = survey_total(died), 
+    ## produce weighted proportions and confidence intervals 
+    ## multiply by 100 to get a percentage 
+    props = survey_mean(died, 
+                        proportion = TRUE, 
+                        vartype = "ci") * 100, 
+    ## produce the design effect 
+    deff = survey_mean(died, deff = TRUE)) %>% 
+  ## only keep the rows of interest
+  ## (drop standard errors and repeat proportion calculation)
+  select(counts, props, props_low, props_upp, deff_deff)
+
+```
+
+Here too we could write a function to then iterate over multiple variables using
+the **purrr** package. 
+See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) 
+chapter for details on **purrr**. 
+
+```{r srvyr_prop_fun}
+
+# Define function to calculate weighted counts, proportions, CI and design effect
+# design is your survey design object
+# x is the variable in quotation marks 
+
+
+srvyr_prop <- function(design, x) {
+  
+  summarise(
+    ## using the survey design object
+    design, 
+    ## produce the weighted counts 
+    counts = survey_total(.data[[x]]), 
+    ## produce weighted proportions and confidence intervals 
+    ## multiply by 100 to get a percentage 
+    props = survey_mean(.data[[x]], 
+                        proportion = TRUE, 
+                        vartype = "ci") * 100, 
+    ## produce the design effect 
+    deff = survey_mean(.data[[x]], deff = TRUE)) %>% 
+  ## add in the variable name
+  mutate(variable = x) %>% 
+  ## only keep the rows of interest
+  ## (drop standard errors and repeat proportion calculation)
+  select(variable, counts, props, props_low, props_upp, deff_deff)
+  
+}
+  
+
+## iterate over several variables to create a table 
+purrr::map(
+  ## define variables of interest
+  c("left", "died", "arrived"), 
+  ## state function using and arguments for that function (design)
+  ~srvyr_prop(.x, design = survey_design)) %>% 
+  ## collapse list in to a single data frame
+  bind_rows()
+  
+
+```
+
+
+
+### **Sitrep** package 
+
+The `tab_survey()` function from **sitrep** is a wrapper for **srvyr**, allowing 
+you to create weighted tables with minimal coding. It also allows you to calculate
+weighted proportions for categorical variables. 
+
+```{r sitrep_props}
+
+## using the survey design object
+survey_design %>% 
+  ## pass the names of variables of interest unquoted
+  tab_survey(arrived, left, died, education_level,
+             deff = TRUE,   # calculate the design effect
+             pretty = TRUE  # merge the proportion and 95%CI
+             )
+
+```
+
+
+
+### **Gtsummary** package
+
+
+
+```{r}
+
+
+
+
+gtsummary::tbl_svysummary(base_survey_design, 
+               include = c(arrived, left, died, education_level), 
+               statistic = list(everything() ~ "{n} / {N} ({p}))"))
+
+
+```
+
+
+
+<!-- ======================================================= -->
+## Weighted rates {  }
+
+```{r}
+
+tab_survey(survey_design, died, deff = TRUE, keep = "TRUE")
+
+
+survey_design %>% 
+  ## survey ratio used to account for observation time 
+  summarize(
+    mortality = survey_ratio(
+      as.numeric(died) * 10000, 
+      obstime, 
+      vartype = "ci")
+    )
+
+```
+
 
 
 
