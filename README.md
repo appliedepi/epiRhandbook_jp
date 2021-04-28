@@ -12,7 +12,7 @@
 * Serve as a quick R code reference manual  
 * Provide task-centered examples for addressing common epidemiologic problems  
 * Assist epidemiologists transitioning to R from SAS, STATA, SPSS, and Excel  
-* Be accessible in settings with low internet-connectivity via an **offline version** ([instructions here][Download handbook and data])  
+* Be accessible in settings with low internet-connectivity via an **offline version** ([instructions here](https://epirhandbook.com/download-handbook-and-data.html))  
   
 
 **How is this different than other R books?**  
@@ -27,19 +27,11 @@
 * Search via the search box above the Table of Contents 
 * Click the "copy" icons to copy code  
 * See the "Resources" section of each page for further resources  
-* "Follow-along" by [downloading the example data][Download handbook and data]  
-
-
-**To download the offline version follow these steps:**
-
-* Click on this [html file](https://github.com/nsbatra/Epi_R_handbook/tree/master/offline_long) the "offline_long" folder of this Github repository
-* Click the “Download” button. A window will open with HTML source code.
-* “Save As” the webpage, via right-click (windows) or Cmd-s (mac) - ensure the file type is “Webpage, Complete”
-* The file is large (>40MB) so content may take time to appear. It displays as one long page, so search with Ctrl+f (Cmd-f).
+* "Follow-along" by [downloading the example data](https://epirhandbook.com/download-handbook-and-data.html)  
 
 **Offline version**  
 
-See instructions to download the offline version of the handbook in the [Download book and data] page.  
+See instructions to download the offline version of the handbook in the [Download book and data](https://epirhandbook.com/download-handbook-and-data.html) page.  
 
 **Languages**  
 
@@ -48,7 +40,7 @@ We are seeking to translate this book into languages other than English. If you 
 
 
 # Edit or contribute
-We welcome your comments and suggestions at the [feedback link](https://forms.gle/A5SnRVws7tPD15Js9), by email to **epiRhandbook@gmail.com** or via issue/pull request at our [Github repository](https://github.com/nsbatra/R_epi_handbook).  
+We welcome your comments and suggestions at the [feedback survey](https://forms.gle/A5SnRVws7tPD15Js9), by email to **epiRhandbook@gmail.com** or via issue/pull request at our [Github repository](https://github.com/nsbatra/R_epi_handbook).  
 
 
 # Acknowledgements
