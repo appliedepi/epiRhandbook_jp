@@ -1,7 +1,7 @@
 # The Epidemiologist R Handbook 
 
 # About this handbook
-**This is a free open-access R reference manual for applied epidemiologists and public health practitioners.**  
+**The Epi R Handbook is a R reference manual for applied epidemiology and public health.**  
 
 ***Go to www.epiRhandbook.com to see the latest version of the online handbook.***
 
@@ -10,9 +10,10 @@
 **This book strives to:**  
 
 * Serve as a quick R code reference manual  
-* Provide task-centered examples for addressing common epidemiological problems  
+* Provide task-centered examples for addressing common epidemiologic problems  
 * Assist epidemiologists transitioning to R from SAS, STATA, SPSS, and Excel  
-* Be accessible in settings with low internet-connectivity via an **offline version** ([instructions here][Download book and data])  
+* Be accessible in settings with low internet-connectivity via an **offline version** ([instructions here][Download handbook and data])  
+  
 
 **How is this different than other R books?**  
 
@@ -26,7 +27,8 @@
 * Search via the search box above the Table of Contents 
 * Click the "copy" icons to copy code  
 * See the "Resources" section of each page for further resources  
-* To download data and "follow-along", see the [Download book and data] page  
+* "Follow-along" by [downloading the example data][Download handbook and data]  
+
 
 **To download the offline version follow these steps:**
 
@@ -35,43 +37,40 @@
 * “Save As” the webpage, via right-click (windows) or Cmd-s (mac) - ensure the file type is “Webpage, Complete”
 * The file is large (>40MB) so content may take time to appear. It displays as one long page, so search with Ctrl+f (Cmd-f).
 
-**To download the datasets used in this book**  
+**Offline version**  
 
-* Go to the ["data" folder](https://github.com/nsbatra/Epi_R_handbook/tree/master/data) of this Github repository.  
-* To “follow along” with any of the handbook examples that use the case linelist, download and load either the “linelist_raw.xlsx” (for the Cleaning data page), or “linelist_cleaned.rds” (for any other page).  
+See instructions to download the offline version of the handbook in the [Download book and data] page.  
 
 **Languages**  
 
-We are actively seeking to translate this book into languages other than English. If you can help, please contact us at **epiRhandbook@gmail.com**.  
+We are seeking to translate this book into languages other than English. If you can help, please contact us.   
 
 
 
 # Edit or contribute
-Want to share how you use this book? Want to offer a fix or addition?  
-Email us at **epiRhandbook@gmail.com**. We welcome your comments and suggestions. 
-
-You can also submit an issue or pull request at our [Github repository](https://github.com/nsbatra/R_epi_handbook), or provide structured feedback via this [Google survey](https://forms.gle/4RNdRRLGx67xW9yq9). 
+We welcome your comments and suggestions at the [feedback link](https://forms.gle/A5SnRVws7tPD15Js9), by email to **epiRhandbook@gmail.com** or via issue/pull request at our [Github repository](https://github.com/nsbatra/R_epi_handbook).  
 
 
 # Acknowledgements
 
-This book is produced by a collaboration of epidemiologists from around the world, drawing upon experiences with organizations including local, state, provincial, and national health departments and ministries, the World Health Organization (WHO), MSF (Médecins Sans Frontières / Doctors without Borders), hospital systems, and academic institutions.
-
-**Editor-in-Chief:** Neale Batra 
-
-**Core team:** Neale Batra, Alex Spina, Amrish Baidjoe, Pat Keating, Henry Laurenson-Schafer, Finlay Campbell  
-
-**Authors**: Neale Batra, Alex Spina, Paula Blomquist, Finlay Campbell, Henry Laurenson-Schafer, Isaac Florence, Natalie Fischer, Aminata Ndiaye, Liza Coyer, Jonny Polonski, Yurie Izawa, Daniel Molling, Sara Hollis, Isha Berry, Wen Lin  
-
-**Reviewers**: 
-
-## Funding and programmatic support {-}  
+This handbook is produced by a collaboration of epidemiologists from around the world in their spare time, drawing upon experiences with organizations including local, state/provincial, and national health agencies, the World Health Organization (WHO), MSF (Médecins Sans Frontières / Doctors without Borders), hospital systems, and academic institutions.
 
 This handbook is **not** an approved product of any specific organization. Although we strive for accuracy, we provide no guarantee of the content in this book.  
 
-The handbook project received funding via a COVID-19 emergency capacity-building grant from Training Programs in Epidemiology and Public Health Interventions Network ([TEPHINET](https://www.tephinet.org/)). *This handbook was supported by Cooperative Agreement number NU2GGH001873, funded by the Centers for Disease Control and Prevention through TEPHINET, a program of The Task Force for Global Health. Its contents are solely the responsibility of the authors and do not necessarily represent the official views of the Centers for Disease Control and Prevention, the Department of Health and Human Services, The Task Force for Global Health, Inc. or TEPHINET.*
+**Editor-in-Chief:** Neale Batra 
 
-Programmatic support was provided by the EPIET Alumni Network ([EAN](https://epietalumni.net/)).  
+**Project core team:** Neale Batra, Alex Spina, Amrish Baidjoe, Pat Keating, Henry Laurenson-Schafer, Finlay Campbell  
+
+**Authors**: Neale Batra, Alex Spina, Paula Blomquist, Finlay Campbell, Henry Laurenson-Schafer, Isaac Florence, Natalie Fischer, Aminata Ndiaye, Liza Coyer, Jonathan Polonsky, Yurie Izawa, Daniel Molling, Isha Berry, Emma Buajitti, Chris Bailey, Wen Lin, Sara Hollis  
+
+**Reviewers**: Pat Keating, Mathilde Mousset, Annick Lenglet, Margot Charette, Isha Berry, Paula Blomquist, Natalie Fischer, Daniely Xavier, Esther Kukielka, Michelle Sloan, Aybüke Koyuncu, Rachel Burke, Daniel Molling, Kate Kelsey, Wayne Enanoria, John Rossow, Berhe Etsay, Mackenzie Zendt, James Wright, Flavio Finger, Tim Taylor, Tim Lee, Manual Albela Miranda, Priscilla Spencer, Pattama Ulrich, Joseph Timothy, Olivia Varsaneux, Nienke Meeuwissen, Adam Vaughan, Lionel Monteiro, Joao Muianga  
+
+### Funding and support {-}  
+
+The handbook project received supportive funding via a COVID-19 emergency capacity-building grant from Training Programs in Epidemiology and Public Health Interventions Network ([TEPHINET](https://www.tephinet.org/)). *This handbook was supported by Cooperative Agreement number NU2GGH001873, funded by the Centers for Disease Control and Prevention through TEPHINET, a program of The Task Force for Global Health. Its contents are solely the responsibility of the authors and do not necessarily represent the official views of the Centers for Disease Control and Prevention, the Department of Health and Human Services, The Task Force for Global Health, Inc. or TEPHINET.*
+
+Administrative support was provided by the EPIET Alumni Network ([EAN](https://epietalumni.net/)), with special thanks to Annika Wendland. EPIET is the European Programme for Intervention Epidemiology Training.  
+
 
 
 
@@ -96,7 +95,9 @@ Images in logo (from US CDC Public Health Image Library):
 
 
 
-# Terms of Use and License {-}  
+## Terms of Use and License {-}  
 
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
 
+
+Universities and academic courses are welcome to use this handbook with their students. If you have questions about your intended use, email **epirhandbook@gmail.com**.  
