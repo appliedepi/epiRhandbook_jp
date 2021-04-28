@@ -131,6 +131,16 @@ A sample follow-up list could look like this, with one row for each follow-up ge
 # display the first 50 rows of contact linelist data as a table
 DT::datatable(head(followups, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
+It is important to consider duplicates - perhaps a contact tracer filled out a follow-up form early on in the day and could not reach them, and filled out a second form where they were then reached. It will depend on the operational scenario and context how you want to handle duplicates, but for simplicity sake here, let's de-duplicate so that there is only one follow-up per person per day, and we keep the row with the most recent submission.
+
+```{r, warning=F, message=F}
+
+followups <- followups %>%
+  arrange(contact_uuid, desc(date_of_followup)) %>%    # arrange by date of follow-up; most recent first
+  distinct(contact_uuid, .keep_all = TRUE)             # distinct to grab first row per unique contact uuid
+
+```
+
 For each follow-up, we have a follow-up STATUS (such as whether it was performed and if so, did they have symptoms or not). We can group by `followup_status` to see the frequency of each:
 
 ```{r, warning=F, message=F}
@@ -139,12 +149,144 @@ followup_status <- followups %>%
      group_by(followup_status) %>%
      count()
 
-followup_status
+```
+
+Another thing to keep in mind - you need to prepare for all graphs to show similarly even with varying levels of data completion or data composition, for a given deployment or region. Although not the case for this sample dataset, there may be the scenario where not all follow-up statuses are present in the data at a given time, but we still want the categories to appear the legends and tables. 
+
+In order to force the followup status columns to always be the same, we can set an array below `statuscols` and then use this later. For demonstration I will add in another category "OTHER_RANDOM_STATUS".
+
+```{r, warning=F, message=F}
+
+statuscols <- c(MISSED  = 0, 
+                SEEN_NOT_OK = 0, 
+                SEEN_OK = 0,
+                NOT_PERFORMED = 0,
+                NOT_ATTEMPTED = 0,
+                OTHER_RANDOM_STATUS = 0)
+
+```
+
+
+We can visualize a simple plot to show, over time, the status of all follow-ups, of those that were generated. 
+*ggplot2* works best with "long" format, which it already is, but if we need to force in the extra status column one option is widening first with `pivot_wider()`; add in column via `add_column()`; then to again `pivot_longer()`.
+
+```{r, warning=F, message=F}
+
+
+followup_status_daily <- followups %>%
+     group_by(followup_status, date_of_followup) %>%
+     count() %>%
+     pivot_wider(names_from = followup_status, 
+                 values_from = n, 
+                 values_fill = list(n=0)) 
+
+```
+
+Here we have for each day, the count of each follow-up status. In order to guard against categories being dropped, we ca add the `statuscols` using `add_column()` - it will will be forced to 0 if no rows match this status.
+
+```{r, warning=F, message=F}
+
+
+followup_status_daily <- followups %>%
+     group_by(followup_status, date_of_followup) %>%
+     count() %>%
+     pivot_wider(names_from = followup_status, 
+                 values_from = n, 
+                 values_fill = list(n=0)) %>%
+     add_column(!!!statuscols[!names(statuscols)%in% names(.)])  # check and add columns if one status doesn't exist
+
+```
+
+Now we can transform back to "long" format to prepare for plotting using `pivot_longer()`.
+
+```{r, warning=F, message=F}
+
+
+followup_status_daily_long <- followups %>%
+     group_by(followup_status, date_of_followup) %>%
+     count() %>%
+     pivot_wider(names_from = followup_status, 
+                 values_from = n, 
+                 values_fill = list(n=0)) %>%
+     add_column(!!!statuscols[!names(statuscols)%in% names(.)]) %>% # check and add columns if one status doesn't exist
+     pivot_longer(cols = -date_of_followup,             # pivot to long version but retain date_of_followup column
+                  names_to = "daily_status", 
+                  values_to = "counts") 
+
+```
+
+Now we can plot to show this over time.
+
+```{r, warning=F, message=F}
+
+graph_followup_status_daily_long <- followup_status_daily_long %>%
+    ggplot(aes(x = date_of_followup, y = counts, fill = daily_status)) +
+    geom_col(position = "stack") +
+    theme_classic() +
+    labs(x = "",
+         y = "Number of contacts",
+         title = "Daily Contact Followup Status",
+         fill = "Followup Status",
+         subtitle = paste0("Data as of ", Sys.Date(), "\n")) 
+
+```
+
+
+Perhaps this is being viewed on a daily of weekly basis for operational decision-making, and it's better to do some more meaningful disaggregations by geographic area or team. We can do this following same approach as before, just swapping out `group_by()` variables.
+
+```{r, warning=F, message=F}
+
+followup_status_regional <- followups %>%
+     group_by(followup_status, admin_2_name, admin_1_name) %>%    # here instead we are using location var
+     count() %>%
+     pivot_wider(names_from = followup_status, 
+                 values_from = n, 
+                 values_fill = list(n=0)) %>%
+     add_column(!!!statuscols[!names(statuscols)%in% names(.)]) %>%  # check and add columns if one status doesn't exist
+     pivot_longer(cols = -(admin_2_name:admin_1_name),             # pivot to long version but retain location columns
+                  names_to = "daily_status", 
+                  values_to = "counts") 
+
+```
+
+Now we can graph and facet appropriately:
+
+```{r, warning=F, message=F}
+
+graph_followup_status_regional <- followup_status_regional %>%
+    ggplot(aes(x = reorder(admin_2_name,counts), 
+               y = counts, 
+               fill = daily_status,
+               label = ifelse(counts>0, counts, NA)  # add in label of counts for easier reading
+               )) +
+    geom_col(position = "stack") +
+    geom_text(size = 3, position = position_stack(vjust = 0.5), 
+               color = "white", check_overlap = TRUE, fontface = "bold") + # formatting for text labeling
+    coord_flip() +
+    theme_classic() +
+    labs(x = "",
+         y = "Number of contacts",
+         title = "Contact Followup Status, by Region",
+         fill = "Followup Status",
+         subtitle = paste0("Data as of ", Sys.Date(), "\n")) +
+     facet_wrap(~admin_1_name, strip.position = "right", scales = "free_y", ncol = 1)  # add admin_1 names on right
+
+```
+
+If this was disaggregated by contact tracer, perhaps we would want to add a threshold line to display total # contacts that normally one person or area/team can handle, and how the current workload compares. We just do this by using `geom_hline()` function.
+
+```{r, warning=F, message=F}
+
+graph_followup_status_regional <- 
+     graph_followup_status_regional + 
+     geom_hline(aes(yintercept=25), color="#C70039", linetype = "dashed") # fictitious threshold at 25 contacts
 
 ```
 
 
 #### KPI Tables {-}
+
+There are a number of different KPIs that can be calculated and tracked at varying levels of disaggregations and across different time periods. Once you have the calculations down and the basic table format; it is fairly easy to swap in and out different KPIs. Below we will walk through a sample exercise of creating a nice table visual to show contact follow-up across contact tracers using *formattable* package.
 
 ```{r, warning=F, message=F}
 
