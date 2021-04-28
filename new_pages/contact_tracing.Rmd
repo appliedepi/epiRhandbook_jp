@@ -3,26 +3,9 @@
 
 THIS PAGE IS UNDER CONSTRUCTION
 
-This page walks through some key considerations when analyzing and visualizing contact tracing data. Many core R competencies and tools are covered in other sections as the same desired functionalities apply (i.e. data cleaning; pivoting; tables; epi-curves) but we will highlight key examples specific to contact tracing that have been useful for operational decision making (i.e. visualizing contact tracing follow-up data over time or across geographic areas).
+This page walks through some key considerations when analyzing and visualizing contact tracing data. Many core R competencies and tools are covered in other sections as the same desired functionalities apply (i.e. data cleaning; pivoting; tables; time-series analyses) but we will highlight key examples specific to contact tracing that have been useful for operational decision making. This would include things like visualizing contact tracing follow-up data over time or across geographic areas, or producing clean KPI tables for Contact Tracing supervisors.
 
 For demonstration purposes we will be reading in sample contact tracing data from the [Go.Data](https://www.who.int/tools/godata) platform; although the same principles could apply for other structured contact tracing data. You can read more about the Go.Data project on the [Github Documentation site](https://worldhealthorganization.github.io/godata/) or [Community of Practice](https://community-godata.who.int/). 
-
-
-include static images or GIFs like this:
-
-```{r out.width = "100%", fig.align = "center", echo=F}
-knitr::include_graphics(here::here("images", "flexdashboard_output.png"))
-```
-
-
-Link to other pages by exact name in brackets like the [Import and export] page. Or give them a custom link text like this, with brackets following brackets:   See [the importing page][Import and export]  
-
-Please place {-} after any heading level-3 or more (###) so the numbers don't appear in the TOC
-
-Please include a preparation section like below. You can display interactive data frames/tibbles with DT as shown below.
-
-If you want to preview the page, you can just press Knit. Or use the combination of bookdown_runfile.R and bookdown_small.yml in the root folder to see website layout. Ping me with questions.  
-
 
 ## Preparation
 
@@ -37,7 +20,9 @@ pacman::p_load(
   epikit,     # age_categories() function
   apyramid,   # age pyramids
   tidyverse,  # data manipulation and visualization
-  RColorBrewer # color palettes
+  RColorBrewer, # color palettes
+  formattable, # fancy tables
+  kableExtra # table formatting
 )
 ```
 
@@ -131,27 +116,32 @@ A sample follow-up list could look like this, with one row for each follow-up ge
 # display the first 50 rows of contact linelist data as a table
 DT::datatable(head(followups, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
-It is important to consider duplicates - perhaps a contact tracer filled out a follow-up form early on in the day and could not reach them, and filled out a second form where they were then reached. It will depend on the operational scenario and context how you want to handle duplicates, but for simplicity sake here, let's de-duplicate so that there is only one follow-up per person per day, and we keep the row with the most recent submission.
+<span style="color: orange;">**_CAUTION:_** Beware of duplicates when dealing with followup data; as there could be several erroneous followups on the same day for a given contact. Perhaps it is errored, but reflects reality - a contact tracer could fill out a follow-up form early on in the day where they could not reach them, and fill out a second form when they were later reached. It will depend on the operational context for how you want to handle duplicates, just make sure to document it clearly. </span> 
+
+Here, for simplicity, let's de-duplicate so that there is only one follow-up per person per day, and we will assume the the most recent form submitted is the correct one.
 
 ```{r, warning=F, message=F}
 
-followups <- followups %>%
-  arrange(contact_uuid, desc(date_of_followup)) %>%    # arrange by date of follow-up; most recent first
+followups <- followups %>%                         
+  arrange(contact_uuid, desc(date_of_followup)) %>%    # arrange by date of follow-up; most recent first (NOTE FOR SARA: this should be changed to createdAt timestamp, bring into dummy data export)
   distinct(contact_uuid, .keep_all = TRUE)             # distinct to grab first row per unique contact uuid
 
 ```
 
 For each follow-up, we have a follow-up STATUS (such as whether it was performed and if so, did they have symptoms or not). We can group by `followup_status` to see the frequency of each:
 
-```{r, warning=F, message=F}
+```{r}
 
 followup_status <- followups %>%
      group_by(followup_status) %>%
      count()
-
 ```
 
-Another thing to keep in mind - you need to prepare for all graphs to show similarly even with varying levels of data completion or data composition, for a given deployment or region. Although not the case for this sample dataset, there may be the scenario where not all follow-up statuses are present in the data at a given time, but we still want the categories to appear the legends and tables. 
+```{r, echo=F}
+DT::datatable(followup_status, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
+```
+
+<span style="color: orange;">**_CAUTION:_** Another thing to keep in mind - you need to prepare for all graphs to show similarly even with varying levels of data completion or data composition, for a given deployment or region. Although not the case for this sample dataset, there may be the scenario where not all follow-up statuses are present in the data at a given time, but we still want the categories to appear the legends and tables. </span> 
 
 In order to force the followup status columns to always be the same, we can set an array below `statuscols` and then use this later. For demonstration I will add in another category "OTHER_RANDOM_STATUS".
 
@@ -162,7 +152,7 @@ statuscols <- c(MISSED  = 0,
                 SEEN_OK = 0,
                 NOT_PERFORMED = 0,
                 NOT_ATTEMPTED = 0,
-                OTHER_RANDOM_STATUS = 0)
+                OTHER_RANDOM_STATUS = 0)     # add in another status label just for demonstration purposes
 
 ```
 
@@ -182,7 +172,11 @@ followup_status_daily <- followups %>%
 
 ```
 
-Here we have for each day, the count of each follow-up status. In order to guard against categories being dropped, we ca add the `statuscols` using `add_column()` - it will will be forced to 0 if no rows match this status.
+```{r, echo=F}
+DT::datatable(followup_status_daily, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Here we have for each day, the count of each follow-up status. In order to guard against categories being dropped, we can add the `statuscols` using `add_column()` - it will will be forced to 0 if no rows match this status.
 
 ```{r, warning=F, message=F}
 
@@ -195,6 +189,10 @@ followup_status_daily <- followups %>%
                  values_fill = list(n=0)) %>%
      add_column(!!!statuscols[!names(statuscols)%in% names(.)])  # check and add columns if one status doesn't exist
 
+```
+
+```{r, echo=F}
+DT::datatable(followup_status_daily, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 Now we can transform back to "long" format to prepare for plotting using `pivot_longer()`.
@@ -215,6 +213,10 @@ followup_status_daily_long <- followups %>%
 
 ```
 
+```{r, echo=F}
+DT::datatable(followup_status_daily_long, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
+```
+
 Now we can plot to show this over time.
 
 ```{r, warning=F, message=F}
@@ -228,6 +230,8 @@ graph_followup_status_daily_long <- followup_status_daily_long %>%
          title = "Daily Contact Followup Status",
          fill = "Followup Status",
          subtitle = paste0("Data as of ", Sys.Date(), "\n")) 
+
+graph_followup_status_daily_long
 
 ```
 
@@ -248,6 +252,11 @@ followup_status_regional <- followups %>%
                   values_to = "counts") 
 
 ```
+
+```{r, echo=F}
+DT::datatable(followup_status_regional, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
+```
+
 
 Now we can graph and facet appropriately:
 
@@ -271,6 +280,8 @@ graph_followup_status_regional <- followup_status_regional %>%
          subtitle = paste0("Data as of ", Sys.Date(), "\n")) +
      facet_wrap(~admin_1_name, strip.position = "right", scales = "free_y", ncol = 1)  # add admin_1 names on right
 
+graph_followup_status_regional
+
 ```
 
 If this was disaggregated by contact tracer, perhaps we would want to add a threshold line to display total # contacts that normally one person or area/team can handle, and how the current workload compares. We just do this by using `geom_hline()` function.
@@ -281,14 +292,166 @@ graph_followup_status_regional <-
      graph_followup_status_regional + 
      geom_hline(aes(yintercept=25), color="#C70039", linetype = "dashed") # fictitious threshold at 25 contacts
 
+graph_followup_status_regional
+
 ```
 
 
 #### KPI Tables {-}
 
-There are a number of different KPIs that can be calculated and tracked at varying levels of disaggregations and across different time periods. Once you have the calculations down and the basic table format; it is fairly easy to swap in and out different KPIs. Below we will walk through a sample exercise of creating a nice table visual to show contact follow-up across contact tracers using *formattable* package.
+There are a number of different Key Performance Indicators (KPIs) that can be calculated and tracked at varying levels of disaggregations and across different time periods to monitor contact tracing performance. Once you have the calculations down and the basic table format; it is fairly easy to swap in and out different KPIs. 
+
+There are numerous sources of contact tracing KPIs, such as this one from [ResolveToSaveLives.org](https://contacttracingplaybook.resolvetosavelives.org/checklists/metrics). The majority of the work will be walking through your data structure and thinking through all of the inclusion/exclusion criteira. We show a few examples below; using Go.Data metadata structure:
+
+Category       | Indicator                             | Go.Data Numerator   | Go.Data Denominator
+---------------|---------------------------------------|---------------------|--------------------
+Process Indicator - Speed of Contact Tracing|% cases interviewed and isolated within 24h of case report |COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_data_entry`) < 1 day AND (`isolation_startdate` - `date_of_data_entry`) < 1 day|COUNT OF  `case_id`
+Process Indicator - Speed of Contact Tracing|% contacts notified and quarantined within 24h of elicitation|COUNT OF `contact_id` WHERE `followup_status` == "SEEN_NOT_OK" OR "SEEN_OK" AND `date_of_followup` -  `date_of_reporting` < 1 day|COUNT OF `contact_id`
+Process Indicator - Completeness of Testing|% new symptomatic cases tested and interviewed within 3 days of onset of symptoms|COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_onset`) < =3 days|COUNT OF  `case_id`
+Outcome Indicator - Overall|% new cases among existing contact list|COUNT OF `case_id` WHERE `was_contact` == "TRUE"|COUNT OF  `case_id`
+
+Below we will walk through a sample exercise of creating a nice table visual to show contact follow-up across contact tracers using *formattable* package.
+
+To better summarize, we can do some joins of some sub-sets of the followups table (1 row per follow-up), with the contacts linelist (1 row per contact). For instance, we can scan the entire followups list to just identify contacts that were "SEEN" at all (either Seen-OK or Seen-Not Ok), and also the last followup generated for each contact.
 
 ```{r, warning=F, message=F}
+
+contacts_seen_ever <- followups %>%
+  filter(followup_status == "SEEN_OK" | followup_status == "SEEN_NOT_OK") %>% # filter for only those followups where contact was reached
+  arrange(contact_uuid, desc(date_of_followup)) %>%                           # de-duplicate to get only most recent
+  distinct(contact_uuid, .keep_all = TRUE) %>%
+  select(uuid = contact_uuid,
+         contact_id, 
+         date_of_last_followup_seen = date_of_followup)                     
+
+contacts_last_visit <- followups %>%                                          
+  arrange(contact_uuid, desc(date_of_followup)) %>%
+  distinct(contact_uuid, .keep_all = TRUE) %>%                                # similarly, de-duplicate to get only most recent
+  select(uuid = contact_uuid,
+         contact_id, 
+         date_of_last_followup = date_of_followup,
+         status_of_last_followup = followup_status)
+
+```
+
+```{r, echo=F}
+DT::datatable(contacts_seen_ever, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
+```
+
+```{r, echo=F}
+DT::datatable(contacts_last_visit, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
+```
+
+Then we can join these back to full contacts linelist so that we have these new descriptors, per contact.
+
+```{r, warning=F, message=F}
+
+database_date = max(followups$date_of_followup)
+
+contact_linelist_status <- contacts %>%
+  left_join(select                                          # left join to get date of last followup where contact was SEEN
+            (contacts_seen_ever, uuid, date_of_last_followup_seen), 
+            by = "uuid") %>%
+  left_join(select                                          # left join to get date and status of last followup generated regardless of status
+            (contacts_last_visit, uuid, date_of_last_followup, status_of_last_followup), 
+            by = "uuid") %>%
+  mutate_if(is_character, funs(na_if(.,""))) %>%
+  mutate(days_since_followup_seen = difftime(database_date,
+                                        date_of_last_followup_seen, 
+                                        units = "day")) %>%         # calculate days past since followup seen
+  mutate(days_since_exp = difftime(database_date,
+                                   date_of_last_contact, 
+                                   units = "day")) %>%
+  mutate(seen_with_signs = case_when(
+                                  status_of_last_followup == "SEEN_NOT_OK" 
+                                  & date_of_last_followup == database_date ~ TRUE,
+                                  TRUE ~ FALSE)) %>%
+  mutate(seen_without_signs = case_when(
+                                  status_of_last_followup == "SEEN_OK" 
+                                  & date_of_last_followup == database_date ~ TRUE,
+                                  TRUE ~ FALSE)) %>%
+  mutate(missed = case_when(
+                                  status_of_last_followup == "MISSED" 
+                                  & date_of_last_followup == database_date ~ TRUE,
+                                  TRUE ~ FALSE)) %>%
+  mutate(no_action = case_when(
+                                  (status_of_last_followup == "NOT_ATTEMPTED" |
+                                    status_of_last_followup == "NOT_PERFORMED" )
+                                  & date_of_last_followup == database_date ~ TRUE,
+                                  TRUE ~ FALSE)) %>%
+
+  mutate(lost_to_followup = case_when(
+                                  days_since_followup_seen >= 3 ~ TRUE,
+                                  TRUE ~ FALSE)) %>%
+  mutate(second_week_followup = case_when(
+                                  days_since_exp < 15
+                                  & days_since_exp >= 8 ~ TRUE,
+                                  TRUE ~ FALSE)) %>%
+  mutate(first_week_followup = case_when(
+                                  days_since_exp < 8 ~ TRUE,
+                                  TRUE ~ FALSE)) %>%
+  mutate(never_seen = !(uuid %in% contacts_seen_ever$uuid)) 
+
+```
+
+
+Build final table like this, using *formattable* and *kableExtra*
+
+```{r, warning=F, message=F}
+                                  
+
+tab_contact_status <- contact_linelist_status %>%
+  filter(!is.na(admin_2_name)) %>%
+  group_by(admin_2_name) %>%
+  summarize(
+    total_reg_contacts = n(),
+    total_active_contacts = sum(contact_status == "UNDER_FOLLOW_UP"),
+    total_contacts_became_case = sum(contact_status == "BECAME_CASE"),
+    seen_with_signs = sum(seen_with_signs),
+    seen_without_signs = sum(seen_without_signs),
+    missed = sum(missed),
+    no_action = sum(no_action),
+    second_week = sum(second_week_followup),
+    first_week = sum(first_week_followup),
+    lost_to_followup = sum(lost_to_followup),
+    never_seen = sum(never_seen)
+            ) %>%
+  arrange(desc(total_reg_contacts)) %>%
+  select(
+    `Admin 2` = admin_2_name,
+    `Registered contacts` = total_reg_contacts,
+    `Active contacts` = total_active_contacts,
+    `Became case` = total_contacts_became_case,
+    `In first week` = first_week,
+    `In second week` = second_week,
+    `Lost to follow up` = lost_to_followup,
+    `Never seen` = never_seen,
+    `Followed up - signs`= seen_with_signs,
+    `Followed up - no signs` = seen_without_signs,
+    `Not Followed up` = no_action,
+    
+  ) 
+
+formattable_tab_contact_status <-tab_contact_status %>%
+  
+  mutate(
+    `Admin 2` = formatter("span", style = ~ formattable::style(
+      color = ifelse(`Admin 2` == NA, "red", "grey"),
+      font.weight = "bold",font.style = "italic"))(`Admin 2`),
+    `Followed up - signs`= color_tile("white", "orange")(`Followed up - signs`),
+    `Followed up - no signs`= color_tile("white", "#A0E2BD")(`Followed up - no signs`),
+    `Became case`= color_tile("white", "grey")(`Became case`),
+    `Lost to follow up`= color_tile("white", "grey")(`Lost to follow up`), 
+    `Never seen`= color_tile("white", "red")(`Never seen`),
+    `Active contacts` = color_tile("white", "#81A4CE")(`Active contacts`)
+  ) %>%
+  kable("html", escape = F, align =c("l","c","c","c","c","c","c","c","c","c","c")) %>%
+  kable_styling("hover", full_width = FALSE) %>%
+  add_header_above(c(" " = 3, 
+                     "Of contacts currently under follow up" = 5,
+                     "Status of last visit" = 3))
+
+formattable_tab_contact_status
 
 ```
 
@@ -304,7 +467,6 @@ DT::datatable(head(relationships, 50), rownames = FALSE, filter="top", options =
 ```
 
 We can grab the few variables we need and add age-categories for sources (cases) and targets (contacts).
-
 
 ```{r}
 heatmap_ages <- relationships %>% 
@@ -410,7 +572,7 @@ long_prop <- data.frame(prop.table(cross_tab))
 
 ```
 
-and create a heat-map.
+and create a heat-map for age.
 
 
 ```{r, warning=F, message=F}
