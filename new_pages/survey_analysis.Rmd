@@ -1015,33 +1015,82 @@ survey_design %>%
 
 ### **Gtsummary** package
 
+With **gtsummary** there does not seem to be inbuilt functions yet to add confidence
+intervals or design effect. 
+While you
+We show here how to 
 
 
 ```{r}
 
 
+confidence_intervals <- function(data, variable, by, ...) {
+  
+  ## extract the confidence intervals and multiply to get percentages
+  props <- svyciprop(as.formula(paste0( "~" , variable)),
+              data, na.rm = TRUE)
+  
+  ## extract the confidence intervals 
+  as.numeric(confint(props) * 100) %>% ## make numeric and multiply for percentage
+    round(., digits = 1) %>%           ## round to one digit
+    c(.) %>%                           ## extract the numbers from matrix
+    paste0(., collapse = "-")          ## combine to single character
+}
 
-
-gtsummary::tbl_svysummary(base_survey_design, 
-               include = c(arrived, left, died, education_level), 
-               statistic = list(everything() ~ "{n} / {N} ({p}))"))
-
+## using the survey package design object
+tbl_svysummary(base_survey_design, 
+               include = c(arrived, left, died),   ## define variables want to include
+               statistic = list(everything() ~ c("{n} ({p}%)"))) %>% ## define stats of interest
+  add_n() %>%  ## add the weighted total 
+  add_stat(fns = everything() ~ confidence_intervals) %>% ## add CIs
+  ## modify the column headers
+  modify_header(
+    list(
+      n ~ "**Weighted total (N)**",
+      stat_0 ~ "**Weighted Count**",
+      add_stat_1 ~ "**95%CI**"
+    )
+    )
 
 ```
 
 
 
 <!-- ======================================================= -->
-## Weighted rates {  }
+## Weighted ratios {  }
 
-```{r}
+Similarly for weighted ratios (such as for mortality ratios) you can use the 
+**survey** or the **srvyr** package. 
+You could similarly write functions (similar to those above) to iterate over 
+several variables. You could also create a function for **gtsummary** as above
+but currently it does not have inbuilt functionality. 
 
-tab_survey(survey_design, died, deff = TRUE, keep = "TRUE")
 
+### **Survey** package 
+
+```{r survey_ratio}
+
+ratio <- svyratio(~died, 
+         denominator = ~obstime, 
+         design = base_survey_design)
+
+ci <- confint(ratio)
+
+cbind(
+  ratio$ratio * 10000, 
+  ci * 10000
+)
+
+```
+
+
+### **Srvyr** package 
+
+```{r srvyr_ratio}
 
 survey_design %>% 
   ## survey ratio used to account for observation time 
-  summarize(
+  summarise(
     mortality = survey_ratio(
       as.numeric(died) * 10000, 
       obstime, 
@@ -1056,6 +1105,12 @@ survey_design %>%
 <!-- ======================================================= -->
 ## Resources {  }
 
+[UCLA stats page](https://stats.idre.ucla.edu/r/seminars/survey-data-analysis-with-r/)  
 
+[Analyze survey data free](http://asdfree.com/)  
 
+[srvyr packge](http://gdfe.co/srvyr/)  
 
+[gtsummary package](http://www.danieldsjoberg.com/gtsummary/reference/index.html) 
+
+[EPIET survey case studies](https://github.com/EPIET/RapidAssessmentSurveys)
