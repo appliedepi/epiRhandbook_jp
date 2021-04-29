@@ -1,5 +1,5 @@
 
-# R Markdown reports { }  
+# Reports with R Markdown { }  
 
 ```{r out.width = "100%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "markdown/rmarkdown_overview.png"))
@@ -309,6 +309,100 @@ Cell A   |Cell B    |Cell C
 Cell D   |Cell E    |Cell F
 
 
+### Tabbed sections {-}  
+
+For HTML outputs, you can arrange the sections into "tabs". Simply add `.tabset` in the curly brackets `{ }` that are placed *after a heading*. Any sub-headings beneath that heading (until another heading of the same level) will appear as tabs that the user can click through. Read more [here](https://bookdown.org/yihui/rmarkdown-cookbook/html-tabs.html)  
+
+
+
+```{r out.width = "100%", fig.align = "center", echo=F}
+knitr::include_graphics(here::here("images", "markdown/tabbed_script.png"))
+knitr::include_graphics(here::here("images", "markdown/tabbed_view.gif"))
+
+```
+
+
+You can add an additional option `.tabset-pills` after `.tabset` to give the tabs themselves a "pilled" appearance. Be aware that when viewing the tabbed HTML output, the Ctrl+f search functionality will only search "active" tabs, not hidden tabs.  
+
+
+
+
+
+<!-- ======================================================= -->
+## File structure {}
+
+There are several ways to structure your R Markdown and any associated R scripts. Each has advantages and disadvantages:  
+
+* Self-contained R Markdown - everything needed for the report is imported or created within the R Markdown  
+  * Source other files - You can run external R scripts with the `source()` command and use their outputs in the Rmd  
+  * Child scripts - an alternate mechanism for `source()`  
+* Utilize a "runfile" - Run commands in an R script *prior to* rendering the R Markdown  
+
+
+### Self-contained Rmd {-}  
+
+For a relatively simple report, you may elect to organize your R Markdown script such that it is "self-contained" and does not involve any external scripts.  
+
+Everything you need to run the R markdown is imported or created within the Rmd file, including all the code chunks and package loading. This "self-contained" approach is appropriate when you do not need to do much data processing (e.g. it brings in a clean or semi-clean data file) and the rendering of the R Markdown will not take too long.
+
+In this scenario, one logical organization of the R Markdown script might be:  
+
+1) Set global **knitr** options  
+2) Load packages  
+3) Import data  
+4) Process data  
+5) Produce outputs (tables, plots, etc.)  
+6) Save outputs, if applicable (.csv, .png, etc.)  
+
+#### Source other files {-}
+
+One variation of the "self-contained" approach is to have R Markdown code chunks "source" (run) other R scripts. This can make your R Markdown script less cluttered, more simple, and easier to organize. It can also help if you want to display final figures at the beginning of the report. In this approach, the final R Markdown script simply combines pre-processed outputs into a document.  
+
+One way to do this is by providing the R scripts (file path and name with extension) to the **base** R command `source()`.  
+
+```{r, eval=F}
+source("your-script.R", local = knitr::knit_global())
+# or sys.source("your-script.R", envir = knitr::knit_global())
+```
+
+Note that when using `source()` *within* the R Markdown, the external files will still be run *during the course of rendering your Rmd file*. Therefore, each script is run every time you render the report. Thus, having these `source()` commands *within* the R Markdown does not speed up your run time, nor does it greatly assist with de-bugging, as error produced will still be printed when producing the R Markdown.  
+
+An alternative is to utilize the `child = ` **knitr** option. EXPLAIN MORE TO DO
+
+You must be aware of various R *environments*. Objects created within an environment will not necessarily be available to the environment used by the R Markdown.  
+
+
+
+### Runfile {-}  
+
+This approach involves utilizing the R script that contains the `render()` command(s) to pre-process objects that feed into the R markdown.  
+
+For instance, you can load the packages, load and clean the data, and even create the graphs of interest prior to `render()`. These steps can occur in the R script, or in other scripts that are sourced. As long as these commands occur in the same RStudio session and objects are saved to the environment, the objects can then be called within the Rmd content. Then the R markdown itself will only be used for the final step - to produce the output with all the pre-processed objects. This is much easier to de-bug if something goes wrong.
+
+This approach is helpful for the following reasons:  
+
+* More informative error messages - these messages will be generated from the R script, not the R Markdown. R Markdown errors tend to tell you which chunk had a problem, but will not tell you which line.  
+* If applicable, you can run long processing steps in advance of the `render()` command - they will run only once. 
+
+
+In the example below, we have a separate R script in which we pre-process a `data` object into the R Environment and then render the "create_output.Rmd" using `render()`.  
+
+```{r, eval=F}
+data <- import("datafile.csv") %>%       # Load data and save to environment
+  select(age, hospital, weight)          # Select limited columns
+
+rmarkdown::render(input = "create_output.Rmd")   # Create Rmd file
+```
+
+
+
+
+
+### Folder strucutre {-}  
+
+Workflow also concerns the overall folder structure, such as having an 'output' folder for created documents and figures, and 'data' or 'inputs' folders for cleaned data. We do not go into further detail here, but check out the [Organizing routine reports] page.  
+
+
 
 
 
@@ -367,8 +461,11 @@ knitr::include_graphics(here::here("images", "markdown/4_progress.png"))
 
 
 
+###  Options 3: **reportfactory**  package {-}  
 
+The R package **reportfactory** offers an alternative method of organising and compiling R Markdown reports *catered to scenarios where you run reports routinely (e.g. daily, weekly...).* It eases the compilation of multiple R Markdown files and the organization of their outputs. In essence, it provides a "factory" from which you can run the R Markdown reports, get automatically date- and time-stamped folders for the outputs, and have "light" version control.  
 
+Read more about this work flow in the page on [Organizing routine reports].  
 
 
 
@@ -379,7 +476,7 @@ You can use parameterisation to make a report dynamic, such that it can be run w
 
 Using the Ebola linelist as an example, let’s say we want to run a standard surveillance report for each hospital each day. We show how one can do this using parameters.
 
-*Important: dynamic reports are also possible without the formal parameter structure (without `params:`), using simple R objects in an adjacent R script. This is explain at the end of this section.*
+*Important: dynamic reports are also possible without the formal parameter structure (without `params:`), using simple R objects in an adjacent R script. This is explained at the end of this section.*
 
 
 
@@ -520,116 +617,44 @@ Following this approach means means you can not “knit with parameters”, use 
 
 ## Looping reports  {  }
 
-We may want to run all options of a report at once, for instance a surveillance report for all hospital of interest within a single run, rather than specifying each hospital one by one. For this we need to work in a separate script outside the Rmd, and create a objects for today’s date and the list of hospital names to loop through.  
+We may want to run a report multiple times, varying the input parameters, to produce a report for each jurisdictions/unit. This can be done using tools for *iteration*, which are explained in detail in thepage on [Loops, iteration, and lists]. Options include the **purrr** package, or use of a *for loop* as explained below.  
 
-```md
-hospital_list <- c(“Central Hospital”, 
-                   “Military Hospital”, 
-                   “Port Hospital”, “
-                   St. Mark's Maternity Hospital (SMMH)”) 
+Below, we use a simple *for loop* to generate a surveillance report for all hospitals of interest. This is done with one command (instead of manually changing the hospital parameter one-at-a-time). The command to render the reports must exist in a separate script *outside* the report Rmd. This script will also contain defined objects to "loop through" - today’s date, and a vector of hospital names to loop through.  
 
-refdate <- Sys.Date() # today’s date
 
+
+```{r, eval=F}
+hospitals <- c("Central Hospital",
+                "Military Hospital", 
+                "Port Hospital",
+                "St. Mark's Maternity Hospital (SMMH)") 
 ```
-We then feed this into the markdown using a loop, where we go through each item of the list. The letter `i` represents which item of the list is currently being iterated, such that `hospital_list[1]` would be “Central Hospital”. This information is also fed into the file name, such that the file name of the first iteration produced on April 10th 2021 would be “Report_Central Hospital2021-04-10.docx”, saved in the ‘output’ subfolder. In our examples, four files would be created for each day.
 
-For instance, using the parameterisation discussed earlier: 
+We then feed these values one-at-a-time into the `render()` command using a loop, which runs the command once for each value in the `hospitals` vector. The letter `i` represents the index position (1 through 4) of the hospital currently being used in that iteration, such that `hospital_list[1]` would be “Central Hospital”. This information is supplied in two places in the `render()` command:  
 
-```md
-for(i in 1:length(hospital_list)){
-rmarkdown::render("surveillance_report.Rmd",
-                  output_file = paste0("output/Report_", hospital_list[i], refdate, ".docx"),
-                  params = list(date = refdate, hospital  = hospital_list[i]))
+1) To the file name, such that the file name of the first iteration if produced on 10th April 2021 would be “Report_Central Hospital_2021-04-10.docx”, saved in the ‘output’ subfolder of the working directory.  
+2) To `params = ` such that the Rmd uses the hospital name internally whenever the `params$hospital` value is called (e.g. to filter the dataset to the particular hospital only). In this example, four files would be created - one for each hospital.
+
+```{r, eval=F}
+for(i in 1:length(hospitals)){
+  rmarkdown::render(
+    input = "surveillance_report.Rmd",
+    output_file = str_glue("output/Report_{hospitals[i]}_{Sys.Date()}.docx"),
+    params = list(hospital  = hospitals[i]))
 }       
 ```
 
-The text and code within the Rmd itself will again refer to `params$date` and `params$hospital` to bring in the date and hospital name. The list items would not need to be referred to again within an interation. 
-
-If not using this strict form of parameterisation but saving objects to the environment, as discussed at the end of the parameterisation section, the render function would look like this:
-
-```md
-for(i in 1:length(hospital_list)){
-rmarkdown::render("surveillance_report.Rmd",
-                  output_file = paste0("output/Report_", hospital_list[i], refdate, ".docx")
-}       
-```
-The text within the markdown would then need to refer to `hospital_list[i]` and `refdate`. 
 
 
+<!-- In the scenario where you are f not using this strict form of parameterisation but saving objects to the environment, as discussed at the end of the parameterisation section, the render function would look like this: -->
 
-<!-- ======================================================= -->
-## File structure {}
-
-There are several ways to structure your R Markdown and any associated R scripts. Each has advantages and disadvantages:  
-
-* Self-contained R Markdown - everything needed for the report is imported or created within the R Markdown  
-  * Source other files - You can run external R scripts with the `source()` command and use their outputs in the Rmd  
-  * Child scripts - an alternate mechanism for `source()`  
-* Utilize a "runfile" - Run commands in an R script *prior to* rendering the R Markdown  
-
-
-### Self-contained Rmd {-}  
-
-For a relatively simple report, you may elect to organize your R Markdown script such that it is "self-contained" and does not involve any external scripts.  
-
-Everything you need to run the R markdown is imported or created within the Rmd file, including all the code chunks and package loading. This "self-contained" approach is appropriate when you do not need to do much data processing (e.g. it brings in a clean or semi-clean data file) and the rendering of the R Markdown will not take too long.
-
-In this scenario, one logical organization of the R Markdown script might be:  
-
-1) Set global **knitr** options  
-2) Load packages  
-3) Import data  
-4) Process data  
-5) Produce outputs (tables, plots, etc.)  
-6) Save outputs, if applicable (.csv, .png, etc.)  
-
-#### Source other files {-}
-
-One variation of the "self-contained" approach is to have R Markdown code chunks "source" (run) other R scripts. This can make your R Markdown script less cluttered, more simple, and easier to organize. It can also help if you want to display final figures at the beginning of the report. In this approach, the final R Markdown script simply combines pre-processed outputs into a document.  
-
-One way to do this is by providing the R scripts (file path and name with extension) to the **base** R command `source()`.  
-
-```{r, eval=F}
-source("your-script.R", local = knitr::knit_global())
-# or sys.source("your-script.R", envir = knitr::knit_global())
-```
-
-Note that when using `source()` *within* the R Markdown, the external files will still be run *during the course of rendering your Rmd file*. Therefore, each script is run every time you render the report. Thus, having these `source()` commands *within* the R Markdown does not speed up your run time, nor does it greatly assist with de-bugging, as error produced will still be printed when producing the R Markdown.  
-
-An alternative is to utilize the `child = ` **knitr** option. EXPLAIN MORE TO DO
-
-You must be aware of various R *environments*. Objects created within an environment will not necessarily be available to the environment used by the R Markdown.  
-
-
-
-### Runfile {-}  
-
-This approach involves utilizing the R script that contains the `render()` command(s) to pre-process objects that feed into the R markdown.  
-
-For instance, you can load the packages, load and clean the data, and even create the graphs of interest prior to `render()`. These steps can occur in the R script, or in other scripts that are sourced. As long as these commands occur in the same RStudio session and objects are saved to the environment, the objects can then be called within the Rmd content. Then the R markdown itself will only be used for the final step - to produce the output with all the pre-processed objects. This is much easier to de-bug if something goes wrong.
-
-This approach is helpful for the following reasons:  
-
-* More informative error messages - these messages will be generated from the R script, not the R Markdown. R Markdown errors tend to tell you which chunk had a problem, but will not tell you which line.  
-* If applicable, you can run long processing steps in advance of the `render()` command - they will run only once. 
-
-
-In the example below, we have a separate R script in which we pre-process a `data` object into the R Environment and then render the "create_output.Rmd" using `render()`.  
-
-```{r, eval=F}
-data <- import("datafile.csv") %>%       # Load data and save to environment
-  select(age, hospital, weight)          # Select limited columns
-
-rmarkdown::render(input = "create_output.Rmd")   # Create Rmd file
-```
-
-
-
-
-
-### Folder strucutre {-}  
-
-Workflow also concerns the overall folder structure, such as having an 'output' folder for created documents and figures, and 'data' or 'inputs' folders for cleaned data. We do not go into further detail here, but check out the [Organizing routine reports] page.  
+<!-- ```md -->
+<!-- for(i in 1:length(hospital_list)){ -->
+<!-- rmarkdown::render("surveillance_report.Rmd", -->
+<!--                   output_file = paste0("output/Report_", hospital_list[i], refdate, ".docx") -->
+<!-- }        -->
+<!-- ``` -->
+<!-- The text within the markdown would then need to refer to `hospital_list[i]` and `refdate`.  -->
 
 
 
@@ -637,9 +662,9 @@ Workflow also concerns the overall folder structure, such as having an 'output' 
 
 
 <!-- ======================================================= -->
-## Formatting and aesthetics  
+## Templates  
 
-For easy aesthetics, create a template file which contains the desired formatting. You can create for instance an MS word or power point document which contains pages with the desired dimensions, watermarks, backgrounds, and fonts. 
+By using a template document that contains any desired formatting, you can adjust the aesthetics of how the Rmd output will look. You can create for instance an MS Word or Powerpoint file that contains pages/slides with the desired dimensions, watermarks, backgrounds, and fonts. 
 
 ### Word documents {-}
 
@@ -662,6 +687,8 @@ Unfortunately, editing powerpoint files is slightly less flexible:
 * A first level header (`# Header 1`) will automatically become the title of a new slide,
 * A `## Header 2` text will not come up as a subtitle but text within the slide's main textbox (unless you find a way to maniuplate the Master view). 
 * Outputted plots and tables will automatically go into new slides. You will need to combine them, for instance the the **patchwork** function to combine ggplots, so that they show up on the same page.
+
+See the [**officer** package](https://davidgohel.github.io/officer/) for a tool to work more in-depth with powerpoint presentations.  
 
 ### Integrating templates into the YAML {-}
 
@@ -691,7 +718,7 @@ HTML files do not use templates, but can have the styles configured within the Y
 
 * Themes: We can refer to some pre-made themes, which come from a Bootswatch theme library. In the below example we use cerulean. Other options include: journal, flatly, darkly, readable, spacelab, united, cosmo, lumen, paper, sandstone, simplex, and yeti. 
 
-* Highlight: Configuring this changes the look of highlighted text (e.g. code within chunks that are shown). Supported styles include default, tango, pygments, kate, monochrome, espresso, zenburn, haddock, breezedark, and textmate. 
+* Highlight: Configuring this changes the look of highlighted text (e.g. code within chunks that are shown). Supported styles include default, tango, pygments, kate, monochrome, espresso, zenburn, haddock, breezedark, and textmate.  
 
 Here is an example of how to integrate the above options into the YAML.
 
