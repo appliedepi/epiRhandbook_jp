@@ -4,8 +4,10 @@
 <!-- ======================================================= -->
 ## Overview {  }
 
-This tab demonstrates the use of several packages for survey analysis. 
-Most packages rely on the [**survey** package](https://cran.r-project.org/web/packages/survey/index.html) 
+This page demonstrates the use of several packages for survey analysis. 
+
+
+Most survey R packages rely on the [**survey** package](https://cran.r-project.org/web/packages/survey/index.html) 
 for doing weighted analysis. 
 We will use **survey** as well as [**srvyr**](https://cran.r-project.org/web/packages/srvyr/index.html) 
 (a wrapper for **survey** allowing for tidyverse-style coding) and
@@ -19,7 +21,7 @@ package to create sampling weights (*n.b* this package is currently not yet on C
 but can be installed from github).
 
 Most of this page is based off work done for the ["R4Epis" project](https://r4epis.netlify.app/); 
-for detailed coe and R-markdown templates see the ["R4Epis" github page](https://github.com/R4EPI/sitrep). 
+for detailed code and R-markdown templates see the ["R4Epis" github page](https://github.com/R4EPI/sitrep). 
 Some of the **survey** package based code is based off early versions of 
 [EPIET case studies](https://github.com/EPIET/RapidAssessmentSurveys).
 
@@ -124,7 +126,7 @@ survey_dict <- rio::import("survey_dict.xlsx")
 
 The first 10 rows of the survey are displayed below.
 
-```{r inspect_data, message = FALSE, echo = FALSE}
+```{r, message = FALSE, echo = FALSE}
 # display the survey data as a table
 DT::datatable(head(survey_data, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
@@ -393,50 +395,50 @@ most appropriate for your study design.
 
 ```{r survey_weights}
 
-## stratified ------------------------------------------------------------------
-## create a variable called "surv_weight_strata" 
-## contains weights for each individual - by age group, sex and health district
-survey_data <- add_weights_strata(x = survey_data, 
-                                         p = population, 
-                                         surv_weight = "surv_weight_strata",
-                                         surv_weight_ID = "surv_weight_ID_strata",
-                                         age_group, sex, health_district)
+# stratified ------------------------------------------------------------------
+# create a variable called "surv_weight_strata"
+# contains weights for each individual - by age group, sex and health district
+# survey_data <- add_weights_strata(x = survey_data,
+#                                          p = population,
+#                                          surv_weight = "surv_weight_strata",
+#                                          surv_weight_ID = "surv_weight_ID_strata",
+#                                          age_group, sex, health_district)
 
 ## cluster ---------------------------------------------------------------------
 
-## get the number of people of individuals interviewed per household 
-## adds a variable with counts of the household (parent) index variable
-survey_data <- survey_data %>% 
+# get the number of people of individuals interviewed per household
+# adds a variable with counts of the household (parent) index variable
+survey_data <- survey_data %>%
   add_count(index, name = "interviewed")
 
 
-## create cluster weights 
-survey_data <- add_weights_cluster(x = survey_data, 
-                                          cl = cluster_counts, 
-                                          eligible = member_number, 
+## create cluster weights
+survey_data <- add_weights_cluster(x = survey_data,
+                                          cl = cluster_counts,
+                                          eligible = member_number,
                                           interviewed = interviewed,
-                                          cluster_x = village_name, 
+                                          cluster_x = village_name,
                                           cluster_cl = cluster,
-                                          household_x = index, 
-                                          household_cl = households, 
-                                          surv_weight = "surv_weight_cluster", 
-                                          surv_weight_ID = "surv_weight_ID_cluster", 
-                                          ignore_cluster = FALSE, 
+                                          household_x = index,
+                                          household_cl = households,
+                                          surv_weight = "surv_weight_cluster",
+                                          surv_weight_ID = "surv_weight_ID_cluster",
+                                          ignore_cluster = FALSE,
                                           ignore_household = FALSE)
 
-
-## stratified and cluster ------------------------------------------------------
-## create a survey weight for cluster and strata 
-survey_data <- survey_data %>% 
-  mutate(surv_weight_cluster_strata = surv_weight_strata * surv_weight_cluster)
-
-
-## TODO DELETE THIS 
-
-## drop those that are missing weights 
-
-survey_data <- survey_data %>% 
-  filter(!is.na(surv_weight_cluster_strata))
+# 
+# # stratified and cluster ------------------------------------------------------
+# # create a survey weight for cluster and strata
+# survey_data <- survey_data %>%
+#   mutate(surv_weight_cluster_strata = surv_weight_strata * surv_weight_cluster)
+# 
+# 
+# ## TODO DELETE THIS 
+# 
+# ## drop those that are missing weights 
+# # 
+# survey_data <- survey_data %>%
+#   filter(!is.na(surv_weight_cluster_strata))
 ```
 
 
@@ -444,7 +446,7 @@ survey_data <- survey_data %>%
 ## Survey design objects {  }
 
 Create survey object according to your study design. 
-Used the same way as dataframes to calculate weight proportions etc. 
+Used the same way as data frames to calculate weight proportions etc. 
 Make sure that all necessary variables are created before this. 
 
 There are four options, comment out those you do not use: 
@@ -474,30 +476,30 @@ object with appropriate clusters, weights and strata.
 
 ```{r survey_design}
 
-## simple random ---------------------------------------------------------------
-base_survey_design_simple <- svydesign(ids = ~1, # 1 for no cluster ids 
+# simple random ---------------------------------------------------------------
+base_survey_design_simple <- svydesign(ids = ~1, # 1 for no cluster ids
                    weights = NULL,               # No weight added
                    strata = NULL,                # sampling was simple (no strata)
                    data = survey_data            # have to specify the dataset
                   )
 
 ## stratified ------------------------------------------------------------------
-base_survey_design_strata <- svydesign(ids = ~1,  # 1 for no cluster ids 
+base_survey_design_strata <- svydesign(ids = ~1,  # 1 for no cluster ids
                    weights = ~surv_weight_strata, # weight variable created above
                    strata = ~health_district,     # sampling was stratified by district
                    data = survey_data             # have to specify the dataset
                   )
 
-## cluster ---------------------------------------------------------------------
+# cluster ---------------------------------------------------------------------
 base_survey_design_cluster <- svydesign(ids = ~village_name, # cluster ids
-                   weights = ~surv_weight_cluster, # weight variable created above 
+                   weights = ~surv_weight_cluster, # weight variable created above
                    strata = ~NULL,                 # sampling was simple (no strata)
                    data = survey_data              # have to specify the dataset
                   )
 
-## stratified cluster ----------------------------------------------------------
+# stratified cluster ----------------------------------------------------------
 base_survey_design <- svydesign(ids = ~village_name,      # cluster ids
-                   weights = ~surv_weight_cluster_strata, # weight variable created above  
+                   weights = ~surv_weight_cluster_strata, # weight variable created above
                    strata = ~health_district,             # sampling was stratified by district
                    data = survey_data                     # have to specify the dataset
                   )
@@ -518,25 +520,25 @@ survey_design_simple <- survey_data %>%
                    weights = NULL, # No weight added
                    strata = NULL # sampling was simple (no strata)
                   )
-## stratified ------------------------------------------------------------------
-survey_design_strata <- survey_data %>% 
-  as_survey_design(ids = 1, # 1 for no cluster ids 
-                   weights = surv_weight_strata, # weight variable created above 
-                   strata = health_district # sampling was stratified by district
-                  )
-## cluster ---------------------------------------------------------------------
-survey_design_cluster <- survey_data %>% 
-  as_survey_design(ids = village_name, # cluster ids 
-                   weights = surv_weight_cluster, # weight variable created above 
-                   strata = NULL # sampling was simple (no strata)
-                  )
-
-## stratified cluster ----------------------------------------------------------
-survey_design <- survey_data %>% 
-  as_survey_design(ids = village_name, # cluster ids 
-                   weights = surv_weight_cluster_strata, # weight variable created above 
-                   strata = health_district # sampling was stratified by district
-                  )
+# ## stratified ------------------------------------------------------------------
+# survey_design_strata <- survey_data %>% 
+#   as_survey_design(ids = 1, # 1 for no cluster ids 
+#                    weights = surv_weight_strata, # weight variable created above 
+#                    strata = health_district # sampling was stratified by district
+#                   )
+# ## cluster ---------------------------------------------------------------------
+# survey_design_cluster <- survey_data %>% 
+#   as_survey_design(ids = village_name, # cluster ids 
+#                    weights = surv_weight_cluster, # weight variable created above 
+#                    strata = NULL # sampling was simple (no strata)
+#                   )
+# 
+# ## stratified cluster ----------------------------------------------------------
+# survey_design <- survey_data %>% 
+#   as_survey_design(ids = village_name, # cluster ids 
+#                    weights = surv_weight_cluster_strata, # weight variable created above 
+#                    strata = health_district # sampling was stratified by district
+#                   )
 ```
 
 <!-- ======================================================= -->
