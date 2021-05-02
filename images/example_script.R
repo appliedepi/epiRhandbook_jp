@@ -3,27 +3,20 @@
 #################################
 # Write a comment after one or more hash symbols
 
-################
-# Purpose: To demonstrate an example in the R basics page of the R Handbook
-# Authors: Neale Batra, Gandalf the Grey, Samwise Gamgee 
-# Version control: 
-#     - Feb 2020 Created (NB)
-#     - March 2020 plot added by (GtG)
-#################
-
 # load packages
 ###############
 pacman::p_load(
-     rio,         # for import/export of files
-     here,        # for locating files in my R project
-     tidyverse,   # for data management and visualization
-     lubridate,   # for working with dates
-     incidence    # for making epicurves 
+     rio,         
+     here,        
+     tidyverse,   
+     lubridate,   
+     incidence2     
      )
 
 # load linelist data
 ####################
-linelist_raw <- import(here("data", "cases", "clean", "linelist_2020-10-05.csv"))
+linelist_raw <- import(here("data", "case_linelists",
+                            "linelist_cleaned.rds"))
 
 # clean linelist
 ################
@@ -34,10 +27,8 @@ linelist <- linelist_raw %>%
 
 # plot daily epicurve
 #####################
-daily_incidence <- incidence(    # create incidence object
-     dates    = linelist$date_onset,
-     interval = "day") 
+daily_incidence <- incidence(linelist, "date_onset", interval = "week", groups = "age_cat", na_as_group = T)
 
-plot(daily_incidence)            # plot daily epicurve
+plot(daily_incidence, fill = age_cat, col_pal = muted, title = "Epidemic curve")
+
 ggsave(here("outputs", "epicurves", "daily_incidence.png")) # save as PNG
-
