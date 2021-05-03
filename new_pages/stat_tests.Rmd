@@ -7,7 +7,7 @@ This page demonstrates the use of **base** R, **gtsummary**, and **dplyr** to co
 ## Preparation {  }
 
 
-### Load packages {-}
+### Load packages {.unnumbered}
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -25,9 +25,9 @@ pacman::p_load(
   )
 ```
 
-### Import data {-}
+### Import data {.unnumbered}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, echo=F}
 # import the linelist into R
@@ -50,11 +50,11 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 
 
-## **base** R {-}
+## **base** R {.unnumbered}
 
 You can use **base** R functions to produce the results of statistical tests. The commands are relatively simple and results will print to the R Console for simple viewing. However, the outputs are usually lists and so are harder to manipulate if you want to use the results in subsequent code operations. 
 
-### T-tests {-} 
+### T-tests {.unnumbered} 
 
 A [t-test](https://en.wikipedia.org/wiki/Student%27s_t-test), also called "Student's t-Test", is typically used to determine if there is a significant difference between the means of some numeric variable between two groups. Here we'll show the syntax to do this test depending on whether the columns are in the same data frame.
 
@@ -77,15 +77,16 @@ You can also use a t-test to determine whether a sample mean is significantly di
 t.test(linelist$age_years, mu = 45)
 ```
 
-### Shapiro-Wilk test {-}  
+### Shapiro-Wilk test {.unnumbered}  
 
 The [Shapiro-Wilk test](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) can be used to determine whether a sample came from a normally-distributed population (an assumption of many other tests and analysis, such as the t-test). However, this can only be used on a sample between 3 and 5000 observations. For larger samples a [quantile-quantile plot](https://ggplot2.tidyverse.org/reference/geom_qq.html) may be helpful. 
+
 
 ```{r, eval=F}
 shapiro.test(linelist$age_years)
 ```
 
-### Wilcoxon rank sum test {-}
+### Wilcoxon rank sum test {.unnumbered}
 
 The Wilcoxon rank sum test, also called the [Mann–Whitney U test](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test), is often used to help determine if two numeric samples are from the same distribution when their populations are not normally distributed or have unequal variance.
 
@@ -96,7 +97,9 @@ wilcox.test(age_years ~ outcome, data = linelist)
 
 ```
 
-### Kruskal-Wallis test {-}
+
+### Kruskal-Wallis test {.unnumbered}
+
 
 The [Kruskal-Wallis test](https://en.wikipedia.org/wiki/Kruskal%E2%80%93Wallis_one-way_analysis_of_variance) is an extension of the Wilcoxon rank sum test that can be used to test for differences in the distribution of more than two samples. When only two samples are used it gives identical results to the Wilcoxon rank sum test. 
 
@@ -107,7 +110,7 @@ kruskal.test(age_years ~ outcome, linelist)
 
 ```
 
-### Chi-squared test {-} 
+### Chi-squared test {.unnumbered} 
 
 [Pearson's Chi-squared test](https://en.wikipedia.org/wiki/Chi-squared_test) is used in testing for significant differences between categorical croups. 
 
@@ -120,7 +123,7 @@ chisq.test(linelist$gender, linelist$outcome)
 
 
 
-## `gtsummary` package {-}
+## `gtsummary` package {.unnumbered}
 
 Use **gtsummary** if you are looking to add the results of a statistical test to a pretty table (described in descriptive tables section). 
 
@@ -130,7 +133,7 @@ Performing statistical tests of comparison with `tbl_summary` is done by adding 
 
 ### Chi-squared test 
 
-Compare the proportions of a categorical variable in two groups. The default statistical test for `add_p()` when applied to a categorical variableis to perform a chi-squared test of independence with continuity correction, but if any expected call count is below 5 then a Fisher's exact test is used. 
+Compare the proportions of a categorical variable in two groups. The default statistical test for `add_p()` when applied to a categorical variable is to perform a chi-squared test of independence with continuity correction, but if any expected call count is below 5 then a Fisher's exact test is used. 
 
 ```{r chi_gt}
 linelist %>% 
@@ -140,7 +143,7 @@ linelist %>%
 ```
 
 
-### T-tests {-} 
+### T-tests {.unnumbered} 
 
 Compare the difference in means for a continuous variable in two groups. 
 For example, compare the mean age by patient outcome. 
@@ -157,7 +160,7 @@ linelist %>%
 
 ```
 
-### Wilcoxon rank sum test{-}
+### Wilcoxon rank sum test{.unnumbered}
 
 Compare the distribution of a continuous variable in two groups. The default 
 is to use the Wilcoxon rank sum test and the median (IQR) when comparing two 
@@ -176,7 +179,7 @@ linelist %>%
 
 ```
 
-### Kruskal-wallis test {-}
+### Kruskal-wallis test {.unnumbered}
 
 Compare the distribution of a continuous variable in two or more groups, 
 regardless of whether the data is normally distributed. 
@@ -196,7 +199,7 @@ linelist %>%
 
 
 
-## `dplyr` package {-}
+## `dplyr` package {.unnumbered}
 
 Performing statistical tests in `dplyr` alone is very dense, again because it 
 does not fit within the tidy-data framework. It requires using `purrr` to create
@@ -204,7 +207,7 @@ a list of dataframes for each of the subgroups you want to compare. See the page
 
 An easier alternative may be the `rstatix` package. 
 
-### T-tests {-} 
+### T-tests {.unnumbered} 
 
 ```{r ttest_dplyr}
 
@@ -240,7 +243,7 @@ linelist %>%
 ```
 
 
-### Wilcoxon rank sum test {-}
+### Wilcoxon rank sum test {.unnumbered}
 
 ```{r wilcox_dplyr}
 
@@ -281,7 +284,7 @@ linelist %>%
 
 ```
 
-### Kruskal-wallis test {-}
+### Kruskal-wallis test {.unnumbered}
 
 
 ```{r kruskal_dplyr}
@@ -323,7 +326,7 @@ linelist %>%
 
 ```
 
-### Chi-squared test {-} 
+### Chi-squared test {.unnumbered} 
 
 
 ```{r}

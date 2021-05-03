@@ -10,7 +10,7 @@ There a several extensive **ggplot2** tutorials linked in the resources section.
 <!-- ======================================================= -->
 ## Preparation {}
 
-### Load packages {-}
+### Load packages {.unnumbered}
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -27,9 +27,9 @@ pacman::p_load(
 )
 ```
 
-### Import data {-}  
+### Import data {.unnumbered}  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, eval=T, echo=F}
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
@@ -53,7 +53,7 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 <!-- ======================================================= -->
 ## Colour schemes {}
 
-One thing that can initially be difficult to understand with `ggplot2` is control of colour schemes when passing colour or fill as a variable rather than defining them explicitly within a geom. There are a few simple tricks that can be used to achieve this however. Remember that when setting colours, you can use colour names (as long as they are recognised) like `"red"`, or a specific hex colour such as `"#ff0505"`.
+One thing that can initially be difficult to understand with `ggplot2` is control of colour schemes when passing colour or fill as a variable rather than defining them explicitly within a geom. There are a few simple tricks that can be used to achieve this however. Remember that when setting colours, you can use colour names (as long as they are recognized) like `"red"`, or a specific hex colour such as `"#ff0505"`.
 
 One of the most useful tricks is using manual scaling functions to explicitly define colours. These are functions with the syntax `scale_xxx_manual()` (e.g. `scale_colour_manual()` or `scale_fill_manual()`). In this function you can explicitly define which colours map to which value using the `values =` argument. You can control the legend title with the `name =` argument, and the order of factors with `breaks =`. 
 
@@ -409,7 +409,7 @@ A secondary y-axis is often a requested addition to a `ggplot2` graph. While the
 2) Using a statistical transformation of the data on the primary axis  
 
 
-### Using **cowplot** {-}  
+### Using **cowplot** {.unnumbered}  
 
 This approach involves creating two separate plots - one with a y-axis on the left, and the other with y-axis on the right. Both will use a specific `theme_cowplot()` and must have the same x-axis. Then in a third command the two plots are aligned and overlaid on top of each other. The functionalities of **cowplot**, of which this is only one, are described in depth at this [site](https://wilkelab.org/cowplot/articles/aligning_plots.html).  
 
@@ -474,13 +474,13 @@ Now we align the plot using the function `align_plots()`, specifying horizontal 
 Then we draw the two plots together using `ggdraw()` (from **cowplot**) and referencing the two parts of the `aligned_plots` object.  
 
 ```{r, warning=F, message=F}
-aligned_plots <- align_plots(p1, p2, align="hv", axis="tblr")                  # align the two plots and save them as list
+aligned_plots <- cowplot::align_plots(p1, p2, align="hv", axis="tblr")         # align the two plots and save them as list
 aligned_plotted <- ggdraw(aligned_plots[[1]]) + draw_plot(aligned_plots[[2]])  # overlay them and save the visual plot
 aligned_plotted                                                                # print the overlayed plots
 
 ```
 
-### Statistical transformation {-}  
+### Statistical transformation {.unnumbered}  
 
 Unfortunately, secondary axes are not well supported in the `ggplot` syntax. For this reason, you're fairly limited in terms of what can be shown with a secondary axis - the second axis has to be a direct transformation of the secondary axis. 
 
@@ -530,13 +530,154 @@ ggplot(malaria_facility_1, aes(x = data_date)) +
 
 UNDER CONSTRUCTION
 
-**cowplot**  
+Two packages that are very useful for combining plots are **cowplot** and **patchwork**. In this section we will mostly focus on **cowplot**, with occassional use of **patchwork**.  
 
-**patchwork**  
+Here is the online [introduction to cowplot](https://cran.r-project.org/web/packages/cowplot/vignettes/introduction.html). You can read the more extensive documentation for each function online [here](https://www.rdocumentation.org/packages/cowplot/versions/1.1.1). We will cover a few of the most common use cases and functions below.  
+
+The **cowplot** package works in tandem with **ggplot2** - essentially, you use it to arrange and combine ggplots and their legends into compound figures. It can also accept **base** R graphics.  
+
+```{r}
+pacman::p_load(
+  tidyverse,      # data manipulation and visualisation
+  cowplot,        # combine plots
+  patchwork       # combine plots
+)
+```
+
+
+### `plot_grid()`  {.unnumbered}  
+
+A very useful function is `plot_grid()`, which arranges multiple plots into a grid. It can also align plot elements (e.g. axes) vertically and/or horizontally across the sub-plots.  
+
+First, 
+
+
+
+```{r}
+
+
+```
 
 
 
 
+
+### Combine legends {.unnumbered}  
+
+If your plots have the same legend, combining is relatively straight-forward.
+
+UNDER CONSTRUCTION
+
+If your plots have different legends, you must use an alternative approach:  
+
+1) Create and save your plots *without legends* using `theme(legend.position = "none")`  
+2) Extract the legends from each plot using `get_legend()` as shown below - *but extract legends from the plots modified to actually show the legend*  
+3) Combine the legends into a legends panel  
+4) Combine the plots and legends panel  
+
+
+For demonstration we show the two plots arranged in a grid with their own legends showing (ugly and inefficient use of space):  
+
+```{r, out.width=c('50%'), fig.show='hold',}
+p1 <- linelist %>% 
+  mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
+  count(hospital, outcome) %>% 
+  ggplot()+
+  geom_col(mapping = aes(x = hospital, y = n, fill = outcome))+
+  coord_flip()+
+  theme_minimal()
+
+p2 <- linelist %>% 
+  mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
+  count(hospital, age_cat) %>% 
+  ggplot()+
+  geom_col(mapping = aes(x = hospital, y = n, fill = age_cat))+
+  coord_flip()+
+  theme_minimal()+
+    theme(
+    axis.text.y = element_blank()
+  )
+
+p1
+
+p2
+
+cowplot::plot_grid(p1, p2, rel_widths = c(0.3))
+```
+
+And now we show how to combine the legends:  
+
+```{r, out.width=c('50%'), fig.show='hold',}
+p1 <- linelist %>% 
+  mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
+  count(hospital, outcome) %>% 
+  ggplot()+
+  geom_col(mapping = aes(x = hospital, y = n, fill = outcome))+
+  coord_flip()+
+  theme_minimal()+
+  theme(
+    legend.position = "none")+
+  labs(title = "Cases by outcome")
+
+
+
+p2 <- linelist %>% 
+  mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
+  count(hospital, age_cat) %>% 
+  ggplot()+
+  geom_col(mapping = aes(x = hospital, y = n, fill = age_cat))+
+  coord_flip()+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank()
+  )+
+  labs(title = "Cases by age")
+
+
+# extract legend from p1
+leg_p1 <- cowplot::get_legend(p1 + theme(legend.position = "right",  # extract vertical legend
+                                         legend.justification = c(0,0.5))) # so legends align
+# extract legend from p2
+leg_p2 <- cowplot::get_legend(p2 + theme(legend.position = "right", # extract vertical legend   
+                                         legend.justification = c(0,0.5))) # so legends align
+
+# create a blank plot for legend alignment
+#blank_p <- patchwork::plot_spacer() + theme_void()
+
+# create legends panel, 3 rows one of which is empty
+legends <- cowplot::plot_grid(leg_p1, leg_p2, nrow = 2, rel_heights = c(.3, .7))
+
+# combine two plots and legends panel
+combined <- cowplot::plot_grid(p1, p2, legends, ncol = 3, rel_widths = c(.4, .4, .2))
+
+combined
+
+
+```
+
+
+
+
+This solution was learned from [this post](https://stackoverflow.com/questions/52060601/ggplot-multiple-legends-arrangement) with a minor fix to align legends from [this post](https://github.com/wilkelab/cowplot/issues/33).  
+
+
+<span style="color: darkgreen;">**_TIP:_** Fun note - the "cow" in **cowplot** comes from the creator's name - Claus O. Wilke.</span>  
+
+
+## Inset plots 
+
+UNDER CONSTRUCTION
+
+https://wilkelab.org/cowplot/articles/drawing_with_on_plots.html
+https://www.rdocumentation.org/packages/cowplot/versions/1.1.1/topics/draw_plot
+
+
+## Sparklines  
+
+UNDER CONSTRUCTION  
+(perhaps move to Tables for presentation page)
 
 
 
@@ -576,7 +717,7 @@ Install and then launch the addin via the RStudio menu or with `esquisse::esquis
 ## Miscellaneous  
 
 
-### Numeric display {-}  
+### Numeric display {.unnumbered}  
 
 You can disable scientific notation by running this command prior to plotting.  
 

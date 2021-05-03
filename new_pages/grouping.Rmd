@@ -29,7 +29,7 @@ This page will address the following topics:
 <!-- ======================================================= -->
 ## Preparation {  }
      
-### Load packages {-}  
+### Load packages {.unnumbered}  
      
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -46,9 +46,9 @@ pacman::p_load(
 
 
 
-### Import data {-}
+### Import data {.unnumbered}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, echo=F}
 linelist <- rio::import(here("data", "case_linelists", "linelist_cleaned.rds"))
@@ -89,7 +89,7 @@ ll_by_outcome
 ```
 
 
-### Unique groups {-}  
+### Unique groups {.unnumbered}  
 
 **The groups created reflect each unique combination of values in the grouping columns.** To see the groups and the number of rows in each group, pass the grouped data to `tally()`. To see just the unique groups without counts you can pass to `group_keys()`.  
 
@@ -109,7 +109,7 @@ linelist %>%
   tally()
 ```
 
-### New columns {-} 
+### New columns {.unnumbered} 
 
 You can also create a new grouping column *within* the `group_by()` statement. This is equivalent to calling `mutate()` before the `group_by()`. For a quick tabulation this style can be handy, but for more clarity in your code consider creating this column in it's own `mutate()` step and then piping to `group_by()`.
 
@@ -121,7 +121,7 @@ linelist %>%
   tally(sort = T)
 ```
 
-### Add/drop grouping columns {-}  
+### Add/drop grouping columns {.unnumbered}  
 
 By default if you run `group_by()` on data that are already grouped, the old groups will be removed and the new one(s) will apply. If you want to add new groups to the existing ones, include the argument `.add=TRUE`.  
 
@@ -250,7 +250,7 @@ linelist %>%
 ```
 
 
-### Add totals {-} 
+### Add totals {.unnumbered} 
 
 If you want to add total rows or column after using `tally()` or `count()`, see the page on [Descriptive tables] for demonstrations of the **janitor** package. This package offers functions like `tabyl()` to make cross-tabulations, and `adorn_totals()` and `adorn_percentages()` to add totals and convert to show percentages. Below is a brief example:  
 
@@ -273,7 +273,7 @@ When grouping data by date, you must have or create a column for the date unit o
 
 One additional step that is particular to dates is to use `complete()` from **tidyr** so that the aggregated date series is *complete* including *all possible date units* within the range. Without this step, a week with no cases reported might not appear in your data! Within `complete()` you re-define the date column as a sequence of dates from the minimum to the maximum (`seq.Date()`) - thus the dates are expanded. By default, the case count values in these new "expanded" rows will be `NA`. You can set them to 0 using the `fill = ` argument of `complete()`, which expects a named list (if your counts column is `n`, provide `list(n = 0)`. See `?complete` for details.  
 
-### Linelist cases into days  {-}  
+### Linelist cases into days  {.unnumbered}  
 
 Here is an example of grouping cases into days *without* using `complete()`. Note the first rows skip over dates with no cases.  
 
@@ -305,7 +305,7 @@ daily_counts <- linelist %>%
 DT::datatable(daily_counts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Linelist cases into weeks {-}  
+#### Linelist cases into weeks {.unnumbered}  
 
 
 The same principle can be applied for weeks. First create a new column that is the week of the case using `floor_date()` with `unit = "week"`. Then, use `count()` as above to achieve weekly case counts. Finish with `complete()` to ensure that all weeks are represented, even if they contain no cases.
@@ -329,12 +329,12 @@ Here are the first 50 rows of the resulting dataframe:
 ```{r message=FALSE, echo=F}
 DT::datatable(weekly_counts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
-#### Daily counts into weeks {-}
+#### Daily counts into weeks {.unnumbered}
 
 To aggregate daily counts into weekly counts, use `floor_date()` as above. However, use `group_by()` and `summarize()` instead of `count()` because you need to `sum()` daily case counts instead of just counting the number of rows per week.
 
 
-#### Linelist cases into months {-}
+#### Linelist cases into months {.unnumbered}
 
 To aggregate cases into months, again use `floor_date()` from the **lubridate** package, but with the argument `unit = "months"`. This rounds each date down to the 1st of its month. The output will be class Date. Note that in the `complete()` step we also use `by = "months"`.  
 
@@ -357,7 +357,7 @@ monthly_counts <- linelist %>%
 DT::datatable(monthly_counts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Daily counts into months {-}
+#### Daily counts into months {.unnumbered}
 
 To aggregate daily counts into months counts, use `floor_date()` with `unit = "month"` as above. However, use `group_by()` and `summarize()` instead of `count()` because you need to `sum()` daily case counts instead of just counting the number of rows per month.  
 
@@ -372,14 +372,14 @@ Using the **dplyr** verb `arrange()` to order the rows in a dataframe behaves th
 
 ## Filter on grouped data
 
-### `filter()` {-}
+### `filter()` {.unnumbered}
 
 When applied in conjunction with functions that evaluate the dataframe (like `max()`, `min()`, `mean()`), these functions will now be applied to the groups. For example, if you want to filter and keep rows where patients are above the median age, this will now apply per group - filtering to keep rows above the group's median age. 
 
 
 
 
-### Slice rows per group {-} 
+### Slice rows per group {.unnumbered} 
 
 The **dplyr** function `slice()`, which [subsets rows based on their position](https://dplyr.tidyverse.org/reference/slice.html) in the data, can also be applied per group. Remember to account for sorting the data within each group to get the desired "slice".  
 
@@ -406,7 +406,7 @@ linelist %>%
 
 
 
-### Filter on group size {-} 
+### Filter on group size {.unnumbered} 
 
 The function `add_count()` adds a column `n` to the original data giving the number of rows in that row's group. 
 

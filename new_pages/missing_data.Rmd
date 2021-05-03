@@ -20,7 +20,7 @@ This page will cover:
 <!-- ======================================================= -->
 ## Preparation { }
 
-### Load packages {-}  
+### Load packages {.unnumbered}  
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -33,9 +33,9 @@ pacman::p_load(
 ```
 
 
-### Import data {-}
+### Import data {.unnumbered}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, echo=F}
 # import the linelist into R
@@ -199,7 +199,7 @@ You can use the package **naniar** to assess and visualize missingness in the da
 pacman::p_load(naniar)
 ```
 
-### Quantifying missingness {-}
+### Quantifying missingness {.unnumbered}
 
 To find the percent of all values that are missing use `pct_miss()`. Use `n_miss()` to get the number of missing values.  
 
@@ -217,7 +217,7 @@ pct_complete_case(linelist) # see n_complete
 
 
 
-### Visualizing missingness {-}  
+### Visualizing missingness {.unnumbered}  
 
 The `gg_miss_var()` function will show you the number of missing values in each column. You can add a bare column name to the argument `facet = ` if desired to see the plot by groups. By default, counts are shown instead of percents (`show_pct = FALSE`). You can also add labs as a normal ggplot with `+labs()`.  
 
@@ -233,7 +233,7 @@ vis_miss(linelist)
 ```
 
 
-### Explore and visualize missingness relationships {-} 
+### Explore and visualize missingness relationships {.unnumbered} 
 
 How do you visualize something that is not there??? By default, ggplot removes points with missing values from plots.  
 
@@ -266,7 +266,7 @@ gg_miss_fct(linelist, date_onset)
 
 
 
-### "Shadow" columns {-}
+### "Shadow" columns {.unnumbered}
 
 Another way to visualize missingness in one column by values in a second column is using the "shadow" that **naniar** can create. `bind_shadow()` creates a binary `NA`/not `NA` column for every existing column, and binds all these new columns to the original dataset with the appendix "_NA". This doubles the number of columns - see below:  
 
@@ -354,7 +354,7 @@ ggplot(data = outcome_missing)+
 ## Using data with missing values  
 
 
-### Filter out rows with missing values {-}
+### Filter out rows with missing values {.unnumbered}
 
 To quickly remove rows with missing values, use the **dplyr** function `drop_na()`.  
 
@@ -385,7 +385,7 @@ linelist %>%
 
 
 <!-- ======================================================= -->
-### Handling `NA` in `ggplot()` {-}
+### Handling `NA` in `ggplot()` {.unnumbered}
 
 It is often wise to report the number of values excluded from a plot in a caption. Below is an example:  
 
@@ -408,7 +408,7 @@ Sometimes, it can be easier to save the string as an object in commands prior to
 
 
 <!-- ======================================================= -->
-### `NA` in factors {-}
+### `NA` in factors {.unnumbered}
 
 If your column of interest is a factor, use `fct_explicit_na()` from the **forcats** package to convert `NA` values to a character value. By default the character value is "(Missing)" but this can be adjusted via the `na_level =` arguement.   
 
@@ -435,7 +435,7 @@ Sometimes, when analyzing your data, it will be important to "fill in the gaps" 
 
 It's important to think about why your data might be missing in addition to seeing how much is missing. Doing this can help you decide how important it might be to impute missing data, and also which method of imputing missing data might be best in your situation.
 
-### Types of missing data {-}
+### Types of missing data {.unnumbered}
 
 Here are three general types of missing data:
 
@@ -447,7 +447,7 @@ Here are three general types of missing data:
 
 In general, imputing MCAR data is often fairly simple, while MNAR is very challenging if not impossible. Many of the common data imputation methods assume MAR. 
 
-### Useful packages {-}
+### Useful packages {.unnumbered}
 
 Some useful packages for imputing missing data are Mmisc, missForest (which uses random forests to impute missing data), and mice (Multivariate Imputation by Chained Equations). For this section we'll just use the mice package, which implements a variety of techniques. The maintainer of the mice package has published an online book about imputing missing data that goes into more detail here (https://stefvanbuuren.name/fimd/).  
 
@@ -457,7 +457,7 @@ Here is the code to load the mice package:
 pacman::p_load(mice)
 ```
 
-### Mean Imputation {-}
+### Mean Imputation {.unnumbered}
 
 Sometimes if you are doing a simple analysis or you have strong reason to think you can assume MCAR, you can simply set missing numerical values to the mean of that variable. Perhaps we can assume that missing temperature measurements in our dataset were either MCAR or were just normal values. Here is the code to create a new variable that replaces missing temperature values with the mean temperature value in our dataset. However, in many situations replacing data with the mean can lead to bias, so be careful.
 
@@ -473,7 +473,7 @@ linelist <- linelist %>%
   mutate(outcome_replace_na_with_death = replace_na(outcome, "Death"))
 ```
 
-### Regression imputation {-}
+### Regression imputation {.unnumbered}
 
 A somewhat more advanced method is to use some sort of statistical model to predict what a missing value is likely to be and replace it with the predicted value. Here is an example of creating predicted values for all the observations where temperature is missing, but age and fever are not, using simple linear regression using fever status and age in years as predictors. In practice you'd want to use a better model than this sort of simple approach.
 
@@ -504,13 +504,13 @@ temp_imputed_values <- temp_imputed$imp$temp
 
 This is the same type of approach by some more advanced methods like using the missForest package to replace missing data with predicted values. In that case, the prediction model is a random forest instead of a linear regression. You can use other types of models to do this as well. However, while this approach works well under MCAR you should be a bit careful if you believe MAR or MNAR more accurately describes your situation. The quality of your imputation will depend on how good your prediction model is and even with a very good model the variability of your imputed data may be underestimated. 
 
-### LOCF and BOCF {-}
+### LOCF and BOCF {.unnumbered}
 
 Last observation carried forward (LOCF) and baseline observation carried forward (BOCF) are  imputation methods for time series/longitudinal data. The idea is to take the previous observed value as a replacement for the missing data. When multiple values are missing in succession, the method searches for the last observed value.
 
 [TO BE COMPLETED]
 
-### Multiple Imputation {-}
+### Multiple Imputation {.unnumbered}
 
 The online book we mentioned earlier by the author of the mice package (https://stefvanbuuren.name/fimd/) contains a detailed explanation of multiple imputation and why you'd want to use it. But, here is a basic explanation of the method:
 

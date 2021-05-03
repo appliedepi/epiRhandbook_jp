@@ -20,9 +20,9 @@ package to fit models that are more appropriate for infectious disease epidemiol
 <!-- ======================================================= -->
 ## Preparation {  }
 
-### Packages {-}
+### Packages {.unnumbered}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics](https://epirhandbook.com/r-basics.html) for more information on R packages.  
 
 ```{r load_packages}
 pacman::p_load(rio,          # File import
@@ -43,7 +43,7 @@ pacman::p_load(rio,          # File import
                )
 ``` 
 
-### Load data {-}
+### Load data {.unnumbered}
 
 The example dataset used in this section:
 
@@ -52,7 +52,7 @@ The example dataset used in this section:
 This dataset is a reduced version of the dataset available in the [**surveillance**](https://cran.r-project.org/web/packages/surveillance/) package. 
 (for details load the surveillance package and see `?campyDE`)
 
-The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export](https://epirhandbook.com/import-and-export.html) for various ways to import data.
 
 ```{r read_data_hide, echo=F}
 # import the counts into R
@@ -72,13 +72,13 @@ The first 10 rows of the counts are displayed below.
 DT::datatable(head(counts, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### Clean data {-}
+### Clean data {.unnumbered}
 
 The below makes sure that the date column is in the appropriate format. 
 For this tab we will be using the **tsibble** package and so the `yearweek` 
 function will be used to create a calendar week variable. There are several other
-ways of doing this (see the [Working with dates] page for details), however for 
-time series its best to keep within one framework. 
+ways of doing this (see the [Working with dates](https://epirhandbook.com/working-with-dates.html)
+page for details), however for time series its best to keep within one framework. 
 
 ```{r clean_data}
 
@@ -92,7 +92,7 @@ counts <- counts %>%
 
 ```
 
-### Download climate data {-} 
+### Download climate data {.unnumbered} 
 
 In the *relation of two time series* section of this tab, we will be comparing 
 campylobacter case counts to climate data. 
@@ -168,7 +168,7 @@ for (i in 2002:2011) {
 
 ```
 
-### Load climate data {-}
+### Load climate data {.unnumbered}
 
 ```{r read_climate, warning = FALSE, message = FALSE}
 
@@ -252,7 +252,7 @@ ggplot(counts, aes(x = epiweek, y = case)) +
 You will need to check for duplicates and missings as below. </span>
 
 <!-- ======================================================= -->
-### Duplicates {-}
+### Duplicates {.unnumbered}
 
 **tsibble** does not allow duplicate observations. So each row will need to be
 unique, or unique within the group (`key` variable). 
@@ -260,7 +260,8 @@ The package has a few functions that help to identify duplicates. These include
 `are_duplicated()` which gives you a TRUE/FALSE vector of whether the row is a 
 duplicate, and `duplicates()` which gives you a data frame of the duplicated rows. 
 
-See the page on [De-duplication] for more details on how to select rows you want. 
+See the page on [De-duplication](https://epirhandbook.com/de-duplication.html)
+for more details on how to select rows you want. 
 
 ```{r duplicates, eval = FALSE}
 
@@ -273,7 +274,7 @@ duplicates(counts, index = epiweek)
 ```
 
 <!-- ======================================================= -->
-### Missings {-}
+### Missings {.unnumbered}
 
 We saw from our brief inspection above that there are no missings, but we also 
 saw there seems to be a problem with reporting delay around new year. 
@@ -282,10 +283,10 @@ to impute values. The simplest form of time series imputation is to draw
 a straight line between the last non-missing and the next non-missing value. 
 To do this we will use the **imputeTS** package function `na_interpolation()`. 
 
-See the [Missing data] page for other options for imputation.  
+See the [Missing data](https://epirhandbook.com/missing-data.html) page for other options for imputation.  
 
 Another alternative would be to calculating a moving average, to try and smooth
-over these apparent reporting issues (see next section, and the page on [Moving averages]). 
+over these apparent reporting issues (see next section, and the page on [Moving averages](https://epirhandbook.com/moving-averages.html)). 
 
 ```{r missings}
 
@@ -322,14 +323,14 @@ ggplot_na_imputations(counts$case_miss, counts$case_int) +
 
 
 <!-- ======================================================= -->
-### Moving averages {-}
+### Moving averages {.unnumbered}
 
 If data is very noisy (counts jumping up and down) then it can be helpful to 
 calculate a moving average. In the example below, for each week we calculate the 
 average number of cases from the four previous weeks. This smooths the data, to 
 make it more interpretable. In our case this does not really add much, so we will
 stick to the interpolated data for further analysis. 
-See the [Moving averages] page for more detail. 
+See the [Moving averages](https://epirhandbook.com/moving-averages.html) page for more detail. 
 
 ```{r moving_averages}
 
@@ -352,7 +353,7 @@ ggplot(counts, aes(x = epiweek)) +
 
 
 <!-- ======================================================= -->
-### Periodicity {-}
+### Periodicity {.unnumbered}
 
 ```{r periodogram}
 
@@ -420,7 +421,7 @@ peak_weeks <- periodogram(counts,
 <span style="color: black;">**_NOTE:_** It is possible to use the above weeks to add them to sin and cosine terms, however we will use a function to generate these terms (see regression section below) </span>
 
 <!-- ======================================================= -->
-### Decomposition {-}
+### Decomposition {.unnumbered}
 
 Classical decomposition is used to break a time series down several parts, which
 when taken together make up for the pattern you see. 
@@ -445,7 +446,7 @@ counts %>%
 ```
 
 <!-- ======================================================= -->
-### Autocorrelation {-}
+### Autocorrelation {.unnumbered}
 
 Autocorrelation tells you about the relation between the counts of each week 
 and the weeks before it (called lags).  
@@ -501,7 +502,7 @@ however, here we will demonstrate how to fit a negative binomial regression - as
 this is often the most appropriate for counts data in infectious diseases. 
 
 <!-- ======================================================= -->
-### Fourier terms {-}
+### Fourier terms {.unnumbered}
 
 Fourier terms are the equivalent of sin and cosin curves. The difference is that 
 these are fit based on finding the most appropriate combination of curves to explain
@@ -523,7 +524,7 @@ counts$fourier <- select(counts, epiweek, case_int) %>%
 ```
 
 <!-- ======================================================= -->
-### Negative binomial {-}
+### Negative binomial {.unnumbered}
 
 It is possible to fit regressions using base **stats** or **MASS**
 functions (e.g. `lm()`, `glm()` and `glm.nb()`). However we will be using those from 
@@ -580,7 +581,7 @@ ggplot(data = observed, aes(x = epiweek)) +
 ```
 
 <!-- ======================================================= -->
-### Residuals {-}
+### Residuals {.unnumbered}
 
 To see how well our model fits the observed data we need to look at the residuals. 
 The residuals are the difference between the observed counts and the counts 
@@ -642,10 +643,10 @@ Here we look at using weather data (specifically the temperature) to explain
 campylobacter case counts. 
 
 <!-- ======================================================= -->
-### Merging datasets {-}
+### Merging datasets {.unnumbered}
 
 We can join our datasets using the week variable. For more on merging see the 
-handbook section on [joining].
+handbook section on [joining](https://epirhandbook.com/joining-data.html).
 
 ```{r join}
 
@@ -658,12 +659,12 @@ counts <- left_join(counts,
 ```
 
 <!-- ======================================================= -->
-### Descriptive analysis {-}
+### Descriptive analysis {.unnumbered}
 
 First plot your data to see if there is any obvious relation. 
 The plot below shows that there is a clear relation in the seasonality of the two
 variables, and that temperature might peak a few weeks before the case number.
-For more on pivoting data, see the handbook section on [cleaning data]. 
+For more on pivoting data, see the handbook section on [pivoting data](https://epirhandbook.com/pivoting-data.html). 
 
 ```{r basic_plot_bivar}
 
@@ -690,7 +691,7 @@ counts %>%
 ```
 
 <!-- ======================================================= -->
-### Lags and cross-correlation {-}
+### Lags and cross-correlation {.unnumbered}
 
 To formally test which weeks are most highly related between cases and temperature. 
 We can use the cross-correlation function (`CCF()`) from the **feasts** package. 
@@ -726,7 +727,7 @@ counts <- counts %>%
 
 
 <!-- ======================================================= -->
-### Negative binomial with two variables {-}
+### Negative binomial with two variables {.unnumbered}
 
 We fit a negative binomial regression as done previously. This time we add the 
 temperature variable lagged by four weeks. 
@@ -798,7 +799,7 @@ ggplot(data = observed, aes(x = epiweek)) +
 ```
 
 
-#### Residuals {-}
+#### Residuals {.unnumbered}
 
 We investigate the residuals again to see how well our model fits the observed data. 
 The results and interpretation here are similar to those of the previous regression, 
@@ -859,7 +860,7 @@ which has a number of different algorithms for aberration detection.
 <span style="color: orange;">**_CAUTION:_** Normally, you are interested in the current year (where you only know counts up to the present week). So in this example we are pretending to be in week 52 of 2011.</span>
 
 <!-- ======================================================= -->
-### **trending** package {-}
+### **trending** package {.unnumbered}
 
 For this method we define a baseline (which should usually be about 5 years of data). 
 We fit a regression to the baseline data, and then use that to predict the estimates
@@ -945,7 +946,7 @@ counts <- counts %>%
 ```
 
 <!-- ======================================================= -->
-#### Split data and fit regression {-}
+#### Split data and fit regression {.unnumbered}
 
 We now have to split our dataset in to the baseline period and the prediction 
 period. This is done using the **dplyr** `group_split()` function after `group_by()`, 
@@ -957,7 +958,7 @@ list (equivalent of using square brackets, e.g. `dat[[1]]`), and can then fit
 our model to the baseline data, and then use the `predict()` function for our data
 of interest after the cut-off.  
 
-See the page on [Iteration] to learn more about **purrr**.  
+See the page on [Iteration](https://epirhandbook.com/iteration-loops-and-lists.html) to learn more about **purrr**.  
 
 ```{r forecast_regression, warning = FALSE}
 # split data for fitting and prediction
@@ -1038,7 +1039,7 @@ ggplot(data = observed, aes(x = epiweek)) +
 
 
 <!-- ======================================================= -->
-#### Prediction validation {-}
+#### Prediction validation {.unnumbered}
 
 Beyond inspecting residuals, it is important to investigate how good your model is
 at predicting cases in the future. This gives you an idea of how reliable your 
@@ -1228,7 +1229,7 @@ model_metrics
 
 
 <!-- ======================================================= -->
-### **surveillance** package {-}
+### **surveillance** package {.unnumbered}
 
 In this section we use the **surveillance** package to create alert thresholds 
 based on outbreak detection algorithms. There are several different methods 
@@ -1274,7 +1275,7 @@ weekrange <- cut_off - start_date
 ```
 
 <!-- ======================================================= -->
-#### Farrington method {-}
+#### Farrington method {.unnumbered}
 
 We then define each of our parameters for the Farrington method in a `list`. 
 Then we run the algorithm using `farringtonFlexible()` and then we can extract the 
@@ -1330,7 +1331,7 @@ ggplot(counts, aes(x = epiweek)) +
 ```
 
 <!-- ======================================================= -->
-#### GLRNB method {-}
+#### GLRNB method {.unnumbered}
 
 Similarly for the GLRNB method we define each of our parameters for the in a `list`, 
 then fit the algorithm and extract the upper bounds.
