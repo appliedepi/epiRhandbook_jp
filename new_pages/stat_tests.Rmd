@@ -56,7 +56,9 @@ You can use **base** R functions to produce the results of statistical tests. Th
 
 ### T-tests {.unnumbered} 
 
-**Syntax 1:** Best is your numeric and categorical columns are in the same data frame. Provide the numeric column on the left side of the equation and the categorical column on the right side. Specify the dataset to `data = `. Optionally, set `paired = TRUE`, and `conf.level = ` (0.95 default), and `alternative = ` (either "two.sided", "less", or "greater"). Enter `?t.test` for more details.  
+A [t-test](https://en.wikipedia.org/wiki/Student%27s_t-test), also called "Student's t-Test", is typically used to determine if there is a significant difference between the means of some numeric variable between two groups. Here we'll show the syntax to do this test depending on whether the columns are in the same data frame.
+
+**Syntax 1:** This is the syntax when your numeric and categorical columns are in the same data frame. Provide the numeric column on the left side of the equation and the categorical column on the right side. Specify the dataset to `data = `. Optionally, set `paired = TRUE`, and `conf.level = ` (0.95 default), and `alternative = ` (either "two.sided", "less", or "greater"). Enter `?t.test` for more details.  
 
 ```{r}
 ## compare mean age by outcome group with a t-test
@@ -69,19 +71,24 @@ t.test(age_years ~ outcome, data = linelist)
 t.test(df1$age_years, df2$age_years)
 ```
 
-Conduct a one-sample t-test with the known/hypothesized populaton mean on the right side of the equation:  
+You can also use a t-test to determine whether a sample mean is significantly different from some specific value. Here we conduct a one-sample t-test with the known/hypothesized population mean on the right side of the equation:  
 
 ```{r, eval=F}
 t.test(linelist$age_years, mu = 45)
 ```
 
-### Shapiro-Wilk's test {.unnumbered}  
+### Shapiro-Wilk test {.unnumbered}  
+
+The [Shapiro-Wilk test](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) can be used to determine whether a sample came from a normally-distributed population (an assumption of many other tests and analysis, such as the t-test). However, this can only be used on a sample between 3 and 5000 observations. For larger samples a [quantile-quantile plot](https://ggplot2.tidyverse.org/reference/geom_qq.html) may be helpful. 
+
 
 ```{r, eval=F}
 shapiro.test(linelist$age_years)
 ```
 
 ### Wilcoxon rank sum test {.unnumbered}
+
+The Wilcoxon rank sum test, also called the [Mann–Whitney U test](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test), is often used to help determine if two numeric samples are from the same distribution when their populations are not normally distributed or have unequal variance.
 
 ```{r wilcox_base}
 
@@ -90,8 +97,11 @@ wilcox.test(age_years ~ outcome, data = linelist)
 
 ```
 
-### Kruskal-wallis test {.unnumbered}
 
+### Kruskal-Wallis test {.unnumbered}
+
+
+The [Kruskal-Wallis test](https://en.wikipedia.org/wiki/Kruskal%E2%80%93Wallis_one-way_analysis_of_variance) is an extension of the Wilcoxon rank sum test that can be used to test for differences in the distribution of more than two samples. When only two samples are used it gives identical results to the Wilcoxon rank sum test. 
 
 ```{r }
 
@@ -102,6 +112,8 @@ kruskal.test(age_years ~ outcome, linelist)
 
 ### Chi-squared test {.unnumbered} 
 
+[Pearson's Chi-squared test](https://en.wikipedia.org/wiki/Chi-squared_test) is used in testing for significant differences between categorical croups. 
+
 ```{r}
 
 ## compare the proportions in each group with a chi-squared test
@@ -111,20 +123,17 @@ chisq.test(linelist$gender, linelist$outcome)
 
 
 
-
-
 ## `gtsummary` package {.unnumbered}
 
 Use **gtsummary** if you are looking to add the results of a statistical test to a pretty table (described in descriptive tables section). 
+
 Performing statistical tests of comparison with `tbl_summary` is done by adding the 
 `add_p` function to a table and specifying which test to use. It is possible to get p-values corrected for multiple testing by using the
 `add_q` function. Run `?tbl_summary` for details.  
 
 ### Chi-squared test 
 
-Compare the proportions of a categorical variable in two groups. The default statistical test for 
-`add_p()` is to perform a chi-squared test of independence with continuity correction, but if 
-any expected call count is below 5 then a Fisher's exact test is used. 
+Compare the proportions of a categorical variable in two groups. The default statistical test for `add_p()` when applied to a categorical variable is to perform a chi-squared test of independence with continuity correction, but if any expected call count is below 5 then a Fisher's exact test is used. 
 
 ```{r chi_gt}
 linelist %>% 
