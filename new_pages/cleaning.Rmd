@@ -6,43 +6,53 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 ```
 
 
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-
-
 This page demonstrates common steps used in the process of "cleaning" a dataset, and also explains the use of many essential R data management functions.  
 
-To demonstrate data cleaning, this page begins by importing a raw case linelist dataset, and proceeds step-by-step through the cleaning process. In the R code, this manifests as a "pipe" chain, which references the **magrittr** "pipe" operator ` %>%` which passes a dataset from one operation to the next.  
+To demonstrate data cleaning, this page begins by importing a raw case linelist dataset, and proceeds step-by-step through the cleaning process. In the R code, this manifests as a "pipe" chain, which references the "pipe" operator ` %>%` that passes a dataset from one operation to the next.  
 
-The essential R functions demonstrated in this page mostly belong to the **tidyverse** family of R packages, and include:  
+
+### Core functions {.unnumbered}  
+
+This handbook emphasizes use of the functions from the [**tidyverse**](https://www.tidyverse.org/) family of R packages. The essential R functions demonstrated in this page are listed below.  
+
+Many of these functions belong to the [**dplyr**](https://dplyr.tidyverse.org/) R package, which provides "verb" functions to solve data manipulation challenges (the name is a reference to a "data frame-[plier](https://www.thefreedictionary.com/plier#:~:text=also%20ply%C2%B7er%20(pl%C4%AB%E2%80%B2,holding%2C%20bending%2C%20or%20cutting.)"). **dplyr** is part of the **tidyverse** family of R packages (which also includes **ggplot2**, **tidyr**, **stringr**, **tibble**, **purrr**, **magrittr**, and **forcats** among others).  
+
 
 Function       | Utility                               | Package
 ---------------|---------------------------------------|------------------------------
-` %>% `|"pipe" (pass) data from one function to the next|**magrittr** (also **tidyverse**)
-`mutate()`|create, transform, and re-define columns|**dplyr** (also **tidyverse**) 
-`select()`|keep, remove, select, or re-name columns| "
-`rename()`|rename columns| " 
+` %>% `|"pipe" (pass) data from one function to the next|**magrittr** 
+`mutate()`|create, transform, and re-define columns|**dplyr**  
+`select()`|keep, remove, select, or re-name columns|**dplyr**
+`rename()`|rename columns|**dplyr** 
 `clean_names()`|standardize the syntax of column names|**janitor**
 `as.character()`, `as.numeric()`, `as.Date()`, etc.|convert the class of a column|**base** R
-`across()`|transform multiple columns at one time| " 
-**tidyselect** functions|use logic to select columns|**tidyselect** (also **tidyverse**)  
-`filter()`|keep certain rows| " 
-`distinct()`|de-duplicate rows| " 
-`rowwise()`|operations by/within each row| "  
-`add_row()`|add rows manually| " 
-`recode()`|re-code values in a column| " 
-`case_when()`|re-code values in a column using more complex logical criteria| " 
-`replace_na()`, `na_if()`, `coalesce()`|special functions for re-coding|**tidyr** (also **tidyverse**)
+`across()`|transform multiple columns at one time|**dplyr** 
+**tidyselect** functions|use logic to select columns|**tidyselect**   
+`filter()`|keep certain rows|**dplyr** 
+`distinct()`|de-duplicate rows|**dplyr** 
+`rowwise()`|operations by/within each row|**dplyr**  
+`add_row()`|add rows manually|**tibble** 
+`arrange()`|sort rows|**dplyr**
+`recode()`|re-code values in a column|**dplyr** 
+`case_when()`|re-code values in a column using more complex logical criteria|**dplyr** 
+`replace_na()`, `na_if()`, `coalesce()`|special functions for re-coding|**tidyr**  
 `age_categories()` and `cut()`|create categorical groups from a numeric column|**epikit** and **base** R
-`clean_data()`|re-code/clean using a data dictionary|**linelist**
+`clean_variable_spelling()`|re-code/clean values using a data dictionary|**linelist**
 `which()`|apply logical criteria; return indices|**base** R
-
 
 If you want to see how these functions compare to Stata or SAS commands, see the page on [Transition to R].  
 
-This handbook emphasizes use of the above functions from the **tidyverse** R package for data management. However, you may encounter an alternative framework from the **data.table** R package with operators like `:=`. This approach and syntax is briefly explained in the [Data Table] page.  
+You may encounter an alternative data management framework from the **data.table** R package with operators like `:=` and frequent use of brackets `[ ]`. This approach and syntax is briefly explained in the [Data Table] page.  
 
+### Nomenclature {.unnumbered}  
+
+In this handbook, we generally reference "columns" and "rows" instead of "variables" and "observations". As explained in this primer on ["tidy data"](https://tidyr.tidyverse.org/articles/tidy-data.html), most epidemiological statistical datasets consist structurally of rows, columns, and values.  
+
+*Variables* contain the values that measure the same underlying attribute (like age group, outcome, or date of onset). *Observations* contain all values measured on the same unit (e.g. a person, site, or lab sample). So these aspects can be more difficult to tangibly define.  
+
+In "tidy" datasets, each column is a variable, each row is an observation, and each cell is a single value. However some datasets you encounter will not fit this mold - a "wide" format dataset may have a variable split across several columns (see an example in the [Pivoting data] page). Likewise, observations could be split across several rows.  
+
+Most of this handbook is about managing and transforming data, so referring to the concrete data structures of rows and columns is more relevant than the more abstract observations and variables. Exceptions occur primarily in pages on data analysis, where you will see more references to variables and observations.  
 
 
 
@@ -95,18 +105,13 @@ pacman::p_load(
 
 ### Import {.unnumbered}  
 
-Here we import the raw .xlsx case linelist using the `import()` function from the package **rio**, and save it as the data frame `linelist_raw`. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file).  
+Here we import the "raw" case linelist Excel file using the `import()` function from the package **rio**. The **rio** package flexibly handles many types of files (e.g. .xlsx, .csv, .tsv, .rds. See the page on [Import and export] for more information and tips on unusual situations (e.g. skipping rows, setting missing values, importing Google sheets, etc).  
+
+If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_raw.xlsx' class='download-button'>click to download the "raw" linelist</a> (as .xlsx file).  
 
 If your dataset is large and takes a long time to import, it can be useful to have the import command be separate from the pipe chain and the "raw" saved as a distinct file. This also allows easy comparison between the original and cleaned versions.  
 
-See the page on [Import and export] for more details and unusual situations, including:  
-
-* Skipping the import of certain rows  
-* Dealing with a second row that is a data dictionary  
-* Importing from Google sheets   
-
-
-Below we import the raw .xlsx file. We assume it is located in the working directory and so no sub-folders are specified in the filepath.  
+Below we import the raw Excel file and save it as the data frame `linelist_raw`. We assume the file is located in your working directory or R project root, and so no sub-folders are specified in the file path.  
 
 ```{r, echo=F, message=F}
 # HIDDEN FROM READER
@@ -118,7 +123,7 @@ linelist_raw <- rio::import(here::here("data", "case_linelists", "linelist_raw.x
 linelist_raw <- import("linelist_raw.xlsx")
 ```
 
-You can view the first 50 rows of the the original "raw" dataset below. You can use the **base** R function `head(n)` to view just the first `n` rows in the R console.  
+You can view the first 50 rows of the the data frame below. Note: the **base** R function `head(n)` allow you to view just the first `n` rows in the R console.  
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
@@ -151,7 +156,11 @@ skimr::skim_without_charts(linelist_raw)
 <!-- ======================================================= -->
 ## Column names {} 
 
-Column names are used very often, so they must have "clean" syntax. We suggest the following:  
+In R, column *names* are the "header" or "top" value of a column. They are used to refer to columns in the code, and serve as a default label in figures.  
+
+Other statistical software such as SAS and STATA use *"labels"* that co-exist as longer printed versions of the shorter column names. While R does offer the possibility of adding column labels to the data, this is not emphasized in most practice. To make column names "printer-friendly" for figures, one typically adjusts their display within the commands that create the outputs (e.g. axis or legend titles of a plot, or column headers in a printed table - see the [ggplot tips] and [Tables for presentation] pages). If you want to assign column labels in the data, read more online [here](https://cran.r-project.org/web/packages/expss/vignettes/labels-support.html) and [here](https://cran.r-project.org/web/packages/labelled/vignettes/intro_labelled.html).  
+
+As R column names are used very often, so they must have "clean" syntax. We suggest the following:  
 
 * Short names
 * No spaces (replace with underscores _ ) 
@@ -171,6 +180,9 @@ names(linelist_raw)
 <span style="color: black;">**_NOTE:_** To reference a column name that includes spaces, surround the name with back-ticks, for example: linelist$`` `r '\x60infection date\x60'` ``. note that on your keyboard, the back-tick (`) is different from the single quotation mark (').</span>
 
 
+### Labels {.unnumbered}  
+
+Some other statistical software such as SAS have variable *labels*
 
 
 ### Automatic cleaning {.unnumbered}  
@@ -1017,19 +1029,21 @@ linelist <- linelist %>%
 
 ### Cleaning dictionary {.unnumbered}
 
-Use the package **linelist** and it's function `clean_data()` to clean a linelist with a *cleaning dictionary*.  
+Use the R package **linelist** and it's function `clean_variable_spelling()` to clean a data frame with a *cleaning dictionary*. **linelist** is a package developed by [RECON](https://github.com/reconhub/linelist) - the R Epidemics Consortium.  
 
 1) Create a cleaning dictionary with 3 columns:  
     * A "from" column (the incorrect value)  
     * A "to" column (the correct value)  
     * A column specifying the column for the changes to be applied (or ".global" to apply to all columns)  
 
+Note: .global dictionary entries will be overridden by column-specific dictionary entries.  
+
 ```{r, fig.align = "center", out.width = "100%", echo=F}
 knitr::include_graphics(here::here("images", "cleaning_dict.png"))
 ```
 
 
-Import the dictionary file into R. This example can be downloaded via instructions on the [Download handbook and data] page.  
+2) Import the dictionary file into R. This example can be downloaded via instructions on the [Download handbook and data] page.  
 
 ```{r, echo=F}
 cleaning_dict <- rio::import(here("data", "case_linelists", "cleaning_dict.csv"))
@@ -1039,24 +1053,17 @@ cleaning_dict <- rio::import(here("data", "case_linelists", "cleaning_dict.csv")
 cleaning_dict <- import("cleaning_dict.csv")
 ```
 
-2) Store names of any columns that you want to "protect" from the changes.  
-
-```{r}
-protected_cols <- c("case_id", "source")
-```
-
-3) Run `clean_data()`, specifying the cleaning dictionary. Protected columns must be provided to `clean_data()` as a numeric or logical vector, so you will see use of `names(.)` in the command below (the dot means the data frame). Note this function can take a long time to run.  
+3) Pass the raw linelist to `clean_variable_spelling()`, specifying to `wordlists = ` the cleaning dictionary data frame. The `spelling_vars = ` argument can be used to specify which column in the dictionary refers to the columns (3rd by default), or can be set to `NULL` to have the dictionary apply to all character and factor columns. Note this function can take a long time to run.  
 
 ```{r}
 linelist <- linelist %>% 
-  linelist::clean_data(
+  linelist::clean_variable_spelling(
     wordlists = cleaning_dict,
-    spelling_vars = "col",       # dict column containing column names, defaults to 3rd column in dict
-    protect = names(.) %in% protected_cols
+    spelling_vars = "col",        # dict column containing column names, defaults to 3rd column in dict
   )
 ```
 
-Scroll to see how values have changed - particularly `gender` (lowercase to uppercase), and all the symptoms columns have been transformed from yes/no to 1/0.  
+Now scroll to the right to see how values have changed - particularly `gender` (lowercase to uppercase), and all the symptoms columns have been transformed from yes/no to 1/0.  
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
@@ -1064,12 +1071,7 @@ DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(
 ```
 
 
-<span style="color: orange;">**_CAUTION:_** `clean_data()` from **linelist** package will implement standard cleaning operations on values in your data unless those columns are protected. Thus you may see changes in values containing dashes "-" or  "." unless protected.</span>
-
-
-Note that your column names in the cleaning dictionary must correspond to the names *at this point* in your cleaning script. `clean_data()` itself also implements a column name cleaning function similar to `clean_names()` from **janitor** that standardizes column names prior to applying the dictionary.  
-
-See this [online reference for the linelist package](https://www.repidemicsconsortium.org/linelist/reference/clean_data.html) for more details.
+Note that your column names in the cleaning dictionary must correspond to the names *at this point* in your cleaning script. See this [online reference for the linelist package](https://www.repidemicsconsortium.org/linelist/reference/clean_data.html) for more details.
 
 
 
@@ -1839,7 +1841,22 @@ linelist %>%
 ```
 
 
+## Arrange and sort  
 
+Use the **dplyr** function `arrange()` to sort or order the rows by column values.  
+
+Simple list the columns in the order they should be sorted on. Specify `.by_group = TRUE` if you want the sorting to to first occur by any *groupings* applied to the data (see page on [Grouping data]).  
+
+By default, column will be sorted in "ascending" order (which applies to numeric and also to character columns). You can sort a variable in "descending" order by wrapping it with `desc()`.  
+
+Sorting data with `arrange()` is particularly useful when making [Tables for presentation], using `slice()` to take the "top" rows per group, or setting factor level order by order of appearance.  
+
+For example, to sort the our linelist rows by `hospital`, then by `date_onset` in descending order, we would use:  
+
+```{r, eval=F}
+linelist %>% 
+   arrange(hospital, desc(date_onset))
+```
 
 
 ```{r, echo=F}
