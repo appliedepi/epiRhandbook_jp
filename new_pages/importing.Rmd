@@ -7,9 +7,9 @@ In this page we describe ways to locate, import, and export files:
 * Specific import scenarios, such as  
   * Excel sheets  
   * Google sheets 
-  * Websites  
+  * APIs
   * Skipping rows  
-* Exporting/saving data files  
+* Exporting/saving files  
 
 
 <!-- ======================================================= -->
@@ -21,7 +21,7 @@ When you import a "dataset" into R, you are generally creating a new data frame 
 <!-- ======================================================= -->
 ## The **rio** package {}  
 
-The R package we recommend is: **rio**. The `import()` function from **rio** utilizes the file extension (e.g. .xlsx, .csv, .rds, .tsv) to correctly import or export the file. The name "rio" is an abbreviation of "R I/O" (input/output).  
+The R package we recommend is: **rio**. The name "rio" is an abbreviation of "R I/O" (input/output). Its functions `import()` and `export()` can handle many different file types (e.g. .xlsx, .csv, .rds, .tsv). When you provide a file path to either of these functions (including the file extension like ".csv"), **rio** will read the extension and use the correct tool to import or export the file.  
 
 The alternative to using **rio** is to use functions from many other packages, each of which is specific to a type of file. For example, `read.csv()` (**base** R), `read.xlsx()` (**openxlsx** package), and `write_csv()` (**readr** pacakge), etc. These alternatives can be difficult to remember, whereas using `import()` and `export()` from **rio** is easy.  
 
@@ -30,71 +30,83 @@ The alternative to using **rio** is to use functions from many other packages, e
 Import/export of shapefiles requires other packages, as detailed in the page on [GIS basics].    
 
 
-<!-- ======================================================= -->
-## File paths  
-
-When importing or exporting data, you must provide a file path. You can do this one of three ways:  
-
-1) Provide the "full" / "absolute" file path  
-2) Provide a "relative" file path - the location *relative to* an R project root directory  
-3) Manual file selection  
 
 
 
-### "Absolute" file paths {.unnumbered}  
+## The **here** package {#here}
 
-This is an example of an absolute file path, placed within quotes and provided to `import()`, to be saved in R as the data frame object named `linelist`.  
-In the filepath below, "epiproject" is the home/root folder of the analysis. There is a sub-folder "data" and within that a subfolder "linelists", in which there is the xlsx file.  
+The package **here** and its function `here()` allow you to describe the location of files in your R project in relation to the *project's* root directory. This is useful when the R project may be shared or accessed by multiple people/computers. It prevents complications due to the unique file paths on different computers (e.g. `"C:/Users/Laura/Documents..."` by "starting" the file path in a place common to all users (the R project root).  
 
-```{r, eval=F}
-linelist <- import("C:/Users/Pierre/My Documents/epiproject/data/linelists/ebola_linelist.xlsx")
-```
+This is how `here()` works within an R project:  
 
-A few things to note about absolute file paths:  
+* When the **here** package is first loaded within the R project, it places a small file called ".here" in the root folder of your R project as a "benchmark" or "anchor"  
+* In your scripts, to reference a file in the R project's sub-folders, you use the function `here()` to build the file path *in relation to that anchor*
+* To build the file path, specify folders beyond the root, within quotes, separated by commas, finally ending with the file name and file extension as shown below  
+* `here()` file paths can be used for both importing and exporting  
 
-* **Avoid using absolute file paths** as they will usually break if the script is run on a different computer
-* They can be used if you must load data from a *shared drive* folder distant from where your R script is saved  
-* Use *forward* slashes (`/`) as in the example above (this is *NOT* the default for Windows file paths)  
-* File paths that begin with double slashes (e.g. "//...") will likely **not be recognized by R** and will produce an error. Consider moving to a "named" or "lettered" drive that begins with a letter (e.g. "J:" or "C:"). See the page on [Directory interactions] for more details on this issue.  
-
-<span style="color: darkgreen;">**_TIP:_** To quickly convert all `\` to `/`, highlight the code of interest, use Ctrl+f (in Windows), check the option box for "In selection", and then use the replace functionality to convert them.</span>  
-
-
-### "Relative" file paths {.unnumbered}
-
-"Relative" file paths consist of the file path *relative to* a particular root folder. They allow for more simple file paths that can work on different computers (e.g. if root folder is on a shared drive or is sent by email).  
-
-Below, we assume the folder "epiproject" is the root folder of an R project and that we are using the package **here**. The same file path as above is written as *relative to* the R project root folder "epiproject". The **here** syntax is explained below.  
+For example, below, the function `import()` is being provided a file path constructed with `here()`.  
 
 ```{r, eval=F}
 linelist <- import(here("data", "linelists", "ebola_linelist.xlsx"))
 ```
 
-The package **here** and its function `here()` locate files on your computer in relation to the root directory of an R project, and provide a shortcut syntax for providing a file path to a function like `import()`. This is how `here()` works:  
+The command `here("data", "linelists", "ebola_linelist.xlsx")` is actually providing the full file path that is *unique to the user's computer*:  
 
-* Ensure you are working within an R project (read more on the [R projects] page)  
-* When the **here** package is first loaded within the R project, it places a small file called "here" in the root-level folder of your R project as a "benchmark" or "anchor" for all other files in the project.  
-* In your script, if you want to reference a file saved in your project’s folders, you use the function `here()` to tell R where the file is located *in relation to that anchor*.  
-* `here()` can be used for both importing and exporting.  
+"C:/Users/Laura/Documents/my_R_project/data/linelists/ebola_linelist.xlsx"
 
-If you are unsure where “here” root is set to, run the function `here()` with empty parentheses:
 
-```{r, eval=T}
-# load the package
-pacman::p_load(here)
+The beauty is that the R command using `here()` can be successfully run on any computer accessing the R project.   
 
-# return the folder path that "here" is set to 
-here()
+
+<span style="color: darkgreen;">**_TIP:_** If you are unsure where the “.here” root is set to, run the function `here()` with empty parentheses.</span>  
+
+Read more about the **here** package [at this link](https://here.r-lib.org/).  
+
+
+
+<!-- ======================================================= -->
+## File paths  
+
+When importing or exporting data, you must provide a file path. You can do this one of three ways:  
+
+1) *Recommended:* provide a "relative" file path with the **here** package  
+2) Provide the "full" / "absolute" file path  
+3) Manual file selection  
+
+
+
+### "Relative" file paths {.unnumbered}
+
+In R, "relative" file paths consist of the file path *relative to* the root of an R project. They allow for more simple file paths that can work on different computers (e.g. if the R project is on a shared drive or is sent by email). As described [above](#here), relative file paths are enabled by use of the **here** package.  
+
+An example of a relative file path constructed with `here()` is below. We assume the work is in an R project that contains a sub-folder "data" and within that a subfolder "linelists", in which there is the .xlsx file of interest.  
+
+```{r, eval=F}
+linelist <- import(here("data", "linelists", "ebola_linelist.xlsx"))
 ```
 
-You can build onto that anchor by specifying further folders, within quotes, separated by commas, finally ending with the filename and extension. This approach also removes slash direction as a source of error. 
 
-Running the `here()` command with folder names and file name returns the extended file path, which can then processed by the `import()` function.
 
-```{r}
-# the filepath
-here("data", "linelist.xlsx")
+### "Absolute" file paths {.unnumbered}  
+
+Absolute or "full" file paths can be provided to functions like `import()` but they are "fragile" as they are unique to the user's specific computer and therefore *not recommended*. 
+
+Below is an example of an absolute file path, where in Laura's computer the R project "my_R_project" is the home/root folder of the analysis. There is a sub-folder "data" and within that a subfolder "linelists", in which there is the .xlsx file.  
+
+```{r, eval=F}
+linelist <- import("C:/Users/Laura/Documents/my_R_project/data/linelists/ebola_linelist.xlsx")
 ```
+
+A few things to note about absolute file paths:  
+
+* **Avoid using absolute file paths** as they will break if the script is run on a different computer
+* Use *forward* slashes (`/`), as in the example above (note: this is *NOT* the default for Windows file paths)  
+* File paths that begin with double slashes (e.g. "//...") will likely **not be recognized by R** and will produce an error. Consider moving your work to a "named" or "lettered" drive that begins with a letter (e.g. "J:" or "C:"). See the page on [Directory interactions] for more details on this issue.  
+
+One scenario where absolute file paths may be appropriate is when you want to import a file on a shared drive which is distant from your R project. 
+
+
+<span style="color: darkgreen;">**_TIP:_** To quickly convert all `\` to `/`, highlight the code of interest, use Ctrl+f (in Windows), check the option box for "In selection", and then use the replace functionality to convert them.</span>  
 
 
 
@@ -118,12 +130,37 @@ my_data <- import(file.choose())
 
 
 
+## Import data  
+
+To use `import()` to import a dataset is quite simple. Simply provide the path to the file (including the file name and file extension) in quotes. If using `here()` to build the file path, follow the instructions above. Below are a few examples:  
+
+Importing a csv file that is located in your "working directory" or the R project root folder:  
+
+```{r, eval=F}
+linelist <- import("linelist_cleaned.csv")
+```
 
 
-<!-- ======================================================= -->
-## Excel sheets {}
+Importing an Excel workbook that is located in "data" and "linelists" sub-folders of the R project (file path built using `here()`):  
 
-If you want to import a specific **sheet** from an Excel workbook, include the sheet name to the `which = ` argument. For example:  
+```{r, eval=F}
+linelist <- import(here("data", "linelists", "linelist_cleaned.xlsx"))
+```
+
+
+Importing data (a .rds file) using an absolute file path (not recommended):  
+
+```{r, eval=F}
+linelist <- import("C:/Users/Laura/Documents/tuberculosis/data/linelists/linelist_cleaned.rds")
+```
+
+
+
+
+
+### Specific Excel sheets {}
+
+By default, if you provide an Excel workbook (.xlsx) to `import()`, the workbook's first sheet will be imported. If you want to import a specific **sheet**, include the sheet name to the `which = ` argument. For example:  
 
 ```{r eval=F}
 my_data <- import("my_excel_file.xlsx", which = "Sheetname")
@@ -136,7 +173,7 @@ If using the `here()` method to provide a relative pathway to `import()`, you ca
 linelist_raw <- import(here("data", "linelist.xlsx"), which = "Sheet1")`  
 ```
 
-To *export* a dataframe from R to a specific Excel sheet and have the rest of the Excel workbook remain unchanged, you will have to import, edit, and export with an alternative package catered to this purpose such as **openxlsx**. See more information in the page on [Directory interactions] or [at this github page](https://ycphs.github.io/openxlsx/).
+To *export* a data frame from R to a specific Excel sheet and have the rest of the Excel workbook remain unchanged, you will have to import, edit, and export with an alternative package catered to this purpose such as **openxlsx**. See more information in the page on [Directory interactions] or [at this github page](https://ycphs.github.io/openxlsx/).
 
 If your Excel workbook is .xlsb (binary format Excel workbook) you may not be able to import it using **rio**. Consider re-saving it as .xlsx, or using a package like **readxlsb** which is built for [this purpose](https://cran.r-project.org/web/packages/readxlsb/vignettes/read-xlsb-workbook.html).  
 
@@ -146,7 +183,7 @@ If your Excel workbook is .xlsb (binary format Excel workbook) you may not be ab
 
 
 <!-- ======================================================= -->
-## Missing values  
+### Missing values  
 
 You may want to designate which value(s) in your dataset should be considered as missing. As explained in the page on [Missing data], the value in R for missing data is `NA`, but perhaps the dataset you want to import uses 99, "Missing", or just empty character space "" instead.  
 
@@ -155,7 +192,7 @@ Use the `na = ` argument for `import()` and provide the value(s) within quotes (
 Here, the value "99" in the imported dataset is considered missing and converted to `NA` in R.  
 
 ```{r, eval=F}
-linelist <- import(here("data", "my_linelist.xlsx"), na ="99")
+linelist <- import(here("data", "my_linelist.xlsx"), na = "99")
 ```
 
 Here, any of the values "Missing", "" (empty cell), or " " (single space) in the imported dataset are converted to `NA` in R.  
@@ -167,7 +204,7 @@ linelist <- import(here("data", "my_linelist.csv"), na = c("Missing", "", " "))
 
 
 <!-- ======================================================= -->
-## Google sheets {}
+### Google sheets {}
 
 You can import data from an online Google spreadsheet with the **googlesheet4** package and by authenticating your access to the spreadsheet.  
 
@@ -194,36 +231,27 @@ Gsheets_demo <- read_sheet("1scgtzkVLLHAe5a6_eFQEwkZcc14yFUx1KgOMZ4AKUfY")
 
 Another package, **googledrive** offers useful functions for writing, editing, and deleting Google sheets. For example, using the  `gs4_create()` and `sheet_write()` functions found in this package. 
 
-Here are some other helpful online tutorials: [basic importing tutorial](https://arbor-analytics.com/post/getting-your-data-into-r-from-google-sheets/) [more detail](https://googlesheets4.tidyverse.org/articles/googlesheets4.html) [interaction between the two packages](https://googlesheets4.tidyverse.org/articles/articles/drive-and-sheets.html)
+Here are some other helpful online tutorials:  
+[basic importing tutorial](https://arbor-analytics.com/post/getting-your-data-into-r-from-google-sheets/)  
+[more detail](https://googlesheets4.tidyverse.org/articles/googlesheets4.html)  
+[interaction between the two packages](https://googlesheets4.tidyverse.org/articles/articles/drive-and-sheets.html)  
 
 
 
 
 
 <!-- ======================================================= -->
-## Scraping websites {}
+### APIs {}
 
-Scraping data from a website - TBD - Under construction
-
-
-
-
-<!-- ======================================================= -->
-## API {}
-
-TBD - Under construction (Sara has added some API retrieval snippets for Go.Data in case useful but feel free to disregard)
-
-An Automated Programming Interface (API) is commonly used to directly request clean data from a website. You can use R with the packages **httr** and **jsonlite** to pull directly via an API.  
-
+An "Automated Programming Interface" (API) is commonly used to directly request clean data from a website. You can import data directly via an API with the R packages **httr** and **jsonlite**.  
 
 This section was informed by [this tutorial](https://www.dataquest.io/blog/r-api-tutorial/) and [this tutorial](https://medium.com/@traffordDataLab/querying-apis-in-r-39029b73d5f1).  
 
-Below is some sample code using *httr* and *jsonlite* for connecting to the Go.Data API to pull in contact lists.
+Below is some sample code using **httr** and **jsonlite** for connecting to the "Go.Data" API, to import datasets of contact.
 
 ```{r, eval=F}
 # load packages
-pacman::p_load("httr")
-pacman::p_load("jsonlite")      
+pacman::p_load(httr, jsonlite)      
 
 # set credentials for authorization
 url <- "https://godatasampleURL.int/"        # insert Go.Data instance url
@@ -383,10 +411,12 @@ DT::datatable(dict, rownames = FALSE, filter="top", options = list(pageLength = 
 
 ### Combine two header rows {.unnumbered}  
 
-In some cases, you may want to combine two header rows into one. This command will define the column names as the combination (pasting together) of the existing column names with the value underneath in the first row. Replace "df" with the name of your dataset.  
+In some cases, you may receive a "messy" raw dataset that has *two* header rows. This is not tenable for analysis work, so you may want to move the values of the second header row into the first header row.  
+
+The command below will define the column names as the combination (pasting together) of the first (true) headers with the value immediately underneath (in the first row).  
 
 ```{r, eval=F}
-names(df) <- paste(names(df), df[1, ], sep = "_")
+names(my_data) <- paste(names(my_data), df[1, ], sep = "_")
 ```
 
 
@@ -447,7 +477,7 @@ knitr::include_graphics(here::here("images", "download_shp.png"))
 
 ### Entry by rows {.unnumbered}  
 
-Use the `tribble` function from the **tibble** package from the tidverse ([onlinetibble reference](https://tibble.tidyverse.org/reference/tribble.html)).  
+Use the `tribble` function from the **tibble** package from the tidyverse ([online tibble reference](https://tibble.tidyverse.org/reference/tribble.html)).  
   
 Note how column headers start with a *tilde* (`~`).  Also note that each column must contain only one class of data (character, numeric, etc.). You can use tabs, spacing, and new rows to make the data entry more intuitive and readable. Spaces do not matter between values, but each row is represented by a new line of code. For example:  
 
@@ -556,7 +586,7 @@ linelist_dates_raw <- stringr::str_extract(linelist_filenames, "[0-9].*[0-9]") #
 linelist_dates_raw  # print
 ```
 
-Assuming  dates are written in the same date general format (e.g. Year Month Day) you can use **lubridate**'s flexible `ymd()` function (or `dmy()` or `mdy()`) to convert them to dates. For these functions, the dashes, spaces, or slashes do not matter, only of order of the numbers. Read more in [Working with dates].  
+Assuming  dates are written in the same date general format (e.g. Year Month Day) you can use **lubridate**'s flexible `ymd()` function (or `dmy()` or `mdy()`) to convert them to dates. For these functions, the dashes, spaces, or slashes do not matter, only the order of the numbers. Read more in [Working with dates].  
 
 ```{r}
 linelist_dates_clean <- lubridate::ymd(linelist_dates_raw)
@@ -632,7 +662,7 @@ latest_file <- dir_info(here("data", "example", "linelists")) %>%  # collect fil
 ## Export {}  
 
 ### With **rio** package {.unnumbered}
-With **rio**, you can use the `export()` function in a very similar way to `import()`. First give the name of the R object you want to save (e.g. `linelist`) and then in quote the filepath including name and file extension. For example:  
+With **rio**, you can use the `export()` function in a very similar way to `import()`. First give the name of the R object you want to save (e.g. `linelist`) and then in quotes put the file path including name and file extension. For example:  
 
 ```{r, eval=F}
 export(linelist, "my_linelist.xlsx") # will save to working directory
