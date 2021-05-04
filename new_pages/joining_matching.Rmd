@@ -4,6 +4,7 @@
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "left-join.gif"))
 ```
+
 *Above: an animated example of a left join ([image source](https://github.com/gadenbuie/tidyexplain/tree/master/images))*  
 
 
@@ -14,8 +15,8 @@ It is uncommon that your epidemiological analysis or workflow does not involve m
 In this page we demonstrate code to:  
 
 * Conduct *joins* of two data frames such that rows are matched based on common values in identifier columns  
-* Expand a data frame by *binding* rows or columns from another one data frame  
-* *Join* two data frames based on likely or *probabilistic* matches between values  
+* Join two data frames based on *probabilistic* (likely) matches between values  
+* Expand a data frame by directly *binding* or ("appending") rows or columns from another data frame  
 
 
 <!-- ======================================================= -->
@@ -416,13 +417,13 @@ hosp_info %>%
 <!-- ======================================================= -->
 ### Anti join {.unnumbered} 
 
-**The anti join is a "filtering join" that returns rows in data frame 1 that *do not* have a match in data frame 2.**  
+**The anti join is another "filtering join" that returns rows in the baseline data frame that *do not* have a match in the secondary data frame.**  
 
 Read more about filtering joins [here](https://towardsdatascience.com/level-up-with-semi-joins-in-r-a068426096e0).  
 
-Common scenarios for an anti-join include identifying records not present in another data frame, troubleshooting spelling in a join (catching records that *should have* matched), and examining records that were excluded after another join.  
+Common scenarios for an anti-join include identifying records not present in another data frame, troubleshooting spelling in a join (reviewing records that *should have* matched), and examining records that were excluded after another join.  
 
-**As with right_join() and left_join(), the *baseline* data frame (listed first) is important**. The returned rows are from it only. Notice in the gif below that row in the non-baseline data frame (purple 4) is not returned even though it does not match.  
+**As with `right_join()` and `left_join()`, the *baseline* data frame (listed first) is important**. The returned rows are from the baseline data frame only. Notice in the gif below that row in the secondary data frame (purple row 4) is not returned even though it does not match with the baseline.  
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "anti-join.gif"))
@@ -431,9 +432,9 @@ knitr::include_graphics(here::here("images", "anti-join.gif"))
 Animated example of an anti join ([image source](https://github.com/gadenbuie/tidyexplain/tree/master/images))
 
 
-**Simple `anti_join()` example**  
+#### Simple `anti_join()` example {.unnumbered}  
 
-For an example, let's find the `hosp_info` hospitals that do not have any cases present in `linelist_mini`. We list `hosp_info` first, as the baseline data frame. The two hospitals which are not present in `linelist_mini` are returned.  
+For a simple example, let's find the `hosp_info` hospitals that do not have any cases present in `linelist_mini`. We list `hosp_info` first, as the baseline data frame. The hospitals which are not present in `linelist_mini` are returned.  
 
 ```{r, eval=F}
 hosp_info %>% 
@@ -447,9 +448,9 @@ hosp_info %>%
 ```
 
 
-**`anti_join()` example 2**  
+#### Complex `anti_join()` example {.unnumbered}  
 
-For another example, let us say we ran an `inner_join()` between `linelist_mini` and `hosp_info`. This returns only 8 of the original 11 `linelist_mini` records.  
+For another example, let us say we ran an `inner_join()` between `linelist_mini` and `hosp_info`. This returns only a subset of the original `linelist_mini` records, as some are not present in `hosp_info`.  
 
 ```{r, eval=F}
 linelist_mini %>% 
@@ -462,7 +463,7 @@ linelist_mini %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 8))
 ```
 
-To review the 3 `linelist_mini` records that were excluded in the inner join, we can run an anti-join with `linelist_mini` as the baseline data frame.  
+To review the `linelist_mini` records that were excluded during the inner join, we can run an anti-join with the same settings (`linelist_mini` as the baseline).  
 
 ```{r, eval = F}
 linelist_mini %>% 
@@ -472,140 +473,12 @@ linelist_mini %>%
 ```{r message=FALSE, echo=F}
 linelist_mini %>% 
   anti_join(hosp_info, by = c("hospital" = "hosp_name")) %>% 
-  DT::datatable(rownames = FALSE, options = list(pageLength = 5))
+  DT::datatable(rownames = FALSE, options = list(pageLength = 8))
 ```
+
 
 To see the `hosp_info` records that were excluded in the inner join, we could also run an anti-join with `hosp_info` as the baseline data frame.  
 
-
-
-## Binding and aligning  
-
-Another method of combining two data frames is "binding" them. You can also think of this as "appending" or "adding" rows/columns.  
-
-In some circumstances, it is necessary to "align" the rows of one data frame in the same order as in another data frame. This topic is also discussed below in the Bind columns section.  
-
-
-
-### Bind rows {.unnumbered}
-
-To bind rows of one data frame to the bottom of another data frame, use `bind_rows()` from **dplyr**. It is very inclusive, so any column present in either data frame will be included in the output. A few notes:  
-
-* Unlike the **base** R version `row.bind()`, `bind_rows()` does not require that the order of columns be the same in both data frames. As long as the column names are spelled identically, it will align them correctly.  
-* You can optionally specify the argument `.id = `. Provide a character column name. This will produce a data frame identifier column so that you can know which rows came from which data frame.  
-* You can use `bind_rows()` on a list of data frames to collapse them into one data frame. See an example in the [Iteration, loops, and lists] page involving importing and combining multiple linelists with **purrr**.  
-
-One common example of row binding is to bind a "total" row onto a descriptive table made with **dplyr**. Below we create a table of case counts and median CT values by hospital. Since `summarise()` do not automatically produce a "totals" row, we create it by summarising a different table (not grouped by hospital), and then row-binding the data frames together.  
-
-See other worked examples like this in the [Descriptive tables] and [Tables for presentation] pages.  
-
-
-```{r}
-# Create core table
-###################
-table <- linelist %>% 
-  group_by(hospital) %>%                              # Group data by hospital
-  summarise(                                          # Create new summary columns of indicators of interest
-    N = n(),                                            # Number of rows per hospital-outcome group     
-    ct_value_med = median(ct_blood, na.rm=T))           # median CT value per group
-```
-
-Here is the `table` data frame:  
-
-```{r message=FALSE, echo=F}
-DT::datatable(table, rownames = FALSE, options = list(pageLength = nrow(10)))
-```
-Create a data frame with the "total" statistics (not grouped by hospital). This should be just one row.  
-
-```{r}
-# create totals
-###############
-totals <- linelist %>% 
-  summarise(
-    N = n(),                                       # Number of rows for whole dataset     
-    ct_value_med = median(ct_blood, na.rm=T))      # Median CT for whole dataset
-```
-
-And below is that `totals` data frame. Note how there are only two columns. These columns are also in `table`, but there is one column in `table` that is not in `totals` (`hospital`).  
-
-```{r message=FALSE, echo=F}
-DT::datatable(totals, rownames = FALSE, options = list(pageLength = nrow(10)))
-```
-
-Now we can bind the rows together with `bind_rows()`.  
-
-```{r}
-# Bind rows together
-####################
-combined <- bind_rows(table, totals)
-```
-
-Now we can view the result. See how in the final row, an empty `NA` value fills in for the column `hospital` that was not in `totals`. As explained in the [Tables for presentation] page, you could "fill-in" this value with "Total" using `replace_na()`.  
-
-```{r message=FALSE, echo=F}
-DT::datatable(combined, rownames = FALSE, options = list(pageLength = nrow(10)))
-```
-
-
-### Bind columns {.unnumbered}
-
-There is a similar **dplyr** function `bind_cols()` which you can use to combine two data frames sideways. Note that rows are matched *by position* (not like a *join* above) - so for example the 12th row in each data frame will be aligned.  
-
-For an example, we bind several summary tables together. In order to do this, we also demonstrate how to re-arrange the order of rows in one data frame to match the order in another data frame, with `match()`.    
-
-
-
-```{r}
-# Case information
-case_info <- linelist %>% 
-  group_by(hospital) %>% 
-  summarise(
-    cases = n(),
-    deaths = sum(outcome == "Death", na.rm=T)
-  )
-```
-
-```{r message=FALSE, echo=F}
-DT::datatable(case_info, rownames = FALSE, options = list(pageLength = nrow(10)))
-```
-
-And let's say that here is a table of information on contact follow-up by hospital. 
-
-```{r}
-contact_fu <- data.frame(
-  hospital = c("St. Mark's Maternity Hospital (SMMH)", "Military Hospital", "Missing", "Central Hospital", "Port Hospital", "Other"),
-  investigated = c("80%", "82%", NA, "78%", "64%", "55%"),
-  per_fu = c("60%", "25%", NA, "20%", "75%", "80%")
-)
-```
-
-```{r message=FALSE, echo=F}
-DT::datatable(contact_fu, rownames = FALSE, options = list(pageLength = nrow(10)))
-```
-
-Note that the hospitals are the same, but are in different orders in each data frame. A simple `bind_cols()` would result in a mis-match of data. We can use `match()` from **base** R to align the rows of data frame two in the same order by hospital as in data frame 1. We assume for this approach that there are no duplicate values in either data frame.  
-
-When we use `match()`, the syntax is `match(TARGET ORDER VECTOR, DATA FRAME COLUMN TO CHANGE)`, where the first argument is the desired order (either a stand-alone vector, or in this case a column in a data frame), and the second argument is the data frame column in the data frame that will be re-ordered. The output of `match()` is a vector of numbers representing the correct position ordering. You can read more with `?match`.  
-
-```{r}
-match(case_info$hospital, contact_fu$hospital)
-```
-
-You can use this numeric vector to re-order the data frame - place it with subset brackets `[ ]` *before the comma*. Read more about **base** R subsetting syntax in the [R basics] page. The command below creates a new data frame, defined as the old one in which the rows are ordered in the numeric vector above.  
-
-```{r}
-contact_fu_aligned <- contact_fu[match(case_info$hospital, contact_fu$hospital),]
-
-contact_fu_aligned
-```
-
-Now we can bind the data frame columns together, with the correct row order:  
-
-```{r}
-bind_cols(case_info, contact_fu)
-```
-
-A **base** R alternative to `bind_cols` is `cbind()`, which performs the same operation.  
 
 
 <!-- ======================================================= -->
@@ -683,7 +556,7 @@ DT::datatable(results, rownames = FALSE, options = list(pageLength = nrow(result
 
 ### Probabilistic matching {.unnumbered}  
 
-The `fastLink()` function from the **fastLink** package can be used to apply a matching algorithm. Here is the basic informaton. You can read more detail by entering `?fastLink` in your console.  
+The `fastLink()` function from the **fastLink** package can be used to apply a matching algorithm. Here is the basic information. You can read more detail by entering `?fastLink` in your console.  
 
 * Define the two data frames for comparison to arguments `dfA = ` and `dfB = `  
 * In `varnames = ` give all column names to be used for matching. They must all exist in both `dfA` and `dfB`.  
@@ -713,7 +586,7 @@ fl_output <- fastLink::fastLink(
 
 We defined the object returned from `fastLink()` as `fl_output`. It is of class `list`, and it actually contains several data frames within it, detailing the results of the matching. One of these data frames is `matches`, which contains the most likely matches across `cases` and `results`. You can access this "matches" data frame with `fl_output$matches`. Below, it is saved as `my_matches` for ease of accessing later.    
 
-When `my_matches` is printed, you see two column vectors: the pairs of row numbers/indices (also called "rownames") in `cases` ("inds.a") and in `results` ("inds.b") representing the best matches. If a row number from a datafrane is missing, then no match was found in the other at the specified match threshold.    
+When `my_matches` is printed, you see two column vectors: the pairs of row numbers/indices (also called "rownames") in `cases` ("inds.a") and in `results` ("inds.b") representing the best matches. If a row number from a datafrane is missing, then no match was found in the other data frame at the specified match threshold.    
 
 ```{r}
 # print matches
@@ -724,9 +597,9 @@ my_matches
 Things to note:  
 
 * Matches occurred despite slight differences in name spelling and dates of birth:  
-  * "Tony" matched to "Anthony"  
-  * "Maria" matched to "Marialisa"  
-  * "Betty" matched to "Elizabeth"  
+  * "Tony B. Smith" matched to "Anthony B Smith"  
+  * "Maria Rodriguez" matched to "Marialisa Rodrigues"  
+  * "Betty Chase" matched to "Elizabeth Chase"  
   * "Olivier Laurent De Bordeaux" matched to "Oliver Laurent De Bordow" (missing date of birth ignored)  
 * One row from `cases` (for "Blessing Adebayo", row 9) had no good match in `results`, so it is not present in `my_matches`.  
 
@@ -740,9 +613,9 @@ To use these matches to join `results` to `cases`, one strategy is:
 1) Use `left_join()` to join `my_matches` to `cases` (matching rownames in `cases` to "inds.a" in `my_matches`)  
 2) Then use another `left_join()` to join `results` to `cases` (matching the newly-acquired "inds.b" in `cases` to rownames in `results`)  
 
-Before the joins, we should clean the three datasets:  
+Before the joins, we should clean the three data frames:  
 
-* Both `dfA` and `dfB` should have their row numbers ("rowname") converted to a proper column  
+* Both `dfA` and `dfB` should have their row numbers ("rowname") converted to a proper column.  
 * Both the columns in `my_matches` are converted to class character, so they can be joined to the character rownames  
 
 ```{r}
@@ -890,6 +763,145 @@ To inspect the whole rows of the likely duplicates, put the row number in this c
 cases_dedupe[cases_dedupe$dedupe.ids == 2,]   
 ```
 
+
+
+## Binding and aligning  
+
+Another method of combining two data frames is "binding" them together. You can also think of this as "appending" or "adding" rows or columns.  
+
+This section will also discuss how to "align" the order of rows of one data frame to the order in another data frame. This topic is discussed below in the section on Binding columns.  
+
+
+
+### Bind rows {.unnumbered}
+
+To bind rows of one data frame to the bottom of another data frame, use `bind_rows()` from **dplyr**. It is very inclusive, so any column present in either data frame will be included in the output. A few notes:  
+
+* Unlike the **base** R version `row.bind()`, **dplyr**'s `bind_rows()` does not require that the order of columns be the same in both data frames. As long as the column names are spelled identically, it will align them correctly.  
+* You can optionally specify the argument `.id = `. Provide a character column name. This will produce a new column that serves to identify which data frame each row originally came from.  
+* You can use `bind_rows()` on a `list` of similarly-structured data frames to combine them into one data frame. See an example in the [Iteration, loops, and lists] page involving the import of multiple linelists with **purrr**.  
+
+One common example of row binding is to bind a "total" row onto a descriptive table made with **dplyr**'s `summarise()` function. Below we create a table of case counts and median CT values by hospital with a total row.  
+
+The function `summarise()` is used on data grouped by hospital to return a summary data frame by hospital. But the function `summarise()` does not automatically produce a "totals" row, so we create it by summarising the data *again*, but with the data not grouped by hospital. This produces a second data frame of just one row. We can then bind these data frames together to achieve the final table.  
+
+See other worked examples like this in the [Descriptive tables] and [Tables for presentation] pages.  
+
+
+```{r}
+# Create core table
+###################
+hosp_summary <- linelist %>% 
+  group_by(hospital) %>%                        # Group data by hospital
+  summarise(                                    # Create new summary columns of indicators of interest
+    cases = n(),                                  # Number of rows per hospital-outcome group     
+    ct_value_med = median(ct_blood, na.rm=T))     # median CT value per group
+```
+
+Here is the `hosp_summary` data frame:  
+
+```{r message=FALSE, echo=F}
+DT::datatable(hosp_summary, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+Create a data frame with the "total" statistics (*not grouped by hospital*). This will return just one row.  
+
+```{r}
+# create totals
+###############
+totals <- linelist %>% 
+  summarise(
+    cases = n(),                               # Number of rows for whole dataset     
+    ct_value_med = median(ct_blood, na.rm=T))  # Median CT for whole dataset
+```
+
+And below is that `totals` data frame. Note how there are only two columns. These columns are also in `hosp_summary`, but there is one column in `hosp_summary` that is not in `totals` (`hospital`).  
+
+```{r message=FALSE, echo=F}
+DT::datatable(totals, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+Now we can bind the rows together with `bind_rows()`.  
+
+```{r}
+# Bind data frames together
+combined <- bind_rows(hosp_summary, totals)
+```
+
+Now we can view the result. See how in the final row, an empty `NA` value fills in for the column `hospital` that was not in `hosp_summary`. As explained in the [Tables for presentation] page, you could "fill-in" this cell with "Total" using `replace_na()`.  
+
+```{r message=FALSE, echo=F}
+DT::datatable(combined, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+
+### Bind columns {.unnumbered}
+
+There is a similar **dplyr** function `bind_cols()` which you can use to combine two data frames sideways. Note that rows are matched to each other *by position* (not like a *join* above) - for example the 12th row in each data frame will be aligned.  
+
+For an example, we bind several summary tables together. In order to do this, we also demonstrate how to re-arrange the order of rows in one data frame to match the order in another data frame, with `match()`.    
+
+Here we define `case_info` as a summary data frame of linelist cases, by hospital, with the number of cases and the number of deaths.
+
+
+```{r}
+# Case information
+case_info <- linelist %>% 
+  group_by(hospital) %>% 
+  summarise(
+    cases = n(),
+    deaths = sum(outcome == "Death", na.rm=T)
+  )
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(case_info, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+And let's say that here is a different data frame `contact_fu` containing information on the percent of exposed contacts investigated and "followed-up", again by hospital. 
+
+```{r}
+contact_fu <- data.frame(
+  hospital = c("St. Mark's Maternity Hospital (SMMH)", "Military Hospital", "Missing", "Central Hospital", "Port Hospital", "Other"),
+  investigated = c("80%", "82%", NA, "78%", "64%", "55%"),
+  per_fu = c("60%", "25%", NA, "20%", "75%", "80%")
+)
+```
+
+```{r message=FALSE, echo=F}
+DT::datatable(contact_fu, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+Note that the hospitals are the same, but are in different orders in each data frame. The easiest solution would be to use a `left_join()` on the `hospital` column, but you could also use `bind_cols()` with one extra step.  
+
+#### Use `match()` to align ordering {.unnumbered}  
+
+Because the row orders are different, a simple `bind_cols()` command would result in a mis-match of data. To fix this we can use `match()` from **base** R to align the rows of a data frame in the same order as in another. We assume for this approach that there are no duplicate values in either data frame.  
+
+When we use `match()`, the syntax is `match(TARGET ORDER VECTOR, DATA FRAME COLUMN TO CHANGE)`, where the first argument is the desired order (either a stand-alone vector, or in this case a column in a data frame), and the second argument is the data frame column in the data frame that will be re-ordered. The output of `match()` is a vector of numbers representing the correct position ordering. You can read more with `?match`.  
+
+```{r}
+match(case_info$hospital, contact_fu$hospital)
+```
+
+You can use this numeric vector to re-order the data frame - place it within subset brackets `[ ]` *before the comma*. Read more about **base** R bracket subset syntax in the [R basics] page. The command below creates a new data frame, defined as the old one in which the rows are ordered in the numeric vector above.  
+
+```{r}
+contact_fu_aligned <- contact_fu[match(case_info$hospital, contact_fu$hospital),]
+```
+
+
+```{r message=FALSE, echo=F}
+DT::datatable(contact_fu_aligned, rownames = FALSE, options = list(pageLength = nrow(10)))
+```
+
+Now we can bind the data frame columns together, with the correct row order. Note that some columns are duplicated and will require cleaning with `rename()`. Read more aboout `bind_rows()` [here](https://dplyr.tidyverse.org/reference/bind.html).  
+
+```{r}
+bind_cols(case_info, contact_fu)
+```
+
+A **base** R alternative to `bind_cols` is `cbind()`, which performs the same operation.  
 
 
 
