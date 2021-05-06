@@ -9,7 +9,7 @@ knitr::include_graphics(here::here("images", "missingness_overview.png"))
 This page will cover how to:  
 
 1) Assess missingness  
-2) filter out rows by missingness  
+2) Filter out rows by missingness  
 3) Plot missingness over time  
 4) Handle how `NA` is displayed in plots  
 5) Perform missing value imputation: MCAR, MAR, MNAR  
@@ -55,53 +55,79 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 ```
 
 
-When importing your data, be aware of values that should be classified as missing. For example, 99, 999, "Missing", blank cells (""), or cells with an empty space (" "). You can convert these to `NA` (R's version of missing data) during the data import. See the page on [Import and export] for details.  
+### Convert missing on import {.unnumbered}  
+
+When importing your data, be aware of values that should be classified as missing. For example, 99, 999, "Missing", blank cells (""), or cells with an empty space (" "). You can convert these to `NA` (R's version of missing data) during the data import command.  
+See the page on importing page section on [Missing data](#import_missing) for details, as the exact syntax varies by file type.  
 
 
 <!-- ======================================================= -->
-## `NA` { }
+## Missing values in R { }
 
-**`NA`**  
+Below we explore ways that missingness is presented and assessed in R, along with some adjacent values and functions.  
+
+### `NA` {.unnumbered}  
 
 In R, missing values are represented by a reserved (special) value - `NA`. Note that this is typed *without* quotes. "NA" is different and is just a normal character value (also a Beatles lyric from the song Hey Jude).  
 
-Your data may have other ways of representing missingness, such as "99", or "Missing", or "Unknown" - you may even have empty character value "" which looks "blank", or a single space " ". Be aware of these and consider whether to convert them to `NA` during importation or data cleaning (e.g. with `na_if()`). You may also want to convert the other way - changing all `NA` to "Missing" or similar (e.g. with `replace_na()` or `fct_explicit_na()`)  
+Your data may have other ways of representing missingness, such as "99", or "Missing", or "Unknown" - you may even have empty character value "" which looks "blank", or a single space " ". Be aware of these and consider whether to [convert them to `NA` during import](#import_missing) or during data cleaning with `na_if()`.  
 
-**Versions of `NA`**  
-
-Most of the time, all you need to know/use is `NA` and `is.na()`. However sometimes you may encounter the need for variations on `NA` listed below. One example is when creating a new column with `case_when()` and deciding to assign `NA` as the outcome for some logical criteria (see [Cleaning data and core functions] page for tips on `case_when()`).  
-
-There may be circumstances where `NA` on the right-hand side (RHS) of `case_when()` is rejected because the other RHS values are a class such as Character. The RHS values in a `case_when()` command must all be of the same class. Thus, if you have character outcomes on the RHS like "Confirmed", "Suspect", "Probable" and then `NA` - you will get an error. Instead of `NA`, put "Missing", or else you must put `NA_character_`. Likewise for integers, use `NA_integer_` instead of `NA`. `NA` should work for dates and logical. See the [R documentation on NA](https://stat.ethz.ch/R-manual/R-devel/library/base/html/NA.html) for more information.  
-
-* `NA`  
-* `NA_character_`  
-* `NA_integer_`  
-* `NA_real_`  
-* `NA_complex_`  
-
-
-**`na.rm = TRUE`**  
-
-When you apply mathematical functions such as `max()`, `min()`, `sum()` or `mean()`, any `NA` value present over-rides the calculation and `NA` is returned. You must specify the arguemnt `na.rm = TRUE` within the function to remove any `NA` values from the calculation. This default behavior is intentional, so that you are alerted if any of your data are missing.  
+In your data cleaning, you may also want to convert the other way - changing all `NA` to "Missing" or similar with `replace_na()` or with `fct_explicit_na()` for factors.  
 
 
 
-**`NULL`**  
 
-`NULL` is another reserved value in R. It is the logical representation of a statement that is neither true nor false. It is returned by expressions or functions whose values are undefined. Generally do not assign NULL as a value, unless writing functions or perhaps writing Shiny to return `NULL` in specific scenarios. Null-ness can be assessed using `is.null()` and conversion can made with `as.null()`.  
+### Versions of `NA` {.unnumbered}  
+
+Most of the time, `NA` represents a missing value and everything works fine. However, in some circumstances you may encounter the need for *variations* of `NA` specific to an object class (character, numeric, etc). This will be rare, but you should be aware.    
+The typical scenario for this is when creating a new column with the **dplyr** function `case_when()`. As described in the [Cleaning data and core functions](#clean_case_when) page, this function evaluates every row in the data frame, assess whether the rows meets specified logical criteria (right side of the code), and assigns the correct new value (left side of the code). *Importantly: all values on the right side must be the same class*.  
+
+```{r, eval=F}
+linelist <- linelist %>% 
+  
+  # Create new "age_years" column from "age" column
+  mutate(age_years = case_when(
+    age_unit == "years"  ~ age,       # if age is given in years, assign original value
+    age_unit == "months" ~ age/12,    # if age is given in months, divide by 12
+    is.na(age_unit)      ~ age,       # if age UNIT is missing, assume years
+    TRUE                 ~ NA_real_)) # any other circumstance, assign missing
+```
+
+If you want `NA` on the right side, you may need to specify one of the special `NA` options listed below. If the other right side values are character, consider using "Missing" instead or otherwise use `NA_character_`. If they are all numeric, use `NA_real_`. If they are all dates or logical, you can use `NA`.  
+
+* `NA` - use for dates or logical TRUE/FALSE 
+* `NA_character_` - use for characters  
+* `NA_real_`  - use for numeric
+
+Again, it is not likely you will encounter these variations *unless* you are using `case_when()` to create a new column. See the [R documentation on NA](https://stat.ethz.ch/R-manual/R-devel/library/base/html/NA.html) for more information. 
+
+
+
+
+
+### `NULL` {.unnumbered}  
+
+`NULL` is another reserved value in R. It is the logical representation of a statement that is neither true nor false. It is returned by expressions or functions whose values are undefined. Generally do not assign NULL as a value, unless writing functions or perhaps writing a [**shiny** app][Dashboards with Shiny] to return `NULL` in specific scenarios.  
+
+Null-ness can be assessed using `is.null()` and conversion can made with `as.null()`.  
 
 See this [blog post](https://www.r-bloggers.com/2010/04/r-na-vs-null/) on the difference between `NULL` and `NA`.  
 
-**`NaN`**  
-
-Impossible values are represented by the special value - `NaN`. An example of this is when you force R to divide 0 by 0. It has an infinite value. You can assess this with `is.nan()`. You may also encounter complementary functions include `is.infinite()` and `is.finite()`
 
 
-**`Inf`**  
 
-Say you have a column `z` that contains these values: `z <- c(1, 22, NA, Inf, NaN, 5)`  
+### `NaN` {.unnumbered}  
 
-If you want to use `max()` on the column, you can use `na.rm = TRUE` as described above to remove the `NA` from the calculation, but the `Inf` and `NaN` remain and `Inf` will be returned. You can use brackets [ ] to subset the vector such that only finite values are used for the calculation: `max(z[is.finite(z)])`.  
+Impossible values are represented by the special value `NaN`. An example of this is when you force R to divide 0 by 0. You can assess this with `is.nan()`. You may also encounter complementary functions including `is.infinite()` and `is.finite()`.  
+
+
+### `Inf` {.unnumbered}  
+
+`Inf` represents an infinite value, such as when you divide a number by 0.  
+
+As an example of how this might impact your work: let's say you have a vector/column `z` that contains these values: `z <- c(1, 22, NA, Inf, NaN, 5)`
+
+If you want to use `max()` on the column to find the highest value, you can use the `na.rm = TRUE` to remove the `NA` from the calculation, but the `Inf` and `NaN` remain and `Inf` will be returned. To resolve this, you can use brackets `[ ]` and `is.finite()` to subset such that only finite values are used for the calculation: `max(z[is.finite(z)])`.  
 
 ```{r, eval=F}
 z <- c(1, 22, NA, Inf, NaN, 5)
@@ -111,7 +137,8 @@ max(z[is.finite(z)])             # returns 22
 ```
 
 
-**Examples**  
+### Examples {.unnumbered}  
+
 
 R command | Outcome
 ----------|--------------
@@ -153,7 +180,7 @@ var(22)
 The following are useful **base** R functions when assessing or handling missing values:  
 
 
-**`is.na()` and `!is.na()`**  
+### `is.na()` and `!is.na()` {.unnumbered}  
 
 Use `is.na()`to identify missing values, or use its opposite (with `!` in front) to identify non-missing values. These both return a logical value (`TRUE` or `FALSE`). Remember that you can `sum()` the resulting vector to count the number `TRUE`, e.g. `sum(is.na(linelist$date_outcome))`.    
 
@@ -165,16 +192,16 @@ sum(is.na(my_vector))
 ```
 
 
-**`na.omit()`**  
+### `na.omit()` {.unnumbered}  
 
-This function, if applied to a dataframe, will remove rows with *any* missing values. It is also from **base** R.  
+This function, if applied to a data frame, will remove rows with *any* missing values. It is also from **base** R.  
 If applied to a vector, it will remove `NA` values from the vector it is applied to. For example:  
 
 ```{r}
-sum(na.omit(my_vector))
+na.omit(my_vector)
 ```
 
-**`drop_na()`**  
+### `drop_na()` {.unnumbered}  
 
 This is a **tidyr** function that is useful in a [data cleaning pipeline][Cleaning data and core functions]. If run with the parentheses empty, it removes rows with *any* missing values. If column names are specified in the parentheses, rows with missing values in those columns will be dropped. You can also use "tidyselect" syntax to specify the columns.  
 
@@ -183,14 +210,18 @@ linelist %>%
   drop_na(case_id, date_onset, age) # drops rows missing values for any of these columns
 ```
 
-**`na.rm = TRUE`**  
 
-In R, most mathematical functions will by default *include* `NA` in calculations, *which results in the function returning `NA`*. This is designed intentionally, in order to make you aware that you have missing data.  
+### `na.rm = TRUE` {.unnumbered}  
 
-You can avoid this by removing missing values from the calculation, by including the argument `na.rm = TRUE` (na.rm stands for "remove `NA`").  
+When you run a mathematical function such as `max()`, `min()`, `sum()` or `mean()`, if there are any `NA` values present the returned value will be `NA`. This default behavior is intentional, so that you are alerted if any of your data are missing.  
+
+You can avoid this by removing missing values from the calculation. To do this, include the argument `na.rm = TRUE` ("na.rm" stands for "remove `NA`").  
+
 
 ```{r}
-mean(my_vector)
+my_vector <- c(1, 4, 56, NA, 5, NA, 22)
+
+mean(my_vector)     
 
 mean(my_vector, na.rm = TRUE)
 ```
@@ -198,9 +229,9 @@ mean(my_vector, na.rm = TRUE)
 
 
 <!-- ======================================================= -->
-## Assess missingness in a dataframe { }
+## Assess missingness in a data frame { }
 
-You can use the package **naniar** to assess and visualize missingness in the dataframe `linelist`.  
+You can use the package **naniar** to assess and visualize missingness in the data frame `linelist`.  
 
 ```{r}
 # install and/or load package
@@ -212,60 +243,78 @@ pacman::p_load(naniar)
 To find the percent of all values that are missing use `pct_miss()`. Use `n_miss()` to get the number of missing values.  
 
 ```{r}
+# percent of ALL data frame values that are missing
 pct_miss(linelist)
 ```
 
-The two functions below return the percent of rows with any missing value, or that are entirely complete, respectively. Remember that `NA` means missing, and that ``""` or `" "` will register as non-missing.  
+The two functions below return the percent of rows with any missing value, or that are entirely complete, respectively. Remember that `NA` means missing, and that ``""` or `" "` will not be counted as missing.  
 
 ```{r}
-pct_miss_case(linelist)   # also see n_complete() for counts
+# Percent of rows with any value missing
+pct_miss_case(linelist)   # use n_complete() for counts
+```
 
-pct_complete_case(linelist) # see n_complete
+```{r}
+# Percent of rows that are complete (no values missing)  
+pct_complete_case(linelist) # use n_complete() for counts
 ```
 
 
 
 ### Visualizing missingness {.unnumbered}  
 
-The `gg_miss_var()` function will show you the number of missing values in each column. You can add a bare column name to the argument `facet = ` if desired to see the plot by groups. By default, counts are shown instead of percents (`show_pct = FALSE`). You can also add labs as a normal ggplot with `+labs()`.  
+The `gg_miss_var()` function will show you the number (or %) of missing values in each column. A few nuances:  
+
+* You can add a column name (not in quote) to the argument `facet = ` to see the plot by groups  
+* By default, counts are shown instead of percents, change this with `show_pct = TRUE`  
+* You can add axis and title labels as for a normal `ggplot()` with `+ labs(...)`  
 
 
 ```{r}
 gg_miss_var(linelist, show_pct = TRUE)
 ```
 
-You can use `vis_miss()` to visualize the dataframe as a heatmap, showing whether each value is missing or not. As usual, you can also `select()` certain columns from the dataframe and the provide that to the function.    
+Here the data are piped `%>%` into the function. The `facet = ` argument is also used to split the data.  
 
 ```{r}
+linelist %>% 
+  gg_miss_var(show_pct = TRUE, facet = outcome)
+```
+
+
+You can use `vis_miss()` to visualize the data frame as a heatmap, showing whether each value is missing or not. You can also `select()` certain columns from the data frame and provide only those columns to the function.    
+
+```{r}
+# Heatplot of missingness across the entire data frame  
 vis_miss(linelist)
 ```
 
 
 ### Explore and visualize missingness relationships {.unnumbered} 
 
-How do you visualize something that is not there??? By default, ggplot removes points with missing values from plots.  
+How do you visualize something that is not there??? By default, `ggplot()` removes points with missing values from plots.  
 
-**naniar** offers a solution via `geom_miss_point()`. When creating a scatterplot of two columns, records with one of the values missing and the other present are shown by setting the missing values to 10% lower than the lowest value in the column, and coloring them distinctly.  
+**naniar** offers a solution via `geom_miss_point()`. When creating a scatterplot of two columns, records with one of the values missing and the other value present are shown by setting the missing values to 10% lower than the lowest value in the column, and coloring them distinctly.  
 
-In the scatterplot below, the red dots are records where the value for one column is present but the value for the other column is missing.  
+In the scatterplot below, the red dots are records where the value for one column is present but the value for the other column is missing. This allows you to see the distribution of missing values in relation to the non-missing values.  
+
 
 
 ```{r}
 ggplot(
-  linelist, 
-  aes(x = age_years,             
-      y = temp)) +     # column to show missingness
+  data = linelist,
+  mapping = aes(x = age_years, y = temp)) +     
   geom_miss_point()
 ```
 
-To assess missingness in the dataframe *stratified by another column*, consider `gg_miss_fct()`, which returns a heatmap of percent missingness in the dataframe by a factor/categorical (or date) column:  
+To assess missingness in the data frame *stratified by another column*, consider `gg_miss_fct()`, which returns a heatmap of percent missingness in the data frame *by a factor/categorical (or date) column*:  
 
 ```{r}
 gg_miss_fct(linelist, age_cat5)
 ```
 
 
-This function can also be used with a date column to see missingness over time:  
+This function can also be used with a date column to see how missingness has changed over time:  
 
 ```{r}
 gg_miss_fct(linelist, date_onset)
@@ -286,15 +335,16 @@ shadowed_linelist <- linelist %>%
 names(shadowed_linelist)
 ```
 
-These "shadow" columns can be used to plot the density of proportion of values that are missing, by any another column X. For example, the plot below shows the proportion of records missing `days_onset_hosp` (number of days from symptom onset to hospitalisation), by that record's value in `date_hospitalisation`. Essentially, you are plotting the density of the x-axis column, but stratifying the results (`color = `) by a shadow column of interest. This analysis works best if the x-axis is a numeric or date column.  
+These "shadow" columns can be used to plot the proportion of values that are missing, by any another column.  
+
+For example, the plot below shows the proportion of records missing `days_onset_hosp` (number of days from symptom onset to hospitalisation), by that record's value in `date_hospitalisation`. Essentially, you are plotting the density of the x-axis column, but stratifying the results (`color = `) by a shadow column of interest. This analysis works best if the x-axis is a numeric or date column.  
 
 
 ```{r, message = F}
-ggplot(
-  shadowed_linelist,                   # dataframe with shadow columns
-  aes(x = date_hospitalisation,        # numeric or date column
-      colour = age_years_NA)) +        # shadow column of interest
-  geom_density()                       # plots the density curves
+ggplot(data = shadowed_linelist,          # data frame with shadow columns
+  mapping = aes(x = date_hospitalisation, # numeric or date column
+                colour = age_years_NA)) + # shadow column of interest
+  geom_density()                          # plots the density curves
 ```
 
 You can also use these "shadow" columns to stratify a statistical summary, as shown below:
@@ -303,9 +353,14 @@ You can also use these "shadow" columns to stratify a statistical summary, as sh
 linelist %>%
   bind_shadow() %>%                # create the shows cols
   group_by(date_outcome_NA) %>%    # shadow col for stratifying
-  summarise_at(.vars = c("age_years"),                        # variable of interest for calculations
-               .funs = c("mean", "sd", "var", "min", "max"),  # stats to calculate
-               na.rm = TRUE)       # other arguments for the stat calculations
+  summarise(across(
+    .cols = age_years,             # variable of interest for calculations
+    .fns = list("mean" = mean,     # stats to calculate
+                "sd" = sd,
+                "var" = var,
+                "min" = min,
+                "max" = max),  
+    na.rm = TRUE))                 # other arguments for the stat calculations
 ```
 
 

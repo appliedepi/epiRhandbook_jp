@@ -67,7 +67,7 @@ There are a couple of key items you will need to have and to think about to make
 
   * A **dataset** -- this can be in a spatial data format (such as shapefiles, as noted above) or it may not be in a spatial format (for instance just as a csv).
   
-  * If your dataset is not in a spatial format you will also need a **reference dataset**. Reference data consists of the spatial representation of the data and the related attribute table, which would include material containing the location and address information of specific features.
+  * If your dataset is not in a spatial format you will also need a **reference dataset**. Reference data consists of the spatial representation of the data and the related **attributes**, which would include material containing the location and address information of specific features.
   
     + If you are working with pre-defined geographic boundaries (for example, administrative regions), reference shapefiles are often freely available to download from a government agency or data sharing organization. When in doubt, a good place to start is to Google “[regions] shapefile”
     
@@ -75,7 +75,7 @@ There are a couple of key items you will need to have and to think about to make
     
   * An idea about **how you want to present** the information in your datasets to your target audience. There are many different types of maps, and it is important to think about which type of map best fits your needs.
 
-### Types of maps for visualizing your data
+### Types of maps for visualizing your data {.unnumbered}
 
 **Choropleth map** - a type of thematic map where colors, shading, or patterns are used to represent geographic regions in relation to their value of an attribute. For instance a larger value could be indicated by a darker colour than a smaller value. This type of map is particularly useful when visualizing a variable and how it changes across defined regions or geopolitical areas.
 
@@ -101,11 +101,14 @@ knitr::include_graphics(here::here("images", "gis_heatmap.png"))
 # proportional symbols img here
 ```
 
-You can also combine several different types of visualizations to show complex geographic patterns; for example, the map below shows **health facility catchment areas**:
+You can also combine several different types of visualizations to show complex geographic patterns. For example, the cases (dots) in the map below are colored according to their closest health facility (see legend). The large red circles show *health facility catchment areas* of a certain radius, and the bright red case-dots those that were outside any catchment range:
 
 ```{r, fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "gis_hf_catchment.png"))
 ```
+
+Note: The primary focus of this GIS page is based on the context of field outbreak response. Therefore the contents of the page will cover the basic spatial data manipulations, visualizations, and analyses.
+
 
 <!-- ======================================================= -->
 ## Preparation {  }
@@ -135,6 +138,8 @@ You can see an overview of all the R packages that deal with spatial data at the
 
 For demonstration purposes, we will work with a random sample of 1000 cases from the simulated Ebola epidemic `linelist` dataframe (computationally, working with fewer cases is easier to display in this handbook). If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file).  
 
+Since we are taking a random sample of the cases, your results may look slightly different from what is demonstrated here when you run the codes on your own.
+
 The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, echo=F}
@@ -144,7 +149,7 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 
 ```{r, eval=F}
 # import clean case linelist
-linelist <- import("linelist_cleaned.xlsx")  
+# linelist <- import("linelist_cleaned.xlsx")  
 ```
 
 Next we select a random sample of 1000 rows using `sample()` from **base** R.   
@@ -167,6 +172,12 @@ linelist_sf <- linelist %>%
      sf::st_as_sf(coords = c("lon", "lat"), crs = 4326)
 ```
 
+This is how the original `linelist` dataframe looks like.  
+In this demonstration, we will only use the `date_onset` and `geometry` (which was constructed from the longitude and latitude fields above) columns.
+
+```{r}
+DT::datatable(head(linelist_sf, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+```
 
 ### Admin boundary shapefiles {.unnumbered}  
 
@@ -304,12 +315,14 @@ And now both points and polygons together:
 
 ```{r, warning=F, message=FALSE}
 # All together
-tm_shape(sle_adm3, bbox = c(-13.3, 8.43, -13.2, 8.5)) +
+tm_shape(sle_adm3, bbox = c(-13.3, 8.43, -13.2, 8.5)) +     #
   tm_polygons(col = "#F7F7F7") +
   tm_borders(col = "#000000", lwd = 2) +
   tm_text("admin3name")+
 tm_shape(linelist_sf) +
-  tm_dots(size=0.08, col='blue') 
+  tm_dots(size=0.08, col='blue') +
+  tm_layout(title = "Distribution of Ebola cases")
+
 ```
 
 
@@ -444,8 +457,8 @@ tmap_mode("view")   # set tmap mode to interactive
 # plot the cases and clinic points 
 tm_shape(linelist_sf_hf) +            # plot cases
   tm_dots(size=0.08, col='name') +    # cases colored by closest clinic
-tm_shape(sle_hf) +                    # plot clinic facilities  
-  tm_dots(size=0.3, col='red') +      # red large dots
+tm_shape(sle_hf) +                    # plot clinic facilities in large red dots
+  tm_dots(size=0.3, col='red') +      
   tm_text("name") +                   # overlay with name of facility
 tm_view(set.view = c(-13.2284, 8.4699, 13), # adjust zoom (center coords, zoom)
         set.zoom.limits = c(13,14))
@@ -458,11 +471,10 @@ We can also explore how many cases are located within 2.5km (~30 mins) walking d
 
 *Note: For more accurate distance calculations, it is better to re-project your sf object to the respective local map projection system such as UTM (Earth projected onto a planar surface). In this example, for simplicity we will stick to the World Geodetic System (WGS84) Geograhpic coordinate system (Earth represented in a spherical / round surface, therefore the units are in decimal degrees). We will use a general conversion of: 1 decimal degree = ~111km.*  
 
+See more information about map projections and coordinate systems at this [esri article](https://www.esri.com/arcgis-blog/products/arcgis-pro/mapping/gcs_vs_pcs/). This [blog](http://www.geo.hunter.cuny.edu/~jochen/gtech201/lectures/lec6concepts/map%20coordinate%20systems/how%20to%20choose%20a%20projection.htm) talks about different types of map projection and how one can choose a suitable projection depending on the area of interest and the context of your map / analysis.
 
-See more information about map projections and coordinate systems at this [esri article](https://www.esri.com/arcgis-blog/products/arcgis-pro/mapping/gcs_vs_pcs/).  
 
-
-**First**, create a circular buffer with a radius of ~2.5km around each health facility. This is done with the function `st_buffer()` from **tmap**. Because the units of the map is lat/long decimal degrees, that is how "0.02" is interpreted. If your map coordinate system is in meters, the number must be provided in meters.  
+**First**, create a circular buffer with a radius of ~2.5km around each health facility. This is done with the function `st_buffer()` from **tmap**. Because the unit of the map is in lat/long decimal degrees, that is how "0.02" is interpreted. If your map coordinate system is in meters, the number must be provided in meters.  
 
 ```{r, warning=F, message=F}
 sle_hf_2k <- sle_hf %>%
@@ -473,7 +485,7 @@ Below we plot the buffer zones themselves:
 
 ```{r, warning=F, message=F}
 tmap_mode("plot")
-# buffers
+# Create circular buffers
 tm_shape(sle_hf_2k) +
   tm_borders(col = "red", lwd = 2)
 ```
@@ -492,8 +504,9 @@ linelist_sf_hf_2k <- linelist_sf_hf %>%
 Now we can count the results: `r nrow(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),])` out of 1000 cases did not intersect with any buffer (that value is missing), and so live more than 30 mins walk from the nearest health facility.
 
 ```{r}
+# Cases which did not get intersected with any of the health facility buffers
 linelist_sf_hf_2k %>% 
-  filter(is.na(osm_id.y)) %>% # empty column - did not join to any buffer
+  filter(is.na(osm_id.y)) %>%
   nrow()
 ```
 
@@ -502,14 +515,16 @@ We can visualize the results such that cases that did not intersect with any buf
 ```{r, fig.width = 5, fig.height = 3, warning=F, message=F}
 tmap_mode("view")
 
-# cases
+# First display the cases in points
 tm_shape(linelist_sf_hf) +
   tm_dots(size=0.08, col='name') +
-# buffers
+  
+# Then overlay the health facitliy buffers in polylines
 tm_shape(sle_hf_2k) +
   tm_borders(col = "red", lwd = 2) +
 
-# cases outside buffers
+# Highlight cases that are not part of any health facility buffers
+# in red dots  
 tm_shape(linelist_sf_hf_2k %>%  filter(is.na(osm_id.y))) +
   tm_dots(size=0.1, col='red') +
 tm_view(set.view = c(-13.2284,8.4699, 13), set.zoom.limits = c(13,14))
@@ -621,6 +636,8 @@ tm_shape(case_adm3_sf) +                # plot polygons
 ### OpenStreetMap {.unnumbered} 
 
 Below we describe how to achieve a basemap using OpenStreetMap features. Alternative methods include using **ggmap** which requires free registration with Google ([details](https://www.earthdatascience.org/courses/earth-analytics/lidar-raster-data-r/ggmap-basemap/)).  
+
+([**OpenStreetMap**](https://en.wikipedia.org/wiki/OpenStreetMap)) is a collaborative project to create a free editable map of the world and the underlying geolocation data (e.g. locations of cities, roads, natural features, airports, schools, hospitals, roads etc) are considered the primary output of the project.
 
 First we load the **OpenStreetMap** package, from which we will get our basemap.  
 
@@ -1013,5 +1030,3 @@ knitr::include_graphics(here::here("images", "gis_lmflowchart.jpg"))
 * Applied Spatial Data Analysis in R [textbook](https://link.springer.com/book/10.1007/978-1-4614-7618-4)
 
 * An Introduction to Spatial Econometrics in R [workshop](http://www.econ.uiuc.edu/~lab/workshop/Spatial_in_R.html)
-
-

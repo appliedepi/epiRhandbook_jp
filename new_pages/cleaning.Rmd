@@ -269,7 +269,7 @@ linelist_raw %>%
 
 #### Empty Excel column names {.unnumbered} 
 
-R cannot have dataset columns that do not have column names (headers). So, if you import an Excel dataset with data but no column headers, R will fill-in the headers with names like "...1" or "...2". The number represents the column number (e.g. if the 4th column in the dataset has no header, then R will name it "..4").  
+R cannot have dataset columns that do not have column names (headers). So, if you import an Excel dataset with data but no column headers, R will fill-in the headers with names like "...1" or "...2". The number represents the column number (e.g. if the 4th column in the dataset has no header, then R will name it "...4").  
 
 You can clean these names manually by referencing their position number (see example above), or their assigned name (`linelist_raw$...1`).  
 
@@ -293,7 +293,7 @@ One solution to deal with merged cells is to import the data with the function `
 linelist_raw <- openxlsx::readWorkbook("linelist_raw.xlsx", fillMergedCells = TRUE)
 ```
 
-<span style="color: red;">**_DANGER:_** If column names are merged with `readWorkbook()`, you will end up with duplicate column names, which you will need to fix manually - R does not work well with duplicate column names! You can re-name them by referencing their position (e.g. column 5), as explained in the section on manual column name cleaning..</span>
+<span style="color: red;">**_DANGER:_** If column names are merged with `readWorkbook()`, you will end up with duplicate column names, which you will need to fix manually - R does not work well with duplicate column names! You can re-name them by referencing their position (e.g. column 5), as explained in the section on manual column name cleaning.</span>
 
 
 
@@ -356,7 +356,7 @@ Here are other "tidyselect" helper functions that also work *within* **dplyr** f
 * `ends_with()`   - matches to a specified suffix  
   * example: `select(ends_with("_post"))`  
 * `matches()`     - to apply a regular expression (regex)  
-  * example: `select(contains("[pt]al"))`  
+  * example: `select(matches("[pt]al"))`  
 * `num_range()`   - a numerical range like x01, x02, x03  
 * `any_of()`      - matches IF column exists but returns no error if it is not found  
   * example: `select(any_of(date_onset, date_death, cardiac_arrest))`  
@@ -615,7 +615,7 @@ linelist <- linelist %>%
 
 In a similar way, you can use `as.character()` and `as.logical()`. To convert to class Factor, you can use `factor()` from **base** R or `as_factor()` from **forcats**. Read more about this in the [Factors] page.  
 
-Converting to class Date you must take care. Several methods are explained on the page [Working with dates]. Typically, the raw date values must all be in the same format for conversion to work correctly (e.g "MM/DD/YYYY", or "DD MM YYYY"). After converting to class Date, check your data to confirm that each value was converted correctly.  
+You must be careful when converting to class Date. Several methods are explained on the page [Working with dates]. Typically, the raw date values must all be in the same format for conversion to work correctly (e.g "MM/DD/YYYY", or "DD MM YYYY"). After converting to class Date, check your data to confirm that each value was converted correctly.  
 
 
 
@@ -702,9 +702,9 @@ Here are a few online resources on using `across()`: [creator Hadley Wickham's t
 
 ### `coalesce()` {.unnumbered}  
 
-This **dplyr** function finds the first non-missing value at each position. It "fills-in" missing values with the first available value in an order you specify.  
+This **dplyr** function finds the first non-missing value at each position. It "fills-in" missing values with the first available value in an order you specify.
 
-Here is an example *outside the context of a data frame*: Let us say you have two vectors, one containing village of detection and another containing village of residence. You can use coalesce to pick the first non-missing value for each index:  
+Here is an example *outside the context of a data frame*: Let us say you have two vectors, one containing the patient's village of detection and another containing the patient's village of residence. You can use coalesce to pick the first non-missing value for each index:  
 
 ```{r}
 village_detection <- c("a", "b", NA,  NA)
@@ -941,7 +941,7 @@ Outside of the context of a data frame, if you want to have an object used in yo
 
 
 
-### Complex logic {.unnumbered}  
+### Complex logic {#clean_case_when .unnumbered}  
 
 Use **dplyr**'s `case_when()` if you are re-coding into many new groups, or if you need to use complex logic statements to re-code values. This function evaluates every row in the data frame, assess whether the rows meets specified criteria, and assigns the correct new value.  
 
@@ -1191,7 +1191,7 @@ Here are the required inputs:
 * A numeric vector (column)  
 * The `breakers = ` argument - provide a numeric vector of break points for the new groups  
 
-First, the most simple example:  
+First, the simplest example:  
 
 ```{r}
 # Simple example
@@ -1288,7 +1288,7 @@ An example of `cut()` applied to `age_years` to make the new variable `age_cat` 
 
 ```{r}
 # Create new variable, by cutting the numeric age variable
-# by default, upper break is excluded and lower break excluded from each category
+# lower break is excluded but upper break is included in each category
 linelist <- linelist %>% 
   mutate(
     age_cat = cut(
@@ -1318,7 +1318,7 @@ table("Numeric Values" = linelist$age_years,   # names specified in table for cl
 
 **Re-labeling `NA` values**
 
-You may want to assign `NA` values a label such as "Missing". Because the new column is class Factor (restricted values), you cannot simply mutate it with `replace_na()`. Instead, use `fct_explicit_na()` from **forcats** as explained in the [Factors] page.   
+You may want to assign `NA` values a label such as "Missing". Because the new column is class Factor (restricted values), you cannot simply mutate it with `replace_na()`, as this value will be rejected. Instead, use `fct_explicit_na()` from **forcats** as explained in the [Factors] page.   
 
 ```{r}
 linelist <- linelist %>% 
@@ -1421,7 +1421,7 @@ left_join(ntile_table, ntile_ranges, by = "even_groups")
 
 
 <!-- ======================================================= -->
-### `case_when()` {.unnumbered}
+### `case_when()` { .unnumbered}
 
 It is possible to use the **dplyr** function `case_when()` to create categories from a numeric column, but it is easier to use `age_categories()` from **epikit** or `cut()` because these will create an ordered factor automatically. 
 
