@@ -1069,7 +1069,7 @@ ggplot(data = linelist)+           # begin with linelist (many hospitals)
 
 The order in which grouped bars are stacked is best adjusted by classifying the grouping column as class Factor. You can then designate the factor level order (and their display labels). See the page on [Factors] or [ggplot tips] for details.  
 
-Before making the plot, convert the grouping column to class Factor using `as_factor()` from the **forcats** package. Then you can make other adjustments to the levels, as detailed in the page on [Factors].  
+Before making the plot, use the `fct_relevel()` function from **forcats** package to convert the grouping column to class factor and manually adjust the level order, as detailed in the page on [Factors].  
 
 ```{r}
 # load forcats package for working with factors
@@ -1077,8 +1077,7 @@ pacman::p_load(forcats)
 
 # Define new dataset with hospital as factor
 plot_data <- linelist %>% 
-  mutate(hospital = as_factor(hospital)) %>%                      # define hospital as factor
-  mutate(hospital = fct_relevel(hospital, c("Missing", "Other"))) # Set "Missing" and "Other" as top levels to appear on epicurve top
+  mutate(hospital = fct_relevel(hospital, c("Missing", "Other"))) # Convert to factor and set "Missing" and "Other" as top levels to appear on epicurve top
 
 levels(plot_data$hospital) # print levels in order
 ```
@@ -1491,7 +1490,7 @@ ll_counts_7day <- linelist %>%    # begin with linelist
   
   ## count cases by date
   count(date_onset, name = "new_cases") %>%   # name new column with counts as "new_cases"
-  filter(!is.na(date_onset)) %>%              # remove cases with missing date_onset
+  drop_na(date_onset) %>%                     # remove cases with missing date_onset
   
   ## calculate the average number of cases in 7-day window
   mutate(
@@ -1944,7 +1943,7 @@ central_weekly <- linelist %>%
   filter(hospital == "Central Hospital") %>%   # filter linelist
   mutate(week = lubridate::floor_date(date_onset, unit = "weeks")) %>%  
   count(week) %>%                              # summarize weekly case counts
-  filter(!is.na(week)) %>%                     # remove cases with missing onset_date
+  drop_na(week) %>%                            # remove cases with missing onset_date
   complete(                                    # fill-in all weeks with no cases reported
     week = seq.Date(
       from = min(week),   

@@ -86,13 +86,15 @@ ggplot(data = linelist)+
 
 ## Convert to factor  
 
-To initially convert a character or numeric column to the class factor you have two options: the **base** R function `factor()`, or the **forcats** function `as_factor()`. We suggest using the **base** R function `factor()` because it allows you to convert to factor *and* set the order of the levels in one command (90% of the time this is all you really want to do).  
+To convert a character or numeric column to class *factor*, you can use any function from the **forcats** package (many are detailed [below](#fct_adjust)). They will convert to class factor and then also perform or allow certain ordering of the levels - for example using `fct_relevel()` lets you manually specify the level order. The function `as_factor()` simply converts the class without any further capabilities.  
 
-Below we use `mutate()` and `factor()` to convert the column `delay_cat` from class character to class factor. The column `delay_cat` is created in the [Preparation](#fct_newcat) section above. 
+The **base** R function `factor()` converts a column to factor and allows you to manually specify the order of the levels, as a character vector to its `levels = ` argument.  
+
+Below we use `mutate()` and `fct_relevel()` to convert the column `delay_cat` from class character to class factor. The column `delay_cat` is created in the [Preparation](#fct_newcat) section above. 
 
 ```{r}
 linelist <- linelist %>%
-  mutate(delay_cat = factor(delay_cat))
+  mutate(delay_cat = fct_relevel(delay_cat))
 ```
 
 *The unique "values" in this column are now considered "levels" of the factor.*  The levels have an *order*, which can be printed with the **base** R function `levels()`, or alternatively viewed in a count table via `table()` from **base** R or `tabyl()` from **janitor**. By default, the order of the levels will be alpha-numeric, as before. Note that `NA` is not a factor level.  
@@ -101,14 +103,11 @@ linelist <- linelist %>%
 levels(linelist$delay_cat)
 ```
 
-However, you can conveniently specify the levels and their order in the `factor()` command, as a character vector to the `levels = ` argument. The spelling must exactly match the values. The vector of values you provide sets two things:  
-
-1) The column's possible/acceptable values. These can include values that do not yet exist in the column (but might later). Later, if add rows or attempt to otherwise convert/add new values to `delay_cat`, R will return an error if the value is not in the defined levels.  
-2) The order of the levels  
+The function `fct_relevel()` has the additional utility of allowing you to manually specify the level order. Simply write the level values in order, in quotation marks, separated by commas, as shown below. Note that the spelling must exactly match the values. If you want to create levels that do not exist in the data, use [`fct_expand()` instead](#fct_add)).  
 
 ```{r}
 linelist <- linelist %>%
-  mutate(delay_cat = factor(delay_cat, levels = c("<2 days", "2-5 days", ">5 days")))
+  mutate(delay_cat = fct_relevel(delay_cat, "<2 days", "2-5 days", ">5 days"))
 ```
 
 We can now see that the levels are ordered, as specified in the previous command, in a sensible order.  
@@ -127,8 +126,8 @@ ggplot(data = linelist)+
 
 ## Add or drop levels  
 
-### Add {.unnumbered}
-If you need to add levels to a factor, you can do this with `fct_expand()`. Just write the factor name followed by the new levels (separated by commas). By tabulating the values, we can see the new levels and the zero counts. You can use `table()` from **base** R, or `tabyl()` from **janitor**:  
+### Add {#fct_add .unnumbered}
+If you need to add levels to a factor, you can do this with `fct_expand()`. Just write the column name followed by the new levels (separated by commas). By tabulating the values, we can see the new levels and the zero counts. You can use `table()` from **base** R, or `tabyl()` from **janitor**:  
 
 ```{r}
 linelist %>% 
@@ -153,7 +152,7 @@ linelist %>%
 
 
 
-## Adjust level order  
+## Adjust level order {#fct_adjust} 
 
 The package **forcats** offers useful functions to easily adjust the order of a factor's levels (after a column been defined as class factor): 
 
@@ -166,7 +165,9 @@ These functions can be applied to a factor column in two contexts:
 
 ### Manually {.unnumbered} 
 
-This function is used to manually order the factor levels. Within the parentheses first provide the factor column name, then provide either:  
+This function is used to manually order the factor levels. If used on a non-factor column, the column will first be converted to class factor.  
+
+Within the parentheses first provide the factor column name, then provide either:  
 
 * All the levels in the desired order (as a character vector `c()`), or  
 * One level and it's corrected placement using the `after = ` argument  

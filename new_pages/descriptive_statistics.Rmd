@@ -379,8 +379,7 @@ summary_table %>%
 
 ```{r, echo=F}
 linelist_agg <- linelist %>% 
-  filter(!is.na(gender),
-         !is.na(outcome)) %>% 
+  drop_na(gender, outcome) %>% 
   count(outcome, gender)
 linelist_agg
 ```
@@ -747,178 +746,178 @@ linelist %>%
 
 
 
-### `dplyr` package {.unnumbered}
+<!-- ### `dplyr` package {.unnumbered} -->
 
-Performing statistical tests in `dplyr` alone is very dense, again because it 
-does not fit within the tidy-data framework. It requires using `purrr` to create
-a list of dataframes for each of the subgroups you want to compare. See the page on [Iteration, loops, and lists] to learn about **purrr**.  
+<!-- Performing statistical tests in `dplyr` alone is very dense, again because it  -->
+<!-- does not fit within the tidy-data framework. It requires using `purrr` to create -->
+<!-- a list of dataframes for each of the subgroups you want to compare. See the page on [Iteration, loops, and lists] to learn about **purrr**.   -->
 
-An easier alternative may be the `rstatix` package. 
+<!-- An easier alternative may be the `rstatix` package.  -->
 
-#### T-tests {.unnumbered} 
+<!-- #### T-tests {.unnumbered}  -->
 
-```{r ttest_dplyr}
+<!-- ```{r ttest_dplyr} -->
 
-linelist %>% 
-  ## only keep variables of interest
-  select(age, outcome) %>% 
-  ## drop those missing outcome 
-  filter(!is.na(outcome)) %>% 
-  ## specify the grouping variable
-  group_by(outcome) %>% 
-  ## create a subset of data for each group (as a list)
-  nest() %>% 
-  ## spread in to wide format
-  pivot_wider(names_from = outcome, values_from = data) %>% 
-  mutate(
-    ## calculate the mean age for the death group
-    Death_mean = map(Death, ~mean(.x$age, na.rm = TRUE)),
-    ## calculate the sd among dead 
-    Death_sd = map(Death, ~sd(.x$age, na.rm = TRUE)),
-    ## calculate the mean age for the recover group
-    Recover_mean = map(Recover, ~mean(.x$age, na.rm = TRUE)), 
-    ## calculate the sd among recovered 
-    Recover_sd = map(Recover, ~sd(.x$age, na.rm = TRUE)),
-    ## using both grouped data sets compare mean age with a t-test
-    ## keep only the p.value
-    t_test = map2(Death, Recover, ~t.test(.x$age, .y$age)$p.value)
-  ) %>% 
-  ## drop datasets 
-  select(-Death, -Recover) %>% 
-  ## return a dataset with the medians and p.value (drop missing)
-  unnest(cols = everything())
+<!-- linelist %>%  -->
+<!--   ## only keep variables of interest -->
+<!--   select(age, outcome) %>%  -->
+<!--   ## drop those missing outcome  -->
+<!--   filter(!is.na(outcome)) %>%  -->
+<!--   ## specify the grouping variable -->
+<!--   group_by(outcome) %>%  -->
+<!--   ## create a subset of data for each group (as a list) -->
+<!--   nest() %>%  -->
+<!--   ## spread in to wide format -->
+<!--   pivot_wider(names_from = outcome, values_from = data) %>%  -->
+<!--   mutate( -->
+<!--     ## calculate the mean age for the death group -->
+<!--     Death_mean = map(Death, ~mean(.x$age, na.rm = TRUE)), -->
+<!--     ## calculate the sd among dead  -->
+<!--     Death_sd = map(Death, ~sd(.x$age, na.rm = TRUE)), -->
+<!--     ## calculate the mean age for the recover group -->
+<!--     Recover_mean = map(Recover, ~mean(.x$age, na.rm = TRUE)),  -->
+<!--     ## calculate the sd among recovered  -->
+<!--     Recover_sd = map(Recover, ~sd(.x$age, na.rm = TRUE)), -->
+<!--     ## using both grouped data sets compare mean age with a t-test -->
+<!--     ## keep only the p.value -->
+<!--     t_test = map2(Death, Recover, ~t.test(.x$age, .y$age)$p.value) -->
+<!--   ) %>%  -->
+<!--   ## drop datasets  -->
+<!--   select(-Death, -Recover) %>%  -->
+<!--   ## return a dataset with the medians and p.value (drop missing) -->
+<!--   unnest(cols = everything()) -->
 
-```
-
-
-#### Wilcoxon rank sum test {.unnumbered}
-
-```{r wilcox_dplyr}
-
-linelist %>% 
-  ## only keep variables of interest
-  select(age, outcome) %>% 
-  ## drop those missing outcome 
-  filter(!is.na(outcome)) %>% 
-  ## specify the grouping variable
-  group_by(outcome) %>% 
-  ## create a subset of data for each group (as a list)
-  nest() %>% 
-  ## spread in to wide format
-  pivot_wider(names_from = outcome, values_from = data) %>% 
-  mutate(
-    ## calculate the median age for the death group
-    Death_median = map(Death, ~median(.x$age, na.rm = TRUE)),
-    ## calculate the sd among dead 
-    Death_iqr = map(Death, ~str_c(
-      quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE), 
-      collapse = ", "
-      )),
-    ## calculate the median age for the recover group
-    Recover_median = map(Recover, ~median(.x$age, na.rm = TRUE)), 
-    ## calculate the sd among recovered 
-    Recover_iqr = map(Recover, ~str_c(
-      quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE), 
-      collapse = ", "
-      )),
-    ## using both grouped data sets compare age distribution with a wilcox test
-    ## keep only the p.value
-    wilcox = map2(Death, Recover, ~wilcox.test(.x$age, .y$age)$p.value)
-  ) %>% 
-  ## drop datasets 
-  select(-Death, -Recover) %>% 
-  ## return a dataset with the medians and p.value (drop missing)
-  unnest(cols = everything())
-
-```
-
-#### Kruskal-wallis test {.unnumbered}
+<!-- ``` -->
 
 
-```{r kruskal_dplyr}
+<!-- #### Wilcoxon rank sum test {.unnumbered} -->
 
-linelist %>% 
-  ## only keep variables of interest
-  select(age, outcome) %>% 
-  ## drop those missing outcome 
-  filter(!is.na(outcome)) %>% 
-  ## specify the grouping variable
-  group_by(outcome) %>% 
-  ## create a subset of data for each group (as a list)
-  nest() %>% 
-  ## spread in to wide format
-  pivot_wider(names_from = outcome, values_from = data) %>% 
-  mutate(
-    ## calculate the median age for the death group
-    Death_median = map(Death, ~median(.x$age, na.rm = TRUE)),
-    ## calculate the sd among dead 
-    Death_iqr = map(Death, ~str_c(
-      quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE), 
-      collapse = ", "
-      )),
-    ## calculate the median age for the recover group
-    Recover_median = map(Recover, ~median(.x$age, na.rm = TRUE)), 
-    ## calculate the sd among recovered 
-    Recover_iqr = map(Recover, ~str_c(
-      quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE), 
-      collapse = ", "
-      )),
-    ## using the original data set compare age distribution with a kruskal test
-    ## keep only the p.value
-    kruskal = kruskal.test(linelist$age, linelist$outcome)$p.value
-  ) %>% 
-  ## drop datasets 
-  select(-Death, -Recover) %>% 
-  ## return a dataset with the medians and p.value (drop missing)
-  unnest(cols = everything())
+<!-- ```{r wilcox_dplyr} -->
 
-```
+<!-- linelist %>%  -->
+<!--   ## only keep variables of interest -->
+<!--   select(age, outcome) %>%  -->
+<!--   ## drop those missing outcome  -->
+<!--   filter(!is.na(outcome)) %>%  -->
+<!--   ## specify the grouping variable -->
+<!--   group_by(outcome) %>%  -->
+<!--   ## create a subset of data for each group (as a list) -->
+<!--   nest() %>%  -->
+<!--   ## spread in to wide format -->
+<!--   pivot_wider(names_from = outcome, values_from = data) %>%  -->
+<!--   mutate( -->
+<!--     ## calculate the median age for the death group -->
+<!--     Death_median = map(Death, ~median(.x$age, na.rm = TRUE)), -->
+<!--     ## calculate the sd among dead  -->
+<!--     Death_iqr = map(Death, ~str_c( -->
+<!--       quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE),  -->
+<!--       collapse = ", " -->
+<!--       )), -->
+<!--     ## calculate the median age for the recover group -->
+<!--     Recover_median = map(Recover, ~median(.x$age, na.rm = TRUE)),  -->
+<!--     ## calculate the sd among recovered  -->
+<!--     Recover_iqr = map(Recover, ~str_c( -->
+<!--       quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE),  -->
+<!--       collapse = ", " -->
+<!--       )), -->
+<!--     ## using both grouped data sets compare age distribution with a wilcox test -->
+<!--     ## keep only the p.value -->
+<!--     wilcox = map2(Death, Recover, ~wilcox.test(.x$age, .y$age)$p.value) -->
+<!--   ) %>%  -->
+<!--   ## drop datasets  -->
+<!--   select(-Death, -Recover) %>%  -->
+<!--   ## return a dataset with the medians and p.value (drop missing) -->
+<!--   unnest(cols = everything()) -->
 
-#### Chi-squared test {.unnumbered} 
+<!-- ``` -->
 
-
-```{r}
-linelist %>% 
-  ## do everything by gender 
-  group_by(outcome) %>% 
-  ## count the variable of interest
-  count(gender) %>% 
-  ## calculate proportion 
-  ## note that the denominator here is the sum of each gender
-  mutate(percentage = n / sum(n) * 100) %>% 
-  pivot_wider(names_from = outcome, values_from = c(n, percentage)) %>% 
-  filter(!is.na(gender)) %>% 
-  mutate(pval = chisq.test(linelist$gender, linelist$outcome)$p.value)
-```
+<!-- #### Kruskal-wallis test {.unnumbered} -->
 
 
-<!-- ======================================================= -->
+<!-- ```{r kruskal_dplyr} -->
 
-## Correlations 
+<!-- linelist %>%  -->
+<!--   ## only keep variables of interest -->
+<!--   select(age, outcome) %>%  -->
+<!--   ## drop those missing outcome  -->
+<!--   filter(!is.na(outcome)) %>%  -->
+<!--   ## specify the grouping variable -->
+<!--   group_by(outcome) %>%  -->
+<!--   ## create a subset of data for each group (as a list) -->
+<!--   nest() %>%  -->
+<!--   ## spread in to wide format -->
+<!--   pivot_wider(names_from = outcome, values_from = data) %>%  -->
+<!--   mutate( -->
+<!--     ## calculate the median age for the death group -->
+<!--     Death_median = map(Death, ~median(.x$age, na.rm = TRUE)), -->
+<!--     ## calculate the sd among dead  -->
+<!--     Death_iqr = map(Death, ~str_c( -->
+<!--       quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE),  -->
+<!--       collapse = ", " -->
+<!--       )), -->
+<!--     ## calculate the median age for the recover group -->
+<!--     Recover_median = map(Recover, ~median(.x$age, na.rm = TRUE)),  -->
+<!--     ## calculate the sd among recovered  -->
+<!--     Recover_iqr = map(Recover, ~str_c( -->
+<!--       quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE),  -->
+<!--       collapse = ", " -->
+<!--       )), -->
+<!--     ## using the original data set compare age distribution with a kruskal test -->
+<!--     ## keep only the p.value -->
+<!--     kruskal = kruskal.test(linelist$age, linelist$outcome)$p.value -->
+<!--   ) %>%  -->
+<!--   ## drop datasets  -->
+<!--   select(-Death, -Recover) %>%  -->
+<!--   ## return a dataset with the medians and p.value (drop missing) -->
+<!--   unnest(cols = everything()) -->
 
-Correlation between numeric variables can be investigated using the tidyverse  
-`corrr` package. It allows you to compute correlations using Pearson, Kendall
-tau or Spearman rho. The package creates a table and also has a function to 
-automatically plot the values. 
+<!-- ``` -->
 
-```{r, warning=F, message=F}
+<!-- #### Chi-squared test {.unnumbered}  -->
 
-correlation_tab <- linelist %>% 
-  select(generation, age, ct_blood, days_onset_hosp, wt_kg, ht_cm) %>%   # keep numeric variables of interest
-  correlate()      # create correlation table (using default pearson)
 
-correlation_tab    # print
+<!-- ```{r} -->
+<!-- linelist %>%  -->
+<!--   ## do everything by gender  -->
+<!--   group_by(outcome) %>%  -->
+<!--   ## count the variable of interest -->
+<!--   count(gender) %>%  -->
+<!--   ## calculate proportion  -->
+<!--   ## note that the denominator here is the sum of each gender -->
+<!--   mutate(percentage = n / sum(n) * 100) %>%  -->
+<!--   pivot_wider(names_from = outcome, values_from = c(n, percentage)) %>%  -->
+<!--   filter(!is.na(gender)) %>%  -->
+<!--   mutate(pval = chisq.test(linelist$gender, linelist$outcome)$p.value) -->
+<!-- ``` -->
 
-## remove duplicate entries (the table above is mirrored) 
-correlation_tab <- correlation_tab %>% 
-  shave()
 
-## view correlation table 
-correlation_tab
+<!-- <!-- ======================================================= --> -->
 
-## plot correlations 
-rplot(correlation_tab)
-```
+<!-- ## Correlations  -->
+
+<!-- Correlation between numeric variables can be investigated using the tidyverse   -->
+<!-- `corrr` package. It allows you to compute correlations using Pearson, Kendall -->
+<!-- tau or Spearman rho. The package creates a table and also has a function to  -->
+<!-- automatically plot the values.  -->
+
+<!-- ```{r, warning=F, message=F} -->
+
+<!-- correlation_tab <- linelist %>%  -->
+<!--   select(generation, age, ct_blood, days_onset_hosp, wt_kg, ht_cm) %>%   # keep numeric variables of interest -->
+<!--   correlate()      # create correlation table (using default pearson) -->
+
+<!-- correlation_tab    # print -->
+
+<!-- ## remove duplicate entries (the table above is mirrored)  -->
+<!-- correlation_tab <- correlation_tab %>%  -->
+<!--   shave() -->
+
+<!-- ## view correlation table  -->
+<!-- correlation_tab -->
+
+<!-- ## plot correlations  -->
+<!-- rplot(correlation_tab) -->
+<!-- ``` -->
 
 
 <!-- ======================================================= -->

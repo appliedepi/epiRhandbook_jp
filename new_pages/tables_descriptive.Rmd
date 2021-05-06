@@ -4,7 +4,7 @@
 knitr::include_graphics(here::here("images", "descriptive_tables.png"))
 ```
 
-This page demonstrates the use of **janitor**, **dplyr**, **gtsummary**, and **base** R to summarise data and create tables with descriptive statistics. 
+This page demonstrates the use of **janitor**, **dplyr**, **gtsummary**, **rstatix**, and **base** R to summarise data and create tables with descriptive statistics. 
 
 Each of these packages has advantages and disadvantages in the areas of code simplicity, accessibility of outputs, quality of printed outputs. Use this page to decide which approach works for your scenario.  
 
@@ -12,16 +12,13 @@ Each of these packages has advantages and disadvantages in the areas of code sim
 *See the [Tables for presentation] page for tips on how to nicely format and print your tables.*  
 
 
-You have several choices when producing tabulation and cross-tabulation summary tables. Some of the factors to consider include code simplicity and ease, the desired output (printed to R console, or as "pretty" .png/.jpeg/.html image), and what you can do with the data afterward. Consider the points below as you choose the tool for your situation.
+You have several choices when producing tabulation and cross-tabulation summary tables. Some of the factors to consider include code simplicity, customizeability, the desired output (printed to R console, as data frame, or as "pretty" .png/.jpeg/.html image), and ease of post-processing. Consider the points below as you choose the tool for your situation.
 
-* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations.
-  * Cons: requires post-processing (e.g with **flextable**) for publication-ready tables.  
-* Use `summarise()` and `count()` from **dplyr** if calculating more complex statistics or preparing data for `ggplot()`
-  * Cons: similar to above but requires even more manipulation
-* Use `tbl_summary()` from **gtsummary** to produce detailed publication-ready tables
-  * Cons: missings not automatically included in percentage calculations. To use for plotting need to extract tibble from list output.
-* Use `table()` from **base** R if you do not have access to the above packages
-  * Cons: requires the most manipulation and post-processing
+* Use `tabyl()` from **janitor** to produce and "adorn" tabulations and cross-tabulations  
+* Use `get_summary_stats()` from **rstatix** to easily generate data frames of numeric summary statistics for multiple columns and/or groups  
+* Use `summarise()` and `count()` from **dplyr** for more complex statistics, tidy data frame outputs, or preparing data for `ggplot()`  
+* Use `tbl_summary()` from **gtsummary** to produce detailed publication-ready tables  
+* Use `table()` from **base** R if you do not have access to the above packages  
 
 
 <!-- ======================================================= -->
@@ -40,6 +37,7 @@ pacman::p_load(
   skimr,        # get overview of data
   tidyverse,    # data management + ggplot2 graphics 
   gtsummary,    # summary statistics and tests
+  rstatix,      # summary statistics and statistical tests
   janitor,      # adding totals and percents to tables
   scales,       # easily convert proportions to percents  
   flextable     # converting tables to pretty images
@@ -121,7 +119,15 @@ You can return individual statistics with **base** R functions like `max()`, `mi
 <span style="color: orange;">**_CAUTION:_** If your data contain missing values, R wants you to know this and so will return `NA` unless you specify to the above mathematical functions that you want R to ignore missing values, via the argument `na.rm = TRUE`.</span>
 
 
+You can use the `get_summary_stats()` function from **rstatix** to return summary statistics *in a data frame format*. This can be helpful for performing subsequent operations or plotting on the numbers. See the [Simple statistical tests] page for more details on the **rstatix** package and its functions.  
 
+```{r}
+linelist %>% 
+  get_summary_stats(
+    age, wt_kg, ht_cm, ct_blood, temp,  # columns to calculate for
+    type = "common")                    # summary stats to return
+
+```
 
 
 
@@ -508,6 +514,22 @@ linelist %>%
     )
 ```
 
+While **dplyr** `summarise()` certainly offers more fine control, you may find that all the summary statistics you need can be produced with `get_summary_stat()` from the **rstatix** package. If operating on grouped data, if will return 0%, 25%, 50%, 75%, and 100%. If applied to ungrouped data, you can specify the percentiles with `probs = c(.05, .5, .75, .98)`.  
+
+
+```{r}
+linelist %>% 
+  group_by(hospital) %>% 
+  rstatix::get_summary_stats(age, type = "quantile")
+```
+
+```{r}
+linelist %>% 
+  rstatix::get_summary_stats(age, type = "quantile")
+```
+
+
+
 ### Summarise aggregated data {.unnumbered}  
 
 *If you begin with aggregated data*, using `n()` return the number of *rows*, not the sum of the aggregated counts. To get sums, use `sum()` on the data's counts column.  
@@ -518,8 +540,7 @@ Below we create this example data frame of `linelist` case counts by outcome and
 
 ```{r}
 linelist_agg <- linelist %>% 
-  filter(!is.na(gender),
-         !is.na(outcome)) %>% 
+  drop_na(gender, outcome) %>% 
   count(outcome, gender)
 
 linelist_agg
@@ -807,9 +828,11 @@ table
 
 
 
-## **gtsummary** package   
+## **gtsummary** package {#tbl_gt}   
 
 If you want to print your summary statistics in a pretty, publication-ready graphic, you can use the **gtsummary** package and its function `tbl_summary()`. The code can seem complex at first, but the outputs look very nice and print to your RStudio Viewer panel as an HTML image. Read a [vignette here](http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html).    
+
+You can also add the results of statistical tests to **gtsummary** tables. This process is described in the **gtsummary** section of the [Simple statistical tests](#stats_gt) page.  
 
 To introduce `tbl_summary()` we will show the most basic behavior first, which actually produces a large and beautiful table. Then, we will examine in detail how to make adjustments and more tailored tables. 
 

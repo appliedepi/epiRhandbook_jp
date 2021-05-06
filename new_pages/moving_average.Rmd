@@ -200,7 +200,7 @@ counts_7day <- linelist %>%
     ) %>%
   
   # remove counts with missing onset_date
-  filter(!is.na(date_onset))
+  drop_na(date_onset)
 ```
 
 The new dataset now looks like this. Note how some days are not present (no cases on those days). A simple `slide_dbl()` would incorrectly include the first seven rows in the first window.    
@@ -264,7 +264,7 @@ ll_months <- linelist %>%
   mutate(
     month_onset = floor_date(date_onset, "month")) %>% 
   count(month_onset) %>% 
-  filter(!is.na(month_onset)) %>% 
+  drop_na(month_onset) %>% 
   mutate(
     monthly_roll = slider::slide_index_dbl(
       n,                                # calculate avg based on value in new_cases column
@@ -294,7 +294,7 @@ By default `geom_ma()` uses a simple moving average (`ma_fun = "SMA"`), but othe
 ```{r}
 linelist %>% 
   count(date_onset) %>%                 # count cases per day
-  filter(!is.na(date_onset)) %>%        # remove cases missing onset date
+  drop_na(date_onset) %>%               # remove cases missing onset date
   ggplot(aes(x = date_onset, y = n))+   # start ggplot
     geom_line(                          # plot raw values
       size = 1,

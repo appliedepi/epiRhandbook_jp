@@ -331,7 +331,7 @@ linelist %>%
 
 
 
-### "tidyselect" helper functions {.unnumbered}  
+### "tidyselect" helper functions {#clean_tidyselect .unnumbered}  
 
 These helper functions exist to make it easy to specify columns to keep, discard, or transform. They are from the package **tidyselect**, which is included in **tidyverse** and underlies how columns are selected in **dplyr** functions.  
 
@@ -639,7 +639,7 @@ Read more about using `mutate ()` on grouped dataframes in this [tidyverse mutat
 
 
 
-### Transform multiple columns {.unnumbered}
+### Transform multiple columns {#clean_across .unnumbered}
 
 
 Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple columns at once using the `across()` function from the package **dplyr** (also contained within **tidyverse** package). `across()` can be used with any **dplyr** function, but is commonly used within `select()`, `mutate()`, `filter()`, or `summarise()`. See how it is applied to `summarise()` in the page on [Descriptive tables].  
@@ -993,12 +993,11 @@ This is a function from the **forcats** package. The **forcats** package handles
 
 If your data are class Factor and you try to convert `NA` to "Missing" by using `replace_na()`, you will get this error: `invalid factor level, NA generated`. You have tried to add "Missing" as a value, when it was not defined as a possible level of the factor, and it was rejected.  
 
-The easiest way to solve this is to use the **forcats** function `fct_explicit_na()` takes a factor column and converts `NA` values to the character "(Missing)".  
+The easiest way to solve this is to use the **forcats** function `fct_explicit_na()` which converts a column to class factor, and converts `NA` values to the character "(Missing)".  
 
 ```{r, eval=F}
 linelist %>% 
-  mutate(hospital = as_factor(hospital),
-         hospital = fct_explicit_na(hospital))
+  mutate(hospital = fct_explicit_na(hospital))
 ```
 
 A slower alternative would be to add the factor level using `fct_expand()` and then convert the missing values.  
@@ -1552,23 +1551,39 @@ A typical cleaning step after you have cleaned the columns and re-coded values i
 Within `filter()`, specify the logic that must be `TRUE` for a row in the dataset to be kept. Below we show how to filter rows based on simple and complex logical conditions.  
 
 
+
 <!-- ======================================================= -->
-### Simple `filter()` {.unnumbered} 
+### Simple filter {.unnumbered} 
 
 This simple example re-defines the dataframe `linelist` as itself, having filtered the rows to meet a logical condition. **Only the rows where the logical statement within the parentheses evaluates to `TRUE` are kept.**  
 
-In this case, the logical statement is `!is.na(case_id)`, which is asking whether the value in the column `case_id` is **not** missing (`NA`). When placed in front of a function like `is.na()` the operator `!` inverts the criteria. Thus, rows where `case_id` is **not** missing are kept.  
+In this example, the logical statement is `gender == "f"`, which is asking whether the value in the column `gender` is equal to "f" (case sensitive).   
 
 Before the filter is applied, the number of rows in `linelist` is `r nrow(linelist)`.
 
-```{r}
+```{r, eval=F}
 linelist <- linelist %>% 
-  filter(!is.na(case_id))  # keep only rows where case_id is not missing
+  filter(gender == "f")   # keep only rows where gender is equal to "f"
 ```
 
-After the filter is applied, the number of rows in `linelist` is `r nrow(linelist)`. 
+After the filter is applied, the number of rows in `linelist` is `r linelist %>% filter(gender == "f") %>% nrow()`.
 
-#### Filter by row number {.unnumbered}  
+
+### Filter out missing values {.unnumbered}  
+
+It is fairly common to want to filter out rows that have missing values. Resist the urge to write `filter(!is.na(column) & !is.na(column))` and instead use the **tidyr** function that is custom-built for this purpose: `drop_na()`. If run with empty parentheses, it removes rows with *any* missing values. Alternatively, you can provide names of specific columns to be evaluated for missingness, or use the "tidyselect" helper functions described [above](#clean_tidyselect).  
+
+```{r, eval=F}
+linelist %>% 
+  drop_na(case_id, age_years)  # drop rows with missing values for case_id or age_years
+```
+
+See the page on [Missing data] for many techniques to analyse and manage missingness in your data. 
+
+
+
+
+### Filter by row number {.unnumbered}  
 
 In a data frame or tibble, each row will usually have a "row number" that (when seen in R Viewer) appears to the left of the first column. It is not itself a true column in the data, but it can be used in a `filter()` statement.  
 
@@ -1589,9 +1604,12 @@ You can also convert the row numbers to a true column by piping your data frame 
 
 
 <!-- ======================================================= -->
-### Complex `filter()` {.unnumbered} 
+### Complex filter {.unnumbered} 
 
-More complex logical statements can be constructed using parentheses `( )`, OR `|`, and AND `&` operators. An example is below:  
+More complex logical statements can be constructed using parentheses `( )`, OR `|`, negate `!`, `%in%`, and AND `&` operators. An example is below:  
+
+
+Note: You can use the `!` operator in front of a logical criteria to negate it. For example, `!is.na(column)` evaluates to true if the column value is *not* missing. Likewise `!column %in% c("a", "b", "c")` evaluates to true if the column value is *not* in the vector.  
 
 
 #### Examine the data  {.unnumbered}  

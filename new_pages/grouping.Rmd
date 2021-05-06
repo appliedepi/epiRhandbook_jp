@@ -309,8 +309,8 @@ Here is an example of grouping cases into days *without* using `complete()`. Not
 
 ```{r}
 daily_counts <- linelist %>% 
-  filter(!is.na(date_onset)) %>%        # remove that were missing date_onset
-  count(date_onset)                     # count number of rows per unique date
+  drop_na(date_onset) %>%        # remove that were missing date_onset
+  count(date_onset)              # count number of rows per unique date
 ```
 
 ```{r message=FALSE, echo=F}
@@ -321,14 +321,14 @@ Below we add the `complete()` command to ensure every day in the range is repres
 
 ```{r, eval=F}
 daily_counts <- linelist %>% 
-  filter(!is.na(date_onset)) %>%                  # remove case missing date_onset
-  count(date_onset) %>%                           # count number of rows per unique date
-  complete(                                       # ensure all days appear even if no cases
-    date_onset = seq.Date(                          # re-define date colume as daily sequence of dates
+  drop_na(date_onset) %>%                 # remove case missing date_onset
+  count(date_onset) %>%                   # count number of rows per unique date
+  complete(                               # ensure all days appear even if no cases
+    date_onset = seq.Date(                # re-define date colume as daily sequence of dates
       from = min(date_onset, na.rm=T), 
       to = max(date_onset, na.rm=T),
       by = "day"),
-    fill = list(n = 0))                             # set new filled-in rows to display 0 in column n (not NA as default) 
+    fill = list(n = 0))                   # set new filled-in rows to display 0 in column n (not NA as default) 
 ```
 
 ```{r message=FALSE, echo=F}
@@ -343,7 +343,7 @@ The same principle can be applied for weeks. First create a new column that is t
 ```{r}
 # Make dataset of weekly case counts
 weekly_counts <- linelist %>% 
-  filter(!is.na(date_onset)) %>%          # remove cases missing date_onset
+  drop_na(date_onset) %>%                 # remove cases missing date_onset
   mutate(week = lubridate::floor_date(date_onset, unit = "week")) %>%  # new column of week of onset
   count(week) %>%                         # group data by week and count rows per group
   complete(                               # ensure all days appear even if no cases
@@ -368,7 +368,7 @@ To aggregate cases into months, again use `floor_date()` from the **lubridate** 
 ```{r}
 # Make dataset of monthly case counts
 monthly_counts <- linelist %>% 
-  filter(!is.na(date_onset)) %>% 
+  drop_na(date_onset) %>% 
   mutate(month = lubridate::floor_date(date_onset, unit = "months")) %>%  # new column, 1st of month of onset
   count(month) %>%                          # count cases by month
   complete(
