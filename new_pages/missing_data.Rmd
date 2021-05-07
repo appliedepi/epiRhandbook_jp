@@ -364,7 +364,7 @@ linelist %>%
 ```
 
 
-An alternative way to plot the proportion of values in one column, including missingness, is given below. It does *not* involve **naniar**. This example shows percent of weekly observations that are missing in a column):  
+An alternative way to plot the proportion of a column's values that are missing over time is shown below. It does *not* involve **naniar**. This example shows percent of weekly observations that are missing).  
 
 1) Aggregate the data into a useful time unit (days, weeks, etc.), summarizing the proportion of observations with `NA` (and any other values of interest)  
 2) Plot the proportion missing as a line using `ggplot()`  
@@ -375,25 +375,25 @@ Below, we take the linelist, add a new column for week, group the data by week, 
 outcome_missing <- linelist %>%
   mutate(week = lubridate::floor_date(date_onset, "week")) %>%   # create new week column
   group_by(week) %>%                                             # group the rows by week
-  summarize(                                                     # summarize each week
-    n_obs = n(),                                                     # number of records
+  summarise(                                                     # summarize each week
+    n_obs = n(),                                                  # number of records
     
-    outcome_missing = sum(is.na(outcome) | outcome == ""),       # number of records missing the value
-    outcome_p_miss  = outcome_missing / n_obs,                   # proportion of records missing the value
+    outcome_missing = sum(is.na(outcome) | outcome == ""),        # number of records missing the value
+    outcome_p_miss  = outcome_missing / n_obs,                    # proportion of records missing the value
   
-    outcome_dead    = sum(outcome == "Death", na.rm=T),          # number of records as dead
-    outcome_p_dead  = outcome_dead / n_obs) %>%                  # proportion of records as dead
+    outcome_dead    = sum(outcome == "Death", na.rm=T),           # number of records as dead
+    outcome_p_dead  = outcome_dead / n_obs) %>%                   # proportion of records as dead
   
   tidyr::pivot_longer(-week, names_to = "statistic") %>%         # pivot all columns except week, to long format for ggplot
   filter(stringr::str_detect(statistic, "_p_"))                  # keep only the proportion values
 ```
 
-Then we plot the proportion missing as a line, by week
+Then we plot the proportion missing as a line, by week. The [ggplot basics] page if you are unfamiliar with the **ggplot2** plotting package.  
 
 ```{r, message=F, warning=F}
 ggplot(data = outcome_missing)+
     geom_line(
-      aes(x = week, y = value, group = statistic, color = statistic),
+      mapping = aes(x = week, y = value, group = statistic, color = statistic),
       size = 2,
       stat = "identity")+
     labs(title = "Weekly outcomes",
@@ -404,9 +404,7 @@ ggplot(data = outcome_missing)+
        labels = c("Died", "Missing outcome"))+
     scale_y_continuous(breaks = c(seq(0,1,0.1)))+
   theme_minimal()+
-  theme(
-    legend.position = "bottom"
-  )
+  theme(legend.position = "bottom")
 ```
 
 
@@ -421,7 +419,7 @@ ggplot(data = outcome_missing)+
 
 To quickly remove rows with missing values, use the **dplyr** function `drop_na()`.  
 
-The original `linelist` has `r `nrow(linelist)` rows. The adjusted number of rows is shown below:  
+The original `linelist` has `r nrow(linelist)` rows. The adjusted number of rows is shown below:  
 
 ```{r}
 linelist %>% 
@@ -437,7 +435,7 @@ linelist %>%
   nrow()
 ```
 
-Multiple columns can be specified one after the other, or using this standard syntax:  
+You can list columns one after the other, or use ["tidyselect" helper functions](#clean_tidyselect):  
 
 ```{r}
 linelist %>% 
@@ -473,7 +471,7 @@ Sometimes, it can be easier to save the string as an object in commands prior to
 <!-- ======================================================= -->
 ### `NA` in factors {.unnumbered}
 
-If your column of interest is a factor, use `fct_explicit_na()` from the **forcats** package to convert `NA` values to a character value. By default the character value is "(Missing)" but this can be adjusted via the `na_level =` arguement.   
+If your column of interest is a factor, use `fct_explicit_na()` from the **forcats** package to convert `NA` values to a character value. See more detail in the [Factors] page. By default, the new value is "(Missing)" but this can be adjusted via the `na_level =` argument.   
 
 ```{r}
 pacman::p_load(forcats)   # load package
@@ -571,7 +569,8 @@ This is the same type of approach by some more advanced methods like using the m
 
 Last observation carried forward (LOCF) and baseline observation carried forward (BOCF) are  imputation methods for time series/longitudinal data. The idea is to take the previous observed value as a replacement for the missing data. When multiple values are missing in succession, the method searches for the last observed value.
 
-[TO BE COMPLETED]
+UNDER CONSTRUCTION
+
 
 ### Multiple Imputation {.unnumbered}
 
@@ -581,8 +580,7 @@ When you do multiple imputation, you create multiple datasets with the missing v
 
 Then, once you have created these new imputed datasets, you can apply then apply whatever statistical model or analysis you were planning to do for each of these new imputed datasets and pool the results of these models together. This works very well to reduce bias in both MCAR and many MAR settings and often results in more accurate standard error estimates.
 
-Here is an example of applying the Multiple Imputation process to predict temperature in our linelist dataset using a age and fever status (our simplified model_dataset from above):
-[Note from Daniel: this is not a very good model example and I'll change it later]
+Here is an example of applying the Multiple Imputation process to predict temperature in our linelist dataset using a age and fever status (our simplified model_dataset from above):  
 
 ```{r}
 # imputing missing values for all variables in our model_dataset, and creating 10 new imputed datasets

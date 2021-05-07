@@ -9,6 +9,8 @@ It primarily relies on packages from the [**tidyverts**](https://tidyverts.org/)
 family, but will also use the RECON [**trending**](https://github.com/reconhub/trending) 
 package to fit models that are more appropriate for infectious disease epidemiology. 
 
+Topics covered include:  
+
 1.  Time series data 
 2.  Descriptive analysis 
 3.  Fitting regressions
@@ -45,23 +47,23 @@ pacman::p_load(rio,          # File import
 
 ### Load data {.unnumbered}
 
-The example dataset used in this section:
+You can download all the data used in this handbook via the instructions in the [Download handbook and data] page.  
 
--   Weekly counts of campylobacter cases reported in Germany between 2001 and 2011. 
+The example dataset used in this section is weekly counts of campylobacter cases reported in Germany between 2001 and 2011. <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/time_series/campylobacter_germany.xlsx' class='download-button'>
+	You can click here to download<span> this data file (.xlsx).</span></a> 
 
 This dataset is a reduced version of the dataset available in the [**surveillance**](https://cran.r-project.org/web/packages/surveillance/) package. 
 (for details load the surveillance package and see `?campyDE`)
 
-The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export](https://epirhandbook.com/import-and-export.html) for various ways to import data.
+Import these data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).
 
 ```{r read_data_hide, echo=F}
 # import the counts into R
 counts <- rio::import(here::here("data", "time_series", "campylobacter_germany.xlsx"))
-
 ```
 
 ```{r read_data_show, eval=F}
-# import the linelist
+# import the counts into R
 counts <- rio::import("campylobacter_germany.xlsx")
 ```
 
@@ -74,11 +76,11 @@ DT::datatable(head(counts, 10), rownames = FALSE, options = list(pageLength = 5,
 
 ### Clean data {.unnumbered}
 
-The below makes sure that the date column is in the appropriate format. 
+The code below makes sure that the date column is in the appropriate format. 
 For this tab we will be using the **tsibble** package and so the `yearweek` 
 function will be used to create a calendar week variable. There are several other
 ways of doing this (see the [Working with dates](https://epirhandbook.com/working-with-dates.html)
-page for details), however for time series its best to keep within one framework. 
+page for details), however for time series its best to keep within one framework (**tsibble**). 
 
 ```{r clean_data}
 
@@ -94,20 +96,21 @@ counts <- counts %>%
 
 ### Download climate data {.unnumbered} 
 
-In the *relation of two time series* section of this tab, we will be comparing 
+In the *relation of two time series* section of this page, we will be comparing 
 campylobacter case counts to climate data. 
 
 Climate data for anywhere in the world can be downloaded from the EU's Copernicus 
 Satellite. These are not exact measurements, but based on a model (similar to 
-interpolation), however the benefit is global hourly coverage as well as forecasts. 
+interpolation), however the benefit is global hourly coverage as well as forecasts.  
 
-We will be using the **ecmwfr** package to pull data from the Copernicus 
+You can download each of these climate data files from the [Download handbook and data] page.  
+
+For purposes of demonstration here, we will show R code to use the **ecmwfr** package to pull these data from the Copernicus 
 climate data store. You will need to create a free account in order for this to 
 work. The package website has a useful [walkthrough](https://github.com/bluegreen-labs/ecmwfr#use-copernicus-climate-data-store-cds)
 of how to do this. Below is example code of how to go about doing this, once you 
 have the appropriate API keys. You have to replace the X's below with your account
-IDs.
-You will need to download one year of data at a time otherwise the server times-out. 
+IDs. You will need to download one year of data at a time otherwise the server times-out. 
 
 If you are not sure of the coordinates for a location you want to download data 
 for, you can use the **tmaptools** package to pull the coordinates off open street
@@ -170,20 +173,27 @@ for (i in 2002:2011) {
 
 ### Load climate data {.unnumbered}
 
+Whether you downloaded the climate data via our handbook, or used the code above, you now should have 10 years of ".nc" climate data files stored in the same folder on your computer.  
+
+Use the code below to import these files into R with the **stars** package. 
+
 ```{r read_climate, warning = FALSE, message = FALSE}
 
 ## define path to weather folder 
 file_paths <- list.files(
-  here::here("data", "time_series", "weather"), 
+  here::here("data", "time_series", "weather"), # replace with your own file path 
   full.names = TRUE)
 
 ## only keep those with the current name of interest 
 file_paths <- file_paths[str_detect(file_paths, "germany")]
 
-
-## read in as a stars object 
+## read in all the files as a stars object 
 data <- stars::read_stars(file_paths)
+```
 
+Once these files have been imported as the object `data`, we will convert them to a data frame.  
+
+```{r}
 ## change to a data frame 
 temp_data <- as_tibble(data) %>% 
   ## add in variables and correct units
@@ -234,7 +244,7 @@ Looking at `class(counts)` tells you that on top of being a tidy data frame
 ("tbl_df", "tbl", "data.frame"), it has the additional properties of a time series
 data frame ("tbl_ts"). 
 
-You can take a quick look at your data by using ggplot2. We see from the plot that
+You can take a quick look at your data by using **ggplot2**. We see from the plot that
 there is a clear seasonal pattern, and that there are no missings. However, there
 seems to be an issue with reporting at the beginning of each year; cases drop 
 in the last week of the year and then increase for the first week of the next year. 
@@ -323,7 +333,7 @@ ggplot_na_imputations(counts$case_miss, counts$case_int) +
 
 
 <!-- ======================================================= -->
-### Moving averages {.unnumbered}
+### Moving averages {#timeseries_moving .unnumbered}
 
 If data is very noisy (counts jumping up and down) then it can be helpful to 
 calculate a moving average. In the example below, for each week we calculate the 
@@ -355,14 +365,22 @@ ggplot(counts, aes(x = epiweek)) +
 <!-- ======================================================= -->
 ### Periodicity {.unnumbered}
 
-```{r periodogram}
+Below we define a custom function to create a periodogram. See the [Writing functions] page for information about how to write functions in R.  
 
+First, the function is defined. Its arguments include a dataset with a column `counts`, `start_week = ` which is the first week of the dataset, a number to indicate how many periods per year (e.g. 52, 12), and lastly the output style (see details in the code below).  
+
+
+```{r periodogram}
+## Function arguments
+#####################
 ## x is a dataset
 ## counts is variable with count data or rates within x 
 ## start_week is the first week in your dataset
 ## period is how many units in a year 
 ## output is whether you want return spectral periodogram or the peak weeks
   ## "periodogram" or "weeks"
+
+# Define function
 periodogram <- function(x, 
                         counts, 
                         start_week = c(2002, 1), 
@@ -372,6 +390,7 @@ periodogram <- function(x,
 
     ## make sure is not a tsibble, filter to project and only keep columns of interest
     prepare_data <- dplyr::as_tibble(x)
+    
     # prepare_data <- prepare_data[prepare_data[[strata]] == j, ]
     prepare_data <- dplyr::select(prepare_data, {{counts}})
     
@@ -874,7 +893,7 @@ rest of your code.
 
 Here we define a start date (when our observations started) and a cut-off date 
 (the end of our baseline period - and when the period we want to predict for starts). 
-We also define how many weeks are in your year of interest (the one you are going to
+We also define how many weeks are in our year of interest (the one we are going to
 be predicting). 
 
 ```{r cut_off}
@@ -903,7 +922,7 @@ num_weeks <- ifelse(
 ```
 
 <!-- ======================================================= -->
-#### Fourier terms {  }
+#### Fourier terms {.unnumbered}
 
 We need to redefine our fourier terms - as we want to fit them to the baseline 
 date only and then predict (extrapolate) those terms for the next year. 
