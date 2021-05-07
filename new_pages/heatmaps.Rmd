@@ -22,7 +22,7 @@ knitr::include_graphics(here::here("images", "heat_tile.png"))
 <!-- ======================================================= -->
 ## Preparation { }
 
-### Load packages {-}  
+### Load packages {.unnumbered}  
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -53,7 +53,7 @@ We begin from the case linelist:
 * There is one row per case  
 * There is a column that contains the case_id of the infector, who is also a case in the linelist  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 The first 50 rows of the linelist are shown below for demonstration:  
 
@@ -75,11 +75,11 @@ DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 
 
 
 
-### Convert to "long" {-}  
+### Convert to "long" {.unnumbered}  
 
 **Objective**: We need to achieve a "long"-style dataframe that contains the frequency of transmission events between each age category. This will take several data manuipulation steps to achieve.  
 
-#### Make cases data frame {-} 
+#### Make cases data frame {.unnumbered} 
 
 To begin, we create a dataframe of the cases, their ages, and their infectors - we call the data frame `case_ages`. The first rows are displayed below.  
 
@@ -94,7 +94,7 @@ case_ages <- linelist %>%
 DT::datatable(head(case_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Make infectors data frame {-}  
+#### Make infectors data frame {.unnumbered}  
 
 Next, we create a dataframe of the infectors - at the moment it consists of a single column. These are the infector IDs from the linelist. Not every case has a known infector, so we remove missing values. The first rows are displayed below.  
 
@@ -102,7 +102,7 @@ Next, we create a dataframe of the infectors - at the moment it consists of a si
 ```{r}
 infectors <- linelist %>% 
   select(infector) %>% 
-  filter(!is.na(infector))
+  drop_na(infector)
 ```
 
 ```{r message=FALSE, echo=F}
@@ -214,7 +214,7 @@ Often in public health, one objective is to assess trends over time for many ent
 
 
 
-### Preparation {-}
+### Preparation {.unnumbered}
 
 We begin by importing a dataset of daily malaria reports from many facilities. The reports contain a date, province, district, and malaria counts. See the page on [Download handbook and data] for informaton on how to download these data. Below are the first 30 rows:  
 
@@ -233,9 +233,9 @@ DT::datatable(head(facility_count_data,30), rownames = FALSE, options = list(pag
 ```
 
 
-#### Aggregate and summarize {-}
+#### Aggregate and summarize {.unnumbered}
 
-**The objective in this example** is to transform the daily facility total malaria case counts (seen in previous tab) into *weekly* summary statistics of facility reporting performance - in this case *the proportion of days per week that the facility reported any data*. For this example we will show data only for **Spring District** from April-May 2019.  
+**The objective in this example** is to transform the daily facility total malaria case counts (seen in previous tab) into *weekly* summary statistics of facility reporting performance - in this case *the proportion of days per week that the facility reported any data*. For this example we will show data only for **Spring District**.  
 
 To achieve this we will do the following data management steps:  
 
@@ -261,7 +261,7 @@ agg_weeks <- facility_count_data %>%
   # filter the data as appropriate
   filter(
     District == "Spring",
-    data_date < as.Date("2019-06-01")) 
+    data_date < as.Date("2019-08-01")) 
 ```
 
 Now the dataset has `r nrow(agg_weeks)` rows, when it previously had `r nrow(facility_count_data) `  
@@ -329,7 +329,7 @@ agg_weeks <- agg_weeks %>%
 Before running this code the dataset contains `r nrow(agg_weeks)` rows.   
 
 <!-- ======================================================= -->
-### Create heatmap {-}
+### Create heatmap {.unnumbered}
 
 
 The `ggplot()` is made using `geom_tile()` from the **ggplot2** package:  
@@ -345,7 +345,7 @@ The `ggplot()` is made using `geom_tile()` from the **ggplot2** package:
 
 
 <!-- ======================================================= -->
-#### Basic {-}  
+#### Basic {.unnumbered}  
 
 A basic heatmap is produced below,using the default colors, scales, etc. Within the `aes()` for `geom_tile()` you must provide an x-axis column, y-axis column, **and** a column for the the `fill = ` - these are the numeric values that are converted to tile color.  
 
@@ -357,7 +357,7 @@ ggplot(data = agg_weeks)+
         fill = p_days_reported))
 ```
 
-#### Cleaned plot {-}
+#### Cleaned plot {.unnumbered}
 
 We can make this plot look better by adding additional **ggplot2** functions, as shown below. See the page on [ggplot tips] for details.  
 
@@ -414,7 +414,7 @@ ggplot(data = agg_weeks)+
 
 
 <!-- ======================================================= -->
-#### Ordered y-axis {-}  
+#### Ordered y-axis {.unnumbered}  
 
 Currently, the facilities are ordered "alphabetically" from the bottom to the top. If you want to adjust the order the y-axis facilities, convert them to class factor and provide the order. See the page on [Factors] for tips.  
 
@@ -438,7 +438,7 @@ DT::datatable(facility_order, rownames = FALSE, options = list(pageLength = 5, s
 
 
 
-Now use the above vector (`facility_order$location_name`) to be the order of the factor levels of location_name in the dataframe `agg_weeks`:  
+Now use the above vector (`facility_order$location_name`) to be the order of the factor levels of location_name in the data frame `agg_weeks`:  
 
 ```{r, warning=F, message=F}
 # load package 
@@ -446,9 +446,10 @@ pacman::p_load(forcats)
 
 # create factor and define levels manually
 agg_weeks <- agg_weeks %>% 
-  mutate(location_name = as_factor(location_name),
-         location_name = fct_relevel(location_name, 
-                                     levels = facility_order$location_name))
+  mutate(location_name = fct_relevel(
+    location_name,
+    levels = facility_order$location_name)
+    )
 ```
 
 And now the data are re-plotted, with location_name being an ordered factor:  
@@ -506,7 +507,7 @@ ggplot(data = agg_weeks)+
 
 
 <!-- ======================================================= -->
-#### Display values {-}  
+#### Display values {.unnumbered}  
 
 
 You can add a `geom_text()` layer on top of the tiles, to display the actual numbers of each tile. Be aware this may not look pretty if you have many small tiles!  

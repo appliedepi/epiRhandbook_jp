@@ -5,6 +5,10 @@
 # Survival analysis { }  
 
 
+```{r out.width = c('75%'), fig.align='center', fig.show='hold', echo=F}
+knitr::include_graphics(here::here("images", "survival_analysis.png"))
+```
+
 <!-- ======================================================= -->
 ## Overview {}
 
@@ -32,7 +36,7 @@ It is usually expressed through the **_survival probability_** which is the prob
 <!-- ======================================================= -->
 ## Preparation {  }
 
-### Load packages {-}  
+### Load packages {.unnumbered}  
 
 To run survival analyses in R, one the most widely used package is the **survival** package. We first install it and then load it as well as the other packages that will be used in this section:
 
@@ -60,7 +64,7 @@ pacman::p_load(
 This page explores survival analyses using the linelist used in most of the previous pages and on which we apply some changes to have a proper survival data.
 
 
-### Import dataset {-}  
+### Import dataset {.unnumbered}  
 
 We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
@@ -74,7 +78,7 @@ linelist_case_data <- rio::import(here::here("data", "case_linelists", "linelist
 linelist_case_data <- rio::import("linelist_cleaned.xlsx")
 ```
 
-### Data management and transformation {-}
+### Data management and transformation {.unnumbered}
 
 In short, survival data can be described as having the following three characteristics:
 
@@ -185,7 +189,7 @@ Epi::stat.table(
 ## Basics of survival analysis {}
 
 
-### Building a surv-type object {-}
+### Building a surv-type object {.unnumbered}
 
 We will first use `Surv()` to build a standard survival object form the follow-up time and the event variables.The result of such a step is to produce an object of type *survival* that focuses on the time information by precising whether or not the event of interest (death) was observed. This is done using a “+” after the time in the print out of *survobj* that indicates right-censoring.
 
@@ -204,7 +208,7 @@ head(survobj,50)
 ```
 
 
-### Running initial analyses {-}
+### Running initial analyses {.unnumbered}
 
 We then start our analysis using the `survfit()` function to produce a *survfit object*, which fits the default calculations for **_Kaplan Meier_** (KM) estimates of the overall (marginal) survival curve, which are in fact a step function with jumps at observed event times. The final *survfit object*  contains one or more survival curvesis and is created using the *Surv object* as a response variable in the model formul.
 
@@ -275,7 +279,7 @@ print(
 ```
 
 <!-- ======================================================= -->
-### Plotting Kaplan-Meir curves  {-}
+### Plotting Kaplan-Meir curves  {.unnumbered}
 
 Once the KM estimates are fitted, we can visualize that probability of being alive through the time using the basic `plot()` function that draws the so-known "Kaplan-Meier curve". In other words the curve below is a conventional illustration of the survival experience in the whole patient group.
 
@@ -335,7 +339,7 @@ legend("topright", #position of the legend in the plot
 
 To compare the survival within different groups of our observed participants or patients, we might need to first look at their respective survival curves and then run tests to evaluate the difference between independent groups. This comparison can concern groups based on gender, age, treatment, comorbidity...
 
-### Log rank test {-}
+### Log rank test {.unnumbered}
 
 The log rank test is a popular test that compares the entire survival experience between two or more *independent* groups and can be thought of as a test of whether the survival curves are identical (overlapping) or not (null hypothesis of no difference in survival between the groups). The `survdiff()` function of the **survival package** allows running the log-rank test when we specify `rho=0` (which is the default). The test results gives a chi-square statistic along with a p-value since the log rank statistic is approximately distributed as a chi-square test statistic.
 
@@ -449,7 +453,7 @@ The function `cox.zph()` from **survival** package may be used to test the propo
 * if the HR is less than 1, then the predictor is protective (i.e., associated with improved survival),
 * and if the HR is greater than 1, then the predictor is associated with increased risk (or decreased survival).</span> 
 
-### Fitting a Cox model {-}
+### Fitting a Cox model {.unnumbered}
 
 We can first fit a model to assess the effect of age and gender on the survival. By just printing the model, we have the information on:
 
@@ -532,7 +536,7 @@ summary(linelistsurv_cox)
 
 <!-- ======================================================= -->
 
-### Forest plots {-}
+### Forest plots {.unnumbered}
 
 We can then visualize the results of the cox model using the practical forest plots with the `ggforest()` function of the **survminer package**.
 
@@ -553,7 +557,7 @@ What happens if you are interested in a covariate that is measured **after** fol
 
 For example, maybe you are working with clinical data where you repeated measures of hospital laboratory values that can change over time. This is an example of a **Time Dependent Covariate**. In order to address this you need a special setup, but fortunately the cox model is very flexible and this type of data can also be modeled with tools from the **survival** package. 
 
-### Time-dependent covariate setup {-} 
+### Time-dependent covariate setup {.unnumbered} 
 
 Analysis of time-dependent covariates in R requires setup of a special dataset. If interested, see the more detailed paper on this by the author of the **survival** package [Using Time Dependent Covariates and Time Dependent Coefficients in the Cox Model](https://cran.r-project.org/web/packages/survival/vignettes/timedep.pdf).
 
@@ -572,7 +576,7 @@ We'll load this dataset from the **survival** package using the **base** R comma
 data(BMT, package = "SemiCompRisks")
 ```
 
-#### Add unique patient identifier {-}  
+#### Add unique patient identifier {.unnumbered}  
 
 There is no unique ID column in the `BMT` data, which is needed to create the type of dataset we want. So we use the function `rowid_to_column()` from the **tidyverse** package **tibble** to create a new id column called `my_id` (adds column at start of data frame with sequential row ids, starting at 1). We name the data frame `bmt`.  
 
@@ -586,7 +590,7 @@ The dataset now looks like this:
 DT::datatable(bmt, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Expand patient rows {-}  
+#### Expand patient rows {.unnumbered}  
 
 Next, we'll use the `tmerge()` function with the `event()` and `tdc()` helper functions to create the restructured dataset. Our goal is to restructure the dataset to create a separate row for each patient for each time interval where they have a different value for `deltaA`. In this case, each patient can have at most two rows depending on whether they developed acute graft-versus-host disease during the data collection period. We'll call our new indicator for the development of acute graft-versus-host disease `agvhd`.
 
@@ -624,7 +628,7 @@ td_dat %>%
 
 Now some of our patients have two rows in the dataset corresponding to intervals where they have a different value of our new variable, `agvhd`. For example, Patient 1 now has two rows with a `agvhd` value of zero from time 0 to time 67, and a value of 1 from time 67 to time 2081. 
 
-### Cox regression with time-dependent covariates {-} 
+### Cox regression with time-dependent covariates {.unnumbered} 
 
 Now that we've reshaped our data and added the new time-dependent `aghvd` variable, let's fit a simple single variable cox regression model. We can use the same `coxph()` function as before, we just need to change our `Surv()` function to specify both the start and stop time for each interval using the `time1 = ` and `time2 = ` arguments. 
 

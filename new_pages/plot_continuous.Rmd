@@ -40,7 +40,7 @@ ggplot(data = linelist,
 
 
 # with ggplot2 box plots
-ggplot(data = linelist %>% filter(!is.na(gender)), mapping = aes(y = age, x = gender, fill = gender))+
+ggplot(data = linelist %>% drop_na(gender), mapping = aes(y = age, x = gender, fill = gender))+
   geom_violin()+
   #ggforce::geom_sina(aes(color = gender), alpha = 0.5)+
   geom_boxplot( fill = NA)+
@@ -64,7 +64,7 @@ ggplot(data = linelist,
 
 Preparation includes loading the relevant packages, here **ggplot2** and **dplyr** (both part of **tidyverse**), and ensuring your data columsn are of the correct class. 
 
-### Load packages {-}
+### Load packages {.unnumbered}
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -80,9 +80,9 @@ pacman::p_load(
 
 
 
-### Import data {-}
+### Import data {.unnumbered}
 
-For the examples in this section, we will use the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+For the examples in this section, we will use the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, echo=F}
 # import the linelist into R
@@ -105,7 +105,7 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 
 
-### Column class {-}  
+### Column class {.unnumbered}  
 
 Ensure that the continuous columns are correcly classified in R as class Numeric. Below we use `mutate()` and `as.numeric()`to ensure the class of the columns that are important to our analysis. The the page on [Cleaning data and core functions] for more detail.  
 
@@ -128,7 +128,7 @@ Note: You should have conducted various data checks before this point, including
 
 
 
-### Histograms {-}
+### Histograms {.unnumbered}
 
 Below is code for generating **histograms**, which group continuous data into ranges and display in adjacent bars of varying height. This is done using `geom_histogram()`. See the section in [Plot categorical data] to understand difference between `geom_histogram()`, `geom_bar()`, and `geom_col()`.  
 
@@ -225,7 +225,7 @@ Read more in detail about histograms at the **tidyverse** [page on geom_histogra
 
 
 
-### Box plots {-}
+### Box plots {.unnumbered}
 
 Box plots are common, but have important limitations. They can obscure the actual distribution - e.g. a bi-modal distribution. See this [R graph gallery](https://www.r-graph-gallery.com/boxplot.html) and this [data-to-viz article](https://www.data-to-viz.com/caveat/boxplot.html) for more details. However, they do nicely display the inter-quartile range and outliers - so they can be overlaid on top of other types of plots that show the distribution in more detail.  
 
@@ -258,7 +258,7 @@ For code to add a box plot to the edges of a scatter plot ("marginal" plots) see
 
 
 
-### Violin, jitter, and sina plots {-}
+### Violin, jitter, and sina plots {.unnumbered}
 
 Below is code for creating **violin plots** (`geom_violin`) and **jitter plots** (`geom_jitter`) to show age distributions. You can specify that the fill or color is also determined by the data, thereby inserting these options within `aes()`. 
 
@@ -266,7 +266,7 @@ Below is code for creating **violin plots** (`geom_violin`) and **jitter plots**
 
 
 # A) Jitter plot by group
-ggplot(data = linelist %>% filter(!is.na(outcome)), 
+ggplot(data = linelist %>% drop_na(outcome), 
        mapping = aes(y = age,                     # Continuous variable
            x = outcome,                           # Grouping variable
            color = outcome))+                     # Color variable
@@ -276,7 +276,7 @@ ggplot(data = linelist %>% filter(!is.na(outcome)),
 
 
 # B) Violin plot by group
-ggplot(data = linelist %>% filter(!is.na(outcome)), 
+ggplot(data = linelist %>% drop_na(outcome), 
        mapping = aes(y = age,                      # Continuous variable
            x = outcome,                            # Grouping variable
            fill = outcome))+                       # fill variable (color)
@@ -293,7 +293,7 @@ One can combine the two using the `geom_sina()` function from the **ggforce** pa
 pacman::p_load(ggforce)
 
 # A) Sina plot by group
-ggplot(data = linelist %>% filter(!is.na(outcome)), 
+ggplot(data = linelist %>% drop_na(outcome), 
        aes(y = age,             # numeric variable
            x = outcome)) +      # group variable
   geom_violin()+                # create the violin plot
@@ -302,7 +302,7 @@ ggplot(data = linelist %>% filter(!is.na(outcome)),
 
 
 # A) Sina plot by group
-ggplot(data = linelist %>% filter(!is.na(outcome)), 
+ggplot(data = linelist %>% drop_na(outcome), 
        aes(y = age,             # numeric variable
            x = outcome)) +      # group variable
   geom_violin(aes(fill = outcome), # fill variable (color of violin background)
@@ -325,7 +325,7 @@ ggplot(data = linelist %>% filter(!is.na(outcome)),
 
 
 
-<!-- ### One continuous variable within facets {-} -->
+<!-- ### One continuous variable within facets {.unnumbered} -->
 
 <!-- **Faceting basics**  -->
 
@@ -371,7 +371,7 @@ ggplot(data = linelist,
   labs(title = "A) Scatter plot of weight and age")
 
 # Scatter plot of weight and age by gender and Ebola outcome
-ggplot(data = linelist %>% filter(!is.na(gender) & !is.na(outcome)), # filter retains non-missing gender/outcome
+ggplot(data = linelist %>% drop_na(gender, outcome), # filter retains non-missing gender/outcome
        aes(y = wt_kg, x = age))+
   geom_point() +
   labs(title = "B) Scatter plot of weight and age faceted by gender and outcome")+
@@ -380,7 +380,7 @@ ggplot(data = linelist %>% filter(!is.na(gender) & !is.na(outcome)), # filter re
 ```
 
 
-### Three continuous variables {-}  
+### Three continuous variables {.unnumbered}  
 
 UNDER CONSTRUCTION
 
@@ -392,9 +392,9 @@ UNDER CONSTRUCTION
 
 Using base graphics can sometimes be quicker than ggplot, and is helpful for that initial first look.
 
-### One continuous variable {-}
+### One continuous variable {.unnumbered}
 
-#### Box plots and histograms {-}
+#### Box plots and histograms {.unnumbered}
 
 The in-built graphics package comes with the `boxplot()` and `hist()` functions, allowing straight-forward visualisation of a continuous variable. 
 
@@ -462,7 +462,7 @@ boxplot(age ~ outcome,
         xlab="Suppliment and Dose")
 ```
 
-### Two continuous variables {-}
+### Two continuous variables {.unnumbered}
 
 Using base R, we can quickly visualise the relationship between two continuous variables with the `plot` function.
 

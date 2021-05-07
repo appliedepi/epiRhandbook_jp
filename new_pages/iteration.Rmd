@@ -1,23 +1,27 @@
 
 # Iteration, loops, and lists { }  
 
-Epidemiologists often are faced with repeating analyses on subgroups such as countries, districts, or age groups. These are but a few of the many situations involving *iteration*. Coding your iterative operations using the approaches below will help you perform such repetitive tasks faster, reduce the chance of error, and reduce code length. This page will introduce two approaches to iterative operations - using *for loops* and using the package **purrr**.  
+Epidemiologists often are faced with repeating analyses on subgroups such as countries, districts, or age groups. These are but a few of the many situations involving *iteration*. Coding your iterative operations using the approaches below will help you perform such repetitive tasks faster, reduce the chance of error, and reduce code length.  
+
+This page will introduce two approaches to iterative operations - using *for loops* and using the package **purrr**.  
 
 1) *for loops* iterate code across a series of inputs, but are less common in R than in other programming languages. Nevertheless, we introduce them here as a learning tool and reference  
-2) The **purrr** package is the **tidyverse** approach to iterative operations - it works by "mapping" a function across many inputs (columns, datasets, etc.)  
+2) The **purrr** package is the **tidyverse** approach to iterative operations - it works by "mapping" a function across many inputs (values, columns, datasets, etc.)  
 
 Along the way, we'll show examples like:  
 
 * Importing and exporting multiple files  
 * Creating epicurves for multiple jurisdictions  
-* Running t-tests for several columns in a data frame  
+* Running T-tests for several columns in a data frame  
+
+In the **purrr** [section](#iter_purrr) we will also provide several examples of creating and handling `lists`.  
 
 
 
 ## Preparation {  }
      
      
-### Load packages {-}  
+### Load packages {.unnumbered}  
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -31,9 +35,9 @@ pacman::p_load(
 ```
 
 
-### Import data {-}  
+### Import data {.unnumbered}  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
 
 ```{r, echo=F}
 # import the linelist into R
@@ -42,7 +46,7 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 
 ```{r, eval=F}
 # import the linelist
-linelist <- import("linelist_cleaned.xlsx")
+linelist <- import("linelist_cleaned.rds")
 ```
 
 The first 50 rows of the linelist are displayed below.
@@ -59,14 +63,14 @@ DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 
 
 ## *for loops* {  }
 
-### *for loops* in R {-}  
+### *for loops* in R {#iter_loops .unnumbered}  
 
 *for loops* are not emphasized in R, but are common in other programming languages. As a beginner, they can be helpful to learn and practice with because they are easier to "explore", "de-bug", and otherwise grasp exactly what is happening for each iteration, especially when you are not yet comfortable writing your own functions.  
 
-You may move quickly through *for loops* to iterating with mapped functions with **purrr** (see section below).  
+You may move quickly through *for loops* to iterating with mapped functions with **purrr** (see [section below](#iter_purrr)).  
 
 
-### Core components {-}   
+### Core components {.unnumbered}   
 
 A *for loop* has three core parts:  
      
@@ -79,7 +83,7 @@ The basic syntax is: `for (item in sequence) {do operations using item}`. Note t
 A simple *for loop* example is below.   
 
 ```{r}
-for (num in c(1,2,3,4,5)) {  # the SEQUENCE is defined (numbers 1 to 5) and the loop is opened with "{"
+for (num in c(1,2,3,4,5)) {  # the SEQUENCE is defined (numbers 1 to 5) and loop is opened with "{"
   print(num + 2)             # The OPERATIONS (add two to each sequence number and print)
 }                            # The loop is closed with "}"                            
                              # There is no "container" in this example
@@ -87,14 +91,14 @@ for (num in c(1,2,3,4,5)) {  # the SEQUENCE is defined (numbers 1 to 5) and the 
 
 
 
-### Sequence {-}  
+### Sequence {.unnumbered}  
 
 This is the "for" part of a *for loop* - the operations will run "for" each item in the sequence. The sequence can be a series of values (e.g. names of jurisdictions, diseases, column names, list elements, etc), or it can be a series of consecutive numbers (e.g. 1,2,3,4,5). Each approach has their own utilities, described below.  
 
 The basic structure of a sequence statement is `item in vector`.  
 
 * You can write any character or word in place of "item" (e.g. "i", "num", "hosp", "district", etc.). The value of this "item" changes with each iteration of the loop, proceeding through each value in the vector.  
-* The *vector* can be of character values, column names, or a sequence of numbers - these are the values that will change with each iteration. You can use them within the *for loop* operations using the "item" term.  
+* The *vector* could be of character values, column names, or perhaps a sequence of numbers - these are the values that will change with each iteration. You can use them within the *for loop* operations using the "item" term.  
 
 **Example: sequence of character values**  
 
@@ -119,11 +123,11 @@ for (hosp in hospital_names){       # sequence
 
 **Example: sequence of column names**  
      
-This is a variation on the character sequence above, in which the names of an existing R object are extracted and become the vector. For example, the column names of a data frame. Conveniently, in the operations code of the *for loop*, the column names can be used to *index* their original R object.  
+This is a variation on the character sequence above, in which the names of an existing R object are extracted and become the vector. For example, the column names of a data frame. Conveniently, in the operations code of the *for loop*, the column names can be used to *index* (subset) their original data frame  
 
 Below, the sequence is the `names()` (column names) of the `linelist` data frame. Our "item" name is `col`, which will represent each column name as the loops proceeds.  
 
-For purposes of example, we include operations code inside the *for loop*, which is run for every value in the sequence. In this code, the sequence values (column names) are used to *index* (subset) `linelist`, one-at-a-time. As taught in the [R basics] page, double branckets `[[ ]]` are used to subset. The resulting column is passed to `is.na()`, then to `sum()` to produce the number of values in the column that are missing. The result is printed to the console.  
+For purposes of example, we include operations code inside the *for loop*, which is run for every value in the sequence. In this code, the sequence values (column names) are used to *index* (subset) `linelist`, one-at-a-time. As taught in the [R basics] page, double branckets `[[ ]]` are used to subset. The resulting column is passed to `is.na()`, then to `sum()` to produce the number of values in the column that are missing. The result is printed to the console - one number for each column.  
 
 A note on indexing with column names - whenever referencing the column itself *do not just write "col"!* `col` represents just the character column name! To refer to the entire column you must use the column name as an *index* on `linelist` via `linelist[[col]]`.  
 
@@ -136,17 +140,18 @@ for (col in names(linelist)){        # loop runs for each column in linelist; co
 }
 ```
 
+
+
 **Sequence of numbers**  
      
-In this approach, the sequence is a series of consecutive numbers. Thus, the value of the "item" is not a character value (e.g. "Central Hospital" or "date_onset") but is a number. This is useful for looping through data frames, as you can use the number inside the *for loop* to index the data frame by *row number*.  
+In this approach, the sequence is a series of consecutive numbers. Thus, the value of the "item" is not a character value (e.g. "Central Hospital" or "date_onset") but is a number. This is useful for looping through data frames, as you can use the "item" number inside the *for loop* to index the data frame by *row number*.  
 
-For example, let's say that you want to loop over every row in your data frame and extract certain information. Your "items" would be numeric row numbers. Often, "items" in this case are written as `i`.  
+For example, let's say that you want to loop through every row in your data frame and extract certain information. Your "items" would be numeric row numbers. Often, "items" in this case are written as `i`.  
 
-The *for loop* process could be explained in words as "for every item in a sequence of numbers from 1 to the total number of rows in my data frame, do X". The first iteration of the loop, `i` would be 1. For the second iteration, `i` would be 2, etc.  
+The *for loop* process could be explained in words as "for every item in a sequence of numbers from 1 to the total number of rows in my data frame, do X". For the first iteration of the loop, the value of "item" `i` would be 1. For the second iteration, `i` would be 2, etc.  
 
-Here is what the sequence looks like in code: `for (i in 1:nrow(linelist)) {}` where `i` represents the item and `1:nrow(linelist)` produces a sequence of consecutive numbers from 1 through the number of rows in `linelist`.  
+Here is what the sequence looks like in code: `for (i in 1:nrow(linelist)) {OPERATIONS CODE}` where `i` represents the "item" and `1:nrow(linelist)` produces a sequence of consecutive numbers from 1 through the number of rows in `linelist`.  
 
-One advantage of using numbers in the sequence is that is easy to also use the `i` number to index the *container* that stores the loop outputs. There is an example of this in the Operations section below.  
 
 ```{r, eval=F}
 for (i in 1:nrow(linelist)) {  # use on a data frame
@@ -154,7 +159,7 @@ for (i in 1:nrow(linelist)) {  # use on a data frame
 }  
 ```
 
-If you want the sequence to be numbers but you begin with a vector (not a data frame), use the shortcut `seq_along()` to return a sequence of numbers for each element in the vector. For example, `for (i in seq_along(hospital_names) {}`.  
+If you want the sequence to be numbers, but you are starting from a vector (not a data frame), use the shortcut `seq_along()` to return a sequence of numbers for each element in the vector. For example, `for (i in seq_along(hospital_names) {OPERATIONS CODE}`.  
 
 The below code actually returns numbers, which would become the value of `i` in their respective loop.     
 
@@ -162,13 +167,13 @@ The below code actually returns numbers, which would become the value of `i` in 
 seq_along(hospital_names)  # use on a named vector
 ```
 
+One advantage of using numbers in the sequence is that is easy to also use the `i` number to index a *container* that stores the loop outputs. There is an example of this in the Operations section below.  
 
+### Operations  {.unnumbered}  
 
-### Operations  {-}  
+This is code within the curly brackets `{ }` of the *for loop*. You want this code to run for each "item" in the *sequence*. Therefore, be careful that every part of your code that changes by the "item" is correctly coded such that it actually changes! E.g. remember to use `[[ ]]` for indexing.  
 
-This is code within the *for loop*. You want this code to run for each item in the *sequence*. Therefore, be careful that every part of your code that changes by the item is correctly coded such that it actually changes! E.g. remember to use `[[ ]]` for indexing.  
-
-In the example below, we use iterate through each row in the `linelist`. The `gender` and `age` values of each row are pasted together and stored the container character vector `cases_demographics`. Note how we also use indexing `[[i]]` to save the loop output to the correct position in the "container" vector.  
+In the example below, we iterate through each row in the `linelist`. The `gender` and `age` values of each row are pasted together and stored in the container character vector `cases_demographics`. Note how we also use indexing `[[i]]` to save the loop output to the correct position in the "container" vector.  
 
 ```{r}
 # create container to store results - a character vector
@@ -193,7 +198,7 @@ head(cases_demographics, 10)
 ```
 
 
-### Container {-}
+### Container {.unnumbered}
 
 Sometimes the results of your *for loop* will be printed to the console or RStudio Plots pane. Other times, you will want to store the outputs in a "container" for later use. Such a container could be a vector, a data frame, or even a list.  
 
@@ -222,7 +227,9 @@ delays <- data.frame(matrix(ncol = 2, nrow = 3))
 
 **Empty list**  
      
-You may want store some plots created by a *for loop* in a list. You actually initialize the container using the same `vector()` command as above, but with `mode = "list"`. Specify the length however you wish.  
+You may want store some plots created by a *for loop* in a list. A list is like vector, but holds other R objects within it that can be of different classes. Items in a list could be a single number, a dataframe, a vector, and even another list.  
+
+You actually initialize an empty list using the same `vector()` command as above, but with `mode = "list"`. Specify the length however you wish.  
 
 ```{r, eval=F}
 plots <- vector(mode = "list", length = 16)
@@ -231,11 +238,11 @@ plots <- vector(mode = "list", length = 16)
 
 
 
-### Printing {-}  
+### Printing {.unnumbered}  
 
 Note that to print from within a *for loop* you will likely need to explicitly wrap with the function `print()`.  
 
-In this example below, the sequence is an explicit character vector, which is used to subset the linelist by hospital.The results are not stored in a container, but rather print to console with the `print()` function.    
+In this example below, the sequence is an explicit character vector, which is used to subset the linelist by hospital. The results are not stored in a container, but rather are printed to console with the `print()` function.    
 
 ```{r}
 for (hosp in hospital_names){ 
@@ -245,18 +252,18 @@ for (hosp in hospital_names){
 ```
 
 
-### Testing your for loop {-}
+### Testing your for loop {.unnumbered}
 
-To test your loop, you can make a temporarily assignment of the item, such as `i <- 10` or `hosp <- "Central Hospital"`. Do this *outside the loop* and then run your operations code only (the code within the curly brackets) to see if the expected results are produced.  
-
-
+To test your loop, you can run a command to make a temporary assignment of the "item", such as `i <- 10` or `hosp <- "Central Hospital"`. Do this *outside the loop* and then run your operations code only (the code within the curly brackets) to see if the expected results are produced.  
 
 
-### Looping plots {-}
 
-To put all three components together (container, sequence, and operations) let's try to plot an epicurve for each hospital (see page on [Epidemic curves].  
 
-We can make an epicurve of *all* the cases using the **incidence2** package as below:  
+### Looping plots {.unnumbered}
+
+To put all three components together (container, sequence, and operations) let's try to plot an epicurve for each hospital (see page on [Epidemic curves]).  
+
+We can make a nice epicurve of *all* the cases by gender using the **incidence2** package as below:  
 
 ```{r, warning=F, message=F}
 # create 'incidence' object
@@ -277,13 +284,13 @@ plot(outbreak,                       # name of incidence object
 
 To produce a separate plot for each hospital's cases, we can put this epicurve code within a *for loop*. 
 
-First, we save a named vector of the unique hospital names, `hospital_names`. The *for loop* will run once for each of these names (`for (hosp in hospital_names)`). Each iteration of the *for loop*, the current hospital name from the vector will be represented as "hosp" for use within the loop.  
+First, we save a named vector of the unique hospital names, `hospital_names`. The *for loop* will run once for each of these names: `for (hosp in hospital_names)`. Each iteration of the *for loop*, the current hospital name from the vector will be represented as `hosp` for use within the loop.  
 
-Within the loop, you can write R code as normal, but use the item (`hosp` in this case) knowing that its value will be changing. Within this loop:  
+Within the loop operations, you can write R code as normal, but use the "item" (`hosp` in this case) knowing that its value will be changing. Within this loop:  
      
 * A `filter()` is applied to `linelist`, such that column `hospital` must equal the current value of `hosp`  
 * The incidence object is created on the filtered linelist  
-* The plot for the current hospital is created, with an auto-adjusting title  
+* The plot for the current hospital is created, with an auto-adjusting title that uses `hosp`  
 * The plot for the current hospital is temporarily saved and then printed  
 * The loop then moves onward to repeat with the next hospital in `hospital_names`  
 
@@ -319,9 +326,9 @@ for (hosp in hospital_names) {
 
 
 
-### Tracking progress of a loop {-} 
+### Tracking progress of a loop {.unnumbered} 
 
-A loop with many iterations can run for many minutes or even hours. Thus, it can be helpful to print the progress to the R console. This `if` statement code can be placed *within* the loop operations to print every 100th number.  
+A loop with many iterations can run for many minutes or even hours. Thus, it can be helpful to print the progress to the R console. The `if` statement below can be placed *within* the loop operations to print every 100th number. Just adjust it so that `i` is the "item" in your loop.  
 
 ```{r, eval=F}
 # loop with code to print progress every 100 iterations
@@ -339,15 +346,19 @@ for (i in seq_len(nrow(linelist))){
 
 
 <!-- ======================================================= -->
-## **purrr** { }
+## **purrr** and lists {#iter_purrr}
      
-Another approach to iterative operations is the **purrr** package - the **tidyverse** approach to iteration.  
+Another approach to iterative operations is the **purrr** package - it is the **tidyverse** approach to iteration.  
 
-If you are faced with performing the same task several times, it is probably worth creating a generalised solution that you can use across many inputs. For example, producing plots for multiple jurisdictions, or importing and combining many files. There are also a few other advantages to **purrr** - you can use it with pipes, it handles errors better than normal *for loops*, and the syntax is quite clean and simple! If you are using a *for loop*, you can probably do it more cleanly with **purrr**! 
+If you are faced with performing the same task several times, it is probably worth creating a generalised solution that you can use across many inputs. For example, producing plots for multiple jurisdictions, or importing and combining many files.  
+
+There are also a few other advantages to **purrr** - you can use it with pipes `%>%`, it handles errors better than normal *for loops*, and the syntax is quite clean and simple! If you are using a *for loop*, you can probably do it more clearly and succinctly with **purrr**! 
    
-The most important thing to keep in mind with **purrr** is that it is almost entirely based around *lists* and *vectors* - so think about iteration as applying a set of code to each element of that list/vector!
+Keep in mind that **purrr** is a *functional programming tool*. That is, the operations that are to be iteratively applied are wrapped up into *functions*. See the [Writing functions] page to learn how to write your own functions.  
+
+**purrr** is also almost entirely based around *lists* and *vectors* - so think about it as applying a function to each element of that list/vector!
      
-### Load packages {-}  
+### Load packages {.unnumbered}  
      
 **purrr** is part of the **tidyverse**, so there is no need to install/load a separate package.  
 
@@ -362,9 +373,10 @@ pacman::p_load(
 ```
 
 
-### `map()` {-}  
+### `map()` {.unnumbered}  
 
 One core **purrr** function is `map()`, which "maps" (applies) a function to each input element of a list/vector you provide.  
+
 The basic syntax is `map(.x = SEQUENCE, .f = FUNCTION, OTHER ARGUMENTS)`. In a bit more detail:  
      
 * `.x = ` are the *inputs* upon which the `.f` function will be iteratively applied - e.g. a vector of jurisdiction names, columns in a data frame, or a list of data frames  
@@ -372,13 +384,14 @@ The basic syntax is `map(.x = SEQUENCE, .f = FUNCTION, OTHER ARGUMENTS)`. In a b
 
 A few more notes on syntax:  
      
-* If the function needs no arguments specified, it can be written with no parentheses and no tilde (e.g. `.f = mean`). To provide arguments that will be the same value for each iteration, provide them within `map()` but outside the `.f = ` argument, like the `na.rm = T` in `map(.x = my_list, .f = mean, na.rm=T)`.  
-* Use tilde syntax (`~`) to have greater control over the function - write the function as normal with parentheses, such as: `map(.x = my_list, .f = ~mean(., na.rm = T))`. Use this syntax particularly if the value of an argument will change each iteration, or if it is the value `.x` itself (see examples below)  
+* If the function needs no further arguments specified, it can be written with no parentheses and no tilde (e.g. `.f = mean`). To provide arguments that will be the same value for each iteration, provide them within `map()` but outside the `.f = ` argument, such as the `na.rm = T` in `map(.x = my_list, .f = mean, na.rm=T)`.  
 * You can use `.x` (or simply `.`) *within* the `.f = ` function as a placeholder for the `.x` value of that iteration  
+* Use tilde syntax (`~`) to have greater control over the function - write the function as normal with parentheses, such as: `map(.x = my_list, .f = ~mean(., na.rm = T))`. Use this syntax particularly if the value of an argument will change each iteration, or if it is the value `.x` itself (see examples below)  
 
-The output of using `map()` is a *list* - a type of object that contain other objects within it, each called an "element". So, a list produced by `map()` could contain many data frames, or many vectors, many single values, or even many lists! There are alternative versions of `map()` explained below that produce other types of outputs (e.g. `map_dfr()` to produce a data frame, `map_chr()` to produce character vectors, and `map_dbl()` to produce numeric vectors).  
 
-#### Example - import and combine Excel sheets {-}  
+**The output of using `map()` is a *list*** - a list is an object class like a vector but whose elements can be of different classes. So, a list produced by `map()` could contain many data frames, or many vectors, many single values, or even many lists! There are alternative versions of `map()` explained below that produce other types of outputs (e.g. `map_dfr()` to produce a data frame, `map_chr()` to produce character vectors, and `map_dbl()` to produce numeric vectors).  
+
+#### Example - import and combine Excel sheets {#iter_combined .unnumbered}  
 
 **Let's demonstrate with a common epidemiologist task:** - *You want to import an Excel workbook with case data, but the data are split across different named sheets in the workbook. How do you efficiently import and combine the sheets into one data frame?*  
 
@@ -390,9 +403,9 @@ knitr::include_graphics(here::here("images", "hospital_linelists_excel_sheets.pn
 
 Here is one approach that uses `map()`:  
      
-1) `map()` the function `import()` on to each Excel sheet  
-2) Combine the data frames into one using `bind_rows()`  
-3) Along the way, we preserve the sheet name of origin for each case, storing this in a new column in the data frame  
+1) `map()` the function `import()` so that it runs for each Excel sheet  
+2) Combine the imported data frames into one using `bind_rows()`  
+3) Along the way, preserve the original sheet name for each row, storing this information in a new column in the final data frame  
 
 First, we need to extract the sheet names and save them. We provide the Excel workbook's file path to the function `excel_sheets()` from the package **readxl**, which extracts the sheet names. We store them in a character vector called `sheet_names`.  
 
@@ -417,7 +430,6 @@ Recall from the [Import and export] page that when used on Excel workbooks, `imp
 
 Of note - because we have used `map()`, the data in each Excel sheet will be saved as a separate data frame within a list. We want each of these list elements (data frames) to have a *name*, so before we pass `sheet_names` to `map()` we pass it through `set_names()` from **purrr**, which ensures that each list element gets the appropriate name.  
 
-
 We save the output list as `combined`.  
 
 ```{r, echo=F}
@@ -439,7 +451,7 @@ When we inspect output, we see that the data from each Excel sheet is saved in t
 knitr::include_graphics(here::here("images", "sheets_as_list.png"))
 ```
 
-Lastly, we use the function `bind_rows()` (from **dplyr**) which accepts the list of data frames and combines them into one data frame. To create a column from the list element *names*, we use the argument `.id = ` and provide it with the desired name of the new column.  
+Lastly, we use the function `bind_rows()` (from **dplyr**) which accepts the list of similarly-structured data frames and combines them into one data frame. To create a new column from the list element *names*, we use the argument `.id = ` and provide it with the desired name for the new column.  
 
 Below is the whole sequence of commands:  
 
@@ -454,22 +466,23 @@ combined <- sheet_names %>%
 
 
 ```{r, eval=F}
-sheet_names <- readxl::excel_sheets("hospital_linelists.xlsx")
-
-combined <- sheet_names %>% 
-  purrr::set_names() %>% 
-  map(.f = ~import("hospital_linelists.xlsx", which = .x)) %>% 
-  bind_rows(.id = "origin_sheet") # provide name for new column that contains the name of the original list element  
+sheet_names <- readxl::excel_sheets("hospital_linelists.xlsx")  # extract sheet names
+ 
+combined <- sheet_names %>%                                     # begin with sheet names
+  purrr::set_names() %>%                                        # set their names
+  map(.f = ~import("hospital_linelists.xlsx", which = .x)) %>%  # iterate, import, save in list
+  bind_rows(.id = "origin_sheet") # combine list of data frames, preserving origin in new column  
 ```
 
-And now we have one data frame with a column containing the sheet of origin! 
+And now we have one data frame with a column containing the sheet of origin!  
+
 ```{r, fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "sheets_as_df.png"))
 ```
 
-There are variations of `map()` that you should be aware of. For example - `map_dfr()` returns a data frame, not a list. Thus, we could have used it for the task above and not have to bind rows. But then we would not have been able to capture which sheet (hospital) each case came from.  
+There are variations of `map()` that you should be aware of. For example, `map_dfr()` returns a data frame, not a list. Thus, we could have used it for the task above and not have had to bind rows. But then we would not have been able to capture which sheet (hospital) each case came from.  
 
-Other variations include `map_chr()`, `map_dbl()`. These are very useful functions for two reasons. Firstly. they automatically convert the output of an iterative function into a vector. Secondly, they can explicitly control the class that the data comes back in - you ensure that your data comes back as a character vector (`map_chr()`), or numeric vector (`map_dbl()`). Lets return to these later in the section!
+Other variations include `map_chr()`, `map_dbl()`. These are very useful functions for two reasons. Firstly. they automatically convert the output of an iterative function into a vector (not a list). Secondly, they can explicitly control the class that the data comes back in - you ensure that your data comes back as a character vector with `map_chr()`, or numeric vector with `map_dbl()`. Lets return to these later in the section!
 
 The functions `map_at()` and `map_if()` are also very useful for iteration - they allow you to specify which elements of a list you should iterate at! These work by simply applying a vector of indexes/names (in the case of `map_at()`) or a logical test (in the case of `map_if()`).  
 
@@ -499,21 +512,22 @@ combined <- sheet_names %>%
 Note that the first sheet name will still appear as an element of the output list - but it is only a single character name (not a data frame). You would need to remove this element before binding rows. We will cover how to remove and modify list elements in a later section.  
 
 
-### Split dataset and export {-}  
+### Split dataset and export {.unnumbered}  
 
 Below, we give an example of how to split a dataset into parts and then use `map()` iteration to export each part as a separate Excel sheet, or as a separate CSV file.  
-#### Split dataset {-}  
+
+#### Split dataset {.unnumbered}  
 
 Let's say we have the complete case `linelist` as a data frame, and we now want to create a separate linelist for each hospital and export each as a separate CSV file. Below, we do the following steps:  
      
-Use `group_split()` (from **dplyr**) to split the `linelist` data frame by unique values in column `hospital`. The output is a List containing one data frame per hospital subset.  
+Use `group_split()` (from **dplyr**) to split the `linelist` data frame by unique values in column `hospital`. The output is a list containing one data frame per hospital subset.  
 
 ```{r}
 linelist_split <- linelist %>% 
      group_split(hospital)
 ```
 
-You can `View(linelist_split)` and see that this list contains 6 data frames ("tibbles"), each representing the cases from one hospital. 
+We can run `View(linelist_split)` and see that this list contains 6 data frames ("tibbles"), each representing the cases from one hospital. 
 
 ```{r, fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "purrr_linelist_split.png"))
@@ -524,11 +538,11 @@ However, note that the data frames in the list do not have names by default! We 
 One approach to extracting the names is to use `pull()` (from **dplyr**) to extract the `hospital` column from each data frame in the list. Then, to be safe, we convert the values to character and then use `unique()` to get the name for that particular data frame. All of these steps are applied to each data frame via `map()`.  
 
 ```{r}
-names(linelist_split) <- linelist_split %>%   # Assign the names of each data frame in the list linelist_split 
+names(linelist_split) <- linelist_split %>%   # Assign to names of listed data frames 
      # Extract the names by doing the following to each data frame: 
-     map(.f = ~pull(.x, hospital)) %>%             # Pull out hospital column
-     map(.f = ~as.character(.x)) %>%               # Convert to character, just in case
-     map(.f = ~unique(.x))                         # Take the unique hospital name
+     map(.f = ~pull(.x, hospital)) %>%        # Pull out hospital column
+     map(.f = ~as.character(.x)) %>%          # Convert to character, just in case
+     map(.f = ~unique(.x))                    # Take the unique hospital name
 ```
 
 We can now see that each of the list elements has a name. These names can be accessed via `names(linelist_split)`.  
@@ -542,7 +556,7 @@ names(linelist_split)
 ```
 
 
-##### More than one `group_split()` column {-}  
+##### More than one `group_split()` column {.unnumbered}  
 
 If you wanted to split the linelist by *more than one grouping column*, such as to produce subset linelist by intersection of hospital AND gender, you will need a different approach to naming the list elements. This involves collecting the unique "group keys" using `group_keys()` from **dplyr** - they are returned as a data frame. Then you can combine the group keys into values with `unite()` as shown below, and assign these conglomerate names to `linelist_split`.  
 
@@ -573,7 +587,7 @@ names(linelist_split) <- groupings %>%
 
 
 
-#### Export as Excel sheets {-}  
+#### Export as Excel sheets {.unnumbered}  
 
 To export the hospital linelists as *an Excel workbook with one linelist per sheet*, we can just provide the named list `linelist_split` to the `write_xlsx()` function from the **writexl** package. This has the ability to save one Excel workbook with multiple sheets. The list element names are automatically applied as the sheet names.  
 
@@ -588,11 +602,11 @@ You can now open the Excel file and see that each hospital has its own sheet.
 knitr::include_graphics(here::here("images", "purrr_export_sheets.png"))
 ```
 
-#### Export as CSV files {-}  
+#### Export as CSV files {.unnumbered}  
 
 It is a bit more complex command, but you can also export each hospital-specific linelist as a separate CSV file, with a file name specific to the hospital.  
 
-Again we use `map()`: we take the vector of list element names (shown above) and use `map()` to iterate through them, applying `export()` (from **rio** package, see [Import and export] page) on the data frame in the list `linelist_split` that has that name. We also use the name to create a unique file name. Here is how it works:  
+Again we use `map()`: we take the vector of list element names (shown above) and use `map()` to iterate through them, applying `export()` (from the **rio** package, see [Import and export] page) on the data frame in the list `linelist_split` that has that name. We also use the name to create a unique file name. Here is how it works:  
      
 * We begin with the vector of character names, passed to `map()` as `.x`  
 * The `.f` function is `export()` , which requires a data frame and a file path to write to  
@@ -615,7 +629,7 @@ knitr::include_graphics(here::here("images", "purrr_export_csv.png"))
 
 
 
-### Custom functions {-}  
+### Custom functions {.unnumbered}  
 
 You may want to create your own function to provide to `map()`.  
 
@@ -669,7 +683,7 @@ ggarrange(plotlist = my_plots, ncol = 2, nrow = 3)
 
 
 
-### Mapping a function across columns {-}  
+### Mapping a function across columns {.unnumbered}  
 
 Another common use-case is to map a function across many columns. Below, we `map()` the function `t.test()` across numeric columns in the data frame `linelist`, comparing the numeric values by gender.  
 
@@ -678,7 +692,7 @@ Recall from the page on [Simple statistical tests] that `t.test()` can take inpu
 * The numeric columns of interest are selected from `linelist` - these become the `.x` inputs to `map()`  
 * The function `t.test()` is supplied as the `.f` function, which is applied to each numeric column  
 * Within the parentheses of `t.test()`:  
-  * the first `~` precedes the `.f` that map will iterate over `.x`  
+  * the first `~` precedes the `.f` that `map()` will iterate over `.x`  
   * the `.x` represents the current column being supplied to the function `t.test()`  
   * the second `~` is part of the t-test equation described above  
   * the `t.test()` function expects a binary column on the right-hand side of the equation. We supply the vector `linelist$gender` independently and statically (note that it is not included in `select()`).  
@@ -711,11 +725,11 @@ linelist <- linelist %>%
 ```
 
 
-### Extract from list {-}  
+### Extract from lists {.unnumbered}  
 
-As `map()` produces an output of class List, we will spend some time discussing how to extract data from lists using accompanying **purrr** functions. To demonstrate this, we will use the list `t.test_results` from the previous section. This is a list of 5 lists - each of the 5 lists contains the results of a t-test between the a column from `linelist` data frame and its binary column `gender`. See the image in the section above for a visual of the list structure.  
+As `map()` produces an output of class List, we will spend some time discussing how to extract data from lists using accompanying **purrr** functions. To demonstrate this, we will use the list `t.test_results` from the previous section. This is a list of 5 lists - each of the 5 lists contains the results of a t-test between a column from `linelist` data frame and its binary column `gender`. See the image in the section above for a visual of the list structure.  
 
-#### Names of elements {-}  
+#### Names of elements {.unnumbered}  
 
 To extract the names of the elements themselves, simply use `names()` from **base** R. In this case, we use `names()` on `t.test_results` to return the names of each sub-list, which are the names of the 5 variables that had t-tests performed.  
 
@@ -723,7 +737,7 @@ To extract the names of the elements themselves, simply use `names()` from **bas
 names(t.test_results)
 ```
 
-#### Elements by name or position {-}  
+#### Elements by name or position {.unnumbered}  
 
 To extract list elements by name or by position you can use brackets `[[ ]]` as described in the [R basics] page. Below we use double brackets to index the list `t.tests_results` and display the first element which is the results of the t-test on `age`.  
 
@@ -734,7 +748,7 @@ t.test_results[[1]]["p.value"] # return element named "p.value" from first eleme
 
 However, below we will demonstrate use of the simple and flexible **purrr** functions `map()` and `pluck()` to achieve the same outcomes.  
 
-#### `pluck()`  
+#### `pluck()` {.unnumbered}  
 
 `pluck()` pulls out elements by name or by position. For example - to extract the t-test results for age, you can use `pluck()` like this:  
 
@@ -750,12 +764,13 @@ t.test_results %>%
   pluck("age", "p.value")
 ```
 
-You can extract such inner elements from *all* first-level elements by using `map()` to run the `pluck()` function across each first-level element. For example, the below code extracts the "p.value" elements from all lists within `t.test_results`.  
+You can extract such inner elements from *all* first-level elements by using `map()` to run the `pluck()` function across each first-level element. For example, the below code extracts the "p.value" elements from all lists within `t.test_results`. The list of t-test results is the `.x` iterated across, `pluck()` is the `.f` function being iterated, and the value "p-value" is provided to the function.     
 
 ```{r}
 t.test_results %>%
   map(pluck, "p.value")   # return every p-value
 ```
+
 As another alternative, `map()` offers a shorthand where you can write the element name in quotes, and it will pluck it out. If you use `map()` the output will be a list, whereas if you use `map_chr()` it will be a named character vector and if you use `map_dbl()` it will be a named numeric vector.  
 
 ```{r}
@@ -763,8 +778,11 @@ t.test_results %>%
   map_dbl("p.value")   # return p-values as a named numeric vector
 ```
 
+You can read more about `pluck()` in it's **purrr** [documentation](https://purrr.tidyverse.org/reference/pluck.html). It has a sibling function `chuck()` that will return an error instead of NULL if an element does not exist.  
 
-### Convert list to data frame {-}  
+
+
+### Convert list to data frame {.unnumbered}  
 
 This is a complex topic - see the Resources section for more complete tutorials. Nevertheless, we will demonstrate converting the list of t-test results into a data frame. We will create a data frame with columns for the variable, its p-value, and the means from the two groups (male and female).  
 
@@ -803,7 +821,7 @@ Once you have this list column, there are several **tidyr** functions (part of *
 * `unnest_longer()` - gives each element of a list-column its own row
 * `hoist()` - acts like `unnest_wider()` but you specify which elements to unnest  
 
-Below, we pass the tibble to `unnest_wider()` specifying the `means` column (which is a nested list). The result is that `means` is replaced by two new columns, each reflecting the two elements that were previously in each `means` cell.  
+Below, we pass the tibble to `unnest_wider()` specifying the tibble's `means` column (which is a nested list). The result is that `means` is replaced by two new columns, each reflecting the two elements that were previously in each `means` cell.  
 
 ```{r}
 t.test_results %>% 
@@ -815,11 +833,9 @@ t.test_results %>%
   unnest_wider(means)
 ```
 
-You can read more about `pluck()` in it's **purrr** [documentation](https://purrr.tidyverse.org/reference/pluck.html). It has a sibling function `chuck()` that will return an error instead of NULL if an element does not exist.  
 
 
-
-### Discard, keep, and compact lists {-}  
+### Discard, keep, and compact lists {.unnumbered}  
 
 Because working with **purrr** so often involves lists, we will briefly explore some **purrr** functions to modify lists. See the Resources section for more complete tutorials on **purrr** functions.    
 
@@ -828,7 +844,7 @@ Because working with **purrr** so often involves lists, we will briefly explore 
 * `discard()` removes the elements specified to `.p`, or where a function supplied to `.p = ` evaluates to TRUE  
 * `compact()` removes all empty elements  
 
-Here are some examples using the `combined` list created in the section above (containing 6 data frames):  
+Here are some examples using the `combined` list created in the section above on [using map() to import and combine multiple files](#iter_combined) (it contains 6 case linelist data frames):    
 
 Elements can be removed by name with `list_modify()` and setting the name equal to `NULL`.  
 
@@ -840,13 +856,15 @@ combined %>%
 You can also remove elements by criteria, by providing a "predicate" equation to `.p = ` (an equation that evaluates to either TRUE or FALSE). Place a tilde `~` before the function and use `.x` to represent the list element. Using `keep()` the list elements that evaluate to TRUE will be kept. Inversely, if using `discard()` the list elements that evaluate to TRUE will be removed.  
 
 ```{r, eval=F}
+# keep only list elements with more than 500 rows
 combined %>% 
-  keep(.p = ~nrow(.x) > 500)  # keep only list elements with more than 500 rows
+  keep(.p = ~nrow(.x) > 500)  
 ```
 
 In the below example, list elements are discarded if their class are not data frames.  
 
 ```{r, eval=F}
+# Discard list elements that are not data frames
 combined %>% 
   discard(.p = ~class(.x) != "data.frame")
 ```
@@ -854,20 +872,22 @@ combined %>%
 Your predicate function can also reference elements/columns within each list item. For example, below, list elements where the mean of column `ct_blood` is over 25 are discarded.  
 
 ```{r, eval=F}
+# keep only list elements where ct_blood column mean is over 25
 combined %>% 
-  discard(.p = ~mean(.x$ct_blood) > 25)  # keep only list elements with more than 500 rows
+  discard(.p = ~mean(.x$ct_blood) > 25)  
 ```
 
 This command would remove all empty list elements:  
 
 ```{r, eval=F}
+# Remove all empty list elements
 combined %>% 
   compact()
 ```
 
 
 
-### `pmap()` {-}
+### `pmap()` {.unnumbered}
 
 THIS SECTION IS UNDER CONSTRUCTION  
 
@@ -875,9 +895,10 @@ THIS SECTION IS UNDER CONSTRUCTION
 
 ## Apply functions  
 
-Here we very briefly describe the apply family of functions. We will not describe them extensively, but will explain the syntax sufficiently such that you can know how to interpret the commands if you encounter them.  
+The "apply" family of functions is a **base** R alternative to **purrr** for iterative operations. You can read more about them [here](https://www.datacamp.com/community/tutorials/r-tutorial-apply-family).  
 
-UNDER CONSTRUCTION
+
+
 
 
 
@@ -898,7 +919,7 @@ A purrr [tutorial](http://zevross.com/blog/2019/06/11/the-power-of-three-purrr-p
 
 [purrr cheatsheet](https://raw.githubusercontent.com/rstudio/cheatsheets/master/pngs/thumbnails/purrr-cheatsheet-thumbs.png)
 
-https://www.hvitfeldt.me/blog/purrr-tips-and-tricks/
+[purrr tips and tricks](https://www.hvitfeldt.me/blog/purrr-tips-and-tricks/)
 
-https://hookedondata.org/going-off-the-map/#keep-and-discard
+[keep and discard](https://hookedondata.org/going-off-the-map/#keep-and-discard)
 

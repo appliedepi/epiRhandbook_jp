@@ -6,39 +6,53 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 ```
 
 
-<!-- ======================================================= -->
-<!-- ======================================================= -->
-<!-- ======================================================= -->
+This page demonstrates common steps used in the process of "cleaning" a dataset, and also explains the use of many essential R data management functions.  
+
+To demonstrate data cleaning, this page begins by importing a raw case linelist dataset, and proceeds step-by-step through the cleaning process. In the R code, this manifests as a "pipe" chain, which references the "pipe" operator ` %>%` that passes a dataset from one operation to the next.  
 
 
-This page demonstrates common steps necessary to clean a dataset, starting with importing raw data and demonstrating a "pipe chain" of cleaning steps. We use a simulated Ebola case linelist, which is referenced often in this handbook.  
+### Core functions {.unnumbered}  
 
-This page also explains the use of many core functions used in data management, including:  
+This handbook emphasizes use of the functions from the [**tidyverse**](https://www.tidyverse.org/) family of R packages. The essential R functions demonstrated in this page are listed below.  
+
+Many of these functions belong to the [**dplyr**](https://dplyr.tidyverse.org/) R package, which provides "verb" functions to solve data manipulation challenges (the name is a reference to a "data frame-[plier](https://www.thefreedictionary.com/plier#:~:text=also%20ply%C2%B7er%20(pl%C4%AB%E2%80%B2,holding%2C%20bending%2C%20or%20cutting.)"). **dplyr** is part of the **tidyverse** family of R packages (which also includes **ggplot2**, **tidyr**, **stringr**, **tibble**, **purrr**, **magrittr**, and **forcats** among others).  
+
 
 Function       | Utility                               | Package
 ---------------|---------------------------------------|------------------------------
-` %>% `|pipe to pass the dataset from one function to the next|**magrittr** (also **tidyverse**)
-`mutate()`|to create, transform, and re-define columns|**dplyr** (also **tidyverse**) 
-`select()`|to select or re-name columns| "
-`filter()`|to keep certain rows| " 
-`across()`|to transform multiple columns at one time| " 
-`rowwise()`|operations across one row| "  
-`rename()`|to rename columns| " 
-`add_row()`|to add rows manually| " 
-`distinct()`|to de-duplicate rows| " 
-`recode()`|to re-code values in a column| " 
-`case_when()`|to re-code values in a column using more complex logical criteria| " 
-`clean_names()`|to standardize the syntax of column names|**janitor**
-`replace_na()`, `na_if()`, `coalesce()`|special functions for re-coding|**tidyr** (also **tidyverse**)
-`as.character()`, `as.numeric()`, `as.Date()`, etc.|to convert the class of a column|**base** R
-`clean_data()`|to re-code/clean using a data dictionary|**linelist**
-`age_categories()` and `cut()`|to create categorical groups from a numeric column|**epikit** and **base** R  
+` %>% `|"pipe" (pass) data from one function to the next|**magrittr** 
+`mutate()`|create, transform, and re-define columns|**dplyr**  
+`select()`|keep, remove, select, or re-name columns|**dplyr**
+`rename()`|rename columns|**dplyr** 
+`clean_names()`|standardize the syntax of column names|**janitor**
+`as.character()`, `as.numeric()`, `as.Date()`, etc.|convert the class of a column|**base** R
+`across()`|transform multiple columns at one time|**dplyr** 
+**tidyselect** functions|use logic to select columns|**tidyselect**   
+`filter()`|keep certain rows|**dplyr** 
+`distinct()`|de-duplicate rows|**dplyr** 
+`rowwise()`|operations by/within each row|**dplyr**  
+`add_row()`|add rows manually|**tibble** 
+`arrange()`|sort rows|**dplyr**
+`recode()`|re-code values in a column|**dplyr** 
+`case_when()`|re-code values in a column using more complex logical criteria|**dplyr** 
+`replace_na()`, `na_if()`, `coalesce()`|special functions for re-coding|**tidyr**  
+`age_categories()` and `cut()`|create categorical groups from a numeric column|**epikit** and **base** R
+`clean_variable_spelling()`|re-code/clean values using a data dictionary|**linelist**
+`which()`|apply logical criteria; return indices|**base** R
 
+If you want to see how these functions compare to Stata or SAS commands, see the page on [Transition to R].  
 
-If you want to see how these functions compare to Stata or SAS, see the page on [Transition to R].
+You may encounter an alternative data management framework from the **data.table** R package with operators like `:=` and frequent use of brackets `[ ]`. This approach and syntax is briefly explained in the [Data Table] page.  
 
-This handbook emphasizes use of the above functions from the **tidyverse** R package for data management. However, you may encounter an alternative framework from the **data.table** R package. This approach and syntax is briefly explained in the [Data Table] page.  
+### Nomenclature {.unnumbered}  
 
+In this handbook, we generally reference "columns" and "rows" instead of "variables" and "observations". As explained in this primer on ["tidy data"](https://tidyr.tidyverse.org/articles/tidy-data.html), most epidemiological statistical datasets consist structurally of rows, columns, and values.  
+
+*Variables* contain the values that measure the same underlying attribute (like age group, outcome, or date of onset). *Observations* contain all values measured on the same unit (e.g. a person, site, or lab sample). So these aspects can be more difficult to tangibly define.  
+
+In "tidy" datasets, each column is a variable, each row is an observation, and each cell is a single value. However some datasets you encounter will not fit this mold - a "wide" format dataset may have a variable split across several columns (see an example in the [Pivoting data] page). Likewise, observations could be split across several rows.  
+
+Most of this handbook is about managing and transforming data, so referring to the concrete data structures of rows and columns is more relevant than the more abstract observations and variables. Exceptions occur primarily in pages on data analysis, where you will see more references to variables and observations.  
 
 
 
@@ -49,16 +63,16 @@ This handbook emphasizes use of the above functions from the **tidyverse** R pac
 
 **This page proceeds through typical cleaning steps, adding them sequentially to a cleaning pipe chain.**
 
-In epidemiological analysis and data processing, cleaning steps are often performed linked together, sequentially. In R this often manifests as a cleaning "pipeline", where *the raw dataset is passed or "piped" from one cleaning step to another*.  
+In epidemiological analysis and data processing, cleaning steps are often performed sequentially, linked together. In R, this often manifests as a cleaning "pipeline", where *the raw dataset is passed or "piped" from one cleaning step to another*.  
 
-Such chain utilize **dplyr** "verb" functions and the **magrittr** pipe operator `%>%`. This pipe begins with the "raw" data ("linelist_raw.xlsx") and ends with a "clean" R data frame (`linelist`).  
+Such chains utilize **dplyr** "verb" functions and the **magrittr** pipe operator `%>%`. This pipe begins with the "raw" data ("linelist_raw.xlsx") and ends with a "clean" R data frame (`linelist`) that can be used, saved, exported, etc.  
 
 In a cleaning pipeline the order of the steps is important. Cleaning steps might include:  
 
 * Importing of data  
 * Column names cleaned or changed  
 * De-duplication  
-* Column creation and transformation (e.g. re-coding or cleaning values)  
+* Column creation and transformation (e.g. re-coding or standardising values)  
 * Rows filtered or added  
 
 
@@ -77,7 +91,7 @@ pacman::p_load(
   janitor,    # data cleaning and tables
   lubridate,  # working with dates
   epikit,     # age_categories() function
-  tidyverse   # data manipulation and visualization
+  tidyverse   # data management and visualization
 )
 ```
 
@@ -89,20 +103,15 @@ pacman::p_load(
 <!-- ======================================================= -->
 ## Import data  
 
-### Import {-}  
+### Import {.unnumbered}  
 
-Here we import the raw .xlsx case linelist using the `import()` function from the package **rio**, and save it as the data frame `linelist_raw`. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page.  
+Here we import the "raw" case linelist Excel file using the `import()` function from the package **rio**. The **rio** package flexibly handles many types of files (e.g. .xlsx, .csv, .tsv, .rds. See the page on [Import and export] for more information and tips on unusual situations (e.g. skipping rows, setting missing values, importing Google sheets, etc).  
+
+If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_raw.xlsx' class='download-button'>click to download the "raw" linelist</a> (as .xlsx file).  
 
 If your dataset is large and takes a long time to import, it can be useful to have the import command be separate from the pipe chain and the "raw" saved as a distinct file. This also allows easy comparison between the original and cleaned versions.  
 
-See the page on [Import and export] for more details and unusual situations, including:  
-
-* Skipping the import of certain rows  
-* Dealing with a second row that is a data dictionary  
-* Importing from Google sheets   
-
-
-Below we import the raw .xlsx file. We assume it is located in the working directory and so no sub-folders are specified in the filepath.  
+Below we import the raw Excel file and save it as the data frame `linelist_raw`. We assume the file is located in your working directory or R project root, and so no sub-folders are specified in the file path.  
 
 ```{r, echo=F, message=F}
 # HIDDEN FROM READER
@@ -114,15 +123,15 @@ linelist_raw <- rio::import(here::here("data", "case_linelists", "linelist_raw.x
 linelist_raw <- import("linelist_raw.xlsx")
 ```
 
-You can view the first 50 rows of the the original "raw" dataset below. You can use the **base** R function `head(n)` to view just the first `n` lines in the console.  
+You can view the first 50 rows of the the data frame below. Note: the **base** R function `head(n)` allow you to view just the first `n` rows in the R console.  
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
 DT::datatable(head(linelist_raw,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
-### Review {-}  
+### Review {.unnumbered}  
 
-You can use the function `skim()` from the package **skimr** to get an overview of the entire dataframe (see page on [Descriptive tables] for more info). Columns are summarised by class (character, numeric, POSIXct - a type of date class).  
+You can use the function `skim()` from the package **skimr** to get an overview of the entire dataframe (see page on [Descriptive tables] for more info). Columns are summarised by class/type such as character, numeric. Note: "POSIXct" is a type of raw date class (see [Working with dates].  
 
 
 ```{r, eval=F}
@@ -147,7 +156,11 @@ skimr::skim_without_charts(linelist_raw)
 <!-- ======================================================= -->
 ## Column names {} 
 
-Column names are used very often, so they must have "clean" syntax. We suggest the following:  
+In R, column *names* are the "header" or "top" value of a column. They are used to refer to columns in the code, and serve as a default label in figures.  
+
+Other statistical software such as SAS and STATA use *"labels"* that co-exist as longer printed versions of the shorter column names. While R does offer the possibility of adding column labels to the data, this is not emphasized in most practice. To make column names "printer-friendly" for figures, one typically adjusts their display within the commands that create the outputs (e.g. axis or legend titles of a plot, or column headers in a printed table - see the [ggplot tips] and [Tables for presentation] pages). If you want to assign column labels in the data, read more online [here](https://cran.r-project.org/web/packages/expss/vignettes/labels-support.html) and [here](https://cran.r-project.org/web/packages/labelled/vignettes/intro_labelled.html).  
+
+As R column names are used very often, so they must have "clean" syntax. We suggest the following:  
 
 * Short names
 * No spaces (replace with underscores _ ) 
@@ -158,46 +171,49 @@ The columns names of `linelist_raw` are printed below using `names()` from **bas
 
 * Some names contain spaces (e.g. `infection date`)  
 * Different naming patterns are used for dates (`date onset` vs. `infection date`)  
-* There must have been a *merged header* across the two last columns in the .xlsx. We know this because the name of two merged columns ("merged_header") was applied to the first one, and the second column was assigned a placeholder  name "...28", as it was then empty and is the 28th column.  
+* There must have been a *merged header* across the two last columns in the .xlsx. We know this because the name of two merged columns ("merged_header") was assigned by R to the first column, and the second column was assigned a placeholder  name "...28" (as it was then empty and is the 28th column).  
 
 ```{r}
 names(linelist_raw)
 ```
 
-<span style="color: black;">**_NOTE:_** To reference a column name that include spaces, surround the name with back-ticks, for example: linelist$`` `r '\x60infection date\x60'` ``. note that on your keyboard, the back-tick (`) is different from the single quotation mark (').</span>
+<span style="color: black;">**_NOTE:_** To reference a column name that includes spaces, surround the name with back-ticks, for example: linelist$`` `r '\x60infection date\x60'` ``. note that on your keyboard, the back-tick (`) is different from the single quotation mark (').</span>
 
 
+### Labels {.unnumbered}  
+
+Some other statistical software such as SAS have variable *labels*
 
 
-### Automatic cleaning {-}  
+### Automatic cleaning {.unnumbered}  
 
 The function `clean_names()` from the package **janitor** standardizes column names and makes them unique by doing the following:  
 
 * Converts all names to consist of only underscores, numbers, and letters  
 * Accented characters are transliterated to ASCII (e.g. german o with umlaut becomes "o", spanish "enye" becomes "n")  
-* Capitalization preference can be specified using the `case = ` argument ("snake" is default, alternatives include "sentence", "title", "small_camel"...)  
-* You can specify name replacements with the `replace = ` argument (e.g. `replace = c(onset = "date_of_onset")`)  
+* Capitalization preference for the new column names can be specified using the `case = ` argument ("snake" is default, alternatives include "sentence", "title", "small_camel"...)  
+* You can specify specific name replacements by providing a vector to the `replace = ` argument (e.g. `replace = c(onset = "date_of_onset")`)  
 * Here is an online [vignette](https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#cleaning)  
 
 Below, the cleaning pipeline begins by using `clean_names()` on the raw linelist.  
 
 ```{r clean_names}
-# send the dataset through the function clean_names()
+# pipe the raw dataset through the function clean_names(), assign result as "linelist"  
 linelist <- linelist_raw %>% 
   janitor::clean_names()
 
-# see the new names
+# see the new column names
 names(linelist)
 ```
 
 <span style="color: black;">**_NOTE:_** The last column name "...28" was changed to "x28".</span>
 
 
-### Manual name cleaning {-}  
+### Manual name cleaning {.unnumbered}  
 
-Re-naming columns manually is often necessary, even after the standardization step above. Below, re-naming is performed using the `rename()` function from the **dplyr** package, as part of a pipe chain. `rename()` uses the style "NEW = OLD", the new column name is given before the old column name.  
+Re-naming columns manually is often necessary, even after the standardization step above. Below, re-naming is performed using the `rename()` function from the **dplyr** package, as part of a pipe chain. `rename()` uses the style `NEW = OLD` - the new column name is given before the old column name.  
 
-Below, a re-name command is added to the cleaning pipeline:  
+Below, a re-naming command is added to the cleaning pipeline. Spaces have been added strategically to align code for easier reading.  
 
 ```{r}
 # CLEANING 'PIPE' CHAIN (starts with raw data and pipes it through cleaning steps)
@@ -215,14 +231,14 @@ linelist <- linelist_raw %>%
 ```
 
 
-**Now you can see that the columns names have been changed:**  
+Now you can see that the columns names have been changed:  
 
 ```{r message=FALSE, echo=F}
 names(linelist)
 ```
 
 
-#### Rename by column position {-} 
+#### Rename by column position {.unnumbered} 
 
 You can also rename by column position, instead of column name, for example:  
 
@@ -233,9 +249,9 @@ rename(newNameForFirstColumn  = 1,
 
 
 
-#### Rename via `select()` {-}  
+#### Rename via `select()` and `summarise()` {.unnumbered}  
 
-You can also rename columns within the **dplyr** `select()` function, which is used to retain only certain columns (and is covered later in this page). This approach also uses the format `new_name = old_name`. Here is an example:  
+As a shortcut, you can also rename columns within the **dplyr** `select()` and `summarise()` functions. `select()` is used to keep only certain columns (and is covered later in this page). `summarise()` is covered in the [Grouping data] and [Descriptive tables] pages. These functions also uses the format `new_name = old_name`. Here is an example:  
 
 ```{r, eval=F}
 linelist_raw %>% 
@@ -248,10 +264,10 @@ linelist_raw %>%
 
 
 
-### Other challenges {-}  
+### Other challenges {.unnumbered}  
 
 
-#### Empty Excel column names {-} 
+#### Empty Excel column names {.unnumbered} 
 
 R cannot have dataset columns that do not have column names (headers). So, if you import an Excel dataset with data but no column headers, R will fill-in the headers with names like "...1" or "...2". The number represents the column number (e.g. if the 4th column in the dataset has no header, then R will name it "..4").  
 
@@ -259,9 +275,9 @@ You can clean these names manually by referencing their position number (see exa
 
 
 
-#### Merged Excel column names and cells {-}  
+#### Merged Excel column names and cells {.unnumbered}  
 
-Merged cells in an Excel file are a common occurrence when receiving data from operational teams. Merged cells can be nice for human reading of data, but cause many problems for machine reading of data. R cannot accommodate merged cells. 
+Merged cells in an Excel file are a common occurrence when receiving data. As explained in [Transition to R], merged cells can be nice for human reading of data, but are not "tidy data" and cause many problems for machine reading of data. R cannot accommodate merged cells.  
 
 Remind people doing data entry that **human-readable data is not the same as machine-readable data**. Strive to train users about the principles of [**tidy data**](https://r4ds.had.co.nz/tidy-data.html). If at all possible, try to change procedures so that data arrive in a tidy format without merged cells.  
 
@@ -271,7 +287,7 @@ Remind people doing data entry that **human-readable data is not the same as mac
 
 When using **rio**'s `import()` function, the value in a merged cell will be assigned to the first cell and subsequent cells will be empty.  
 
-One solution to deal with merged cells is to import the data with the function `readWorkbook()` from package **openxlsx**. Set the argument `fillMergedCells = TRUE`. This gives the value in a merged cell to all cells within the merge range.
+One solution to deal with merged cells is to import the data with the function `readWorkbook()` from the package **openxlsx**. Set the argument `fillMergedCells = TRUE`. This gives the value in a merged cell to all cells within the merge range.
 
 ```{r, eval=F}
 linelist_raw <- openxlsx::readWorkbook("linelist_raw.xlsx", fillMergedCells = TRUE)
@@ -289,7 +305,7 @@ linelist_raw <- openxlsx::readWorkbook("linelist_raw.xlsx", fillMergedCells = TR
 <!-- ======================================================= -->
 ## Select or re-order columns {} 
 
-Use `select()` from **dplyr** to select the columns you want to retain, and specify their order in the data frame. 
+Use `select()` from **dplyr** to select the columns you want to retain, and to specify their order in the data frame. 
 
 <span style="color: orange;">**_CAUTION:_** In the examples below, the `linelist` data frame is modified with `select()` and displayed, but not saved. This is for demonstration purposes. The modified column names are printed by piping the data frame to `names()`.</span>
 
@@ -299,7 +315,7 @@ Use `select()` from **dplyr** to select the columns you want to retain, and spec
 names(linelist)
 ```
 
-### Keep columns {-}  
+### Keep columns {.unnumbered}  
 
 **Select only the columns you want to remain**  
 
@@ -315,11 +331,11 @@ linelist %>%
 
 
 
-### "tidyselect" helper functions {-}  
+### "tidyselect" helper functions {#clean_tidyselect .unnumbered}  
 
-These helper functions and operators exist to make it easy to specify columns to keep or discard. They are from the package **tidyselect**, which is included in **tidyverse** and underlies how columns are selected in **dplyr** functions.  
+These helper functions exist to make it easy to specify columns to keep, discard, or transform. They are from the package **tidyselect**, which is included in **tidyverse** and underlies how columns are selected in **dplyr** functions.  
 
-For example, if you want to re-order the columns, `everything()` is useful to signify "all other columns not yet mentioned". The command below pulls columns `date_onset` and `date_hospitalisation` to the beginning, but keeps all the others afterward:  
+For example, if you want to re-order the columns, `everything()` is a useful function to signify "all other columns not yet mentioned". The command below moves columns `date_onset` and `date_hospitalisation` to the beginning (left) of the dataset, but keeps all the other columns afterward. Note that `everything()` is written with empty parentheses:  
 
 ```{r}
 # move date_onset and date_hospitalisation to beginning
@@ -328,17 +344,17 @@ linelist %>%
   names()
 ```
 
-Here are other "tidyselect" helpers functions that work *within* `select()`:  
+Here are other "tidyselect" helper functions that also work *within* **dplyr** functions like `select()`, `across()`, and `summarise()`:  
 
 * `everything()`  - all other columns not mentioned  
 * `last_col()`    - the last column  
 * `where()`       - applies a function to all columns and selects those which are TRUE  
-* `starts_with()` - matches to a specified prefix  
-  * example: `select(starts_with("date"))`  
-* `ends_with()`   - matches to a specified suffix  
-  * example: `select(ends_with("_end"))`  
 * `contains()`    - columns containing a character string  
   * example: `select(contains("time"))`  
+* `starts_with()` - matches to a specified prefix  
+  * example: `select(starts_with("date_"))`  
+* `ends_with()`   - matches to a specified suffix  
+  * example: `select(ends_with("_post"))`  
 * `matches()`     - to apply a regular expression (regex)  
   * example: `select(contains("[pt]al"))`  
 * `num_range()`   - a numerical range like x01, x02, x03  
@@ -348,7 +364,7 @@ Here are other "tidyselect" helpers functions that work *within* `select()`:
 In addition, use normal operators such as `c()` to list several columns, `:` for consecutive columns, `!` for opposite, `&` for AND, and `|` for OR.  
 
 
-Use `where()` to specify logical criteria for columns. If providing a function inside `where()`, do not include the empty parentheses. The command below selects columns that are class Numeric.
+Use `where()` to specify logical criteria for columns. If providing a function inside `where()`, do not include the function's empty parentheses. The command below selects columns that are class Numeric.
 
 ```{r}
 # select columns that are class Numeric
@@ -357,7 +373,7 @@ linelist %>%
   names()
 ```
 
-Use `contains()` to select only columns in which the column name contains a string. `ends_with()` and `starts_with()` provide more nuance.  
+Use `contains()` to select only columns in which the column name contains a specified character string. `ends_with()` and `starts_with()` provide more nuance.  
 
 ```{r}
 # select columns containing certain characters
@@ -377,7 +393,8 @@ linelist %>%
 
 <span style="color: orange;">**_CAUTION:_** If a column name that you specifically provide does not exist in the data, it can return an error and stop your code. Consider using `any_of()` to cite columns that may or may not exist, especially useful in negative (remove) selections.</span>
 
-Only one of these columns exists, but no error is produced and the code continues. 
+Only one of these columns exists, but no error is produced and the code continues without stopping your cleaning chain.  
+
 ```{r}
 linelist %>% 
   select(any_of(c("date_onset", "village_origin", "village_detection", "village_residence", "village_travel"))) %>% 
@@ -386,17 +403,17 @@ linelist %>%
 
 
 
-### Remove columns {-} 
+### Remove columns {.unnumbered} 
 
 **Indicate which columns to remove** by placing a minus symbol "-" in front of the column name (e.g. `select(-outcome)`), or a vector of column names (as below). All other columns will be retained. 
 
 ```{r}
 linelist %>% 
-  select(-c(date_onset, fever:vomit)) %>% # remove onset and all cols from fever to vomit
+  select(-c(date_onset, fever:vomit)) %>% # remove date_onset and all columns from fever to vomit
   names()
 ```
 
-You can also remove a column using **base** R by defining it as `NULL`. For example:  
+You can also remove a column using **base** R syntax, by defining it as `NULL`. For example:  
 
 ```{r, eval=F}
 linelist$date_onset <- NULL   # deletes column with base R syntax 
@@ -404,7 +421,7 @@ linelist$date_onset <- NULL   # deletes column with base R syntax
 
 
 
-### Standalone {-}
+### Standalone {.unnumbered}
 
 `select()` can also be used as an independent command (not in a pipe chain). In this case, the first argument is the original dataframe to be operated upon.  
 
@@ -418,7 +435,7 @@ names(linelist_age)
 
 
 
-#### Add to the pipe chain {-}  
+#### Add to the pipe chain {.unnumbered}  
 
 In the `linelist_raw`, there are a few columns we do not need: `row_num`, `merged_header`, and `x28`. We remove them with a `select()` command in the cleaning pipe chain:  
 
@@ -518,7 +535,7 @@ Below is an example of creating a new column with `mutate()`. The syntax is: `mu
 In Stata, this is similar to the command `generate`, but R's `mutate()` can also be used to modify an existing column.  
 
 
-### New columns {-}
+### New columns {.unnumbered}
 
 The most basic `mutate()` command to create a new column might look like this. It creates a new column `new_col` where the value in every row is 10.  
 
@@ -527,82 +544,85 @@ linelist <- linelist %>%
   mutate(new_col = 10)
 ```
 
-You can also reference values in other columns, to perform calculations. For example below a new column `bmi` is created to hold the Body Mass Index (BMI) for each case - as calculated using the formula BMI = kg/m^2, using column `ht_cm` and column `wt_kg`.  
+You can also reference values in other columns, to perform calculations. Below, a new column `bmi` is created to hold the Body Mass Index (BMI) for each case - as calculated using the formula BMI = kg/m^2, using column `ht_cm` and column `wt_kg`.  
 
 ```{r}
 linelist <- linelist %>% 
   mutate(bmi = wt_kg / (ht_cm/100)^2)
 ```
 
-If creating multiple new columns, separate each with a comma and new line. Below, are examples of new columns, including pasting together values from other columns using `str_glue()` from the **stringr** package (see page on [Characters and strings].  
+If creating multiple new columns, separate each with a comma and new line. Below are examples of new columns, including ones that consist of values from other columns combined using `str_glue()` from the **stringr** package (see page on [Characters and strings].  
 
 ```{r}
-linelist <- linelist %>%                       
+new_col_demo <- linelist %>%                       
   mutate(
     new_var_dup    = case_id,             # new column = duplicate/copy another existing column
     new_var_static = 7,                   # new column = all values the same
     new_var_static = new_var_static + 5,  # you can overwrite a column, and it can be a calculation using other variables
     new_var_paste  = stringr::str_glue("{hospital} on ({date_hospitalisation})") # new column = pasting together values from other columns
-    ) 
+    ) %>% 
+  select(case_id, hospital, date_hospitalisation, contains("new"))        # show only new columns, for demonstration purposes
 ```
 
-***Scroll to the right to see the new columns that have been added (first 50 rows shown):***  
+
+Review the new columns. For demonstration purposes, only the new columns and the columns used to create them are shown:  
+
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
-DT::datatable(head(linelist,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(head(new_col_demo,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 <span style="color: darkgreen;">**_TIP:_** A variation on `mutate()` is the function `transmute()`. This function adds a new column just like `mutate()`, but also drops/removes all other columns that you do not mention within its parentheses.</span>
 
 
-```{r, echo=F}
+```{r, eval=F}
 # HIDDEN FROM READER
 # removes new demo columns created above
-linelist <- linelist %>% 
-  select(-contains("new_var"))
+# linelist <- linelist %>% 
+#   select(-contains("new_var"))
 ```
 
 
 
-### Convert column class {-}
+### Convert column class {.unnumbered}
   
-Often you will need to set the correct class for a column. There are ways to set column class during the import commands, but often this is often cumbersome. See section on [object classes](#objectclasses) to learn more about converting the class of objects, including columns.  
+Columns containing values that are dates, numbers, or logical values (TRUE/FALSE) will only behave as expected if they are correctly classified. There is a difference between "2" of class character and 2 of class numeric!  
 
-First, run some checks on important columns to see if they are the correct class:  
+There are ways to set column class during the import commands, but this is often cumbersome. See the [R Basics] section on object classes to learn more about converting the class of objects and columns.  
 
-Currently, the class of the "age" column is character. To perform quantitative analyses, we need these numbers to be recognized as numeric! 
+First, let's run some checks on important columns to see if they are the correct class. We also saw this in the beginning when we ran `skim()`.  
+
+Currently, the class of the `age` column is character. To perform quantitative analyses, we need these numbers to be recognized as numeric! 
 
 ```{r}
 class(linelist$age)
 ```
 
-The class of the "date_onset" column is also character! To perform analyses, these dates must be recognized as dates! 
+The class of the `date_onset` column is also character! To perform analyses, these dates must be recognized as dates! 
  
 ```{r}
 class(linelist$date_onset)
 ```
 
 
-In this case, use `mutate()` to define the column as itself, but converted to a different class. Here is a basic example, converting or ensuring that the column `age` is class Numeric:  
+To resolve this, use the ability of `mutate()` to re-define a column with a transformation. We define the column as itself, but converted to a different class. Here is a basic example, converting or ensuring that the column `age` is class Numeric:  
 
-```{r}
+```{r, eval=F}
 linelist <- linelist %>% 
   mutate(age = as.numeric(age))
 ```
 
-In a similar way, you can use `as.character()`, `as.double()`, `as.logical()`.  
+In a similar way, you can use `as.character()` and `as.logical()`. To convert to class Factor, you can use `factor()` from **base** R or `as_factor()` from **forcats**. Read more about this in the [Factors] page.  
 
-To convert to class Factor, you can use `factor()` from **base** R or `as_factor()` from **forcats**. Read more about this in the [Factors] page.  
-
-Converting to class date you must take care. Several methods are explained on the page [Working with dates]. Typically, the raw date values must all be in the same format for conversion to work correctly (e.g "MM/DD/YYYY", or "DD MM YYYY"). After converting to class Date, check your data visually or with a cross-table to confirm that each value was converted correctly.  
+Converting to class Date you must take care. Several methods are explained on the page [Working with dates]. Typically, the raw date values must all be in the same format for conversion to work correctly (e.g "MM/DD/YYYY", or "DD MM YYYY"). After converting to class Date, check your data to confirm that each value was converted correctly.  
 
 
 
 
-### Grouped data {-}  
+### Grouped data {.unnumbered}  
 
-If your dataframe is already *grouped* (see page on [Grouping data]), `mutate()` may behave differently than if the dataframe is not grouped. Any summarizing functions, like `mean()`, `median()`, `max()`, etc. will be based on only the grouped rows, not all the rows.     
+If your data frame is already *grouped* (see page on [Grouping data]), `mutate()` may behave differently than if the data frame is not grouped. Any summarizing functions, like `mean()`, `median()`, `max()`, etc. will calculate by group, not by all the rows.     
 
 ```{r, eval=F}
 # age normalized to mean of ALL rows
@@ -615,20 +635,20 @@ linelist %>%
   mutate(age_norm = age / mean(age, na.rm=T))
 ```
 
-Read more about using mutate on grouped dataframes in this [tidyverse mutate documentation](https://dplyr.tidyverse.org/reference/mutate.html).  
+Read more about using `mutate ()` on grouped dataframes in this [tidyverse mutate documentation](https://dplyr.tidyverse.org/reference/mutate.html).  
 
 
 
-### Transform multiple columns {-}
+### Transform multiple columns {#clean_across .unnumbered}
 
 
-Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple columns at once using the `across()` function from the package **dplyr** (also contained within **tidyverse** package). `across()` can be used with any **dplyr** function, but commonly with `select()`, `mutate()`, `filter()`, or `summarise()`. See how it is applied to `summarise()` in the page on [Descriptive tables].  
+Often to write concise code you want to apply the same transformation to multiple columns at once. A transformation can be applied to multiple columns at once using the `across()` function from the package **dplyr** (also contained within **tidyverse** package). `across()` can be used with any **dplyr** function, but is commonly used within `select()`, `mutate()`, `filter()`, or `summarise()`. See how it is applied to `summarise()` in the page on [Descriptive tables].  
 
-You specify the columns to `.cols = ` and the function(s) to `.fns`. Any additional arguments to provide to the function can be included after a comma, still within `across()`.   
+Specify the columns to the argument `.cols = ` and the function(s) to apply to `.fns = `. Any additional arguments to provide to the `.fns` function can be included after a comma, still within `across()`.   
 
-#### `across()` column selection {-}  
+#### `across()` column selection {.unnumbered}  
 
-Specify the columns to the argument `.cols = ` - you can name them individually, or use helper functions. Specify the function to `.fns = `. Note that using the function mode demonstrated below, the function is written *without* its parentheses ( ).  
+Specify the columns to the argument `.cols = `. You can name them individually, or use "tidyselect" helper functions. Specify the function to `.fns = `. Note that using the function mode demonstrated below, the function is written *without* its parentheses ( ).  
 
 Here the transformation `as.character()` is applied to specific columns named within `across()`. 
 
@@ -637,22 +657,7 @@ linelist <- linelist %>%
   mutate(across(.cols = c(temp, ht_cm, wt_kg), .fns = as.character))
 ```
 
-There are helpers available to assist you in specifying columns:  
-
-* `everything()`  - all other columns not mentioned  
-* `last_col()`    - the last column  
-* `where()`       - applies a function to all columns and selects those which are TRUE  
-* `starts_with()` - matches to a specified prefix  
-  * example: `across(starts_with("date"))`  
-* `ends_with()`   - matches to a specified suffix  
-  * example: `across(ends_with("_end"))`  
-* `contains()`    - columns containing a character string  
-  * example: `across(contains("time"))`  
-* `matches()`     - to apply a regular expression (regex)  
-  * example: `across(contains("[pt]al"))`  
-* `num_range()`   - 
-* `any_of()`      - matches if column is named. Useful if the name might not exist  
-  * example: `across(any_of(date_onset, date_death, cardiac_arrest))`  
+The "tidyselect" helper functions are available to assist you in specifying columns. They are detailed above in the section on Selecting and re-ordering columns, and they include: `everything()`, `last_col()`, `where()`, `starts_with()`, `ends_with()`, `contains()`, `matches()`, `num_range()` and `any_of()`.  
 
 Here is an example of how one would change **all columns** to character class:  
 
@@ -662,7 +667,7 @@ linelist <- linelist %>%
   mutate(across(.cols = everything(), .fns = as.character))
 ```
 
-Columns where the name contains the string "date" (note placement of commas and parentheses):  
+Convert to character all columns where the name contains the string "date" (note the placement of commas and parentheses):  
 
 ```{r, eval=F}
 #to change all columns to character class
@@ -670,24 +675,24 @@ linelist <- linelist %>%
   mutate(across(.cols = contains("date"), .fns = as.character))
 ```
 
-Below, we want to mutate the columns where they are class POSIXct (a datetime class that shows timestamps) - in other words, where the function `is.POSIXct()` evaluates to `TRUE`. Then we want to apply the function `as.Date()` to these columns to convert them to a normal class Date.  
+Below, an example of mutating the columns that are currently class POSIXct (a raw datetime class that shows timestamps) - in other words, where the function `is.POSIXct()` evaluates to `TRUE`. Then we want to apply the function `as.Date()` to these columns to convert them to a normal class Date.  
 
 ```{r, eval=F}
 linelist <- linelist %>% 
-  mutate(across(.cols = where(lubridate::is.POSIXct), .fns = as.Date))
+  mutate(across(.cols = where(is.POSIXct), .fns = as.Date))
 ```
 
-* Note that within `across()` we also use the function `where()`  
-* Note that `is.POSIXct()` is from the package **lubridate**. Other similar functions (`is.character()`, `is.numeric()`, and `is.logical()`) are from **base R**  
+* Note that within `across()` we also use the function `where()` as `is.POSIXct` is evaluating to either TRUE or FALSE.  
+* Note that `is.POSIXct()` is from the package **lubridate**. Other similar "is" functions like `is.character()`, `is.numeric()`, and `is.logical()` are from **base R**  
 
-#### `across()` functions {-}
+#### `across()` functions {.unnumbered}
 
 You can read the documentation with `?across` for details on how to provide functions to `across()`. A few summary points: there are several ways to specify the function(s) to perform on a column and you can even define your own functions:  
 
 * You can provide the function name alone (e.g. `mean` or `as.character`)  
-* You can provide the function in **purrr**-style (e.g. `~ mean(.x, na.rm = TRUE)`)  
+* You can provide the function in **purrr**-style (e.g. `~ mean(.x, na.rm = TRUE)`) (see [this page][Iteration, loops, and lists])  
 * You can specify multiple functions by providing a list (e.g. `list(mean = mean, n_miss = ~ sum(is.na(.x))`).  
-  * If you provide multiple functions, multiple transformed columns will be returned with unique names (e.g. col_fn). You can adjust how the new columns are named with the `.names =` argument using **glue** syntax (see page on [Characters and strings]) where `{.col}` and `{.fn}` are shorthand for the column and function.  
+  * If you provide multiple functions, multiple transformed columns will be returned per input column, with unique names in the format `col_fn`. You can adjust how the new columns are named with the `.names =` argument using **glue** syntax (see page on [Characters and strings]) where `{.col}` and `{.fn}` are shorthand for the input column and function.  
   
   
 Here are a few online resources on using `across()`: [creator Hadley Wickham's thoughts/rationale](https://www.tidyverse.org/blog/2020/04/dplyr-1-0-0-colwise/)
@@ -695,11 +700,11 @@ Here are a few online resources on using `across()`: [creator Hadley Wickham's t
 
 
 
-### `coalesce()` {-}  
+### `coalesce()` {.unnumbered}  
 
-This **dplyr** function finds the first non-missing value at each position. 
+This **dplyr** function finds the first non-missing value at each position. It "fills-in" missing values with the first available value in an order you specify.  
 
-Say you have two vectors/columns, one for village of detection and another for village of residence. You can use coalesce to pick the first non-missing value for each index:  
+Here is an example *outside the context of a data frame*: Let us say you have two vectors, one containing village of detection and another containing village of residence. You can use coalesce to pick the first non-missing value for each index:  
 
 ```{r}
 village_detection <- c("a", "b", NA,  NA)
@@ -716,13 +721,13 @@ linelist <- linelist %>%
   mutate(village = coalesce(village_detection, village_residence))
 ```
 
-For more complicated row-wise calculations, see the section below on Row-wise calculations.  
+This is an example of a "row-wise" operation. For more complicated row-wise calculations, see the section below on Row-wise calculations.  
 
 
 
-### Cumulative math {-}
+### Cumulative math {.unnumbered}
 
-If you want a column to reflect the cumulative sum/mean/min/max etc as assessed down the rows of a dataframe, use the following functions:  
+If you want a column to reflect the cumulative sum/mean/min/max etc as assessed down the rows of a dataframe to that point, use the following functions:  
 
 `cumsum()` returns the cumulative sum, as shown below:  
 
@@ -734,9 +739,9 @@ cumsum(c(2,4,15,10))  # returns the cumulative sum at each step
 This can be used in a dataframe when making a new column. For example, to calculate the cumulative number of cases per day in an outbreak, consider code like this:  
 
 ```{r, warning=F, message=F}
-cumulative_case_counts <- linelist %>% 
-  count(date_onset) %>%                 # count of rows per day   
-  mutate(cumulative_cases = cumsum(n))  # new column of the cumulative sum at that row
+cumulative_case_counts <- linelist %>%  # begin with case linelist
+  count(date_onset) %>%                 # count of rows per day, as column 'n'   
+  mutate(cumulative_cases = cumsum(n))  # new column, of the cumulative sum at each row
 ```
 
 Below are the first 10 rows:  
@@ -748,14 +753,15 @@ head(cumulative_case_counts, 10)
 See the page on [Epidemic curves] for how to plot cumulative incidence with the epicurve.  
 
 See also:  
-cumsum(), cummean(), cummin(), cummax(), cumany(), cumall()  
+`cumsum()`, `cummean()`, `cummin()`, `cummax()`, `cumany()`, `cumall()`  
 
 
 
 
-### Using **base** R {-}  
 
-To define a new column (or re-define a column) using **base** R, write the name of data frame with the *new* column (or the column to be modified). Use the assignment operator `<-` to define the new value(s). Remember that when using **base** R you must specify the data frame name before the column name every time (e.g. `dataframe$column`). Here is an example of creating the `bmi` column using **base** R:  
+### Using **base** R {.unnumbered}  
+
+To define a new column (or re-define a column) using **base** R, write the name of data frame, connected with `$`, to the *new* column (or the column to be modified). Use the assignment operator `<-` to define the new value(s). Remember that when using **base** R you must specify the data frame name before the column name every time (e.g. `dataframe$column`). Here is an example of creating the `bmi` column using **base** R:  
 
 ```{r, eval=F}
 linelist$bmi = linelist$wt_kg / (linelist$ht_cm / 100) ^ 2)
@@ -764,11 +770,11 @@ linelist$bmi = linelist$wt_kg / (linelist$ht_cm / 100) ^ 2)
 
 
 
-#### Add to pipe chain {-}  
+### Add to pipe chain {.unnumbered}  
 
 **Below, a new column is added to the pipe chain and some classes are converted.**  
 
-```{r}
+```{r eval=TRUE}
 # CLEANING 'PIPE' CHAIN (starts with raw data and pipes it through cleaning steps)
 ##################################################################################
 
@@ -812,16 +818,16 @@ Here are a few scenarios where you need to re-code (change) values:
 
 * to edit one specific value (e.g. one date with an incorrect year or format)  
 * to reconcile values not spelled the same
-* to create a new column of categories  
+* to create a new column of categorical values  
 * to create a new column of numeric categories (e.g. age categories)  
 
 
 
-### Specific values {-}  
+### Specific values {.unnumbered}  
 
 To change values manually you can use the `recode()` function within the `mutate()` function. 
 
-Imagine there is a nonsensical date in the data (e.g. "2014-14-15"): you could fix the date in the source data, or, you could write the change into the cleaning pipeline via `mutate()` and `recode()`.  
+Imagine there is a nonsensical date in the data (e.g. "2014-14-15"): you could fix the date manually in the raw source data, or, you could write the change into the cleaning pipeline via `mutate()` and `recode()`. The latter is more transparent and reproducible to anyone else seeking to understand or repeat your analysis.  
 
 ```{r, eval=F}
 # fix incorrect values                   # old value       # new value
@@ -836,7 +842,7 @@ The `mutate()` line above can be read as: "mutate the column `date_onset` to equ
 In `linelist` the values in the column "hospital" must be cleaned. There are several different spellings and many missing values.
 
 ```{r}
-table(linelist$hospital, useNA = "always")
+table(linelist$hospital, useNA = "always")  # print table of all unique values, including missing  
 ```
 
 The `recode()` command below re-defines the column "hospital" as the current column "hospital", but with the specified recode changes. Don't forget commas after each!  
@@ -844,7 +850,7 @@ The `recode()` command below re-defines the column "hospital" as the current col
 ```{r}
 linelist <- linelist %>% 
   mutate(hospital = recode(hospital,
-                      #    reference: OLD = NEW
+                     # for reference: OLD = NEW
                       "Mitylira Hopital"  = "Military Hospital",
                       "Mitylira Hospital" = "Military Hospital",
                       "Military Hopital"  = "Military Hospital",
@@ -869,73 +875,33 @@ table(linelist$hospital, useNA = "always")
 
 
 
-### Missing values {-} 
+### By logic {.unnumbered}
 
-See the page on [Missing data] for more detailed tips on identifying and handling missing values. For example, the `is.na()` function which logically tests for missingness. 
-
-**dplyr** offers two special functions for handling missing values in the context of data cleaning:  
-
-**`replace_na()`**  
-
-To change missing values (`NA`) to a specific value, such as "Missing", use the function `replace_na()` within `mutate()`. Note that this is used in the same manner as `recode` above - the name of the variable must be repeated within `replace_na()`.  
-
-```{r}
-linelist <- linelist %>% 
-  mutate(hospital = replace_na(hospital, "Missing"))
-```
-
-
-**`na_if()`**  
-
-To convert a *specific value* to `NA`, use `na_if()`. The command below performs the opposite operation of `replace_na()`. In the example below, any values of "Missing" in the column `hospital` are converted to `NA`.  
-
-```{r}
-linelist <- linelist %>% 
-  mutate(hospital = na_if(hospital, "Missing"))
-```
-
-Note: `na_if()` **cannot be used for logic criteria** (e.g. "all values > 99") - use `replace()` or `case_when()` for this:  
-
-```{r, eval=F}
-# Convert temperatures above 40 to NA 
-linelist <- linelist %>% 
-  mutate(temp = replace(temp, temp > 40, NA))
-
-# Convert onset dates earlier than 2000 to missing
-linelist <- linelist %>% 
-  mutate(date_onset = replace(date_onset, date_onset > as.Date("2000-01-01"), NA))
-```
-
-
-
-
-### By logic {-}
-
-Below is demonstrated how to re-code values in a column using logic and conditions:  
+Below we demonstrate how to re-code values in a column using logic and conditions:  
 
 * Using `replace()`, `ifelse()` and `if_else()` for simple logic
 * Using `case_when()` for more complex logic  
 
 
 
-### Simple logic {-}  
+### Simple logic {.unnumbered}  
 
 
-#### `replace()` {-}  
+#### `replace()` {.unnumbered}  
 
 To re-code with simple logical criteria, you can use `replace()` within `mutate()`. `replace()` is a function from **base** R. Use a logic condition to specify the rows to change . The general syntax is:  
 
 `mutate(col_to_change = replace(col_to_change, criteria for rows, new value))`.  
 
-One common situation is **changing just one value in one row, using an unique row identifier**. Below, the gender is changed to "Female" in the row where the column `case_id` is "2195".  
+One common situation to use `replace()` is **changing just one value in one row, using an unique row identifier**. Below, the gender is changed to "Female" in the row where the column `case_id` is "2195".  
 
 ```{r, eval=F}
 # Example: change gender of one specific observation to "Female" 
 linelist <- linelist %>% 
-  mutate(gender = replace(gender, case_id == "2195", "Female")
+  mutate(gender = replace(gender, case_id == "2195", "Female"))
 ```
 
-The equivalent command using **base** R syntax and the indexing brackets `[ ]` is below. It reads as "Change the value of the dataframe `linelist`'s column `gender` (for the rows where `linelist`'s column `case_id` has the value  '2195') to 'Female' ".   
+The equivalent command using **base** R syntax and indexing brackets `[ ]` is below. It reads as "Change the value of the dataframe `linelist`'s column `gender` (for the rows where `linelist`'s column `case_id` has the value  '2195') to 'Female' ".   
 
 ```{r, eval=F}
 linelist$gender[linelist$case_id == "2195"] <- "Female"
@@ -944,21 +910,19 @@ linelist$gender[linelist$case_id == "2195"] <- "Female"
 
 
 
-#### `ifelse()` and `if_else()` {-}  
+#### `ifelse()` and `if_else()` {.unnumbered}  
 
-Another tool for simple logical re-coding is `ifelse()` and its partner `if_else()`. However, in most cases it is better to use `case_when()` (for clarity).  
-
-These commands are simplified versions of an `if` and `else` programming statement. The general syntax is:  
+Another tool for simple logic is `ifelse()` and its partner `if_else()`. However, in most cases for re-coding it is more clear to use `case_when()` (detailed below). These "if else" commands are simplified versions of an `if` and `else` programming statement. The general syntax is:  
 `ifelse(condition, value to return if condition evaluates to TRUE, value to return if condition evaluates to FALSE)` 
 
-Below, the column `source_known` is defined (or re-defined). Its value in a given row is set to "known" if the row's value in column `source` is *not* missing. If the value in `source` *is* missing, then the value in `source_known` is set to "unknown".  
+Below, the column `source_known` is defined. Its value in a given row is set to "known" if the row's value in column `source` is *not* missing. If the value in `source` *is* missing, then the value in `source_known` is set to "unknown".  
 
 ```{r, eval=F}
 linelist <- linelist %>% 
   mutate(source_known = ifelse(!is.na(source), "known", "unknown"))
 ```
 
-`if_else()` is a special version from **dplyr** that handles dates. Note that if the 'true' value is a date, the 'false' value must also qualify a date, hence using the special character `NA_real_` instead of just `NA`.
+`if_else()` is a special version from **dplyr** that handles dates. Note that if the 'true' value is a date, the 'false' value must also qualify a date, hence using the special value `NA_real_` instead of just `NA`.
 
 ```{r, eval=F}
 # Create a date of death column, which is NA if patient has not died.
@@ -972,23 +936,19 @@ linelist <- linelist %>%
 knitr::include_graphics(here::here("images", "ifelse bad.png"))
 ```
 
-Outside of the context of a data frame, if you want to have an object used in your code switch its value, consider using `switch()` from **base** R. See the section on using `switch()` in the page on having an [Interactive console].
+Outside of the context of a data frame, if you want to have an object used in your code switch its value, consider using `switch()` from **base** R.  
 
 
 
 
-### Complex logic {-}  
+### Complex logic {.unnumbered}  
 
-Use **dplyr**'s `case_when()` if you need to use complex logic statements to re-code values. There are important differences from `recode()` in syntax and logic order!  
+Use **dplyr**'s `case_when()` if you are re-coding into many new groups, or if you need to use complex logic statements to re-code values. This function evaluates every row in the data frame, assess whether the rows meets specified criteria, and assigns the correct new value.  
 
-`case_when()` commands have a Right-Hand Side (RHS) and a Left-Hand Side (LHS) separated by a "tilde" `~`. The logic criteria are in the LHS and the pursuant value is on the RHS. Statements are separated by commas. It is important to note that:  
+`case_when()` commands consist of statements that have a Right-Hand Side (RHS) and a Left-Hand Side (LHS) separated by a "tilde" `~`. The logic criteria are in the left side and the pursuant values are in the right side of each statement. Statements are separated by commas.  
 
-* Statements are evaluated in the order written - from top-to-bottom. Thus it is best to write the most specific criteria first, and the most general last.  
-* End with `TRUE` on the LHS, which signifies any row value that did not meet any of the previous criteria  
-* The values on the RHS must all be the same class - either numeric, character, logical, etc.  
-  * To assign `NA`, you may need to use special values such as `NA_character_`, `NA_real_` (for numeric or POSIX), and `as.Date(NA)`  
-  
-Below we utilize the columns `age` and `age_unit` to create a column `age_years`:  
+For example, here we utilize the columns `age` and `age_unit` to create a column `age_years`:  
+
 
 ```{r}
 linelist <- linelist %>% 
@@ -996,25 +956,93 @@ linelist <- linelist %>%
             age_unit == "years"  ~ age,       # if age is given in years
             age_unit == "months" ~ age/12,    # if age is given in months
             is.na(age_unit)      ~ age,       # if age unit is missing, assume years
-            TRUE                 ~ NA_real_)) # any other circumstance assign missing
+            TRUE                 ~ NA_real_)) # any other circumstance, assign missing
+```
+
+
+As each row in the data is evaluated, the criteria are applied/evaluated in the order the `case_when()` statements are written - from top-to-bottom. If the top criteria evaluates to `TRUE` for a given row, the RHS value is assigned, and the remaining criteria are not even tested for that row. Thus, it is best to write the most specific criteria first, and the most general last.  
+
+Along those lines, in your final statement, place `TRUE` on the left-side, which will capture any row that did not meet any of the previous criteria. The right-side of this statement could be assigned a value like "check me!" or missing.  
+
+
+<span style="color: red;">**_DANGER:_** **Vvalues on the right-side must all be the same class** - either numeric, character, date, logical, etc. To assign missing (`NA`), you may need to use special variations of `NA` such as `NA_character_`, `NA_real_` (for numeric or POSIX), and `as.Date(NA)`. Read more in [Working with dates].</span>  
+
+
+
+
+### Missing values {.unnumbered} 
+
+Below are special functions for handling missing values in the context of data cleaning.  
+
+See the page on [Missing data] for more detailed tips on identifying and handling missing values. For example, the `is.na()` function which logically tests for missingness.  
+
+
+**`replace_na()`**  
+
+To change missing values (`NA`) to a specific value, such as "Missing", use the **dplyr** function `replace_na()` within `mutate()`. Note that this is used in the same manner as `recode` above - the name of the variable must be repeated within `replace_na()`.  
+
+```{r}
+linelist <- linelist %>% 
+  mutate(hospital = replace_na(hospital, "Missing"))
+```
+
+
+**fct_explicit_na()**  
+
+This is a function from the **forcats** package. The **forcats** package handles columns of class Factor. Factors are R's way to handle *ordered* values such as `c("First", "Second", "Third")` or to set the order that values (e.g. hospitals) appear in tables and plots. See the page on [Factors].  
+
+If your data are class Factor and you try to convert `NA` to "Missing" by using `replace_na()`, you will get this error: `invalid factor level, NA generated`. You have tried to add "Missing" as a value, when it was not defined as a possible level of the factor, and it was rejected.  
+
+The easiest way to solve this is to use the **forcats** function `fct_explicit_na()` which converts a column to class factor, and converts `NA` values to the character "(Missing)".  
+
+```{r, eval=F}
+linelist %>% 
+  mutate(hospital = fct_explicit_na(hospital))
+```
+
+A slower alternative would be to add the factor level using `fct_expand()` and then convert the missing values.  
+
+**`na_if()`**  
+
+To convert a *specific value to* `NA`, use **dplyr**'s `na_if()`. The command below performs the opposite operation of `replace_na()`. In the example below, any values of "Missing" in the column `hospital` are converted to `NA`.  
+
+```{r}
+linelist <- linelist %>% 
+  mutate(hospital = na_if(hospital, "Missing"))
+```
+
+Note: `na_if()` **cannot be used for logic criteria** (e.g. "all values > 99") - use `replace()` or `case_when()` for this:  
+
+```{r, eval=F}
+# Convert temperatures above 40 to NA 
+linelist <- linelist %>% 
+  mutate(temp = replace(temp, temp > 40, NA))
+
+# Convert onset dates earlier than 1 Jan 2000 to missing
+linelist <- linelist %>% 
+  mutate(date_onset = replace(date_onset, date_onset > as.Date("2000-01-01"), NA))
 ```
 
 
 
 
+### Cleaning dictionary {.unnumbered}
 
-### Cleaning dictionary {-}
+Use the R package **linelist** and it's function `clean_variable_spelling()` to clean a data frame with a *cleaning dictionary*. **linelist** is a package developed by [RECON](https://github.com/reconhub/linelist) - the R Epidemics Consortium.  
 
-Use the package **linelist** to clean a linelist with a *cleaning dictionary*.  
-
-1) Import a cleaning dictionary with 3 columns:  
+1) Create a cleaning dictionary with 3 columns:  
     * A "from" column (the incorrect value)  
     * A "to" column (the correct value)  
     * A column specifying the column for the changes to be applied (or ".global" to apply to all columns)  
 
+Note: .global dictionary entries will be overridden by column-specific dictionary entries.  
+
 ```{r, fig.align = "center", out.width = "100%", echo=F}
 knitr::include_graphics(here::here("images", "cleaning_dict.png"))
 ```
+
+
+2) Import the dictionary file into R. This example can be downloaded via instructions on the [Download handbook and data] page.  
 
 ```{r, echo=F}
 cleaning_dict <- rio::import(here("data", "case_linelists", "cleaning_dict.csv"))
@@ -1024,24 +1052,17 @@ cleaning_dict <- rio::import(here("data", "case_linelists", "cleaning_dict.csv")
 cleaning_dict <- import("cleaning_dict.csv")
 ```
 
-2) Store names of any columns that you want to "protect" from the changes. They must be provided to `clean_data()` as a numeric or logical vector, so you will see use of `names(.)` in the command below (the dot means the dataframe).  
-
-```{r}
-protected_cols <- c("case_id", "source")
-```
-
-3) Run `clean_data()`, specifying the cleaning dictionary
+3) Pass the raw linelist to `clean_variable_spelling()`, specifying to `wordlists = ` the cleaning dictionary data frame. The `spelling_vars = ` argument can be used to specify which column in the dictionary refers to the columns (3rd by default), or can be set to `NULL` to have the dictionary apply to all character and factor columns. Note this function can take a long time to run.  
 
 ```{r}
 linelist <- linelist %>% 
-  linelist::clean_data(
+  linelist::clean_variable_spelling(
     wordlists = cleaning_dict,
-    spelling_vars = "col",       # dict column containing column names, defaults to 3rd column in dict
-    protect = names(.) %in% protected_cols
+    spelling_vars = "col",        # dict column containing column names, defaults to 3rd column in dict
   )
 ```
 
-Scroll too see how values have changed - particularly `gender` (lowercase to uppercase), and all the symptoms columns have been transformed from yes/no to 1/0.  
+Now scroll to the right to see how values have changed - particularly `gender` (lowercase to uppercase), and all the symptoms columns have been transformed from yes/no to 1/0.  
 
 ```{r message=FALSE, echo=F}
 # display the linelist data as a table
@@ -1049,18 +1070,13 @@ DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(
 ```
 
 
-<span style="color: orange;">**_CAUTION:_** `clean_data()` from **linelist** package will also clean values in your data unless those columns are protected - you may encounter changes to columns with dashes "-" or  .</span>
-
-
-Note that your column names in the cleaning dictionary must correspond to the names at this point in your cleaning script. `clean_data()` itself also implements a column name cleaning function similar to `clean_names()` from **janitor** that standardizes column names prior to applying the dictionary.  
-
-See this [online reference for the linelist package](https://www.repidemicsconsortium.org/linelist/reference/clean_data.html) for more details.
+Note that your column names in the cleaning dictionary must correspond to the names *at this point* in your cleaning script. See this [online reference for the linelist package](https://www.repidemicsconsortium.org/linelist/reference/clean_data.html) for more details.
 
 
 
 
 
-#### Add to pipe chain {-}  
+#### Add to pipe chain {.unnumbered}  
 
 **Below, some new columns and column transformations are added to the pipe chain.**  
 
@@ -1134,7 +1150,7 @@ linelist <- linelist_raw %>%
 ## Numeric categories {#num_cats}
 
 
-Here we describe some special approaches for creating numeric categories. Common examples include age categories, groups of lab values, etc. Here we will discuss:  
+Here we describe some special approaches for creating categories from numerical columns. Common examples include age categories, groups of lab values, etc. Here we will discuss:  
 
 * `age_categories()`, from the **epikit** package  
 * `cut()`, from **base** R  
@@ -1142,7 +1158,7 @@ Here we describe some special approaches for creating numeric categories. Common
 * quantile breaks with `quantile()` and `ntile()` 
 
 
-### Review distribution {-}
+### Review distribution {.unnumbered}
 
 For this example we will create an `age_cat` column using the `age_years` column.  
 
@@ -1166,33 +1182,34 @@ summary(linelist$age_years, na.rm=T)
 
 
 <!-- ======================================================= -->
-### `age_categories()` {-}
+### `age_categories()` {.unnumbered}
 
-With the **epikit** package, you can use the `age_categories()` function to easily categorize and label numeric columns (note: this function can be applied to non-age numeric variables too). Of note: *the output is an ordered factor.* 
+With the **epikit** package, you can use the `age_categories()` function to easily categorize and label numeric columns (note: this function can be applied to non-age numeric variables too). As a bonum, the output column is automatically an ordered factor.  
 
 Here are the required inputs:  
 
 * A numeric vector (column)  
-* The `breakers = ` - a numeric vector of break points for the new groups  
+* The `breakers = ` argument - provide a numeric vector of break points for the new groups  
 
 First, the most simple example:  
 
 ```{r}
 # Simple example
 ################
-pacman::p_load(epikit)
+pacman::p_load(epikit)                    # load package
 
 linelist <- linelist %>% 
   mutate(
-    age_cat = age_categories(
-      age_years,
-      breakers = c(0, 5, 10, 15, 20, 30, 40, 50, 60, 70)))
+    age_cat = age_categories(             # create new column
+      age_years,                            # numeric column to make groups from
+      breakers = c(0, 5, 10, 15, 20,        # break points
+                   30, 40, 50, 60, 70)))
 
 # show table
 table(linelist$age_cat, useNA = "always")
 ```
 
-The break values you specify are by default included in the "higher" group - groups are "open" on the lower/left side. As shown below, you can add 1 to each break value to achieve groups that are open at the top/right.
+The break values you specify are by default the lower bounds - that is, they are included in the "higher" group / the groups are "open" on the lower/left side. As shown below, you can add 1 to each break value to achieve groups that are open at the top/right.
  
 ```{r}
 # Include upper ends for the same categories
@@ -1210,7 +1227,7 @@ table(linelist$age_cat, useNA = "always")
 
 You can adjust how the labels are displayed with `separator = `. The default is "-"  
 
-You can adjust the upper cut-off of values allowed to be included in a group. Use `ceiling = `, the default is FALSE. If TRUE, the highest break value is a "ceiling" and a category "XX+" is not included. Any values above highest break value or `upper` (if defined) are categorized as `NA`. Below is an example with `ceiling = TRUE`, so that there is no category of XX+ and values above 70 (the highest break value) are assigned as NA.  
+You can adjust how the top numbers are handled, with the `ceiling = ` arguemnt. To set an upper cut-off set `ceiling = TRUE`. In this use, the highest break value provided is a "ceiling" and a category "XX+" is not created. Any values above highest break value (or to `upper = `, if defined) are categorized as `NA`. Below is an example with `ceiling = TRUE`, so that there is no category of XX+ and values above 70 (the highest break value) are assigned as NA.  
 
 ```{r}
 # With ceiling set to TRUE
@@ -1250,34 +1267,24 @@ See the function's Help page for more details (enter `?age_categories` in the R 
 
 
 <!-- ======================================================= -->
-### `cut()` {-}
+### `cut()` {.unnumbered}
 
-You can also use the **base** R function `cut()`, which creates categories from a numeric column. The differences from `age_categories()` are:  
+`cut()` is a **base** R alternative to `age_categories()`, but I think you will see why `age_categories()` was developed to simplify this process. Some notable differences from `age_categories()` are:  
 
 * You do not need to install/load another package  
 * You can specify whether groups are open/closed on the right/left  
 * You must provide accurate labels yourself  
 * If you want 0 included in the lowest group you must specify this  
 
-The basic syntax within `cut()` is to first provide the numeric variable to be cut (age_years), and then the *breaks* argument, which is a numeric vector (`c()`) of break points. Using `cut()`, the resulting column is an ordered factor. If used within `mutate()` (a **dplyr** verb) it is not necessary to specify the dataframe before the column name (e.g. `linelist$age_years`).
+The basic syntax within `cut()` is to first provide the numeric column to be cut (`age_years`), and then the *breaks* argument, which is a numeric vector `c()` of break points. Using `cut()`, the resulting column is an ordered factor.  
 
-Create new column of age categories (`age_cat`) by cutting the numeric `age_year` column at specified break points.  
+By default, the categorization occurs so that the right/upper side is "open" and inclusive (and the left/lower side is "closed" or exclusive). This is the opposite behavior from the `age_categories()` function. The default labels use the notation "(A, B]", which means A is not included but B is. **Reverse this behavior by providing the `right = TRUE` argument**.   
 
-* Specify numeric vector of break points  
-* Default behavior for `cut()` is that lower break values are *excluded* from each category, and upper break values are *included*. This is the opposite behavior from the `age_categories()` function.  
-* Include 0 in the lowest category by adding `include.lowest = TRUE`  
-* Add a vector of customized labels using the `labels = ` argument  
-* Check your work with cross-tabulation of the numeric and category columns - be aware of missing values  
+Thus, by default, "0" values are excluded from the lowest group, and categorized as `NA`! "0" values could be infants coded as age 0 so be careful! To change this, add the argument `include.lowest = TRUE` so that any "0" values will be included in the lowest group. The automatically-generated label for the lowest category will then be "[A],B]". Note that if you include the `include.lowest = TRUE` argument **and** `right = TRUE`, the extreme inclusion will now apply to the *highest* break point value and category, not the lowest.  
 
+You can provide a vector of customized labels using the `labels = ` argument. As these are manually written, be very careful to ensure they are accurate! Check your work using cross-tabulation, as described below. 
 
-Below is a detailed description of the behavior of using `cut()` to make the `age_cat` column. Key points:    
-
-* Inclusion/exclusion behavior of break points  
-* Custom category labels  
-* Handling missing values  
-* **Check your work!**  
-
-A simple example of `cut()` applied to `age_years` to make the new variable `age_cat` is below:  
+An example of `cut()` applied to `age_years` to make the new variable `age_cat` is below:  
 
 ```{r}
 # Create new variable, by cutting the numeric age variable
@@ -1295,13 +1302,10 @@ linelist <- linelist %>%
 table(linelist$age_cat, useNA = "always")
 ```
 
-* **By default**, the categorization occurs so that the right/upper side is "open" and inclusive (and the left/lower side is "closed" or exclusive). The default labels use the notation "(A, B]", which means the group does not include A (the lower break value), but includes B (the upper break value). **Reverse this behavior by providing the `right = TRUE` argument**.  
 
-* Thus, **by default** "0" values are excluded from the lowest group, and categorized as `NA`. "0" values could be infants coded as age 0. To change this **add the argument `include.lowest = TRUE`**. Then, any "0" values are included in the lowest group. The automatically-generated label for the lowest category will change from "(0,B]" to "[0,B]", which signifies that 0 values are included.  
+**Check your work!!!** Verify that each age value was assigned to the correct category by cross-tabulating the numeric and category columns. Examine assignment of boundary values (e.g. 15, if neighboring categories are 10-15 and 16-20).  
 
-* **Check your work!!!** Verify that each age value was assigned to the correct category by cross-tabulating the numeric and category columns. Examine assignment of boundary values (e.g. 15, if neighboring categories are 10-15 and 15-20).  
-
-```{r class.source = 'fold-hide'}
+```{r}
 # Cross tabulation of the numeric and category columns. 
 table("Numeric Values" = linelist$age_years,   # names specified in table for clarity.
       "Categories"     = linelist$age_cat,
@@ -1311,102 +1315,35 @@ table("Numeric Values" = linelist$age_years,   # names specified in table for cl
 
 
 
-**Reverse break inclusion behavior in `cut()`**  
 
-Lower break values will be included in each category (and upper break values excluded) if the argument `right = ` is included and and set to `TRUE`. This is applied below - note how the values have shifted among the categories.  
+**Re-labeling `NA` values**
 
-<span style="color: black;">**_NOTE:_** If you include the `include.lowest = TRUE` argument **and** `right = TRUE`, the extreme inclusion will now apply to the *highest* break point value and category, not the lowest.</span>  
-
-```{r class.source = 'fold-show'}
-linelist <- linelist %>% 
-  mutate(
-    age_cat = cut(
-      age_years,
-      breaks = c(0, 5, 10, 15, 20,
-                 30, 50, 70, 100),  # same breaks as above
-      right = FALSE,                # include each *lower* break point
-      include.lowest = TRUE         # include *highest* value *highest* group
-      ))                                                 
-
-table(linelist$age_cat, useNA = "always")
-```
-
-**Add labels**  
-
-As these are manually written, be very careful to ensure they are accurate! Check your work using cross-tabulation, as described below. Below is the same code as above, with manual labels added.  
-
-```{r class.source = 'fold-show'}
-linelist <- linelist %>% 
-  mutate(
-    age_cat = cut(
-      age_years,
-      breaks = c(0, 5, 10, 15, 20,
-                 30, 50, 70, 100),  # same breaks as above
-      right = FALSE,                # include each *lower* break point
-      include.lowest = TRUE,        # include *highest* value *highest* group
-      labels = c("0-4", "5-9", "10-14",
-                 "15-19", "20-29", "30-49",
-                 "50-69", "70-100")
-      ))
-
-table(linelist$age_cat, useNA = "always")
-```
-
-
-**Re-labeling `NA` values with `cut()`**
-
-Because `cut()` does not automatically label `NA` values, you may want to assign a label such as "Missing". This requires a few extra steps because `cut()` automatically classified the new column `age_cat` as class Factor (a rigid class limited to the defined values). 
-
-First, convert `age_cut` from Factor to Character class, so you have flexibility to add new character values (e.g. "Missing"). Otherwise you will encounter an error. Then, use the **dplyr** verb `replace_na()` to replace `NA` values with a character value like "Missing". These steps can be combined into one step, as shown below.  
-
-Note that Missing has been added, **but the order of the categories is now wrong (alphabetical considering numbers as characters).**  
+You may want to assign `NA` values a label such as "Missing". Because the new column is class Factor (restricted values), you cannot simply mutate it with `replace_na()`. Instead, use `fct_explicit_na()` from **forcats** as explained in the [Factors] page.   
 
 ```{r}
 linelist <- linelist %>% 
   
   # cut() creates age_cat, automatically of class Factor      
-  mutate(age_cat = cut(age_years,
-                          breaks = c(0, 5, 10, 15, 20, 30, 50, 70, 100),          
-                          right = FALSE,
-                          include.lowest = TRUE,        
-                          labels = c("0-4", "5-9", "10-14", "15-19",
-                                     "20-29", "30-49", "50-69", "70-100")),
+  mutate(age_cat = cut(
+    age_years,
+    breaks = c(0, 5, 10, 15, 20, 30, 50, 70, 100),          
+    right = FALSE,
+    include.lowest = TRUE,        
+    labels = c("0-4", "5-9", "10-14", "15-19", "20-29", "30-49", "50-69", "70-100")),
          
-         # convert to class Character, and replace NA with "Missing"
-         age_cat = replace_na(as.character(age_cat), "Missing"))
+    # make missing values explicit
+    age_cat = fct_explicit_na(
+      age_cat,
+      na_level = "Missing age")  # you can specify the label
+  )    
 
-
+# table to view counts
 table(linelist$age_cat, useNA = "always")
 ```
 
-To fix this, re-convert `age_cat` to a factor, and define the order of the levels correctly.
+**Quickly make breaks and labels**  
 
-```{r}
-linelist <- linelist %>% 
-  
-  # cut() creates age_cat, automatically of class Factor      
-  mutate(age_cat = cut(age_years,
-                          breaks = c(0, 5, 10, 15, 20, 30, 50, 70, 100),          
-                          right = FALSE,
-                          include.lowest = TRUE,        
-                          labels = c("0-4", "5-9", "10-14", "15-19",
-                                     "20-29", "30-49", "50-69", "70-100")),
-         
-         # convert to class Character, and replace NA with "Missing"
-         age_cat = replace_na(as.character(age_cat), "Missing"),
-         
-         # re-classify age_cat as Factor, with correct level order and new "Missing" level
-         age_cat = factor(age_cat, levels = c("0-4", "5-9", "10-14", "15-19", "20-29",
-                                              "30-49", "50-69", "70-100", "Missing")))    
-  
-
-table(linelist$age_cat, useNA = "always")
-```
-If the above seems cumbersome, consider using `age_categories()` instead, as described before.  
-
-**Make breaks and labels**  
-
-For a fast way to make breaks and labels manually, use something like below. See the [R basics] page for references on `seq()` and `rep()`.  
+For a fast way to make breaks and label vectors, use something like below. See the [R basics] page for references on `seq()` and `rep()`.  
 
 ```{r, eval=F}
 # Make break points from 0 to 90 by 5
@@ -1414,7 +1351,7 @@ age_seq = seq(from = 0, to = 90, by = 5)
 age_seq
 
 # Make labels for the above categories, assuming default cut() settings
-age_labels = paste0(age_seq+1, "-", age_seq + 5)
+age_labels = paste0(age_seq + 1, "-", age_seq + 5)
 age_labels
 
 # check that both vectors are the same length
@@ -1427,7 +1364,7 @@ Read more about `cut()` in its Help page by entering `?cut` in the R console.
 
 
 
-### Quantile breaks {-}  
+### Quantile breaks {.unnumbered}  
 
 In common understanding, "quantiles" or "percentiles" typically refer to a value below which a proportion of values fall. For example, the 95th percentile of ages in `linelist` would be the age below which 95% of the age fall.  
 
@@ -1444,7 +1381,7 @@ quantile(linelist$age_years,               # specify numeric vector to work on
   na.rm = TRUE)                            # ignore missing values 
 ```
 
-You can use the results of `quantile()` as break points in `age_categories()` or `cut()`. Below we create a new column `deciles` using `cut()` where the breaks are defined using `quantiles()` on `age_years`. below, We display the results using `tabyl()` from **janitor** so you can see the percentages (see the [Descriptive tables] page). Note how they are not exactly 10% in each group.  
+You can use the results of `quantile()` as break points in `age_categories()` or `cut()`. Below we create a new column `deciles` using `cut()` where the breaks are defined using `quantiles()` on `age_years`. Below, we display the results using `tabyl()` from **janitor** so you can see the percentages (see the [Descriptive tables] page). Note how they are not exactly 10% in each group.  
 
 ```{r}
 linelist %>%                                # begin with linelist
@@ -1457,63 +1394,41 @@ linelist %>%                                # begin with linelist
   janitor::tabyl(deciles)                   # pipe to table to display
 ```
 
-You can use the **dplyr** function `ntile()` to break your data into n groups. Provide the vector and then the number of groups. Note that the new column `deciles` created below contains just group "numbers" 1 to 10, not the range of values themselves as when using `quantile()`.  
+### Evenly-sized groups {.unnumbered}  
+
+Another tool to make numeric groups is the the **dplyr** function `ntile()`, which attempts to break your data into n *evenly-sized groups* - *but be aware that unlike with `quantile()` the same value could appear in more than one group.* Provide the numeric vector and then the number of groups. The values in the new column created is just group "numbers" (e.g. 1 to 10), not the range of values themselves as when using `cut()`.  
 
 ```{r}
-linelist %>% 
-  mutate(deciles = ntile(age_years, 10)) %>% 
-  janitor::tabyl(deciles)
+# make groups with ntile()
+ntile_data <- linelist %>% 
+  mutate(even_groups = ntile(age_years, 10))
+
+# make table of counts and proportions by group
+ntile_table <- ntile_data %>% 
+  janitor::tabyl(even_groups)
+  
+# attach min/max values to demonstrate ranges
+ntile_ranges <- ntile_data %>% 
+  group_by(even_groups) %>% 
+  summarise(
+    min = min(age_years, na.rm=T),
+    max = max(age_years, na.rm=T)
+  )
+
+# combine and print - note that values are present in multiple groups
+left_join(ntile_table, ntile_ranges, by = "even_groups")
 ```
 
 
 <!-- ======================================================= -->
-### `case_when()` {-}
+### `case_when()` {.unnumbered}
 
-The dplyr function `case_when()` can also be used to create numeric categories.  
+It is possible to use the **dplyr** function `case_when()` to create categories from a numeric column, but it is easier to use `age_categories()` from **epikit** or `cut()` because these will create an ordered factor automatically. 
 
-* Allows explicit setting of break point inclusion/exclusion  
-* Allows designation of label for `NA` values in one step  
-* More complicated code  
-* Allow more flexibility to include other variables in the logic  
-
-**If using `case_when()` please review the proper use as described earlier in this page, as logic and order of assignment are important understand to avoid errors.**
-
-<span style="color: orange;">**_CAUTION:_** In `case_when()` all right-hand side values must be of the same class. Thus, if your categories are character values (e.g. "20-30 years") then any designated outcome for `NA` age values must also be character (either "Missing", or the special `NA_character_` instead of `NA`).</span>
-
-You will need to designate the column as a factor (by wrapping `case_when()` in the function `factor()`) and provide the ordering of the factor levels using the `levels = ` argument *after* the close of the `case_when()` function. When using `cut()`, the factor and ordering of levels is done automatically.  
+If using `case_when()`, please review the proper use as described earlier in the Re-code values section of this page. Also be aware that all right-hand side values must be of the same class. Thus, if you want `NA` on the right-side you should either write "Missing" or use the special `NA` value `NA_character_`.  
 
 
-```{r}
-linelist <- linelist %>% 
-  mutate(
-    age_cat = factor(case_when(
-      # provide the case_when logic and outcomes
-      age_years >= 0 & age_years < 5     ~ "0-4",          
-      age_years >= 5 & age_years < 10    ~ "5-9",
-      age_years >= 10 & age_years < 15   ~ "10-14",
-      age_years >= 15 & age_years < 20   ~ "15-19",
-      age_years >= 20 & age_years < 30   ~ "20-29",
-      age_years >= 30 & age_years < 50   ~ "30-49",
-      age_years >= 50 & age_years < 70   ~ "50-69",
-      age_years >= 45 & age_years <= 100 ~ "70-100",
-      is.na(age_years)                   ~ "Missing",      # if age_years is missing
-      TRUE                               ~ "Check value"), # trigger for review
-      
-      # define the levels order for factor()
-      levels = c("0-4","5-9", "10-14",
-                 "15-19", "20-29", "30-49",
-                 "50-69", "70-100", "Missing", "Check value")))
-```
-
-And now view the results with a table of the new column:  
-
-```{r}
-table(linelist$age_cat, useNA = "always")
-```
-
-
-
-### Add to pipe chain {-}  
+### Add to pipe chain {.unnumbered}  
 
 Below, code to create two categorical age columns is added to the cleaning pipe chain:  
 
@@ -1592,7 +1507,9 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 ## Add rows  
 
-Remember that each column must contain values of only one class (either character, numeric, logical, etc.). So adding a row requires nuance to maintain this. 
+### One-by-one {.unnumbered}  
+
+Adding rows one-by-one manually is tedious but can be done with `add_row()` from **dplyr**. Remember that each column must contain values of only one class (either character, numeric, logical, etc.). So adding a row requires nuance to maintain this. 
 
 ```{r, eval=F}
 linelist <- linelist %>% 
@@ -1603,7 +1520,7 @@ linelist <- linelist %>%
           .before = 2)
 ```
 
-Use `.before` and `.after.` to place the row you want to add. `.before = 3` will put the new row before the 3rd row. The default behavior is to add the row to the end. Columns not specified will be left empty.  
+Use `.before` and `.after.` to specify the placement of the row you want to add. `.before = 3` will put the new row before the current 3rd row. The default behavior is to add the row to the end. Columns not specified will be left empty (`NA`).  
 
 The new *row number* may look strange ("...23") but the row numbers in the pre-existing rows *have* changed. So if using the command twice, examine/test the insertion carefully.
 
@@ -1616,7 +1533,9 @@ Error: Can't combine ..1$infection date <date> and ..2$infection date <character
 (when inserting a row with a date value, remember to wrap the date in the function `as.Date()` like `as.Date("2020-10-10")`).
 
 
+### Bind rows {.unnumbered}  
 
+To combine datasets together by binding the rows of one dataframe to the bottom of another data frame, you can use `bind_rows()` from **dplyr**. This is explained in more detail in the page [Joining data].  
 
 
 
@@ -1627,35 +1546,52 @@ Error: Can't combine ..1$infection date <date> and ..2$infection date <character
 ## Filter rows {  }
 
 
-A typical early cleaning step is to filter the dataframe for specific rows using the **dplyr** verb `filter()`. Within `filter()`, give the logic that must be `TRUE` for a row in the dataset to be kept. 
+A typical cleaning step after you have cleaned the columns and re-coded values is to *filter* the data frame for specific rows using the **dplyr** verb `filter()`.  
 
-Below is shown how to filter rows based on simple and complex logical conditions, and how to filter/subset rows as a stand-alone command and with **base** R
+Within `filter()`, specify the logic that must be `TRUE` for a row in the dataset to be kept. Below we show how to filter rows based on simple and complex logical conditions.  
+
+
 
 <!-- ======================================================= -->
-### Simple `filter()` {-} 
+### Simple filter {.unnumbered} 
 
-This simple example re-defines the dataframe `linelist` as itself, having filtered the rows to meet a logical condition. **Only the rows where the logical statement within the parentheses is `TRUE` are kept.**  
+This simple example re-defines the dataframe `linelist` as itself, having filtered the rows to meet a logical condition. **Only the rows where the logical statement within the parentheses evaluates to `TRUE` are kept.**  
 
-In this case, the logical statement is `!is.na(case_id)`, which is asking whether the value in the column `case_id` is **not** missing (`NA`). Thus, rows where `case_id` is **not** missing are kept.  
+In this example, the logical statement is `gender == "f"`, which is asking whether the value in the column `gender` is equal to "f" (case sensitive).   
 
 Before the filter is applied, the number of rows in `linelist` is `r nrow(linelist)`.
 
-```{r}
+```{r, eval=F}
 linelist <- linelist %>% 
-  filter(!is.na(case_id))  # keep only rows where case_id is not missing
+  filter(gender == "f")   # keep only rows where gender is equal to "f"
 ```
 
-After the filter is applied, the number of rows in `linelist` is `r nrow(linelist)`. 
+After the filter is applied, the number of rows in `linelist` is `r linelist %>% filter(gender == "f") %>% nrow()`.
 
-#### Filter by row number {-}  
 
-In a data frame or tibble, each row will usually have a "row number" that (when seen in R Viewer) appears to the left of the first column. It is not itself a true column in the data, but it can be used in a filter statement.  
+### Filter out missing values {.unnumbered}  
+
+It is fairly common to want to filter out rows that have missing values. Resist the urge to write `filter(!is.na(column) & !is.na(column))` and instead use the **tidyr** function that is custom-built for this purpose: `drop_na()`. If run with empty parentheses, it removes rows with *any* missing values. Alternatively, you can provide names of specific columns to be evaluated for missingness, or use the "tidyselect" helper functions described [above](#clean_tidyselect).  
+
+```{r, eval=F}
+linelist %>% 
+  drop_na(case_id, age_years)  # drop rows with missing values for case_id or age_years
+```
+
+See the page on [Missing data] for many techniques to analyse and manage missingness in your data. 
+
+
+
+
+### Filter by row number {.unnumbered}  
+
+In a data frame or tibble, each row will usually have a "row number" that (when seen in R Viewer) appears to the left of the first column. It is not itself a true column in the data, but it can be used in a `filter()` statement.  
 
 To filter based on "row number", you can use the **dplyr** function `row_number()` with open parentheses as part of a logical filtering statement. Often you will use the `%in%` operator and a range of numbers as part of that logical statement, as shown below. To see the *first* N rows, you can also use the special **dplyr** function `head()`.   
 
 ```{r, eval=F}
 # View first 100 rows
-linelist %>% head(100)
+linelist %>% head(100)     # or use tail() to see the n last rows
 
 # Show row 5 only
 linelist %>% filter(row_number() == 5)
@@ -1668,11 +1604,15 @@ You can also convert the row numbers to a true column by piping your data frame 
 
 
 <!-- ======================================================= -->
-### Complex `filter()` {-} 
+### Complex filter {.unnumbered} 
 
-A more complex example using `filter()`:  
+More complex logical statements can be constructed using parentheses `( )`, OR `|`, negate `!`, `%in%`, and AND `&` operators. An example is below:  
 
-#### Examine the data  {-}  
+
+Note: You can use the `!` operator in front of a logical criteria to negate it. For example, `!is.na(column)` evaluates to true if the column value is *not* missing. Likewise `!column %in% c("a", "b", "c")` evaluates to true if the column value is *not* in the vector.  
+
+
+#### Examine the data  {.unnumbered}  
 
 Below is a simple one-line command to create a histogram of onset dates. See that a second smaller outbreak from 2012-2013 is also included in this raw dataset. **For our analyses, we want to remove entries from this earlier outbreak.**  
 
@@ -1681,7 +1621,7 @@ hist(linelist$date_onset, breaks = 50)
 ```
 
 
-#### How filters handle missing numeric and date values {-}  
+#### How filters handle missing numeric and date values {.unnumbered}  
 
 Can we just filter by `date_onset` to rows after June 2013? **Caution! Applying the code `filter(date_onset > as.Date("2013-06-01")))` would remove any rows in the later epidemic with a missing date of onset!**  
 
@@ -1689,7 +1629,7 @@ Can we just filter by `date_onset` to rows after June 2013? **Caution! Applying 
 
 *(See the page on [Working with dates] for more information on working with dates and the package **lubridate**)*
 
-#### Design the filter {-}  
+#### Design the filter {.unnumbered}  
 
 Examine a cross-tabulation to make sure we exclude only the correct rows:  
 
@@ -1712,7 +1652,7 @@ We want to exclude:
   * Exclude `r nrow(linelist %>% filter(hospital %in% c('Hospital A', 'Hospital B') & is.na(date_onset)))` rows from Hospitals A & B with missing onset dates  
   * Do **not** exclude `r nrow(linelist %>% filter(!hospital %in% c('Hospital A', 'Hospital B') & is.na(date_onset)))` other rows with missing onset dates.  
 
-We start with a linelist of `nrow(linelist)`. Here is our filter statement:  
+We start with a linelist of `r `nrow(linelist)`. Here is our filter statement:  
 
 ```{r}
 linelist <- linelist %>% 
@@ -1738,7 +1678,7 @@ Multiple statements can be included within one filter command (separated by comm
 
 
 
-### Standalone {-}  
+### Standalone {.unnumbered}  
 
 Filtering can also be done as a stand-alone command (not part of a pipe chain). Like other **dplyr** verbs, in this case the first argument must be the dataset itself.  
 
@@ -1756,28 +1696,26 @@ You can also use **base** R to subset using square brackets which reflect the [r
 linelist <- linelist[!is.na(case_id), ]
 ```
 
-<span style="color: darkgreen;">**_TIP:_** Use bracket-subset syntax with `View()` to quickly review a few records.</span>
 
 
 
 
-### Quickly review records {-} 
+### Quickly review records {.unnumbered} 
 
-This **base** R syntax can be handy when you want to quickly view a subset of rows and columns. Use the **base** R `View()` command (note the capital "V") around the [ ] subset you want to see. The result will appear as a dataframe in your RStudio viewer panel. For example, if I want to review onset and hospitalization dates of 3 specific cases:  
+Often you want to quickly review a few records, for only a few columns. The **base** R function `View()` will print a data frame for viewing in your RStudio. 
 
-View the linelist in the viewer panel:  
+View the linelist in RStudio:  
 
 ```{r, eval=F}
 View(linelist)
 ```
 
-View specific data for three cases:  
+Here are two examples of viewing specific cells (specific rows, and specific columns):  
 
-```{r, eval=F}
-View(linelist[linelist$case_id %in% c("11f8ea", "76b97a", "47a5f5"), c("date_onset", "date_hospitalisation")])
-```
 
-Note: the above command can also be written with **dplyr** verbs `filter()` and `select()` as below:  
+**With dplyr functions `filter()` and `select()`:**  
+
+Within `View()`, pipe the dataset to `filter()` to keep certain rows, and then to `select()` to keep certain columns. For example, to review onset and hospitalization dates of 3 specific cases:   
 
 ```{r, eval=F}
 View(linelist %>%
@@ -1786,10 +1724,17 @@ View(linelist %>%
 ```
 
 
+You can achieve the same with **base** R syntax, using brackets `[ ]` to subset you want to see. 
+
+```{r, eval=F}
+View(linelist[linelist$case_id %in% c("11f8ea", "76b97a", "47a5f5"), c("date_onset", "date_hospitalisation")])
+```
 
 
 
-#### Add to pipe chain {-}  
+
+
+#### Add to pipe chain {.unnumbered}  
 
 
 ```{r}
@@ -1875,13 +1820,10 @@ linelist <- linelist_raw %>%
 <!-- ======================================================= -->
 ## Row-wise calculations  
 
-If you want to perform a calculation within a row, you can use `rowwise()` from **dplyr**. See the vignette on [row-wise calculations](https://cran.r-project.org/web/packages/dplyr/vignettes/rowwise.html).  
+If you want to perform a calculation within a row, you can use `rowwise()` from **dplyr**. See this online vignette on [row-wise calculations](https://cran.r-project.org/web/packages/dplyr/vignettes/rowwise.html).  
+For example, this code applies `rowwise()` and then creates a new column that sums the number of the specified symptom columns that have value "yes", for each row in the linelist. The columns are specified within `sum()` by name within a vector `c()`. `rowwise()` is essentially a special kind of `group_by()`, so it is best to use `ungroup()` when you are done (page on [Grouping data]).  
 
-`rowwise()` is essentially a special kind of `group_by()`, so it is best to use `ungroup()` when you are done.  
-
-For example, this code applies `rowwise()` and then creates a new column that sums the number of the specified symptom columns that have value "yes", for each row in the linelist. The columns by name within a normal vector `c()`.  
-
-```{r, eval=F}
+```{r, eval=T}
 linelist %>%
   rowwise() %>%
   mutate(num_symptoms = sum(c(fever, chills, cough, aches, vomit) == "yes")) %>% 
@@ -1889,7 +1831,8 @@ linelist %>%
   select(fever, chills, cough, aches, vomit, num_symptoms) # for display
 ```
 
-To specify columns, you may want to use the  "tidyselect" helper functions described in the `select()` section of this page. You just have to make one adjustment (because you are not using them within `select()` or `summarise()`).  
+  
+As you specify the column to evaluate, you may want to use the  "tidyselect" helper functions described in the `select()` section of this page. You just have to make one adjustment (because you are not using them within a **dplyr** function like `select()` or `summarise()`).  
 
 Put the column-specification criteria within the **dplyr** function `c_across()`. This is because `c_across` ([documentation](https://dplyr.tidyverse.org/reference/c_across.html)) is designed to work with `rowwise()` specifically. For example, the following code:  
 
@@ -1897,7 +1840,7 @@ Put the column-specification criteria within the **dplyr** function `c_across()`
 * Creates new column `num_NA_dates`, defined for each row as the number of columns (with name containing "date") for which `is.na()` evaluated to TRUE (they are missing data).  
 * `ungroup()` to remove the effects of `rowwise()` for subsequent steps  
 
-```{r, eval=F}
+```{r, eval=T}
 linelist %>%
   rowwise() %>%
   mutate(num_NA_dates = sum(is.na(c_across(contains("date"))))) %>% 
@@ -1916,7 +1859,22 @@ linelist %>%
 ```
 
 
+## Arrange and sort  
 
+Use the **dplyr** function `arrange()` to sort or order the rows by column values.  
+
+Simple list the columns in the order they should be sorted on. Specify `.by_group = TRUE` if you want the sorting to to first occur by any *groupings* applied to the data (see page on [Grouping data]).  
+
+By default, column will be sorted in "ascending" order (which applies to numeric and also to character columns). You can sort a variable in "descending" order by wrapping it with `desc()`.  
+
+Sorting data with `arrange()` is particularly useful when making [Tables for presentation], using `slice()` to take the "top" rows per group, or setting factor level order by order of appearance.  
+
+For example, to sort the our linelist rows by `hospital`, then by `date_onset` in descending order, we would use:  
+
+```{r, eval=F}
+linelist %>% 
+   arrange(hospital, desc(date_onset))
+```
 
 
 ```{r, echo=F}
@@ -1933,8 +1891,8 @@ linelist <- linelist %>%
       TRUE                                 ~ date_outcome)
     )
 
-min(linelist$date_hospitalisation, na.rm=T)
-min(linelist$date_outcome, na.rm=T)
+#min(linelist$date_hospitalisation, na.rm=T)
+#min(linelist$date_outcome, na.rm=T)
 ```
 
 

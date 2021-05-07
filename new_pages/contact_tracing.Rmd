@@ -27,7 +27,7 @@ pacman::p_load(
 ```
 
 
-### Import data {-}
+### Import data {.unnumbered}
 
 We will import the sample datasets of contacts and contact followups that have been retrieved and un-nested from the Go.Data API and stored as .rds output files.
 
@@ -35,11 +35,11 @@ We will import the sample datasets of contacts and contact followups that have b
 knitr::include_graphics(here::here("images", "godata_api_github.png"))
 ```
 
-If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data. For the full steps on how to retrieve data collections from your Go.Data instance, view the Github documentation [here](https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting)
+If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data. For the full steps on how to retrieve data collections from your Go.Data instance, view the Github documentation [here](https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting)
 
 Below we import the .rds files. We use `here()` to specify the file path, you should provide the file path specific to your computer. We also use `select()` to select only certain columns of the data, to simplify for purposes of demonstration.  
 
-#### Case data {-}  
+#### Case data {.unnumbered}  
 
 ```{r, echo=F}
 cases <- import(here("data", "godata", "cases_clean.rds")) %>% 
@@ -52,7 +52,7 @@ Here are the `r nrow(cases)` cases:
 DT::datatable(cases, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Contacts data {-}  
+#### Contacts data {.unnumbered}  
 
 ```{r}
 contacts <- rio::import(here::here("data", "godata", "contacts_clean.rds")) %>% 
@@ -67,7 +67,7 @@ Here are the first 50 rows of the `r nrow(contacts)`-row `contacts` dataset:
 DT::datatable(head(contacts, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Follow-up data {-}  
+#### Follow-up data {.unnumbered}  
 
 ```{r}
 followups <- rio::import(here::here("data", "godata", "followups_clean.rds")) %>% 
@@ -81,7 +81,7 @@ Here are the first 50 rows of the `r nrow(followups)`-row `followups` dataset (e
 DT::datatable(head(contacts, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Relationships data {-}  
+#### Relationships data {.unnumbered}  
 
 ```{r}
 relationships <- rio::import(here::here("data", "godata", "relationships_clean.rds")) %>% 
@@ -107,12 +107,12 @@ You can use the techniques covered in other pages of this handbook to conduct de
 Below are some examples.  
 
 
-### Demographics {-}  
+### Demographics {.unnumbered}  
 
 As demonstrated in the page covering [Demographic pyramids][Demographic pyramids and Likert-scales], you can visualise the age and gender distribution (here we use the **apyramid** package).  
 
 
-#### Age and Gender of contacts {-}  
+#### Age and Gender of contacts {.unnumbered}  
 
 The pyramid below compares age and gender of contacts. Note that contacts missing age are included in their own bar at the top. You can change this default behavior, but then consider listing the number missing in a caption.  
 
@@ -180,7 +180,7 @@ ggplot(data = occ_plot_data, mapping = aes(x = "", y = n, fill = occupation))+
 ```
 
 
-### Contacts per case {-}  
+### Contacts per case {.unnumbered}  
 
 The number of contacts per case can be an important metric to assess quality of contact enumeration and the compliance of the population toward public health response. 
 
@@ -223,7 +223,7 @@ Contact tracing data often contain "follow-up" data, which record outcomes of da
 
 
 
-### Data cleaning {-}  
+### Data cleaning {.unnumbered}  
 
 These data can exist in a variety of formats. It may exist as a "wide" format Excel sheet with one row per contact, and one column per follow-up "day". See [Pivoting data] for descriptions of "long" and "wide" data and how to pivot data wider or longer.  
 
@@ -258,7 +258,7 @@ followups_clean <- followups %>%
   
   # Other cleaning
   mutate(followup_number = replace(followup_number, followup_number > 14, NA)) %>% # clean erroneous data
-  filter(!is.na(contact_id))                        # remove rows with missing contact_id
+  drop_na(contact_id)                               # remove rows with missing contact_id
 ```
 
 For each follow-up encounter, we have a follow-up status (such as whether the encounter occurred and if so, did the contact have symptoms or not). To see all the values we can run a quick `tabyl()` (from **janitor**) or `table()` (from **base** R) (see [Descriptive tables]).   by `followup_status` to see the frequency of each of the outcomes.  
@@ -272,7 +272,7 @@ followups_clean %>%
 ```
 
 
-### Plot over time {-}  
+### Plot over time {.unnumbered}  
 
 As the dates data are continuous, we will use a histogram to plot them with `date_of_followup` assigned to the x-axis. We can achieve a "stacked" histogram by specifying a `fill = ` argument within `aes()`, which we assign to the column `followup_status`. Consequently, you can set the legend title using the `fill = ` argument of `labs()`.  
 
@@ -296,7 +296,7 @@ ggplot(data = followups_clean)+
 <span style="color: orange;">**_CAUTION:_** If you are preparing many plots (e.g. for multiple jurisdictions) you will want the legends to appear identically even with varying levels of data completion or data composition. There may be plots for which not all follow-up statuses are present in the data, but you still want those categories to appear the legends. In ggplots (like above), you can specify the `drop = FALSE` argument of the `scale_x_discrete()` ("x" being either `fill` or `color`, etc.). In tables, use `tabyl()` which shows counts for all factor levels, or if using `count()` from **dplyr** add the argument `.drop = FALSE` to include counts for all factor levels.</span>  
 
 
-### Daily individual tracking  {-}  
+### Daily individual tracking  {.unnumbered}  
 
 If your outbreak is small enough, you may want to look at each contact individually and see their status over the course of their follow-up. Fortunately, this `followups` dataset already contains a column with the day "number" of follow-up (1-14). If this does not exist in your data, you could create it by calculating the difference between the encounter date and the date follow-up was intended to begin.  
 
@@ -311,7 +311,7 @@ ggplot(data = followups_clean)+
 ```
 
 
-### Analyse by group {-}  
+### Analyse by group {.unnumbered}  
 
 Perhaps these data are being viewed on a daily or weekly basis for operational decision-making. You may want more meaningful disaggregations by geographic area or by contact-tracing team. We can do this by adjusting the columns provided to `group_by()`.  
 

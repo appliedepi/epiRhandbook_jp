@@ -1,6 +1,9 @@
 
 # Survey analysis { }  
 
+UNDER CONSTRUCTION
+
+
 <!-- ======================================================= -->
 ## Overview {  }
 
@@ -45,12 +48,12 @@ eventually have a section on sampling frames as well as sample size calculations
 <!-- ======================================================= -->
 ## Preparation {  }
 
-### Packages {-}
+### Packages {.unnumbered}
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 Here we also demonstrate using the `p_load_gh()` function from **pacman** to install a load a package from github which has not yet been published on CRAN. 
 
-```{r load_packages}
+```{r eval=F}
 
 ## load packages from CRAN
 pacman::p_load(rio,          # File import
@@ -72,7 +75,7 @@ pacman::p_load_gh(
 
 ``` 
 
-### Load data {-}
+### Load data {.unnumbered}
 
 The example dataset used in this section:
 
@@ -105,7 +108,7 @@ as an export (as in Kobo you export different questionnaire levels individually)
 
 The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export](https://epirhandbook.com/import-and-export.html) for various ways to import data.
 
-```{r read_data_hide, echo = FALSE}
+```{r echo = FALSE, eval=F}
 # import the survey into R
 survey_data <- rio::import(here::here("data", "surveys", "survey_data.xlsx"))
 
@@ -116,7 +119,7 @@ survey_dict <- rio::import(here::here("data", "surveys", "survey_dict.xlsx"))
 population <- rio::import(here::here("data", "surveys", "population.xlsx"))
 ```
 
-```{r read_data_show, eval = FALSE}
+```{r eval = FALSE, eval=F}
 # import the survey data
 survey_data <- rio::import("survey_data.xlsx")
 
@@ -126,7 +129,7 @@ survey_dict <- rio::import("survey_dict.xlsx")
 
 The first 10 rows of the survey are displayed below.
 
-```{r, message = FALSE, echo = FALSE}
+```{r, message = FALSE, echo = FALSE, eval=F}
 # display the survey data as a table
 DT::datatable(head(survey_data, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
@@ -136,14 +139,14 @@ appropriate weights. This data can be in different formats, however we would
 suggest to have it as seen below (this can just be typed in to an excel). 
 
 
-```{r read_data_pop_show, eval = FALSE}
+```{r read_data_pop_show, eval = FALSE, eval=F}
 # import the population data
 population <- rio::import("population.xlsx")
 ```
 
 The first 10 rows of the survey are displayed below.
 
-```{r inspect_data, message=FALSE, echo=F}
+```{r message=FALSE, echo=F, eval=F}
 # display the survey data as a table
 DT::datatable(head(population, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
@@ -156,7 +159,7 @@ In any case you will need to have one column with a cluster identifier which
 matches your survey data, and another column with the number of households in 
 each cluster. 
 
-```{r cluster_counts}
+```{r cluster_counts, eval=F}
 
 ## define the number of households in each cluster
 cluster_counts <- tibble(cluster = c("village_1", "village_2", "village_3", "village_4", 
@@ -167,7 +170,7 @@ cluster_counts <- tibble(cluster = c("village_1", "village_2", "village_3", "vil
 
 ```
 
-### Clean data {-}
+### Clean data {.unnumbered}
 
 The below makes sure that the date column is in the appropriate format. 
 There are several other ways of doing this (see the [Working with dates](https://epirhandbook.com/working-with-dates.html)
@@ -182,7 +185,7 @@ are in.
 Finally, we recode all of the yes/no variables to TRUE/FALSE variables - otherwise
 these cant be used by the **survey** proportion functions. 
 
-```{r clean_data}
+```{r eval=F}
 
 ## select the date variable names from the dictionary 
 DATEVARS <- survey_dict %>% 
@@ -248,7 +251,7 @@ This will create new rows for household with each matching individual,
 see the handbook section on [joining](https://epirhandbook.com/joining-data.html)
 for details. 
 
-```{r merge_data_levels, eval = FALSE}
+```{r merge_data_levels, eval = FALSE, eval=F}
 
 ## join the individual and household data to form a complete data set
 survey_data <- left_join(survey_data_hh, 
@@ -277,7 +280,7 @@ questions).
 We can then use this period to set inappropriate dates to missing, i.e. if deaths
 are reported from outside the period of interest. 
 
-```{r recall_period}
+```{r recall_period, eval=F}
 
 ## set the start/end of recall period
 ## can be changed to date variables from dataset 
@@ -323,7 +326,7 @@ Earliest appropriate departure event within your recall period
 Either the end of your recall period, or a date before the end of recall 
 if applicable (e.g. departures, deaths)
 
-```{r observation_time}
+```{r observation_time, eval=F}
 
 ## create new variables for start and end dates/causes
 survey_data <- survey_data %>% 
@@ -365,8 +368,8 @@ survey_data <- survey_data %>%
 It is important that you drop erroneous observations before adding survey weights. 
 For example if you have observations with negative observation time, you will need
 to check those. 
-Another thing is if you want to drop empty rows (e.g. with `filter(!is.na(uid))`)
-or remove duplicates (see handbook section on [de-duplication](https://epirhandbook.com/de-duplication.html)
+Another thing is if you want to drop empty rows (e.g. with `drop_na(uid)`)
+or remove duplicates (see handbook section on [De-duplication] 
 for details). 
 Those without consent need to be dropped too. 
 
@@ -375,7 +378,7 @@ data frame - this way we can describe those that were excluded from the survey.
 We then use the `anti_join()` function from **dplyr** to remove these dropped cases
 from our survey data. 
 
-```{r remove_unused_data}
+```{r remove_unused_data, eval=F}
 
 ## store the cases that you drop so you can describe them (e.g. non-consenting 
 ## or wrong village/cluster)
@@ -393,7 +396,7 @@ on the source population and/or the clusters surveyed.
 We will use the stratified cluster code for this example, but use whichever is
 most appropriate for your study design. 
 
-```{r survey_weights}
+```{r survey_weights, eval=F}
 
 # stratified ------------------------------------------------------------------
 # create a variable called "surv_weight_strata"
@@ -426,19 +429,19 @@ survey_data <- add_weights_cluster(x = survey_data,
                                           ignore_cluster = FALSE,
                                           ignore_household = FALSE)
 
-# 
-# # stratified and cluster ------------------------------------------------------
-# # create a survey weight for cluster and strata
-# survey_data <- survey_data %>%
-#   mutate(surv_weight_cluster_strata = surv_weight_strata * surv_weight_cluster)
-# 
-# 
-# ## TODO DELETE THIS 
-# 
-# ## drop those that are missing weights 
-# # 
-# survey_data <- survey_data %>%
-#   filter(!is.na(surv_weight_cluster_strata))
+
+# stratified and cluster ------------------------------------------------------
+# create a survey weight for cluster and strata
+survey_data <- survey_data %>%
+  mutate(surv_weight_cluster_strata = surv_weight_strata * surv_weight_cluster)
+
+
+## TODO DELETE THIS
+
+## drop those that are missing weights
+#
+survey_data <- survey_data %>%
+  drop_na(surv_weight_cluster_strata)
 ```
 
 
@@ -474,7 +477,7 @@ object with appropriate clusters, weights and strata.
 
 <span style="color: black;">**_NOTE:_** we need to use the tilde (`~`) in front of variables, this is because the package uses the **base** *R* syntax of assigning variables based on formulae. </span>
 
-```{r survey_design}
+```{r survey_design, eval=F}
 
 # simple random ---------------------------------------------------------------
 base_survey_design_simple <- svydesign(ids = ~1, # 1 for no cluster ids
@@ -513,32 +516,32 @@ With the **srvyr** package we can use the `as_survey_design()` function, which
 has all the same arguments as above but allows pipes (`%>%`), and so we do not 
 need to use the tilde (`~`). 
 
-```{r survey_design_srvyr}
+```{r survey_design_srvyr, eval=F}
 ## simple random ---------------------------------------------------------------
 survey_design_simple <- survey_data %>% 
   as_survey_design(ids = 1, # 1 for no cluster ids 
                    weights = NULL, # No weight added
                    strata = NULL # sampling was simple (no strata)
                   )
-# ## stratified ------------------------------------------------------------------
-# survey_design_strata <- survey_data %>% 
-#   as_survey_design(ids = 1, # 1 for no cluster ids 
-#                    weights = surv_weight_strata, # weight variable created above 
-#                    strata = health_district # sampling was stratified by district
-#                   )
-# ## cluster ---------------------------------------------------------------------
-# survey_design_cluster <- survey_data %>% 
-#   as_survey_design(ids = village_name, # cluster ids 
-#                    weights = surv_weight_cluster, # weight variable created above 
-#                    strata = NULL # sampling was simple (no strata)
-#                   )
-# 
-# ## stratified cluster ----------------------------------------------------------
-# survey_design <- survey_data %>% 
-#   as_survey_design(ids = village_name, # cluster ids 
-#                    weights = surv_weight_cluster_strata, # weight variable created above 
-#                    strata = health_district # sampling was stratified by district
-#                   )
+## stratified ------------------------------------------------------------------
+survey_design_strata <- survey_data %>%
+  as_survey_design(ids = 1, # 1 for no cluster ids
+                   weights = surv_weight_strata, # weight variable created above
+                   strata = health_district # sampling was stratified by district
+                  )
+## cluster ---------------------------------------------------------------------
+survey_design_cluster <- survey_data %>%
+  as_survey_design(ids = village_name, # cluster ids
+                   weights = surv_weight_cluster, # weight variable created above
+                   strata = NULL # sampling was simple (no strata)
+                  )
+
+## stratified cluster ----------------------------------------------------------
+survey_design <- survey_data %>%
+  as_survey_design(ids = village_name, # cluster ids
+                   weights = surv_weight_cluster_strata, # weight variable created above
+                   strata = health_district # sampling was stratified by district
+                  )
 ```
 
 <!-- ======================================================= -->
@@ -576,12 +579,12 @@ compared to the source population is more important than the binomial test itsel
 This is because increasing sample size will more often than not lead to 
 differences that may be irrelevant after weighting your data.
 
-```{r descriptive_sampling_bias, warning = FALSE}
+```{r descriptive_sampling_bias, warning = FALSE, eval=F}
 
 ## counts and props of the study population
 ag <- survey_data %>% 
   group_by(age_group) %>% 
-  filter(!is.na(age_group)) %>% 
+  drop_na(age_group) %>% 
   tally() %>% 
   mutate(proportion = n / sum(n), 
          n_total = sum(n))
@@ -656,7 +659,7 @@ here that would be by using the argument `stack_by  = "health_district"`
 
 <span style="color: black;">**_NOTE:_** The x and y axes are flipped in pyramids </span>
 
-```{r age_pyramids}
+```{r eval=F}
 
 ## define x-axis limits and labels ---------------------------------------------
 ## (update these numbers to be the values for your graph)
@@ -773,7 +776,7 @@ different names including alluvial, sankey and parallel sets - the details are
 in the handbook chapter on [diagrams and charts](https://epirhandbook.com/diagrams-and-charts.html#alluvialsankey-diagrams). 
 
 
-```{r visualise_population_flow}
+```{r visualise_population_flow, eval=F}
 
 ## summarize data
 flow_table <- survey_data %>%
@@ -842,7 +845,7 @@ It is worth noting that `svyprop()` only appears to accept variables between 0 a
 <span style="color: black;">**_NOTE:_** Functions from **survey** also accept **srvyr** design objects, but here we have used the **survey** design object just for consistency </span>
 
 
-```{r survey_props}
+```{r survey_props, eval=F}
 
 ## produce weighted counts 
 svytable(~died, base_survey_design)
@@ -862,7 +865,7 @@ together with `map()` from the purrr package to iterate over several variables
 and create a table. See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) 
 chapter for details on **purrr**. 
 
-```{r survey_prop_fun}
+```{r survey_prop_fun, eval=F}
 # Define function to calculate weighted counts, proportions, CI and design effect
 # x is the variable in quotation marks 
 # design is your survey design object
@@ -926,7 +929,7 @@ also that the same function is used to calculate design effect. This is because
 
 <span style="color: black;">**_NOTE:_** It does not seem to be possible to get proportions from categorical variables using **srvyr** either, if you need this then check out the section below using **sitrep** </span>
 
-```{r srvyr_prop}
+```{r srvyr_prop, eval=F}
 
 ## use the srvyr design object
 survey_design %>% 
@@ -951,7 +954,7 @@ the **purrr** package.
 See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) 
 chapter for details on **purrr**. 
 
-```{r srvyr_prop_fun}
+```{r srvyr_prop_fun, eval=F}
 
 # Define function to calculate weighted counts, proportions, CI and design effect
 # design is your survey design object
@@ -1001,7 +1004,7 @@ The `tab_survey()` function from **sitrep** is a wrapper for **srvyr**, allowing
 you to create weighted tables with minimal coding. It also allows you to calculate
 weighted proportions for categorical variables. 
 
-```{r sitrep_props}
+```{r sitrep_props, eval=F}
 
 ## using the survey design object
 survey_design %>% 
@@ -1023,7 +1026,7 @@ While you
 We show here how to 
 
 
-```{r}
+```{r, eval=F}
 
 
 confidence_intervals <- function(data, variable, by, ...) {
@@ -1070,7 +1073,7 @@ but currently it does not have inbuilt functionality.
 
 ### **Survey** package 
 
-```{r survey_ratio}
+```{r survey_ratio, eval=F}
 
 ratio <- svyratio(~died, 
          denominator = ~obstime, 
@@ -1088,7 +1091,7 @@ cbind(
 
 ### **Srvyr** package 
 
-```{r srvyr_ratio}
+```{r srvyr_ratio, eval=F}
 
 survey_design %>% 
   ## survey ratio used to account for observation time 

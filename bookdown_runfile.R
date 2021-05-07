@@ -25,6 +25,9 @@ bookdown::render_book(
 # Available as a self-contained html file
 # Ctrl+f Search functionality spans whole book
 
+
+# !!! NOTE: this will output as "main.html" in the root folder. !!!
+# Then you have to copy and re-name the file into the offline_long folder
 bookdown::render_book(
         output_format = 'bookdown::html_document2',
         config_file = "_offline_long.yml")

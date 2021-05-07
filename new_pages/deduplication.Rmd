@@ -5,21 +5,18 @@
 knitr::include_graphics(here::here("images", "deduplication.png"))
 ```
 
-<!-- ======================================================= -->
-## Overview { }
-
-This page covers the following subjects:  
+This page covers the following de-duplication techniques:  
 
 1. Identifying and removing duplicate rows  
-2. "Slicing" and keeping only certain rows (min, max, random...), also from each group  
-3. "Rolling-up", or combining values from multiple rows into one  
+2. "Slicing" rows to keep only certain rows (e.g. min or max) from each group of rows  
+3. "Rolling-up", or combining values from multiple rows into one row  
 
 
 <!-- ======================================================= -->
 ## Preparation { }
 
 
-### Load packages {-}
+### Load packages {.unnumbered}
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -30,16 +27,13 @@ pacman::p_load(
   stringr)      # for string searches, can be used in "rolling-up" values
 ```
 
-### Import data {-}
+### Import data {.unnumbered}
 
-For demonstration, we will use the example dataset that is created with the R code below. The data are records of COVID-19 phone encounters, including with contacts and with cases.  
+For demonstration, we will use an example dataset that is created with the R code below.  
 
-* The first two records are 100% complete duplicates including duplicate `recordID` (computer glitch)  
-* The second two rows are duplicates, in all columns *except for `recordID`*  
-* Several people had multiple phone encounters, at various dates/times and as contacts or cases  
-* At each encounter, the person was asked if they had **ever** had symptoms, and some of this information is missing.  
+The data are records of COVID-19 phone encounters, including encounters with contacts and with cases. The columns include `recordID` (computer-generated), `personID`, `name`, `date` of encounter, `time` of encounter, the `purpose` of the encounter (either to interview as a case or as a contact), and `symptoms_ever` (whether the person in that encounter reported *ever* having symptoms).  
 
-Here is the code to create the dataset:  
+Here is the code to create the `obs` dataset:  
 
 ```{r}
 obs <- data.frame(
@@ -56,17 +50,29 @@ obs <- data.frame(
   purpose   = c("contact", "contact", "contact", "contact", "case", "case", "contact", "contact", "contact", "contact", "contact",
                 "case", "contact", "contact", "contact", "contact", "case", "contact", "case"),
   symptoms_ever = c(NA, NA, "No", "No", "No", "Yes", "Yes", "No", "Yes", NA, "Yes",
-                    "No", "No", "No", "Yes", "Yes", "No","No", "No"))
+                    "No", "No", "No", "Yes", "Yes", "No","No", "No")) %>% 
+  mutate(date = as.Date(date, format = "%d/%m/%Y"))
 ```
 
-Here is the dataset:  
+
+#### Here is the data frame {#dedup_data .unnumbered}  
+
+Use the filter boxes along the top to review the encounters for each person.  
 
 ```{r message=FALSE, echo=F}
-DT::datatable(obs, rownames = FALSE, options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(obs, rownames = FALSE, filter = "top", options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-And here is a quick summary of the people in the dataset and the purposes of their encounters:  
+A few things to note as you review the data:  
+
+* The first two records are 100% complete duplicates including duplicate `recordID` (must be a computer glitch!)  
+* The second two rows are duplicates, in all columns *except for `recordID`*  
+* Several people had multiple phone encounters, at various dates and times, and as contacts and/or cases  
+* At each encounter, the person was asked if they had **ever** had symptoms, and some of this information is missing.  
+
+
+And here is a quick summary of the people and the purposes of their encounters, using `tabyl()` from **janitor**:  
 
 ```{r}
 obs %>% 
@@ -76,16 +82,16 @@ obs %>%
 ## Deduplication { }
 
 
-This section describes how to review and remove duplicate rows in a dataframe. It also show how to handle duplicate elements in a vector.  
+This section describes how to review and remove duplicate rows in a data frame. It also show how to handle duplicate elements in a vector.  
 
 
 <!-- ======================================================= -->
-### Examine duplicate rows {-}  
+### Examine duplicate rows {.unnumbered}  
 
 
-To quickly review rows that have duplicates, you can use `get_dupes()` from the **janitor** package. *By default*, all columns are considered when duplicates are evaluated - rows returned are 100% duplicates considering the values in *all* columns.  
+To quickly review rows that have duplicates, you can use `get_dupes()` from the **janitor** package. *By default*, all columns are considered when duplicates are evaluated - rows returned by the function are 100% duplicates considering the values in *all* columns.  
 
-In the `obs` dataframe, the first two rows are *100% duplicates* - they have the same value in every column (including the `recordID` column, which is *supposed* to be unique - it must be some computer glitch). The returned dataframe automatically includes a new column `dupe_count`, showing the number of rows with that combination of duplicate values. 
+In the `obs` data frame, the first two rows are *100% duplicates* - they have the same value in every column (including the `recordID` column, which is *supposed* to be unique - it must be some computer glitch). The returned data frame automatically includes a new column `dupe_count` on the right side, showing the number of rows with that combination of duplicate values. 
 
 ```{r, eval=F}
 # 100% duplicates across all columns
@@ -98,6 +104,8 @@ obs %>%
   janitor::get_dupes() %>% 
   DT::datatable(rownames = FALSE, options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
 ```
+
+See the [original data](#dedup_data)  
 
 However, if we choose to ignore `recordID`, the 3rd and 4th rows rows are also duplicates of each other. That is, they have the same values in all columns *except* for `recordID`. You can specify specific columns to be ignored in the function using a `-` minus symbol.  
 
@@ -129,6 +137,8 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 7, scrollX=T), class = 'white-space: nowrap' )
 ```
 
+See the [original data](#dedup_data).  
+
 See `?get_dupes` for more details, or see this [online reference](https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#explore-records-with-duplicated-values-for-specific-combinations-of-variables-with-get_dupes)  
 
 
@@ -137,20 +147,20 @@ See `?get_dupes` for more details, or see this [online reference](https://cran.r
 
 
 <!-- ======================================================= -->
-### Keep only unique rows  {-}
+### Keep only unique rows  {.unnumbered}
 
 
-To keep only unique rows of a dataframe, use `distinct()` from **dplyr**. Rows that are duplicates are removed such that only the first of such rows is kept. By default, "first" means the highest `rownumber` (order of rows top-to-bottom). Only unique rows are kept.  
+To keep only unique rows of a data frame, use `distinct()` from **dplyr** (as demonstrated in the [Cleaning data and core functions] page). Rows that are duplicates are removed such that only the first of such rows is kept. By default, "first" means the highest `rownumber` (order of rows top-to-bottom). Only unique rows remain.  
 
 In the example below, we run `distinct()` such that the column `recordID` is excluded from consideration - thus **two duplicate rows are removed**. The first row (for "adam") was 100% duplicated and has been removed. Also row 3 (for "amrish") was a duplicate in every column *except* `recordID` (which is not being considered) and so is also removed. The `obs` dataset n is now `r nrow(obs)-2`, not `r nrow(obs)` rows).  
 
-*Scroll to the left to see the entire dataframe*  
+*Scroll to the left to see the entire data frame*  
 
 
 ```{r, eval=F}
 # added to a chain of pipes (e.g. data cleaning)
 obs %>% 
-  distinct(across(-recordID), # reduces dataframe to only unique rows (keeps first one of any duplicates)
+  distinct(across(-recordID), # reduces data frame to only unique rows (keeps first one of any duplicates)
            .keep_all = TRUE) 
 
 # if outside pipes, include the data as first argument 
@@ -159,7 +169,7 @@ obs %>%
 
 ```{r message=FALSE, echo=F}
 obs %>% 
-  distinct(across(-recordID), # reduces dataframe to only unique rows (keeps first one of any duplicates)
+  distinct(across(-recordID), # reduces data frame to only unique rows (keeps first one of any duplicates)
            .keep_all = TRUE) %>% 
   DT::datatable(rownames = FALSE, options = list(pageLength = 6, scrollX=T), class = 'white-space: nowrap' )
 ```
@@ -169,11 +179,11 @@ obs %>%
 
 **Deduplicate based on specific columns**  
 
-You can also specify columns to be the basis for de-duplication. In this way, the de-duplication only applies to rows that are duplicates within the specified columns. Unless specified with `.keep_all = TRUE`, all columns not mentioned will be dropped.  
+You can also specify columns to be the basis for de-duplication. In this way, the de-duplication only applies to rows that are duplicates within the specified columns. Unless you set `.keep_all = TRUE`, all columns not mentioned will be dropped.  
 
 In the example below, the de-duplication only applies to rows that have identical values for `name` and `purpose` columns. Thus, "brian" has only 2 rows instead of 3 - his *first* "contact" encounter and his only "case" encounter. To adjust so that brian's *latest* encounter of each purpose is kept, see the tab on Slicing within groups.  
 
-*Scroll to the left to see the entire dataframe*  
+*Scroll to the left to see the entire data frame*  
 
 ```{r, eval=F}
 # added to a chain of pipes (e.g. data cleaning)
@@ -189,9 +199,10 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 6, scrollX=T), class = 'white-space: nowrap' )
 ```
 
+See the [original data](#dedup_data).  
 
 <!-- ======================================================= -->
-### Duplicate elements in a vector {-}  
+### Deduplicate elements in a vector {.unnumbered}  
 
 
 The function `duplicated()` from **base** R will evaluate a vector (column) and return a logical vector of the same length (TRUE/FALSE). The first time a value appears, it will return FALSE (not a duplicate), and subsequent times that value appears it will return TRUE. Note how `NA` is treated the same as any other value.    
@@ -216,13 +227,13 @@ unique(na.omit(x))  # remove NAs
 
 
 <!-- ======================================================= -->
-### with **base** R {-}
+### Using **base** R {.unnumbered}
 
 **To return duplicate rows**  
 
-In **base** R, you can also see which rows are 100% duplicates in a dataframe `df` with the command `duplicated(df)` (returns a logical vector of the rows).  
+In **base** R, you can also see which rows are 100% duplicates in a data frame `df` with the command `duplicated(df)` (returns a logical vector of the rows).  
 
-Thus, you can also use the base subset `[ ]` on the dataframe to see the *duplicated* rows with `df[duplicated(df),]` (don't forget the comma, meaning that you want to see all columns!). 
+Thus, you can also use the base subset `[ ]` on the data frame to see the *duplicated* rows with `df[duplicated(df),]` (don't forget the comma, meaning that you want to see all columns!). 
 
 **To return unique rows**  
 
@@ -249,17 +260,34 @@ To evaluate only columns `name` and `purpose` for duplicates: `df[!duplicated(df
 ## Slicing { }
 
 
-To "slice" a dataframe is useful in de-duplication if you have multiple rows per functional group (e.g. per "person") and you only want to analyze one or some of them. Think of slicing as a filter on the rows, by row number/position. 
+To "slice" a data frame to apply a filter on the rows by row number/position. This becomes particularly useful if you have multiple rows per functional group (e.g. per "person") and you only want to keep one or some of them. 
 
-**The basic `slice()` function** accepts a number `n`. If positive, only the *nth* row is returned. If negative, all rows *except the nth* are returned.   
+The basic `slice()` function accepts numbers and returns rows in those positions. If the numbers provided are positive, only they are returned. If negative, those rows are *not* returned. Numbers must be either all positive or all negative.     
 
-**Variations** include:    
+```{r}
+obs %>% slice(4)  # return the 4th row
+```
 
-* `slice_min()` and `slice_max()`  - to keep only the row with the minimium or maximum value of the specified column. Also worked with ordered factors.    
-* `slice_head()` and `slice_tail` - to keep only the *first* or *last* row  
-* `slice_sample()`  - to keep only a random sample of the rows  
+```{r}
+obs %>% slice(c(2,4))  # return rows 2 and 4
+#obs %>% slice(c(2:4))  # return rows 2 through 4
+```
 
-Use arguments `n = ` or `prop = ` to specify the number or proportion of rows to keep. If not using the function in a pipe chain, provide the data argument first (e.g. `slice(df, n = 2)`). See `?slice` for more information.  
+
+See the [original data](#dedup_data). 
+
+There are several variations:  These should be provided with a column and a number of rows to return (to `n = `).  
+
+* `slice_min()` and `slice_max()`  keep only the row(s) with the minimium or maximum value(s) of the specified column. This also works to return the "min" and "max" of ordered factors.    
+* `slice_head()` and `slice_tail()` - keep only the *first* or *last* row(s).  
+* `slice_sample()`  - keep only a random sample of the rows.  
+
+
+```{r}
+obs %>% slice_max(encounter, n = 1)  # return rows with the largest encounter number
+```
+
+Use arguments `n = ` or `prop = ` to specify the number or proportion of rows to keep. If not using the function in a pipe chain, provide the data argument first (e.g. `slice(data, n = 2)`). See `?slice` for more information. 
 
 Other arguments:  
 
@@ -272,26 +300,15 @@ Other arguments:
 
 <span style="color: black;">**_NOTE:_** You may encounter the function [`top_n()`](https://dplyr.tidyverse.org/reference/top_n.html), which has been superseded by the `slice` functions.</span>
 
-Here, the basic `slice()` function is used to keep only the 4th row:  
-
-```{r, eval=F}
-obs %>% 
-  slice(4)  # keeps the 4th row only
-```
-
-```{r message=FALSE, echo=F}
-obs %>% 
-  slice(4) %>%   # keeps the 4th row only
-  DT::datatable(rownames = FALSE, options = list(pageLength = 1, scrollX=T), class = 'white-space: nowrap' )
-```
+ 
 
 
 <!-- ======================================================= -->
-### Slice with groups  {-}
+### Slice with groups  {.unnumbered}
 
-The `slice_*()` functions can be very useful if applied to a grouped dataframe, as the slice operation is performed on each group separately. Use the **function** `group_by()` in conjunction with `slice()` to group the data and then take a slice from each group.  
+The `slice_*()` functions can be very useful if applied to a grouped data frame because the slice operation is performed on each group separately. Use the **function** `group_by()` in conjunction with `slice()` to group the data to take a slice from each group.  
 
-This is helpful for de-duplication if you have multiple rows per person but only want to keep one of them. You first use `group_by()` with key columns that are the same, and then use a slice function on a column that will differ among the grouped rows.  
+This is helpful for de-duplication if you have multiple rows per person but only want to keep one of them. You first use `group_by()` with key columns that are the same per person, and then use a slice function on a column that will differ among the grouped rows.  
 
 In the example below, to keep only the *latest* encounter *per person*, we group the rows by `name` and then use `slice_max()` with `n = 1` on the `date` column. Be aware! To apply a function like `slice_max()` on dates, the date column must be class Date.   
 
@@ -321,6 +338,9 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 8, scrollX=T), class = 'white-space: nowrap' )
 ```
 
+Above, for example we can see that only Amrish's row on 5 Jan was kept, and only Brian's row on 7 Jan was kept. See the [original data](#dedup_data).  
+
+
 **Breaking "ties"**  
 
 Multiple slice statements can be run to "break ties". In this case, if a person has multiple encounters on their latest *date*, the encounter with the latest *time* is kept (`lubridate::hm()` is used to convert the character times to a sortable time class).  
@@ -337,6 +357,7 @@ obs %>%
   # SECOND - if there is a tie, select row with latest time; ties prohibited
   slice_max(lubridate::hm(time), n = 1, with_ties = FALSE)
 ```
+
 ```{r message=FALSE, echo=F}
 # Example of multiple slice statements to "break ties"
 obs %>%
@@ -355,31 +376,32 @@ obs %>%
 
 <span style="color: darkgreen;">**_TIP:_** To use `slice_max()` or `slice_min()` on a "character" column, mutate it to an *ordered* factor class!</span>
 
+See the [original data](#dedup_data).  
 
 
 <!-- ======================================================= -->
-### Keep all but mark them  {-}
+### Keep all but mark them  {.unnumbered}
 
 If you want to keep all records but mark only some for analysis, consider a two-step approach utilizing a unique recordID/encounter number:  
 
-1) Reduce/slice the orginal dataframe to only the rows for analysis. Save/retain this reduced dataframe.  
-2) In the original dataframe, mark rows as appropriate with `case_when()`, based on whether their record unique identifier (recordID in this example) is present in the reduced dataframe.  
+1) Reduce/slice the orginal data frame to only the rows for analysis. Save/retain this reduced data frame.  
+2) In the original data frame, mark rows as appropriate with `case_when()`, based on whether their record unique identifier (recordID in this example) is present in the reduced data frame.  
 
 
-```{r, eval=F}
-# 1. Define dataframe of rows to keep for analysis
+```{r}
+# 1. Define data frame of rows to keep for analysis
 obs_keep <- obs %>%
   group_by(name) %>%
   slice_max(encounter, n = 1, with_ties = FALSE) # keep only latest encounter per person
 
 
-# 2. Mark original dataframe
+# 2. Mark original data frame
 obs_marked <- obs %>%
 
   # make new dup_record column
   mutate(dup_record = case_when(
     
-    # if record is in obs_keep dataframe
+    # if record is in obs_keep data frame
     recordID %in% obs_keep$recordID ~ "For analysis", 
     
     # all else marked as "Ignore" for analysis purposes
@@ -389,8 +411,15 @@ obs_marked <- obs %>%
 obs_marked
 ```
 
+
+```{r, echo=F}
+DT::datatable(obs_marked, rownames = FALSE, options = list(pageLength = 8, scrollX=T), class = 'white-space: nowrap' )
+```
+
+See the [original data](#dedup_data).  
+
 <!-- ======================================================= -->
-### Calculate row completeness {-} 
+### Calculate row completeness {.unnumbered} 
 
 Create a column that contains a metric for the row's completeness (non-missingness). This could be helpful when deciding which rows to prioritize over others when de-duplicating/slicing.  
 
@@ -398,7 +427,7 @@ In this example, "key" columns over which you want to measure completeness are s
 
 Then the new column `key_completeness` is created with `mutate()`. The new value in each row is defined as a calculated fraction: the number of non-missing values in that row among the key columns, divided by the number of key columns.  
 
-This involves the function `rowSums()` from **base** R. Also used is `.`, which within piping refers to the dataframe at that point in the pipe (in this case, it is being subset with brackets `[]`).  
+This involves the function `rowSums()` from **base** R. Also used is `.`, which within piping refers to the data frame at that point in the pipe (in this case, it is being subset with brackets `[]`).  
 
 *Scroll to the right to see more rows**  
 
@@ -420,12 +449,13 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
+See the [original data](#dedup_data).  
 
 
 
 
 <!-- ======================================================= -->
-## Roll-up values { }
+## Roll-up values {#str_rollup}
 
 
 This section describes:  
@@ -438,7 +468,7 @@ This tab uses the example dataset from the Preparation tab.
 
 
 <!-- ======================================================= -->
-### Roll-up values into one row {-}  
+### Roll-up values into one row {.unnumbered}  
 
 The code example below uses `group_by()` and `summarise()` to group rows by person, and then paste together all unique values within the grouped rows. Thus, you get one summary row per person. A few notes:  
 
@@ -446,7 +476,7 @@ The code example below uses `group_by()` and `summarise()` to group rows by pers
 * If you want to show only unique values per cell, then wrap the `na.omit()` with `unique()`  
 * `na.omit()` removes `NA` values, but if this is not desired it can be removed `paste0(.x)`...  
 
-*Scroll to the left to see more rows*  
+
 
 ```{r, eval=F}
 # "Roll-up" values into one row per group (per "personID") 
@@ -464,7 +494,7 @@ cases_rolled <- obs %>%
            ~paste0(na.omit(.x), collapse = "; "))) # function is defined which combines non-NA values
 ```
 
-The result is one row per group (`ID`), with entries arranged by date and pasted together.  
+The result is one row per group (`ID`), with entries arranged by date and pasted together. *Scroll to the left to see more rows*    
 
 ```{r message=FALSE, echo=F}
 # "Roll-up" values into one row per group (per "personID") 
@@ -483,6 +513,9 @@ obs %>%
 
   DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
+
+See the [original data](#dedup_data).  
+
 
 **This variation shows unique values only:**  
 
@@ -536,7 +569,7 @@ obs %>%
 
 
 <!-- ======================================================= -->
-### Overwrite values/hierarchy {-} 
+### Overwrite values/hierarchy {.unnumbered} 
 
 
 If you then want to evaluate all of the rolled values, and keep only a specific value (e.g. "best" or "maximum" value), you can use `mutate()` across the desired columns, to implement `case_when()`, which uses `str_detect()` from the **stringr** package to sequentially look for string patterns and overwrite the cell content.  
@@ -566,11 +599,14 @@ DT::datatable(cases_clean, rownames = FALSE, options = list(pageLength = 10, scr
 ```
 
 
+See the [original data](#dedup_data).  
+
+
 ## Probabilistic de-duplication  
 
 Sometimes, you may want to identify "likely" duplicates based on similarity (e.g. string "distance") across several columns such as name, age, sex, date of birth, etc. You can apply a probabilistic matching algorithm to identify likely duplicates.  
 
-See the page on [Joining data] for an explanation on this method. The section on Probabilistic Matching contains an example of applying these algorithms to compare a dataframe to *itself*, thus performing probabilistic de-duplication.  
+See the page on [Joining data] for an explanation on this method. The section on Probabilistic Matching contains an example of applying these algorithms to compare a data frame to *itself*, thus performing probabilistic de-duplication.  
 
 
 

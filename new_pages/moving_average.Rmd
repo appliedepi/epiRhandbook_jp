@@ -16,7 +16,7 @@ This page will cover two methods to calculate and visualize moving averages:
 <!-- ======================================================= -->
 ## Preparation {  }
 
-### Load packages {-}
+### Load packages {.unnumbered}
 
 This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
@@ -29,9 +29,9 @@ pacman::p_load(
 ```
 
 
-### Import data {-}
+### Import data {.unnumbered}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
 
 ```{r, echo=F}
 # import the linelist into R
@@ -96,7 +96,7 @@ To achieve *cumulative* operations, set the `.before = ` argument to `Inf`. This
 
 
 
-### Rolling operations {-}  
+### Rolling operations {.unnumbered}  
 
 Use `slide_dbl()`, which is made specifically to slide across a numeric vector. This operates across the data frame from row 1 onwards, so be careful the ordering of the rows. For example, below we arrange the dataset by date of onset, and then calculate a rolling mean of the days delay from symptom onset to hospital admission (`days_onset_hosp` column). We set the window as the value and the two values before.  
 
@@ -179,7 +179,7 @@ grouped_roll %>%
 
 
 
-### Indexed rolling  {-}  
+### Indexed rolling  {.unnumbered}  
 
 Often when conducting rolling operations *by date* (common with epidemiological linelists), we can encounter problems like:  
 
@@ -200,7 +200,7 @@ counts_7day <- linelist %>%
     ) %>%
   
   # remove counts with missing onset_date
-  filter(!is.na(date_onset))
+  drop_na(date_onset)
 ```
 
 The new dataset now looks like this. Note how some days are not present (no cases on those days). A simple `slide_dbl()` would incorrectly include the first seven rows in the first window.    
@@ -264,7 +264,7 @@ ll_months <- linelist %>%
   mutate(
     month_onset = floor_date(date_onset, "month")) %>% 
   count(month_onset) %>% 
-  filter(!is.na(month_onset)) %>% 
+  drop_na(month_onset) %>% 
   mutate(
     monthly_roll = slider::slide_index_dbl(
       n,                                # calculate avg based on value in new_cases column
@@ -294,7 +294,7 @@ By default `geom_ma()` uses a simple moving average (`ma_fun = "SMA"`), but othe
 ```{r}
 linelist %>% 
   count(date_onset) %>%                 # count cases per day
-  filter(!is.na(date_onset)) %>%        # remove cases missing onset date
+  drop_na(date_onset) %>%               # remove cases missing onset date
   ggplot(aes(x = date_onset, y = n))+   # start ggplot
     geom_line(                          # plot raw values
       size = 1,
