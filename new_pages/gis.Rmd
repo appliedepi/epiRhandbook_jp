@@ -1,5 +1,8 @@
 # GIS basics { }  
 
+```{r, out.width=c('100%', '100%'), echo=F}
+knitr::include_graphics(here::here("images", "gis_head_image.png"))
+```
 
 <!-- ======================================================= -->
 ## Overview {  }
@@ -10,8 +13,9 @@ Spatial aspects of your data can provide a lot of insights into the situation of
 * How have the hotspots have changed over time?
 * How is the access to health facilities? Are any improvements needed?
 
-In this section, we will explore basic spatial data visualization methods using **tmap** and **ggplot2** packages.
-We will also walk through some of the basic spatial data management and querying methods with the **sf** package.
+The current focus of this GIS page to address the needs of applied epidemiologists in outbreak response. We will explore basic spatial data visualization methods using **tmap** and **ggplot2** packages. We will also walk through some of the basic spatial data management and querying methods with the **sf** package. Lastly, we will briefly touch upon concepts of *spatial statistics* such as spatial relationships, spatial autocorrelation, and spatial regression using the **spdep** package.  
+
+
 
 ## Key terms {}  
 
@@ -19,16 +23,17 @@ Below we introduce some key terminology. For a thorough introduction to GIS and 
 
 **Geographic Information System (GIS)** - A GIS is a framework or environment for gathering, managing, analyzing, and visualizing spatial data.
 
-### GIS software
+### GIS software {.unnumbered}
 
 Some popular GIS software allow point-and-click interaction for map development and spatial analysis. These tools comes with advantages such as not needing to learn code and the ease of manually selecting and placing icons and features on a map. Here are two popular ones:  
 
 **ArcGIS** - A commercial GIS software developed by the company ESRI, which is very popular but quite expensive  
+
 **QGIS** - A free open-source GIS software that can do almost anything that ArcGIS can do. You can [download QGIS here](https://qgis.org/en/site/forusers/download.html)  
 
-Using R as a GIS can seem more intimidating at first because instead of "point-and-click", it has a "command-line interface" (you must code to acquire the desired outcome). However, this is a major advantage if you need to repetitively produce maps or have an analysis that is reproducible.  
+Using R as a GIS can seem more intimidating at first because instead of "point-and-click", it has a "command-line interface" (you must code to acquire the desired outcome). However, this is a major advantage if you need to repetitively produce maps or create an analysis that is reproducible.  
 
-### Spatial data
+### Spatial data {.unnumbered}
 
 The two primary forms of spatial data used in GIS are vector and raster data:
 
@@ -42,7 +47,7 @@ The two primary forms of spatial data used in GIS are vector and raster data:
 
 **Raster Data** - An alternative format for spatial data, raster data is a matrix of cells (e.g. pixels) with each cell containing information such as height, temperature, slope, forest cover, etc. These are often aerial photographs, satellite imagery, etc. Rasters can also be used as “base maps” below vector data.
 
-### Visualizing spatial data
+### Visualizing spatial data {.unnumbered}
 
 To visually represent spatial data on a map, GIS software requires you to provide sufficient information about where different features should be, in relation to one another. If you are using vector data, which will be true for most use cases, this information will typically be stored in a shapefile:
 
@@ -62,7 +67,9 @@ The shapefile will contain information about the features themselves, as well as
 
 Remember that you can summarise spatial data without using the mapping tools shown below. Sometimes a simple table by geography (e.g. district, country, etc.) is all that is needed!  
 
-## Getting started with GIS
+## Getting started with GIS  
+
+
 There are a couple of key items you will need to have and to think about to make a map. These include:
 
   * A **dataset** -- this can be in a spatial data format (such as shapefiles, as noted above) or it may not be in a spatial format (for instance just as a csv).
@@ -79,7 +86,7 @@ There are a couple of key items you will need to have and to think about to make
 
 **Choropleth map** - a type of thematic map where colors, shading, or patterns are used to represent geographic regions in relation to their value of an attribute. For instance a larger value could be indicated by a darker colour than a smaller value. This type of map is particularly useful when visualizing a variable and how it changes across defined regions or geopolitical areas.
 
-```{r, fig.align = "center", fig.show='hold', echo=F}
+```{r, out.width = '50%', fig.align = "center", fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "gis_choropleth.png"))
 ```
 
@@ -140,7 +147,7 @@ For demonstration purposes, we will work with a random sample of 1000 cases from
 
 Since we are taking a random sample of the cases, your results may look slightly different from what is demonstrated here when you run the codes on your own.
 
-The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
 
 ```{r, echo=F}
 # import clean case linelist
@@ -149,7 +156,7 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 
 ```{r, eval=F}
 # import clean case linelist
-# linelist <- import("linelist_cleaned.xlsx")  
+linelist <- import("linelist_cleaned.rds")  
 ```
 
 Next we select a random sample of 1000 rows using `sample()` from **base** R.   
@@ -164,7 +171,7 @@ linelist <- linelist[sample_rows,]
 
 Now we want to convert this `linelist` which is class dataframe, to an object of class "sf" (spatial features). Given that the linelist has two columns "lon" and "lat" representing the longitude and latitude of each case's residence, this will be easy.  
 
-We use the package **sf** (spatial features) and its function `st_as_sf()` to create the new object we call `linelist_sf`. This new object look essentially the same as the linelist, but the columns `lon` and `lat` have been designated as coordinate columns, and a coordinate reference system (CRS) has been assigned for when the points are displayed.   
+We use the package **sf** (spatial features) and its function `st_as_sf()` to create the new object we call `linelist_sf`. This new object looks essentially the same as the linelist, but the columns `lon` and `lat` have been designated as coordinate columns, and a coordinate reference system (CRS) has been assigned for when the points are displayed. 4326 identifies our coordinates as based on the [World Geodetic System 1984 (WGS84)](https://gisgeography.com/wgs84-world-geodetic-system/) - which is standard for GPS coordinates.  
 
 ```{r}
 # Create sf object
@@ -172,8 +179,7 @@ linelist_sf <- linelist %>%
      sf::st_as_sf(coords = c("lon", "lat"), crs = 4326)
 ```
 
-This is how the original `linelist` dataframe looks like.  
-In this demonstration, we will only use the `date_onset` and `geometry` (which was constructed from the longitude and latitude fields above) columns.
+This is how the original `linelist` dataframe looks like. In this demonstration, we will only use the column `date_onset` and `geometry` (which was constructed from the longitude and latitude fields above and is the last column in the data frame).  
 
 ```{r}
 DT::datatable(head(linelist_sf, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
@@ -183,7 +189,7 @@ DT::datatable(head(linelist_sf, 10), rownames = FALSE, options = list(pageLength
 
 **Sierra Leone: Admin boundary shapefiles**  
 
-In advance, we have downloaded all administrative boundaries for Sierra Leone from the Humanitarian Data Exchange (HDX) [website here](https://data.humdata.org/dataset/sierra-leone-all-ad-min-level-boundaries).  
+In advance, we have downloaded all administrative boundaries for Sierra Leone from the Humanitarian Data Exchange (HDX) [website here](https://data.humdata.org/dataset/sierra-leone-all-ad-min-level-boundaries). Alternatively, you can download these and all other example data for this handbook via our R package, as explained in the [Download handbook and data] page.  
 
 Now we are going to do the following to save the Admin Level 3 shapefile in R:  
 
@@ -191,10 +197,10 @@ Now we are going to do the following to save the Admin Level 3 shapefile in R:
 2) Clean the column names  
 3) Filter rows to keep only areas of interest  
 
-To import a shapefile we use the `read_sf()` function from **sf**. It is provided the filepath via `here()`. - in this case the file is within our R project in the "data", "gis", and "shp" subfolders, with filename "sle_adm3.shp" (see pages on [Import and export] and [R projects] for more information).  
+To import a shapefile we use the `read_sf()` function from **sf**. It is provided the filepath via `here()`. - in our case the file is within our R project in the "data", "gis", and "shp" subfolders, with filename "sle_adm3.shp" (see pages on [Import and export] and [R projects] for more information). You will need to provide your own file path.  
 
-```{r}
-sle_adm3_raw <- sf::read_sf(here::here("data", "gis", "shp", "sle_adm3.shp"))
+```{r, echo=F}
+sle_adm3_raw <- sf::read_sf(here("data", "gis", "shp", "sle_adm3.shp"))
 ```
 
 
@@ -203,11 +209,11 @@ Next we use `clean_names()` from the **janitor** package to standardize the colu
 ```{r}
 # ADM3 level clean
 sle_adm3 <- sle_adm3_raw %>%
-  janitor::clean_names() %>% # standardize column names
+  clean_names() %>% # standardize column names
   filter(admin2name %in% c("Western Area Urban", "Western Area Rural")) # filter to keep certain areas
 ```
 
-Below you can see the how the shapefile looks after import and cleaning. *Scroll to the right* to see how there are columns with admin level 0 (country), admin level 1, admin level 2, and finally admin level 3. Each level has a character name and a pcode unique identifier code. The pcode expands with each increasing admin level e.g. SL (Sierra Leone) -> SL04 (Western) -> SL0410 (Western Area Rural) -> SL040101 (Koya Rural).  
+Below you can see the how the shapefile looks after import and cleaning. *Scroll to the right* to see how there are columns with admin level 0 (country), admin level 1, admin level 2, and finally admin level 3. Each level has a character name and a unique identifier "pcode". The pcode expands with each increasing admin level e.g. SL (Sierra Leone) -> SL04 (Western) -> SL0410 (Western Area Rural) -> SL040101 (Koya Rural).  
 
 ```{r message=FALSE, echo=F}
 # display the shapefile as a table
@@ -220,12 +226,12 @@ DT::datatable(head(sle_adm3, 50), rownames = FALSE, options = list(pageLength = 
 
 **Sierra Leone: Population by ADM3**  
 
-Again, we import data that we have downloaded from HDX (link [here](https://data.humdata.org/dataset/sierra-leone-population)). This time we use `import()` to load the .csv file. We also pass the imported file to `clean_names()` to standardize the column names.   
+These data can again be downloaded from HDX (link [here](https://data.humdata.org/dataset/sierra-leone-population)) or via our **epirhandbook** R package as explained [in this page][Download handbook and data]. We use `import()` to load the .csv file. We also pass the imported file to `clean_names()` to standardize the column name syntax.   
 
 ```{r}
 # Population by ADM3
-sle_adm3_pop <- rio::import(here::here("data", "gis", "population", "sle_admpop_adm3_2020.csv")) %>%
-  janitor::clean_names()
+sle_adm3_pop <- import(here("data", "gis", "population", "sle_admpop_adm3_2020.csv")) %>%
+  clean_names()
 ```
 
 Here is what the population file looks like. Scroll to the right to see how each jurisdiction has columns with `male` population, `female` populaton, `total` population, and the population break-down in columns by age group.  
@@ -240,19 +246,19 @@ DT::datatable(head(sle_adm3_pop, 50), rownames = FALSE, options = list(pageLengt
 
 **Sierra Leone: Health facility data from OpenStreetMap**  
 
-Again we have downloaded the locations of health facilities from HDX [here](https://data.humdata.org/dataset/hotosm_sierra_leone_health_facilities).  
+Again we have downloaded the locations of health facilities from HDX [here](https://data.humdata.org/dataset/hotosm_sierra_leone_health_facilities) or via instructions in the [Download handbook and data] page.   
 
-We import their shapefile with `read_sf()`, again clean the column names, and then filter to keep only the points tagged as either "hospital", "clinic", or "doctors".  
+We import the facility points shapefile with `read_sf()`, again clean the column names, and then filter to keep only the points tagged as either "hospital", "clinic", or "doctors".  
 
 
 ```{r}
 # OSM health facility shapefile
-sle_hf <- sf::read_sf(here::here("data", "gis", "shp", "sle_hf.shp")) %>% 
-  janitor::clean_names() %>%
+sle_hf <- sf::read_sf(here("data", "gis", "shp", "sle_hf.shp")) %>% 
+  clean_names() %>%
   filter(amenity %in% c("hospital", "clinic", "doctors"))
 ```
 
-Here is the resulting dataframe here - *scroll right* to see the facility name and coordinates.  
+Here is the resulting dataframe - *scroll right* to see the facility name and `geometry` coordinates.  
 
 ```{r message=FALSE, echo=F}
 # display the population as a table
@@ -266,12 +272,12 @@ DT::datatable(head(sle_hf, 50), rownames = FALSE, options = list(pageLength = 5,
 <!-- ======================================================= -->
 ## Plotting coordinates {  }
 
-The easiest way to plot X-Y coordinates (longitude/latitude, points) is to draw them as points directly from the `linelist_sf` object which we created in the preparation section.
+The easiest way to plot X-Y coordinates (longitude/latitude, points), in this case of cases, is to draw them as points directly from the `linelist_sf` object which we created in the preparation section.
 
-The package **tmap** offers simple mapping capabilities for both static ("plot" mode) and interactive ("view" mode) with just a few lines of code. The **tmap** syntax is similar to that of *ggplot2**, such that commands are added to each other with `+`. Read more detail in this [vignette](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html). 
+The package **tmap** offers simple mapping capabilities for both static ("plot" mode) and interactive ("view" mode) with just a few lines of code. The **tmap** syntax is similar to that of **ggplot2**, such that commands are added to each other with `+`. Read more detail in this [vignette](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html). 
 
 
-1) set the **tmap** mode. In this case we will use "plot" mode, which produces static outputs.  
+1) Set the **tmap** mode. In this case we will use "plot" mode, which produces static outputs.  
 
 ```{r, warning = F, message=F}
 tmap_mode("plot") # choose either "view" or "plot"
@@ -320,8 +326,8 @@ tm_shape(sle_adm3, bbox = c(-13.3, 8.43, -13.2, 8.5)) +     #
   tm_borders(col = "#000000", lwd = 2) +
   tm_text("admin3name")+
 tm_shape(linelist_sf) +
-  tm_dots(size=0.08, col='blue') +
-  tm_layout(title = "Distribution of Ebola cases")
+  tm_dots(size=0.08, col='blue', alpha = 0.5) +
+  tm_layout(title = "Distribution of Ebola cases")   # give title to map
 
 ```
 
@@ -334,15 +340,16 @@ To read a good comparison of mapping options in R, see this [blog post](https://
 <!-- ======================================================= -->
 ## Spatial joins {}
 
+You may be familiar with *joining* data from one dataset to another one. Several methods are discussed in the [Joining data] page of this handbook. A spatial join serves a similar purpose but leverages spatial relationships. Instead of relying on common values in columns to correctly match observations, you can utilize their spatial relationships, such as one feature being *within* another, or *the nearest neighbor* to another, or within a *buffer* of a certain radius from another, etc.  
 
+
+The **sf** package offers various methods for spatial joins. See more documentation about the st_join method and spatial join types in this [reference](https://r-spatial.github.io/sf/reference/geos_binary_pred.html).  
 
 
 ### Points in polygon {.unnumbered}
 **Spatial assign administrative units to cases**
 
-The case linelist does not contain any information about the administrative units of the cases. Although it is ideal to collect such information during the initial data collection phase, we can also assign administrative units to individual cases based on their spatial relationships (i.e. point intersects with a polygon).  
-
-The **sf** package offers various methods for spatial joins. See more documentation about the st_join method and spatial join types in this [reference](https://r-spatial.github.io/sf/reference/geos_binary_pred.html).  
+Here is an interesting conundrum: the case linelist does not contain any information about the administrative units of the cases. Although it is ideal to collect such information during the initial data collection phase, we can also assign administrative units to individual cases based on their spatial relationships (i.e. point intersects with a polygon).  
 
 Below, we will spatially intersect our case locations (points) with the ADM3 boundaries (polygons):  
 
@@ -357,7 +364,7 @@ linelist_adm <- linelist_sf %>%
   sf::st_join(sle_adm3, join = st_intersects)
 ```
 
-All the columns from `sle_adms` have been added to the linelist! Each case now has columns detailing it's administrative units. For this example, we only want to keep two of the new columns, so we `select()` the old column names and just the two additional of interest:  
+All the columns from `sle_adms` have been added to the linelist! Each case now has columns detailing the administrative levels that it falls within. In this example, we only want to keep two of the new columns (admin level 3), so we `select()` the old column names and just the two additional of interest:  
 
 ```{r, warning=F, message=F}
 linelist_adm <- linelist_sf %>%
@@ -395,8 +402,9 @@ In this example, we begin the `ggplot()` with the `linelist_adm`, so that we can
 
 ```{r, warning=F, message=F}
 ggplot(
-  data = linelist_adm,                       # begin with linelist containing admin unit info
-  aes(x = fct_rev(fct_infreq(admin3name))))+ # x-axis is admin units, ordered by frequency (reversed)
+    data = linelist_adm,                       # begin with linelist containing admin unit info
+    mapping = aes(
+      x = fct_rev(fct_infreq(admin3name))))+ # x-axis is admin units, ordered by frequency (reversed)
   geom_bar()+                                # create bars, height is number of rows
   coord_flip()+                              # flip X and Y axes for easier reading of adm units
   theme_classic()+                           # simplify background
@@ -425,8 +433,8 @@ We can use the *st_nearest_feature* join method from the `st_join()` function (*
 # Closest health facility to each case
 linelist_sf_hf <- linelist_sf %>%                  # begin with linelist shapefile  
   st_join(sle_hf, join = st_nearest_feature) %>%   # data from nearest clinic joined to case data 
-  select(case_id, osm_id, name, amenity)           # keep columns of interest, including id, name, type, and geometry of healthcare facility
-
+  select(case_id, osm_id, name, amenity) %>%       # keep columns of interest, including id, name, type, and geometry of healthcare facility
+  rename("nearest_clinic" = "name")                # re-name for clarity
 ```
 
 We can see below (first 50 rows) that the each case now has data on the nearest clinic/hospital  
@@ -440,13 +448,13 @@ We can see that "Den Clinic" is the closest health facility for about ~30% of th
 
 ```{r}
 # Count cases by health facility
-hf_catchment <- linelist_sf_hf %>%    # begin with linelist including nearest clinic data
-  as.data.frame() %>%                 # convert from shapefile to dataframe
-  group_by(name) %>%                  # group by name of clinic
-  summarise(case_n = n()) %>%         # count number of rows per clinic 
-  arrange(desc(case_n))               # arrange in descending order
+hf_catchment <- linelist_sf_hf %>%   # begin with linelist including nearest clinic data
+  as.data.frame() %>%                # convert from shapefile to dataframe
+  count(nearest_clinic,              # count rows by "name" (of clinic)
+        name = "case_n") %>%         # assign new counts column as "case_n"
+  arrange(desc(case_n))              # arrange in descending order
 
-hf_catchment                          # print to console
+hf_catchment                         # print to console
 ```
 
 To visualize the results, we can use **tmap** - this time interactive mode for easier viewing  
@@ -456,12 +464,14 @@ tmap_mode("view")   # set tmap mode to interactive
 
 # plot the cases and clinic points 
 tm_shape(linelist_sf_hf) +            # plot cases
-  tm_dots(size=0.08, col='name') +    # cases colored by closest clinic
-tm_shape(sle_hf) +                    # plot clinic facilities in large red dots
-  tm_dots(size=0.3, col='red') +      
+  tm_dots(size=0.08,                  # cases colored by nearest clinic
+          col='nearest_clinic') +    
+tm_shape(sle_hf) +                    # plot clinic facilities in large black dots
+  tm_dots(size=0.3, col='black', alpha = 0.4) +      
   tm_text("name") +                   # overlay with name of facility
 tm_view(set.view = c(-13.2284, 8.4699, 13), # adjust zoom (center coords, zoom)
-        set.zoom.limits = c(13,14))
+        set.zoom.limits = c(13,14))+
+tm_layout(title = "Cases, colored by nearest clinic")
 ```
 
 
@@ -481,13 +491,15 @@ sle_hf_2k <- sle_hf %>%
   st_buffer(dist=0.02)       # decimal degrees translating to approximately 2.5km 
 ```
 
-Below we plot the buffer zones themselves:  
+Below we plot the buffer zones themselves, with the :  
 
 ```{r, warning=F, message=F}
 tmap_mode("plot")
 # Create circular buffers
 tm_shape(sle_hf_2k) +
-  tm_borders(col = "red", lwd = 2)
+  tm_borders(col = "black", lwd = 2)+
+tm_shape(sle_hf) +                    # plot clinic facilities in large red dots
+  tm_dots(size=0.3, col='black')      
 ```
 
 
@@ -498,7 +510,7 @@ tm_shape(sle_hf_2k) +
 linelist_sf_hf_2k <- linelist_sf_hf %>%
   st_join(sle_hf_2k, join = st_intersects, left = TRUE) %>%
   filter(osm_id.x==osm_id.y | is.na(osm_id.y)) %>%
-  select(case_id, osm_id.x, name.x, amenity.x, osm_id.y)
+  select(case_id, osm_id.x, nearest_clinic, amenity.x, osm_id.y)
 ```
 
 Now we can count the results: `r nrow(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),])` out of 1000 cases did not intersect with any buffer (that value is missing), and so live more than 30 mins walk from the nearest health facility.
@@ -512,22 +524,30 @@ linelist_sf_hf_2k %>%
 
 We can visualize the results such that cases that did not intersect with any buffer appear in red.  
 
-```{r, fig.width = 5, fig.height = 3, warning=F, message=F}
+```{r, out.width = '100%', warning=F, message=F}
 tmap_mode("view")
 
 # First display the cases in points
 tm_shape(linelist_sf_hf) +
-  tm_dots(size=0.08, col='name') +
-  
-# Then overlay the health facitliy buffers in polylines
+  tm_dots(size=0.08, col='nearest_clinic') +
+
+# plot clinic facilities in large black dots
+tm_shape(sle_hf) +                    
+  tm_dots(size=0.3, col='black')+   
+
+# Then overlay the health facility buffers in polylines
 tm_shape(sle_hf_2k) +
-  tm_borders(col = "red", lwd = 2) +
+  tm_borders(col = "black", lwd = 2) +
 
 # Highlight cases that are not part of any health facility buffers
 # in red dots  
 tm_shape(linelist_sf_hf_2k %>%  filter(is.na(osm_id.y))) +
   tm_dots(size=0.1, col='red') +
-tm_view(set.view = c(-13.2284,8.4699, 13), set.zoom.limits = c(13,14))
+tm_view(set.view = c(-13.2284,8.4699, 13), set.zoom.limits = c(13,14))+
+
+# add title  
+tm_layout(title = "Cases by clinic catchment area")
+
 ```
 
 
@@ -564,7 +584,7 @@ Since we also have population data by ADM3, we can add this information to the *
 
 We begin with the dataframe created in the previous step `case_adm3`, which is a summary table of each administrative unit and its number of cases.  
 
-1) The populaton data `sle_adm3_pop` are joined using a `left_join()` from **dplyr** on the basis of common values across column `admin3pcod` in the `case_adm3` dataframe, and column `adm_pcode` in the `sle_adm3_pop` dataframe. See page on [Joining data]).  
+1) The population data `sle_adm3_pop` are joined using a `left_join()` from **dplyr** on the basis of common values across column `admin3pcod` in the `case_adm3` dataframe, and column `adm_pcode` in the `sle_adm3_pop` dataframe. See page on [Joining data]).  
 2) `select()` is applied to the new dataframe, to keep only the useful columns - `total` is total population  
 3) Cases per 10,000 populaton is calculated as a new column with `mutate()`  
 
@@ -624,7 +644,58 @@ tm_shape(case_adm3_sf) +                # plot polygons
 
 ```
 
+## Mapping with ggplot2
+If you are already familiar with using **ggplot2**, you can use that package instead to create static maps of your data. The `geom_sf()` function will draw different objects based on which features (points, lines, or polygons) are in your data. For example, you can use `geom_sf()` in a `ggplot()` using `sf` data with polygon geometry to create a choropleth map.
 
+To illustrate how this works, we can start with the ADM3 polygons shapefile that we used earlier. Recall that these are Admin Level 3 regions in Sierra Leone:
+
+```{r}
+sle_adm3
+```
+We can use the `left_join()` function from **dplyr** to add the data we would like to map to the shapefile object. In this case, we are going to use the `case_adm3` data frame that we created earlier to summarize case counts by administrative region; however, we can use this same approach to map any data stored in a data frame.
+```{r}
+sle_adm3_dat <- sle_adm3 %>% 
+  inner_join(case_adm3, by = "admin3pcod") # inner join = retain only if in both data objects
+
+select(sle_adm3_dat, admin3name.x, cases) # print selected variables to console
+```
+
+To make a column chart of case counts by region, using **ggplot2**, we could then call `geom_col()` as follows:
+
+```{r, fig.align = "center"}
+ggplot(data=sle_adm3_dat) +
+  geom_col(aes(x=fct_reorder(admin3name.x, cases, .desc=T),   # reorder x axis by descending 'cases'
+               y=cases)) +                                  # y axis is number of cases by region
+  theme_bw() +
+  labs(                                                     # set figure text
+    title="Number of cases, by administrative unit",
+    x="Admin level 3",
+    y="Number of cases"
+  ) + 
+  guides(x=guide_axis(angle=45))                            # angle x-axis labels 45 degrees to fit better
+
+```
+
+If we want to use **ggplot2** to instead make a choropleth map of case counts, we can use similar syntax to call the `geom_sf()` function:
+
+```{r, fig.align = "center"}
+ggplot(data=sle_adm3_dat) + 
+  geom_sf(aes(fill=cases))    # set fill to vary by case count variable
+
+```
+
+We can then customize the appearance of our map using grammar that is consistent across **ggplot2**, for example:
+```{r, fig.align = "center"}
+ggplot(data=sle_adm3_dat) +                           
+  geom_sf(aes(fill=cases)) +						
+  scale_fill_continuous(high="#54278f", low="#f2f0f7") +    # change color gradient
+  theme_bw() +
+  labs(title = "Number of cases, by administrative unit",   # set figure text
+       subtitle = "Admin level 3"
+  )
+```
+
+For R users who are comfortable working with **ggplot2**, `geom_sf()` offers a simple and direct implementation that is suitable for basic map visualizations. To learn more, read the [geom_sf() vignette](https://ggplot2.tidyverse.org/reference/ggsf.html) or the [ggplot2 book](https://ggplot2-book.org/maps.html). 
 
 
 
@@ -635,9 +706,9 @@ tm_shape(case_adm3_sf) +                # plot polygons
 
 ### OpenStreetMap {.unnumbered} 
 
-Below we describe how to achieve a basemap using OpenStreetMap features. Alternative methods include using **ggmap** which requires free registration with Google ([details](https://www.earthdatascience.org/courses/earth-analytics/lidar-raster-data-r/ggmap-basemap/)).  
+Below we describe how to achieve a basemap for a **ggplot2** map using OpenStreetMap features. Alternative methods include using **ggmap** which requires free registration with Google ([details](https://www.earthdatascience.org/courses/earth-analytics/lidar-raster-data-r/ggmap-basemap/)).  
 
-([**OpenStreetMap**](https://en.wikipedia.org/wiki/OpenStreetMap)) is a collaborative project to create a free editable map of the world and the underlying geolocation data (e.g. locations of cities, roads, natural features, airports, schools, hospitals, roads etc) are considered the primary output of the project.
+[**OpenStreetMap**](https://en.wikipedia.org/wiki/OpenStreetMap) is a collaborative project to create a free editable map of the world. The underlying geolocation data (e.g. locations of cities, roads, natural features, airports, schools, hospitals, roads etc) are considered the primary output of the project.
 
 First we load the **OpenStreetMap** package, from which we will get our basemap.  
 
@@ -749,7 +820,7 @@ autoplot.OpenStreetMap(map_latlon)+
 
 
 <!-- ======================================================= -->
-### Time series heatmap {}
+### Time series heatmap {.unnumbered}
 
 The density heatmap above shows *cumulative cases*. We can examine the outbreak over time and space by faceting the heatmap based on the *month of symptom onset*, as derived from the linelist.  
 
@@ -793,65 +864,14 @@ autoplot.OpenStreetMap(map_latlon)+
   # labels 
   labs(x = "Longitude",
        y = "Latitude",
-       title = "Distribution of cumulative cases")+
+       title = "Distribution of cumulative cases over time")+
   
   # facet the plot by month-year of onset
   facet_wrap(~ date_onset_ym, ncol = 4)               
 
 ```
 
-## Mapping with ggplot2
-If you are already familiar with using **ggplot2**, you can use that package instead to create static maps of your data. The `geom_sf()` function will draw different objects based on which features (points, lines, or polygons) are in your data. For example, you can use `geom_sf()` in a `ggplot()` using `sf` data with polygon geometry to create a choropleth map.
 
-To illustrate how this works, we can start with the ADM3 polygons shapefile that we used earlier. Recall that these are Admin Level 3 regions in Sierra Leone:
-
-```{r}
-sle_adm3
-```
-We can use the `left_join()` function from **dplyr** to add the data we would like to map to the shapefile object. In this case, we are going to use the `case_adm3` data frame that we created earlier to summarize case counts by administrative region; however, we can use this same approach to map any data stored in a data frame.
-```{r}
-sle_adm3_dat <- sle_adm3 %>% 
-  inner_join(case_adm3, by = "admin3pcod") # inner join = retain only if in both data objects
-
-select(sle_adm3_dat, admin3name.x, cases) # print selected variables to console
-```
-
-To make a column chart of case counts by region, using **ggplot2**, we could then call `geom_col()` as follows:
-
-```{r, fig.align = "center"}
-ggplot(data=sle_adm3_dat) +
-  geom_col(aes(x=fct_reorder(admin3name.x, cases, .desc=T),   # reorder x axis by descending 'cases'
-               y=cases)) +                                  # y axis is number of cases by region
-  theme_bw() +
-  labs(                                                     # set figure text
-    title="Number of cases, by administrative unit",
-    x="Admin level 3",
-    y="Number of cases"
-  ) + 
-  guides(x=guide_axis(angle=45))                            # angle x-axis labels 45 degrees to fit better
-
-```
-
-If we want to use **ggplot2** to instead make a choropleth map of case counts, we can use similar syntax to call the `geom_sf()` function:
-
-```{r, fig.align = "center"}
-ggplot(data=sle_adm3_dat) + 
-  geom_sf(aes(fill=cases))    # set fill to vary by case count variable
-
-```
-
-We can then customize the appearance of our map using grammar that is consistent across **ggplot2**, for example:
-```{r, fig.align = "center"}
-ggplot(data=sle_adm3_dat) +                           
-  geom_sf(aes(fill=cases)) +						
-  scale_fill_continuous(high="#54278f", low="#f2f0f7") +    # change color gradient
-  theme_bw() +
-  labs(title = "Number of cases, by administrative unit",   # set figure text
-       subtitle = "Admin level 3"
-  )
-```
-
-For R users who are comfortable working with **ggplot2**, `geom_sf()` offers a simple and direct implementation that is suitable for basic map visualizations. To learn more, read the [geom_sf() vignette](https://ggplot2.tidyverse.org/reference/ggsf.html) or the [ggplot2 book](https://ggplot2-book.org/maps.html). 
 
 <!-- SPATIAL STATISTICS SECTION IS UNDER DEVELOPMENT --> 
 ## Spatial statistics
@@ -1028,5 +1048,8 @@ knitr::include_graphics(here::here("images", "gis_lmflowchart.jpg"))
 * Spatial Data in R [(EarthLab course)](https://www.earthdatascience.org/courses/earth-analytics/spatial-data-r/)
 
 * Applied Spatial Data Analysis in R [textbook](https://link.springer.com/book/10.1007/978-1-4614-7618-4)
+
+* **SpatialEpiApp** - a [Shiny app that is downloadable as an R package](https://github.com/Paula-Moraga/SpatialEpiApp), allowing you to provide your own data and conduct mapping, cluster analysis, and spatial statistics.  
+
 
 * An Introduction to Spatial Econometrics in R [workshop](http://www.econ.uiuc.edu/~lab/workshop/Spatial_in_R.html)

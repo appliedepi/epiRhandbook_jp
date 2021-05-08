@@ -1,9 +1,6 @@
 
 # Tables for presentation { }  
 
-This section demonstrates how to convert summary data frames into presentation-ready tables with the **flextable** package. These tables can be inserted into powerpoint slides, HTML pages, PDF or Word documents, etc.  
-
-Understand that *before* using **flextable**, you must create the summary table as a data frame. Use methods from the [Descriptive tables] and [Pivoting data] pages such as tabulations, cross-tabulations, pivoting, and calculating descriptive statistics. The resulting data frame can then be passed to **flextable** for display formatting.  
 
 ```{r echo=FALSE, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
 
@@ -91,14 +88,22 @@ table <- linelist %>%
   width(j=c(4,5,7,8), width = 1) %>% 
   flextable::align(., align = "center", j = c(2:8), part = "all") %>% 
   bg(., part = "body", bg = "gray95")  %>% 
-  bg(., j=c(1:8), i= ~ hospital == "Military Hospital", part = "body", bg = "#91c293") %>% 
+  #bg(., j=c(1:8), i= ~ hospital == "Military Hospital", part = "body", bg = "#91c293") %>% 
+  bg(j = 7, i = ~ Pct_Death >= 55, part = "body", bg = "red") %>% 
   colformat_num(., j = c(4,7), digits = 1) %>%
   bold(i = 1, bold = TRUE, part = "header") %>% 
-  bold(i = 6, bold = TRUE, part = "body")
+  bold(i = 7, bold = TRUE, part = "body")
 
 table
 ```
 
+
+This page demonstrates how to convert summary data frames into presentation-ready tables with the **flextable** package. These tables can be inserted into powerpoint slides, HTML pages, PDF or Word documents, etc.  
+
+Understand that *before* using **flextable**, you must create the summary table as a data frame. Use methods from the [Descriptive tables] and [Pivoting data] pages such as tabulations, cross-tabulations, pivoting, and calculating descriptive statistics. The resulting data frame can then be passed to **flextable** for display formatting.  
+
+
+There are many other R packages that can be used to craft tables for presentation - we chose to highlight **flextable** in this page. An example using the **knitr** package and its `kable()` function can be found in the [Contact Tracing] page. Likewise, the **DT** package is highlighted in the page [Dashboards with Shiny]. Others such as **GT** and **huxtable** are mentione in the [Suggested packages] page.  
 
 
 
@@ -121,7 +126,8 @@ pacman::p_load(
 
 ### Import data {.unnumbered}  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download handbook and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+To begin, we import the cleaned linelist of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details). 
+
 
 ```{r, echo=F}
 # import the linelist into R
@@ -130,7 +136,7 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 
 ```{r, eval=F}
 # import the linelist
-linelist <- import("linelist_cleaned.xlsx")
+linelist <- import("linelist_cleaned.rds")
 ```
 
 The first 50 rows of the linelist are displayed below.
@@ -144,13 +150,10 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 *Before* beginning to use **flextable** you will need to *create* your table as a data frame. See the page on [Descriptive tables] and [Pivoting data] to learn how to create a data frame using packages such as **janitor** and **dplyr**. You must arrange the content in rows and columns as you want it displayed. Then, the data frame will be passed to **flextable** to display it with colors, headers, fonts, etc. 
   
-Below is an example from the [Descriptive tables] page of converting the case `linelist` into a data frame that summarises patient outcomes and CT values by hospital.  
+Below is an example from the [Descriptive tables] page of converting the case `linelist` into a data frame that summarises patient outcomes and CT values by hospital, with a Totals row at the bottom. The output is saved as `table`.  
 
 ```{r message=FALSE, warning=FALSE}
 table <- linelist %>% 
-  # filter
-  ########
-  #filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
   
   # Get summary values per hospital-outcome group
   ###############################################
@@ -195,19 +198,9 @@ table  # print
 <!-- ======================================================= -->
 ## Basic flextable {  }
 
-**Creating a flextable**
+### Create a flextable {.unnumbered}  
 
-To create and manage **flextable** objects, we pass the table object through the `flextable()` function and progressively pipe the object through more **flextable** formatting functions. The general syntax of each line of flextable code is as follows:
-
-* `function(table, i = X, j = X, part = "X")`, where:
-  * `table = ` is the name of the table object, although does not need to be stated if the table is piped into the function.
-  * The 'function' can be one of many different functions, such as `width()` to determine column widths, `bg()` to set background colours, `align()` to set whether text is centre/right/left aligned, and so on. 
-  * `part = ` refers to which part of the table the function is being applied to. E.g. "header", "body" or "all". 
-  * `i = ` specifies the *row* to apply the function to, where 'X' is the row number. If multiple rows, e.g. the first to third rows, one can specify: `i = c(1:3)`. Note if 'body' is selected, the first row starts from underneath the header section.
-  * `j = ` specifies the *column* to apply the function to, where 'x' is the column number or name. If multiple columns, e.g. the fifth and sixth, one can specify: `j = c(5,6)`. 
-  
-You can find the complete list of **flextable** formatting function [here](https://davidgohel.github.io/flextable/reference/index.html) or review the documentation with `?flextable`.  
-
+To create and manage **flextable** objects, we first pass the data frame through the `flextable()` function. We save the result as `my_table`.  
 
 ```{r}
 
@@ -216,17 +209,23 @@ my_table
 
 ```
 
+After doing this, we can progressively pipe the `my_table` object through more **flextable** formatting functions.  
 
-**Formatting cell content**
+In this page for sake of clarity we will save the table at intermediate steps as `my_table`, adding **flextable** functions bit-by-bit. If you want to see *all* the code from beginning to end written in one chunk, visit the [All code together](#tbl_pres_all) section below.  
 
-We can ensure that the proportion columns display only one decimal place using the function `colformat_num()`. Note this could also have been done at data management stage with the `round()` function. 
+The general syntax of each line of **flextable** code is as follows:
 
-```{r}
-my_table <- colformat_num(my_table, j = c(4,7), digits = 1)
-my_table
-```
+* `function(table, i = X, j = X, part = "X")`, where:
+  * The 'function' can be one of many different functions, such as `width()` to determine column widths, `bg()` to set background colours, `align()` to set whether text is centre/right/left aligned, and so on. 
+  * `table = ` is the name of the data frame, although does not need to be stated if the data frame is piped into the function.
+  * `part = ` refers to which part of the table the function is being applied to. E.g. "header", "body" or "all". 
+  * `i = ` specifies the *row* to apply the function to, where 'X' is the row number. If multiple rows, e.g. the first to third rows, one can specify: `i = c(1:3)`. Note if 'body' is selected, the first row starts from underneath the header section.
+  * `j = ` specifies the *column* to apply the function to, where 'x' is the column number or name. If multiple columns, e.g. the fifth and sixth, one can specify: `j = c(5,6)`. 
+  
+You can find the complete list of **flextable** formatting function [here](https://davidgohel.github.io/flextable/reference/index.html) or review the documentation by entering `?flextable`.  
 
-**Formatting column width**
+
+### Column width {.unnumbered}
 
 We can use the `autofit()` function, which nicely stretches out the table so that each cell only has one row of text. The function `qflextable()` is a convenient shorthand for `flextable()` and `autofit()`.  
 
@@ -251,16 +250,19 @@ my_table
   
 ```
 
-**Column headers**
+### Column headers {.unnumbered}
 
-We want to clearer headers for easier interpretation of table contents.
+We want more clearer headers for easier interpretation of the table contents.
 
-First we can add an extra header layer for clarity. We do this with the `add_header_row()` function with `top = ` set to TRUE, so that columns covering the same subgroups can be grouped together. We provide the new name of each column to `values = `, leaving empty values "" for column we know we will merge together later.  
+For this table, we will want to add a second header layer so that columns covering the same subgroups can be grouped together. We do this with the `add_header_row()` function with `top = TRUE`. We provide the new name of each column to `values = `, leaving empty values `""` for columns we know we will merge together later.  
 
-We also rename the now-second header. Finally we use `merge_at()` to merge the column headers in the top header row. 
+We also rename the header names in the now-second header in a separate `set_header_labels()` command.  
+
+Finally, to "combine" certain column headers in the top header we use `merge_at()` to merge the column headers in the top header row.  
 
 ```{r}
 my_table <- my_table %>% 
+  
   add_header_row(
     top = TRUE,                # New header goes on top of existing header row
     values = c("Hospital",     # Header values for each column below
@@ -271,7 +273,8 @@ my_table <- my_table %>%
                "Died",         # This will be the top-level header for this and two next columns
                "",             # Leave blank, as it will be merged with "Died"
                "")) %>% 
-    set_header_labels(         # Rename the columns in original header row
+    
+  set_header_labels(         # Rename the columns in original header row
       hospital = "", 
       N_Known = "",                  
       N_Recover = "Total",
@@ -280,6 +283,7 @@ my_table <- my_table %>%
       N_Death = "Total",
       Pct_Death = "% of cases",
       ct_value_Death = "Median CT values")  %>% 
+  
   merge_at(i = 1, j = 3:5, part = "header") %>% # Horizontally merge columns 3 to 5 in new header row
   merge_at(i = 1, j = 6:8, part = "header")     # Horizontally merge columns 6 to 8 in new header row
 
@@ -287,15 +291,15 @@ my_table  # print
 
 ```
 
-**Formatting borders and background **
+### Borders and background {.unnumbered}  
 
 You can adjust the borders, internal lines, etc. with various **flextable** functions. It is often easier to start by removing all existing borders with `border_remove()`.  
 
 Then, you can apply default border themes by passing the table to `theme_box()`, `theme_booktabs()`, or `theme_alafoli()`.  
 
-You can add vertical and horizontal lines with a variety of functions. `hline()` and `vline()` add lines to a specified row or column, respectively. Within each, you must specify the `part = ` as either "all", "body", or "header". For vertical lines, specify to `j = ` the column, and for horizontal line to `i = `. Other functions like `vline_right()`, `vline_left()`, `hline_top()`, and `hline_bottom()` add lines to the outsides only.  
+You can add vertical and horizontal lines with a variety of functions. `hline()` and `vline()` add lines to a specified row or column, respectively. Within each, you must specify the `part = ` as either "all", "body", or "header". For vertical lines, specify the column to `j = `, and for horizontal lines the row to `i = `. Other functions like `vline_right()`, `vline_left()`, `hline_top()`, and `hline_bottom()` add lines to the outsides only.  
 
-In all of these functions, the actual line style itself must be specified to `border = ` and must be the output of the `fp_border()` function from the **officer** package. This function helps you define the width and color or the line. You can define this outside of the table, as shown below.  
+In all of these functions, the actual line style itself must be specified to `border = ` and must be the output of a separate command using the `fp_border()` function from the **officer** package. This function helps you define the width and color of the line. You can define this above the table commands, as shown below.  
 
 ```{r}
 # define style for border line
@@ -317,7 +321,7 @@ my_table <- my_table %>%
 my_table
 ```
 
-**Font and alignment**
+### Font and alignment {.unnumbered}
 
 We centre-align all columns aside from the left-most column with the hospital names, using the `align()` function from **flextable**.
 
@@ -334,26 +338,35 @@ Additionally, we can increase the header font size and change then to bold. We c
 my_table <-  my_table %>%  
   fontsize(i = 1, size = 12, part = "header") %>%   # adjust font size of header
   bold(i = 1, bold = TRUE, part = "header") %>%     # adjust bold face of header
-  bold(i = 6, bold = TRUE, part = "body")           # adjust bold face of total row (row 6)
+  bold(i = 7, bold = TRUE, part = "body")           # adjust bold face of total row (row 7 of body)
 
 my_table
 
 ```
 
-**Merged cells**  
 
-Just as we merge cells horizontally in the header row, we can also merge cells vertically using `merge_at()` and specifying the rows (`i`) and column (`j`).  
+We can ensure that the proportion columns display only one decimal place using the function `colformat_num()`. Note this could also have been done at data management stage with the `round()` function. 
+
+```{r}
+my_table <- colformat_num(my_table, j = c(4,7), digits = 1)
+my_table
+```
+
+### Merge cells {.unnumbered}  
+
+Just as we merge cells horizontally in the header row, we can also merge cells vertically using `merge_at()` and specifying the rows (`i`) and column (`j`). Here we merge the "Hospital" and "Total cases with known outcome" values vertically to give them more space.   
 
 ```{r}
 my_table <- my_table %>% 
   merge_at(i = 1:2, j = 1, part = "header") %>% 
   merge_at(i = 1:2, j = 2, part = "header")
 
+my_table
 ```
 
-**Background**
+### Background color {.unnumbered}
 
-To distinguish the content of the table from the headers, we may want to add additional formatting. e.g. changing the background colour. In this example we change the table body to gray.
+To distinguish the content of the table from the headers, we may want to add additional formatting. e.g. changing the background color. In this example we change the table body to gray.
 
 ```{r}
 my_table <- my_table %>% 
@@ -364,14 +377,14 @@ my_table
 
 
 <!-- ======================================================= -->
-## Conditional flextable formatting {  }
+## Conditional formatting {  }
 
-We can highlight all values in a column that meet a certain rule, e.g. where more than 55% of cases died. 
+We can highlight all values in a column that meet a certain rule, e.g. where more than 55% of cases died. Simply put the criteria to the `i = ` or `j = ` argument, preceded by a tilde `~`. Reference the column in the data frame, not the display heading values.  
 
 ```{r}
 
 my_table %>% 
-  bg(j = 7, i= ~ Pct_Death >=55, part = "body", bg = "red") 
+  bg(j = 7, i = ~ Pct_Death >= 55, part = "body", bg = "red") 
 
 ```
 
@@ -387,7 +400,7 @@ my_table %>%
 
 ```
 
-## All code together  
+## All code together {#tbl_pres_all}  
 
 
 Below we show all the code from the above sections together.  
@@ -476,7 +489,7 @@ table <- linelist %>%
   bg(., j=c(1:8), i= ~ hospital == "Military Hospital", part = "body", bg = "#91c293") %>% 
   colformat_num(., j = c(4,7), digits = 1) %>%
   bold(i = 1, bold = TRUE, part = "header") %>% 
-  bold(i = 6, bold = TRUE, part = "body")
+  bold(i = 7, bold = TRUE, part = "body")
 
 table
 ```
@@ -487,33 +500,34 @@ table
 
 There are different ways the table can be integrated into your output. 
 
-**Save single table**
+### Save single table {.unnumbered}
 
-You can export the tables to Word, PowerPoint or HTML or as an image (PNG) files. To do this, one of the following functions is used:
+You can export the tables to Word, PowerPoint or HTML or as an image (PNG) files. To do this, use one of the following functions:
 
 * `save_as_docx()`  
 * `save_as_pptx()`  
 * `save_as_image()`  
 * `save_as_html()`  
 
-For instance: 
+For instance below we save our table as a word document. Note the syntax of the first argument - you can just provide the name of your flextable object e.g. `my_table`, or you can give is a "name" as shown below (the name is "my table"). If name, this will appear as the title of the table in Word. We also demonstrate code to save as PNG image.  
+
 ```{r message=FALSE, warning=FALSE, eval=F}
+# Edit the 'my table' as needed for the title of table.  
 save_as_docx("my table" = my_table, path = "file.docx")
-# Edit the 'my table' as needed for the title of table. If not specified the whole file will be blank. 
 
 save_as_image(my_table, path = "file.png")
 ```
 
 Note the packages `webshot` or `webshot2` are required to save a flextable as an image. Images may come out with transparent backgrounds.
 
-If you want to view a 'live' versions of the flextable output in the intended document format, for instance so you can see if it fits in the page or so you can copy it into another document, you can use the print method with the argument preview set to “pptx” or “docx”. The document will pop up.
+If you want to view a 'live' version of the **flextable** output in the intended document format, use `print()` and specify one of the below to `preview = `. The document will "pop-up" open on your computer in the specified software program, but will not be saved. This can be useful to check if the table fits in one page/slide or so you can quickly copy it into another document, you can use the print method with the argument preview set to “pptx” or “docx”.  
 
 ```{r, eval=F}
 print(my_table, preview = "docx") # Word document example
 print(my_table, preview = "pptx") # Powerpoint example
 ```
 
-**Save table to R markdown document**
+### Print table in R markdown {.unnumbered}  
 
 This table can be integrated into your an automated document, an R markdown output, if the table object is called within the R markdown chunk. This means the table can be updated as part of a report where the data might change, so the numbers can be refreshed.
 
