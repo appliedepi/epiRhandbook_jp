@@ -121,3 +121,7 @@ More generally, the following sources provided inspiration for this handbook:
 
 Academic courses and epidemiologist training programs are welcome to use this handbook with their students. If you have questions about your intended use, email **epirhandbook@gmail.com**.  
 
+## Code of Conduct
+
+Please note that the epirhandbook project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/0/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
+
