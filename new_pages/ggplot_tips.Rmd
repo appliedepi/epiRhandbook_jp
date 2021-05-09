@@ -53,11 +53,11 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 <!-- ======================================================= -->
 ## Colour schemes {#ggplot_tips_colors}
 
-One thing that can initially be difficult to understand with **ggplot2** is control of colour schemes.  
+One thing that can initially be difficult to understand with **ggplot2** is control of colour schemes. Note that this section discusses the color of *plot objects* (geoms/shapes) such as points, bars, lines, tiles, etc. To adjust color of accessory text, titles, or background color see the [Themes](#ggplot_basics_themes) section of the [ggplot basics] page. 
 
-To control "color" of *plot objects* (geoms/shapes like points, bars, lines, etc) you will be adjusting either the `color = ` aesthetic (the *exterior* color) or the `fill = ` aesthetic (the *interior* color). The only exception to the this behavior is `geom_point()`, where you really only get to control `color = `, which controls the color of the point (interior and exterior).  
+To control "color" of *plot objects* you will be adjusting either the `color = ` aesthetic (the *exterior* color) or the `fill = ` aesthetic (the *interior* color). One exception to this pattern is `geom_point()`, where you really only get to control `color = `, which controls the color of the point (interior and exterior).  
 
-When setting colours you can use colour names recognized by R like `"red"` (see [complete list](http://sape.inf.usi.ch/quick-reference/ggplot2/colour) or enter `?colors`), or a specific hex colour such as `"#ff0505"`.
+When setting colour or fill you can use colour names recognized by R like `"red"` (see [complete list](http://sape.inf.usi.ch/quick-reference/ggplot2/colour) or enter `?colors`), or a specific hex colour such as `"#ff0505"`.
 
 ```{r, warning=F, message=F}
 # histogram - 
@@ -70,26 +70,26 @@ ggplot(data = linelist, mapping = aes(x = age))+       # set data and axes
 
 
 
-As explained the [ggplot basics] section on [mapping data to the plot](#ggplot_basics_mapping), aesthetics such as `fill = ` and `color = ` can be defined either *outside* of a `mapping = aes()` statement or *inside* of one. If *outside* the `aes()`, the assigned value (e.g. `color = "blue"`) will apply for *all* data plotted by the geom. If *inside*, the aesthetic should be mapped to a column, like `color = hospital`, and the expression of a given observation will vary by the value for that row in the data. A few examples:  
+As explained the [ggplot basics] section on [mapping data to the plot](#ggplot_basics_mapping), aesthetics such as `fill = ` and `color = ` can be defined either *outside* of a `mapping = aes()` statement or *inside* of one. If *outside* the `aes()`, the assigned value should be static (e.g. `color = "blue"`) and will apply for *all* data plotted by the geom. If *inside*, the aesthetic should be mapped to a column, like `color = hospital`, and the expression will vary by the value for that row in the data. A few examples:  
 
 ```{r, out.width=c('50%', '50%'), fig.show='hold', warning=F, message=F}
-# scatterplot
+# Static color for points and for line
 ggplot(data = linelist, mapping = aes(x = age, y = wt_kg))+     
   geom_point(color = "purple")+
   geom_vline(xintercept = 50, color = "orange")+
   labs(title = "Static color for points and line")
 
-# scatterplot
+# Color mapped to continuous column
 ggplot(data = linelist, mapping = aes(x = age, y = wt_kg))+     
   geom_point(mapping = aes(color = temp))+         
   labs(title = "Color mapped to continuous column")
 
-# scatterplot
+# Color mapped to discrete column
 ggplot(data = linelist, mapping = aes(x = age, y = wt_kg))+     
   geom_point(mapping = aes(color = gender))+         
-  labs(title = "Color mapped to categorical column")
+  labs(title = "Color mapped to discrete column")
 
-# bar plot
+# bar plot, fill to discrete column, color to static value
 ggplot(data = linelist, mapping = aes(x = hospital))+     
   geom_bar(mapping = aes(fill = gender), color = "yellow")+         
   labs(title = "Fill mapped to discrete column, static color")
@@ -99,12 +99,12 @@ ggplot(data = linelist, mapping = aes(x = hospital))+
 
 ### Scales {#ggplot_tips_scales .unnumbered}  
 
-Once you map a column toa plot aesthetic (e.g. `x = `, `y = `, `fill = `, `color = `...), your plot will gain a scale/legend. See above how the scale can be continuous, discrete, date, etc. values depending on the class of the assigned column. If you have multiple aesthetics mapped to columns, your plot will have multiple scales.  
+Once you map a column to a plot aesthetic (e.g. `x = `, `y = `, `fill = `, `color = `...), your plot will gain a scale/legend. See above how the scale can be continuous, discrete, date, etc. values depending on the class of the assigned column. If you have multiple aesthetics mapped to columns, your plot will have multiple scales.  
 
 You can control the scales with the appropriate `scales_()` function. The scale functions of **ggplot()** have 3 parts that are written like this: `scale_AESTHETIC_METHOD()`.  
 
 1) The first part, `scale_()`, is fixed.  
-2) The second part, the AESTHETIC, should be the aesthetic that you want to adjust the scale for (fill, shape, color, size, alpha...) - the options here also include x and y.  
+2) The second part, the AESTHETIC, should be the aesthetic that you want to adjust the scale for (`_fill_`, `_shape_`, `_color_`, `_size_`, `_alpha_`...) - the options here also include `_x_` and `_y_`.  
 3) The third part, the METHOD, will be either `_discrete()`, `continuous()`, `_date()`, `_gradient()`, or `_manual()` depending on the class of the column and *how* you want to control it. There are others, but these are the most-often used.  
 
 Be sure that you use the correct function for the scale! Otherwise your scale command will not appear to change anything. If you have multiple scales, you may use multiple scale functions to adjust them! For example:  
@@ -122,7 +122,7 @@ The nuances of date scales are covered more extensively in the [Epidemic curves]
 
 ### Manual adjustments {.unnumbered}  
 
-One of the most useful tricks is using "manual" scaling functions to explicitly assign colors as you descire. These are functions with the syntax `scale_xxx_manual()` (e.g. `scale_colour_manual()` or `scale_fill_manual()`). Each of the below arguments are demonstrated in the code example below.  
+One of the most useful tricks is using "manual" scaling functions to explicitly assign colors as you desire. These are functions with the syntax `scale_xxx_manual()` (e.g. `scale_colour_manual()` or `scale_fill_manual()`). Each of the below arguments are demonstrated in the code example below.  
 
 * Assign colors to data values with the `values = ` argument  
 * Specify a color for `NA` with `na.value = `  
@@ -130,7 +130,7 @@ One of the most useful tricks is using "manual" scaling functions to explicitly 
 * Change the legend title with `name = `  
 
 
-Below, we create a bar plot and show how it appears by default, and then with three scales adjusted - the continuous y-axis scale, the discrete, x-axis scale, and manual adjustment of the fill (interior bar color).  
+Below, we create a bar plot and show how it appears by default, and then with three scales adjusted - the continuous y-axis scale, the discrete x-axis scale, and manual adjustment of the fill (interior bar color).  
 
 
 ```{r, warning=F, message=F}
@@ -172,7 +172,9 @@ ggplot(data = linelist)+
 ```
 
 
-Continuous scales can involve additional nuance. The defaults are usually quite pleasing, but you may want to adjust the values, cutoffs, etc.  
+### Gradient scales {.unnumbered}  
+
+Fill gradient scales can involve additional nuance. The defaults are usually quite pleasing, but you may want to adjust the values, cutoffs, etc.  
 
 To demonstrate how to adjust a continuous color scale, we'll use a data set from the [Contact tracing] page that contains the ages of cases and of their source cases.  
 
@@ -242,6 +244,8 @@ trans_matrix +
 
 ```
 
+
+### Palettes {.unnumbered}  
 
 More generally, if you want predefined palettes, you can use the `scale_xxx_brewer` or `scale_xxx_viridis_y` functions.  
 
@@ -375,7 +379,7 @@ scatter_plot <- ggplot(data = linelist)+
   labs(title = "Scatter plot of weight and age")
 ```
 
-To add marginal histograms:  
+To add marginal histograms use `type = "histogram"`. You can optionally set `groupFill = TRUE` to get stacked histograms.     
 
 ```{r, message=FALSE, warning=FALSE}
 # with histograms
@@ -387,31 +391,21 @@ ggMarginal(
   yparams = list(binwidth = 5))     # other parameters for y-axis marginal
 ```
 
-Marginal histograms with grouped/colored values:  
+Marginal density plot with grouped/colored values:  
 
 ```{r, message=FALSE, warning=FALSE}
 
 # Scatter plot, colored by outcome
 # Outcome column is assigned as color in ggplot. groupFill in ggMarginal set to TRUE
-scatter_plot_color <- ggplot(data = linelist)+
-  geom_point(mapping = aes(y = wt_kg, x = age, color = outcome)) +
+scatter_plot_color <- ggplot(data = linelist %>% drop_na(gender))+
+  geom_point(mapping = aes(y = wt_kg, x = age, color = gender)) +
   labs(title = "Scatter plot of weight and age")+
   theme(legend.position = "bottom")
 
-ggMarginal(scatter_plot_color, type = "histogram", groupFill = TRUE)
+ggMarginal(scatter_plot_color, type = "density", groupFill = TRUE)
 ```
 
-Marginal density curve, with demonstration of size and color arguments:  
-```{r, message=FALSE, warning=FALSE}
-# with density curves
-ggMarginal(
-  scatter_plot,
-  type = "density",
-  color = "red",                    # line color
-  size = 4)                         # smaller number makes larger marginal plots
-```
-
-Marginal boxplots, with demonstration of the margins argument:  
+Set the `size = ` arguemnt to adjust the relative size of the marginal plot. Smaller number makes a larger marginal plot. You also set `color = `. Below are is a marginal boxplot, with demonstration of the `margins = ` argument so it appears on only one axis:  
 
 ```{r, message=FALSE, warning=FALSE}
 # with boxplot 
@@ -426,9 +420,9 @@ ggMarginal(
 <!-- ======================================================= -->
 ## Smart Labeling {}  
 
-In `ggplot2`, it is also possible to add text to plots. However, this comes with the notable limitation where text labels often clash with data points in a plot, making them look messy or hard to read. There is no ideal way to deal with this in the base package, but there is a `ggplot2` add-on, known as `ggrepel` that makes dealing with this very simple! 
+In **ggplot2**, it is also possible to add text to plots. However, this comes with the notable limitation where text labels often clash with data points in a plot, making them look messy or hard to read. There is no ideal way to deal with this in the base package, but there is a **ggplot2** add-on, known as **ggrepel** that makes dealing with this very simple! 
 
-The `ggrepel` package provides two new functions, `geom_label_repel()` and `geom_text_repel()`, which replace `geom_label()` and `geom_text()`. Simply use these functions instead of the base functions to produce neat labels. Within the function, map the aesthetics `aes()` as always, but include the argument `label = ` to which you provide a column name containing the values you want to display (e.g. patient id, or name, etc.). You can make more complex labels by combining columns and newlines (`\n`) within `str_glue()` as shown below.  
+The **ggrepel** package provides two new functions, `geom_label_repel()` and `geom_text_repel()`, which replace `geom_label()` and `geom_text()`. Simply use these functions instead of the base functions to produce neat labels. Within the function, map the aesthetics `aes()` as always, but include the argument `label = ` to which you provide a column name containing the values you want to display (e.g. patient id, or name, etc.). You can make more complex labels by combining columns and newlines (`\n`) within `str_glue()` as shown below.  
 
 A few tips:  
 
@@ -537,9 +531,9 @@ ggplot(linelist, aes(x = date_onset)) +
 <!-- ======================================================= -->
 ## Highlighting {}
 
-Highlighting specific elements in a chart is a useful way to draw attention to a specific instance of a variable while also providing information on the dispersion of the full dataset. While this is not easily done in base `ggplot2`, there is an external package that can help to do this known as `gghighlight`. This is easy to use within the ggplot syntax.
+Highlighting specific elements in a chart is a useful way to draw attention to a specific instance of a variable while also providing information on the dispersion of the full dataset. While this is not easily done in base **ggplot2**, there is an external package that can help to do this known as **gghighlight**. This is easy to use within the ggplot syntax.
 
-The `gghighlight` package uses the `gghighlight()` function to achieve this effect. To use this function, supply a logical statement to the function - this can have quite flexible outcomes, but here we'll show an example of the age distribution of cases in our linelist, highlighting them by outcome.
+The **gghighlight** package uses the `gghighlight()` function to achieve this effect. To use this function, supply a logical statement to the function - this can have quite flexible outcomes, but here we'll show an example of the age distribution of cases in our linelist, highlighting them by outcome.
 
 ```{r, eval = T, warning=F, message=F}
 # load gghighlight
@@ -769,7 +763,7 @@ You can inset one plot in another using **cowplot**. Here are things to be aware
 * Combine them by applying `ggdraw()` to the main plot, then adding `draw_plot()` on the inset plot and specifying the coordinates (x and y of lower left corner), height and width as proportion of the whole main plot.  
 
 
-```{r, out.width=c('50%'), fig.show='hold', warning=F, message=F}
+```{r, out.width=c('100%'), fig.show='hold', warning=F, message=F}
 
 # Define main plot
 main_plot <- ggplot(data = linelist)+
@@ -814,7 +808,7 @@ This technique is explained more in these two vignettes:
 <!-- ======================================================= -->
 ## Dual axes {}
 
-A secondary y-axis is often a requested addition to a `ggplot2` graph. While there is a robust debate about the validity of such graphs in the data visualization community, and they are often not recommended, your manager may still want them. Below, we present one methods to achieve them: using the **cowplot** package to combine two separate plots.  
+A secondary y-axis is often a requested addition to a `ggplot2` graph. While there is a robust debate about the validity of such graphs in the data visualization community, and they are often not recommended, your manager may still want them. Below, we present one method to achieve them: using the **cowplot** package to combine two separate plots.  
 
 This approach involves creating two separate plots - one with a y-axis on the left, and the other with y-axis on the right. Both will use a specific `theme_cowplot()` and must have the same x-axis. Then in a third command the two plots are aligned and overlaid on top of each other. The functionalities of **cowplot**, of which this is only one, are described in depth at this [site](https://wilkelab.org/cowplot/articles/aligning_plots.html).  
 
@@ -824,7 +818,7 @@ To demonstrate this technique we will overlay the epidemic curve with a line of 
 * The y-axis is moved to the right-side for plot 2 with the `position = ` argument of `scale_y_continuous()`.  
 * Both plots make use of `theme_cowplot()`  
 
-Note there is another example of this technique in the [Epicurves] page - overlaying cumulative incidence on top of the epicurve.  
+Note there is another example of this technique in the [Epidemic curves] page - overlaying cumulative incidence on top of the epicurve.  
 
 **Make plot 1**  
 This is essentially the epicurve. We use `geom_area()` just to demonstrate its use (area under a line, by default)  
@@ -952,7 +946,7 @@ aligned_plotted                                                                #
 There are some really neat R packages specifically designed to help you navigate **ggplot2**:  
 
 
-### Point-and-click **ggplot2** with **equisse**  
+### Point-and-click **ggplot2** with **equisse**  {.unnumbered}
 
 "This addin allows you to interactively explore your data by visualizing it with the ggplot2 package. It allows you to draw bar plots, curves, scatter plots, histograms, boxplot and sf objects, then export the graph or retrieve the code to reproduce the graph."
 
@@ -1030,53 +1024,53 @@ Cheatsheets
 
 
 
-TO DO - Under construction
+<!-- TO DO - Under construction -->
 
 
-* Straight horizontal, vertical, or other line
+<!-- * Straight horizontal, vertical, or other line -->
 
-You can also add straight lines to your plot with `geom_hline()` (horizontal), `geom_vline()` (vertical) or `geom_abline()` (with a specified y intercept and slope)
-
-
-Using option `label_wrap_gen` in facet_wrap to have multiple strip lines
-labels and colors of strips
-
-Axis text vertical adjustment
-rotation
-Labellers
-
-limit range with limit() and coord_cartesian(), ylim(), or scale_x_continuous()
-theme_classic()
-
-expand = c(0,0)
-coord_flip()
-tick marks
-
-ggrepel
-animations
-
-remove
-remove title
-using fill = or color = in labs()
-flip order / don't flip order
-move location
-color?    theme(legend.title = element_text(colour="chocolate", size=16, face="bold"))+ scale_color_discrete(name="This color is\ncalled chocolate!?")
-Color of boxes behind points in legend 
-     theme(legend.key=element_rect(fill='pink'))   or use fill = NA to remove them. http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/ 
-Change size of symbols in legend only guides(colour = guide_legend(override.aes = list(size=4)))
+<!-- You can also add straight lines to your plot with `geom_hline()` (horizontal), `geom_vline()` (vertical) or `geom_abline()` (with a specified y intercept and slope) -->
 
 
-Turn off a layer in the legend
-geom_text(data=nmmaps, aes(date, temp, label=round(temp)), size=4)
-geom_text(data=nmmaps, aes(date, temp, label=round(temp), size=4), show_guide=FALSE)
+<!-- Using option `label_wrap_gen` in facet_wrap to have multiple strip lines -->
+<!-- labels and colors of strips -->
 
-Force a legend even if there is no aes(). 
-ggplot(nmmaps, aes(x=date, y=o3))+
-     geom_line(aes(color="Important line"))+
-     geom_point(aes(color="My points"))
-Control the shape in the legend with guides - a list with linetype and shape
-ggplot(nmmaps, aes(x=date, y=o3))+geom_line(aes(color="Important line"))+
-   geom_point(aes(color="Point values"))+
-  scale_colour_manual(name='', values=c('Important line'='grey', 'Point values'='red'), guide='legend') +
-  guides(colour = guide_legend(override.aes = list(linetype=c(1,0)
-                                                      , shape=c(NA, 16))))
+<!-- Axis text vertical adjustment -->
+<!-- rotation -->
+<!-- Labellers -->
+
+<!-- limit range with limit() and coord_cartesian(), ylim(), or scale_x_continuous() -->
+<!-- theme_classic() -->
+
+<!-- expand = c(0,0) -->
+<!-- coord_flip() -->
+<!-- tick marks -->
+
+<!-- ggrepel -->
+<!-- animations -->
+
+<!-- remove -->
+<!-- remove title -->
+<!-- using fill = or color = in labs() -->
+<!-- flip order / don't flip order -->
+<!-- move location -->
+<!-- color?    theme(legend.title = element_text(colour="chocolate", size=16, face="bold"))+ scale_color_discrete(name="This color is\ncalled chocolate!?") -->
+<!-- Color of boxes behind points in legend  -->
+<!--      theme(legend.key=element_rect(fill='pink'))   or use fill = NA to remove them. http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/  -->
+<!-- Change size of symbols in legend only guides(colour = guide_legend(override.aes = list(size=4))) -->
+
+
+<!-- Turn off a layer in the legend -->
+<!-- geom_text(data=nmmaps, aes(date, temp, label=round(temp)), size=4) -->
+<!-- geom_text(data=nmmaps, aes(date, temp, label=round(temp), size=4), show_guide=FALSE) -->
+
+<!-- Force a legend even if there is no aes().  -->
+<!-- ggplot(nmmaps, aes(x=date, y=o3))+ -->
+<!--      geom_line(aes(color="Important line"))+ -->
+<!--      geom_point(aes(color="My points")) -->
+<!-- Control the shape in the legend with guides - a list with linetype and shape -->
+<!-- ggplot(nmmaps, aes(x=date, y=o3))+geom_line(aes(color="Important line"))+ -->
+<!--    geom_point(aes(color="Point values"))+ -->
+<!--   scale_colour_manual(name='', values=c('Important line'='grey', 'Point values'='red'), guide='legend') + -->
+<!--   guides(colour = guide_legend(override.aes = list(linetype=c(1,0) -->
+<!--                                                       , shape=c(NA, 16)))) -->
