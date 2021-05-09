@@ -136,14 +136,54 @@ The **base** R function `lm()` perform linear regression, assessing the relation
 
 Provide the equation as a formula, with the response and explanatory column names separated by a tilde `~`. Also, specify the dataset to `data = `. Define the model results as an R object, to use later.    
 
-```{r, eval=F}
-lm_results <- lm(wh_cm ~ age, data = linelist)
+```{r lin_reg}
+lm_results <- lm(ht_cm ~ age, data = linelist)
 ```
 
 You can then run `summary()` on the model results to see the coefficients (Estimates), P-value, residuals, and other measures.  
 
-```{r, eval=F}
+```{r lin_reg_res}
 summary(lm_results)
+```
+
+Alternatively you can use the `tidy()` function from the **broom** package to pull 
+the results in to a table. 
+What the results tell us is that for each year increase in age the height increases
+by 3.5 cm and this is statistically significant. 
+
+```{r lin_reg_res_tidy}
+tidy(lm_results)
+```
+
+You can then also use this regression to add it to a **ggplot**, to do this we 
+first pull the points for the observed data and the fitted line in to one data frame 
+using the `augment()` function from **broom**. 
+
+```{r lin_reg_res_plot}
+
+## pull the regression points and observed data in to one dataset
+points <- augment(lm_results)
+
+## plot the data using age as the x-axis 
+ggplot(points, aes(x = age)) + 
+  ## add points for height 
+  geom_point(aes(y = ht_cm)) + 
+  ## add your regression line 
+  geom_line(aes(y = .fitted), colour = "red")
+
+```
+
+It is also possible to add a simple linear regression straight straight in **ggplot** 
+using the `geom_smooth()` function. 
+
+```{r geom_smooth}
+
+## add your data to a plot 
+ ggplot(linelist, aes(x = age, y = ht_cm)) + 
+  ## show points
+  geom_point() + 
+  ## add a linear regression 
+  geom_smooth(method = "lm", se = FALSE)
 ```
 
 See the Resource section for more detailed tutorials.  
