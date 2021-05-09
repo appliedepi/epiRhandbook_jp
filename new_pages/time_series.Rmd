@@ -9,6 +9,12 @@ It primarily relies on packages from the [**tidyverts**](https://tidyverts.org/)
 family, but will also use the RECON [**trending**](https://github.com/reconhub/trending) 
 package to fit models that are more appropriate for infectious disease epidemiology. 
 
+Note in the below example we use a dataset from the **surveillance** package 
+on Campylobacter in Germany (see the [data chapter](https://epirhandbook.com/download-handbook-and-data.html), 
+of the handbook for details). However, if you wanted to run the same code on a dataset
+with multiple countries or other strata, then there is an example code template for this in the 
+[r4epis github repo](https://github.com/R4EPI/epitsa). 
+
 Topics covered include:  
 
 1.  Time series data 
@@ -295,7 +301,7 @@ To do this we will use the **imputeTS** package function `na_interpolation()`.
 
 See the [Missing data](https://epirhandbook.com/missing-data.html) page for other options for imputation.  
 
-Another alternative would be to calculating a moving average, to try and smooth
+Another alternative would be to calculate a moving average, to try and smooth
 over these apparent reporting issues (see next section, and the page on [Moving averages](https://epirhandbook.com/moving-averages.html)). 
 
 ```{r missings}
@@ -893,8 +899,13 @@ rest of your code.
 
 Here we define a start date (when our observations started) and a cut-off date 
 (the end of our baseline period - and when the period we want to predict for starts). 
-We also define how many weeks are in our year of interest (the one we are going to
-be predicting). 
+~We also define how many weeks are in our year of interest (the one we are going to
+be predicting)~.
+We also define how many weeks are between our baseline cut-off and the end date 
+that we are interested in predicting for. 
+
+
+<span style="color: black;">**_NOTE:_** In this example we pretend to currently be at the end of September 2011 ("2011 W39").</span>  
 
 ```{r cut_off}
 
@@ -904,22 +915,43 @@ start_date <- min(counts$epiweek)
 ## define a cut-off week (end of baseline, start of prediction period)
 cut_off <- yearweek("2010-12-31")
 
-## get the year which want to predict for 
-## add one week to cut_off (to push in to next year) and change to only have Year
-pred_year <- format(cut_off + 1, format = "%Y") %>% 
-  ## change to numeric
-  as.numeric()
+## define the last date interested in (i.e. end of prediction)
+end_date <- yearweek("2011-12-31")
 
-## find how many weeks in year of interest
-num_weeks <- ifelse(
-  ## true/false of whether pred_year is a 53 week year
-  is_53weeks(pred_year),
-  ## if true then return 53 
-  53, 
-  ## otherwise return 52
-  52)
+## find how many weeks in period (year) of interest
+num_weeks <- as.numeric(end_date - cut_off)
 
 ```
+
+
+<!-- ======================================================= -->
+#### Add rows {.unnumbered}
+
+To be able to forecast in a tidyverse format, we need to have the right number 
+of rows in our dataset, i.e. one row for each week up to the `end_date`defined above. 
+The code below allows you to add these rows for by a grouping variable - for example
+if we had multiple countries in one dataset, we could group by country and then 
+add rows appropriately for each. 
+The `group_by_key()` function from **tsibble** allows us to do this grouping 
+and then pass the grouped data to **dplyr** functions, `group_modify()` and 
+`add_row()`. Then we specify the sequence of weeks between one after the maximum week 
+currently available in the data and the end week. 
+
+```{r add_rows}
+
+## add in missing weeks till end of year 
+counts <- counts %>%
+  ## group by the region
+  group_by_key() %>%
+  ## for each group add rows from the highest epiweek to the end of year
+  group_modify(~add_row(.,
+                        epiweek = seq(max(.$epiweek) + 1, 
+                                      end_date,
+                                      by = 1)))
+
+```
+
+
 
 <!-- ======================================================= -->
 #### Fourier terms {.unnumbered}
@@ -934,6 +966,7 @@ year of interest (by defining the `h` argument).
 the fourier columns are a list (so not named individually). 
 
 ```{r fourier_terms_pred}
+
 
 ## define fourier terms (sincos) 
 counts <- counts %>% 
@@ -1277,7 +1310,7 @@ framework.
 
 ## define surveillance time series object
 ## nb. you can include a denominator with the population object (see ?sts)
-counts_sts <- sts(observed = counts$case_int,
+counts_sts <- sts(observed = counts$case_int[!is.na(counts$case_int)],
                   start = c(
                     ## subset to only keep the year from start_date 
                     as.numeric(str_sub(start_date, 1, 4)), 
@@ -1324,7 +1357,8 @@ farringtonmethod <- farringtonFlexible(counts_sts, ctrl)
 ## create a new variable in the original dataset called threshold
 ## containing the upper bound from farrington 
 ## nb. this is only for the weeks in 2011 (so need to subset rows)
-counts[which(counts$epiweek >= cut_off),
+counts[which(counts$epiweek >= cut_off & 
+               !is.na(counts$case_int)),
               "threshold"] <- farringtonmethod@upperbound
 ```
 
@@ -1360,11 +1394,11 @@ then fit the algorithm and extract the upper bounds.
 See the [GLRNB vignette](https://cran.r-project.org/web/packages/surveillance/vignettes/glrnb.pdf) 
 for details. 
 
-```{r glrnb, warning = FALSE, message=F}
+```{r glrnb, warning = FALSE, message = FALSE}
 
 ## define control options
 ctrl <- list(
-  ## define what time period that want threshold for (i.e. 2020)
+  ## define what time period that want threshold for (i.e. 2011)
   range = which(counts_sts@epoch > weekrange),
   mu0 = list(S = 1,    ## number of fourier terms (harmonics) to include
   trend = TRUE,   ## whether to include trend or not
@@ -1383,7 +1417,8 @@ glrnbmethod <- glrnb(counts_sts, control = ctrl, verbose = FALSE)
 ## create a new variable in the original dataset called threshold
 ## containing the upper bound from glrnb 
 ## nb. this is only for the weeks in 2011 (so need to subset rows)
-counts[which(counts$epiweek >= cut_off),
+counts[which(counts$epiweek >= cut_off & 
+               !is.na(counts$case_int)),
               "threshold_glrnb"] <- glrnbmethod@upperbound
 
 ```
