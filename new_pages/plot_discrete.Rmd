@@ -1,14 +1,13 @@
 # Plot categorical data  { }  
 
 
-In this page we cover use of R's built-in functions or functions from the **ggplot2** package to visualise categorical/categorical data. The additional functionality of **ggplot2** compared to **base** R means we recommend it for presentation-ready visualisations. 
+In this page we cover basic use of **ggplot2** functions to visualise discrete/categorical data. The additional functionality of **ggplot2** compared to **base** R means we recommend it for presentation-ready visualisations. 
 
-We cover visualising distributions of categorical values, as counts and proportions.
+We also cover visualising distributions of categorical values, as counts and proportions.
 
 
 ```{r echo=F, fig.height=3, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('100%')}
 
-# 
 pacman::p_load(tidyverse)
 
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
@@ -40,7 +39,7 @@ ggplot(linelist %>% drop_na(outcome)) +
 <!-- ======================================================= -->
 ## Preparation {  }
 
-Preparation includes loading the relevant packages, namely `ggplot2` for examples covered here. We also load the data.
+Preparation includes loading the relevant packages, namely **ggplot2** for examples covered here. We also load the data.
 
 ### Load packages {.unnumbered}
 
@@ -48,15 +47,17 @@ This code chunk shows the loading of packages required for the analyses. In this
 
 ```{r}
 # Load packages we will be using repeatedly
-pacman::p_load(ggplot2, # Package for visualisation
-       dplyr,           # Package for data management
-       forcats)         # Package for factors
+pacman::p_load(
+  rio,             # file import
+  here,            # locate files
+  janitor,         # tables
+  tidyverse)       # ggplot2, dplyr, and forcats among others 
 ```
 
 
 ### Import data {.unnumbered}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+To begin, we import the cleaned linelist of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
 
 ```{r, echo=F}
 # import the linelist into R
@@ -65,7 +66,7 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 
 ```{r, eval=F}
 # import the linelist
-linelist <- import("linelist_cleaned.xlsx")
+linelist <- import("linelist_cleaned.rds")
 ```
 
 The first 50 rows of the linelist are displayed below.
@@ -80,40 +81,38 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 For the examples in this section, we use the simulated Ebola linelist, focusing on the categorical variables `hospital`, and `outcome`. These need to be the correct class and format. 
 
-Let's take a look at the `hospital` column. 
+Let's take a look at the `hospital` column, first with `class()` from **base** R, and with `tabyl()` from **janitor**.  
 
 ```{r}
 # View class of hospital column - we can see it is a character
 class(linelist$hospital)
 
 # Look at values held within hospital column
-table(linelist$hospital)
+linelist %>% 
+  tabyl(hospital)
 
 ```
 
-We can see the values within are characters, as they are hospital names, and by default they are ordered alphabetically. There are 'other' and 'missing' values, which we would prefer to be the last subcategories when presenting breakdowns. So we change this column into a factor and re-order it. This is covered in more detail in the 'factors' data management section.
+We can see the values within are characters, as they are hospital names, and by default they are ordered alphabetically. There are 'other' and 'missing' values, which we would prefer to be the last subcategories when presenting breakdowns. So we change this column into a factor and re-order it. This is covered in more detail in the [Factors] data management section.
 
 
 ```{r}
-# Change hospital to factor variable
+# Convert to factor and define level order so "Other" and "Missing" are last
 linelist <- linelist %>% 
-  mutate(hospital = factor(hospital))
-
-# Define the levels of factor with forcats - so other and missing are last
-linelist <- linelist %>% 
-  mutate(hospital = fct_relevel(hospital, 
-                                c("St. Mark's Maternity Hospital (SMMH)", 
-                                  "Port Hospital", 
-                                  "Central Hospital",
-                                  "Military Hospital",
-                                  "Other",
-                                  "Missing")))
+  mutate(
+    hospital = fct_relevel(hospital, 
+      "St. Mark's Maternity Hospital (SMMH)",
+      "Port Hospital", 
+      "Central Hospital",
+      "Military Hospital",
+      "Other",
+      "Missing"))
 
 ```
 
 ### Ensure correct data structure {.unnumbered}
 
-For displaying frequencies and distributions of categorical variables, you have the option of creating plots based on: 
+As discussed in the ["Bar plots"](#ggplot_basics_bars)For displaying frequencies and distributions of categorical variables, you have could create creating plots based on: 
 
 * The linelist data, with one row per observation, or 
 * A summary table based on the linelist, with one row per category. An example is below to show the use of `dplyr` to create a table of case counts per hospital. 
