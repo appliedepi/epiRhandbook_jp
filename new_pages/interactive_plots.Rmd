@@ -3,9 +3,9 @@
 
 Data visualisation is increasingly required to be interrogable by the audience. Consequently, is is becoming common to create interactive plots. There are several ways to include these but the two most common are **plotly** and **shiny**. 
 
-In this page we will focus on converting an existing `ggplot()` plot into an interactive plot with **plotly**. You can read more about **shiny** in the [Dashboards with Shiny] page. What is worth mentioning is that interactive plots are only useable in HTML format Rmarkdown   documents, not PDF or Word documents.
+In this page we will focus on converting an existing `ggplot()` plot into an interactive plot with **plotly**. You can read more about **shiny** in the [Dashboards with Shiny] page. What is worth mentioning is that interactive plots are only useable in HTML format R markdown documents, not PDF or Word documents.
 
-Below is a basic epicurve that has been transformed to be interactive using the integration of **ggplot2** and **plotly** (hover your mouse over the plot, or click items in the legend). 
+Below is a basic epicurve that has been transformed to be interactive using the integration of **ggplot2** and **plotly** (hover your mouse over the plot, zoom in, or click items in the legend). 
 
 ```{r plotly_demo, out.width=c('75%'), out.height=c('500px'), echo=F, warning=F, message=F}
 pacman::p_load(plotly, rio, here, ggplot2, dplyr, lubridate)
@@ -59,7 +59,7 @@ In this page we assume that you are beginning with a `ggplot()` plot that you wa
 
 ### Import data {.unnumbered}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+To begin, we import the cleaned linelist of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
 
 ```{r, echo=F}
 # import the linelist into R
@@ -67,8 +67,8 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 ```
 
 ```{r, eval=F}
-# import the linelist
-linelist <- rio::import("linelist_cleaned.xlsx")
+# import case linelist 
+linelist <- import("linelist_cleaned.rds")
 ```
 
 The first 50 rows of the linelist are displayed below.
@@ -77,6 +77,9 @@ The first 50 rows of the linelist are displayed below.
 # display the linelist data as a table
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
+
+
+
 
 
 
@@ -108,10 +111,8 @@ DT::datatable(head(weekly_deaths, 50), rownames = FALSE, options = list(pageLeng
 Then we create the plot with **ggplot2**, using `geom_line()`.  
 
 ```{r, warning=F, message=F}
-deaths_plot <- ggplot2::ggplot(data = weekly_deaths)+    # begin with weekly deaths data
-  ggplot2::geom_line(                                    # create line
-    mapping = ggplot2::aes(x = epiweek, y = pct_death),  # map epiweek to x-axis, and pct_death to y-axis
-    stat = "identity")                                   # line height reflects y value, not number of rows (default)
+deaths_plot <- ggplot(data = weekly_deaths)+            # begin with weekly deaths data
+  geom_line(mapping = aes(x = epiweek, y = pct_death))  # make line 
 
 deaths_plot   # print
 ```
@@ -160,7 +161,7 @@ p %>%
 
 ### File size {.unnumbered}  
 
-When exporting in an Rmarkdown generated HTML (like this book!) you want to make the plot as small data size as possible (with no negative side effects in most cases). For this, just pipe the interactive plot to `partial_bundle()`, also from **plotly**.  
+When exporting in an R Markdown generated HTML (like this book!) you want to make the plot as small data size as possible (with no negative side effects in most cases). For this, just pipe the interactive plot to `partial_bundle()`, also from **plotly**.  
 
 ```{r plot_tidyshow, eval=F}
 p <- p %>% 
@@ -215,29 +216,29 @@ agg_weeks <- facility_count_data %>%
   mutate(week = aweek::week2date(week))
 
 # create plot
-metrics_plot <- ggplot2::ggplot(agg_weeks,
-       ggplot2::aes(x = week,
+metrics_plot <- ggplot(agg_weeks,
+       aes(x = week,
            y = location_name,
            fill = p_days_reported))+
-  ggplot2::geom_tile(colour="white")+
-  ggplot2::scale_fill_gradient(low = "orange", high = "darkgreen", na.value = "grey80")+
-  ggplot2::scale_x_date(expand = c(0,0),
+  geom_tile(colour="white")+
+  scale_fill_gradient(low = "orange", high = "darkgreen", na.value = "grey80")+
+  scale_x_date(expand = c(0,0),
                date_breaks = "2 weeks",
                date_labels = "%d\n%b")+
-  ggplot2::theme_minimal()+ 
-  ggplot2::theme(
-    legend.title = ggplot2::element_text(size=12, face="bold"),
-    legend.text  = ggplot2::element_text(size=10, face="bold"),
+  theme_minimal()+ 
+  theme(
+    legend.title = element_text(size=12, face="bold"),
+    legend.text  = element_text(size=10, face="bold"),
     legend.key.height = grid::unit(1,"cm"),
     legend.key.width  = grid::unit(0.6,"cm"),
-    axis.text.x = ggplot2::element_text(size=12),
-    axis.text.y = ggplot2::element_text(vjust=0.2),
-    axis.ticks = ggplot2::element_line(size=0.4),
-    axis.title = ggplot2::element_text(size=12, face="bold"),
-    plot.title = ggplot2::element_text(hjust=0,size=14,face="bold"),
-    plot.caption = ggplot2::element_text(hjust = 0, face = "italic")
+    axis.text.x = element_text(size=12),
+    axis.text.y = element_text(vjust=0.2),
+    axis.ticks = element_line(size=0.4),
+    axis.title = element_text(size=12, face="bold"),
+    plot.title = element_text(hjust=0,size=14,face="bold"),
+    plot.caption = element_text(hjust = 0, face = "italic")
     )+
-  ggplot2::labs(x = "Week",
+  labs(x = "Week",
        y = "Facility name",
        fill = "Reporting\nperformance (%)",
        title = "Percent of days per week that facility reported data",
@@ -262,7 +263,7 @@ metrics_plot %>%
 
 <!-- THIS SECTION IS UNDER CONSTRUCTION  -->
 
-<!-- Although **plotly** works well with `ggplot2::geom_sf` in RStudio, when you try to include its outputs in Rmarkdown HTML files (like this book), it doesn't work well.   -->
+<!-- Although **plotly** works well with `ggplot2::geom_sf` in RStudio, when you try to include its outputs in R Markdown HTML files (like this book), it doesn't work well.   -->
 
 <!-- So instead you can use {**plotly**}'s own mapping tools which can be tricky but are easy when you know how. Read on...   -->
 

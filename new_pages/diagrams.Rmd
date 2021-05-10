@@ -1,8 +1,7 @@
 
 # Diagrams and charts { }  
 
-<!-- ======================================================= -->
-## Overview { }
+
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "flow_chart.png"))
@@ -10,15 +9,14 @@ knitr::include_graphics(here::here("images", "sankey_diagram.png"))
 ```
 
 
-This page covers:  
+This page covers code to produce:  
 
-* Flow diagrams using **DiagrammeR**  
+* Flow diagrams using **DiagrammeR** and the DOT language  
 * Alluvial/Sankey diagrams  
 * Event timelines  
-* GANTT charts  
-* Dendrogram organizational trees (e.g. of folder contents)  
-* DAGs (Directed Acyclic Graphs)  
 
+<!-- * DAGs (Directed Acyclic Graphs)   -->
+<!-- * GANTT charts   -->
 
 
 <!-- ======================================================= -->
@@ -37,7 +35,7 @@ pacman::p_load(
 
 ### Import data {.unnumbered}  
 
-Most of the content in this page does not require a dataset. However, in the Sankey diagram section, we will use the case linelist from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instruction in the [Download handbook and data] page. We assume the file is in the working directory so no sub-folders are specified in this file path. It is previewed below.  
+Most of the content in this page does not require a dataset. However, in the Sankey diagram section, we will use the case linelist from a simulated Ebola epidemic. If you want to follow along for this part, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
 
 ```{r, echo=F}
 # import the linelist into R
@@ -46,7 +44,7 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 
 ```{r, eval=F}
 # import the linelist
-linelist <- import("linelist_cleaned.xlsx")
+linelist <- import("linelist_cleaned.rds")
 ```
 
 The first 50 rows of the linelist are displayed below.
@@ -76,7 +74,7 @@ The function `grViz()` is used to create a "Graphviz" diagram. This function acc
 5) Edges statements (gives links between nodes)  
 6) Close the instructions `}")`  
 
-### Simple examples  
+### Simple examples {.unnumbered} 
 
 Below are two simple examples  
 
@@ -96,7 +94,7 @@ a -> b -> c
 }")
 ```
 
-An example with applied public health context:  
+An example with perhaps a bit more applied public health context:  
 
 ```{r out.width='50%'}
 grViz("                           # All instructions are within a large character string
@@ -127,7 +125,7 @@ digraph surveillance_diagram {    # 'digraph' means 'directional graph', then th
 ")
 ```
 
-### Syntax  
+### Syntax  {.unnumbered}
 
 **Basic syntax**  
 
@@ -195,7 +193,7 @@ Within edge statements, subgroups can be created on either side of the edge with
 **Color names**: hexadecimal values or 'X11' color names, see [here for X11 details](http://rich-iannone.github.io/DiagrammeR/graphviz_and_mermaid.html) 
 
 
-### Complex examples  
+### Complex examples  {.unnumbered}
 
 The example below expands on the surveillance_diagram, adding complex node names, grouped edges, colors and styling
 
@@ -447,7 +445,7 @@ results [label= 'Results']
 ```
 
 
-### Outputs  
+### Outputs  {.unnumbered}
 
 How to handle and save outputs  
 
@@ -457,55 +455,55 @@ How to handle and save outputs
 
 
 
-### Parameterized figures  
+### Parameterized figures {.unnumbered} 
 
-This section is not yet complete. But here is a quote from this tutorial: https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
-  
+Here is a quote from this tutorial: https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/  
+
 "Parameterized figures: A great benefit of designing figures within R is that we are able to connect the figures directly with our analysis by reading R values directly into our flowcharts. For example, suppose you have created a filtering process which removes values after each stage of a process, you can have a figure show the number of values left in the dataset after each stage of your process. To do this we, you can use the @@X symbol directly within the figure, then refer to this in the footer of the plot using [X]:, where X is the a unique numeric index."  
 
-```{r, eval=F}
-# Define some sample data
-data <- list(a=1000, b=800, c=600, d=400)
+We encourage you to review this tutorial if parameterization is something you are interested in.  
 
 
-DiagrammeR::grViz("
-digraph graph2 {
+<!-- And below is some example code from this tutorial. -->
 
-graph [layout = dot]
-
-# node definitions with substituted label text
-node [shape = rectangle, width = 4, fillcolor = Biege]
-a [label = '@@1']
-b [label = '@@2']
-c [label = '@@3']
-d [label = '@@4']
-
-a -> b -> c -> d
-
-}
-
-[1]:  paste0('Raw Data (n = ', data$a, ')')
-[2]: paste0('Remove Errors (n = ', data$b, ')')
-[3]: paste0('Identify Potential Customers (n = ', data$c, ')')
-[4]: paste0('Select Top Priorities (n = ', data$d, ')')
-")
-
-```
+<!-- ```{r, eval=F} -->
+<!-- # Define some sample data -->
+<!-- data <- list(a=1000, b=800, c=600, d=400) -->
 
 
-Much of the above is adapted from the tutorial [at this site](https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/)  
+<!-- DiagrammeR::grViz(" -->
+<!-- digraph graph2 { -->
 
-Another more in-depth tutorial: http://rich-iannone.github.io/DiagrammeR/
+<!-- graph [layout = dot] -->
+
+<!-- # node definitions with substituted label text -->
+<!-- node [shape = rectangle, width = 4, fillcolor = Biege] -->
+<!-- a [label = '@@1'] -->
+<!-- b [label = '@@2'] -->
+<!-- c [label = '@@3'] -->
+<!-- d [label = '@@4'] -->
+
+<!-- a -> b -> c -> d -->
+
+<!-- } -->
+
+<!-- [1]:  paste0('Raw Data (n = ', data$a, ')') -->
+<!-- [2]: paste0('Remove Errors (n = ', data$b, ')') -->
+<!-- [3]: paste0('Identify Potential Customers (n = ', data$c, ')') -->
+<!-- [4]: paste0('Select Top Priorities (n = ', data$d, ')') -->
+<!-- ") -->
+
+<!-- ``` -->
 
 
 
-### CONSORT diagram  
+<!-- ### CONSORT diagram  {.unnumbered} -->
 
-THIS SECTION IS UNDER CONSTRUCTION  
+<!-- THIS SECTION IS UNDER CONSTRUCTION   -->
 
-https://scriptsandstatistics.wordpress.com/2017/12/22/how-to-draw-a-consort-flow-diagram-using-r-and-graphviz/
+<!-- https://scriptsandstatistics.wordpress.com/2017/12/22/how-to-draw-a-consort-flow-diagram-using-r-and-graphviz/ -->
 
-Note above is out of date via DiagrammeR
+<!-- Note above is out of date via DiagrammeR -->
 
 
 
@@ -525,7 +523,7 @@ pacman::p_load(
   tidyverse)
 ```
 
-### Plotting from dataset  
+### Plotting from dataset {.unnumbered} 
 
 Plotting the connections in a dataset. Below we demonstrate using this package on the case `linelist`. Here is an [online tutorial](https://www.r-graph-gallery.com/321-introduction-to-interactive-sankey-diagram-2.html).    
 
@@ -646,7 +644,6 @@ p
 
 https://www.displayr.com/sankey-diagrams-r/
 
-Timeline Sankey - LTFU from cohort... application/rejections... etc.
 
 
 <!-- ======================================================= -->
@@ -726,11 +723,14 @@ pp
 <!-- ======================================================= -->
 ## DAGs { }
 
-You can build a DAG manually using the **DiagammeR** package and DOT language, as described in another tab. Alternatively, there are packages like **ggdag** and **daggity**
+You can build a DAG manually using the **DiagammeR** package and DOT language as described above.  
 
-https://cran.r-project.org/web/packages/ggdag/vignettes/intro-to-dags.html
+Alternatively, there are packages like **ggdag** and **daggity**
 
-https://www.r-bloggers.com/2019/08/causal-inference-with-dags-in-r/#:~:text=In%20a%20DAG%20all%20the,for%20drawing%20and%20analyzing%20DAGs.
+[Introduction to DAGs ggdag vignette](https://cran.r-project.org/web/packages/ggdag/vignettes/intro-to-dags.html)   
+
+[Causal inference with dags in R](https://www.r-bloggers.com/2019/08/causal-inference-with-dags-in-r/#:~:text=In%20a%20DAG%20all%20the,for%20drawing%20and%20analyzing%20DAGs.)  
+
 
 
 
@@ -738,7 +738,14 @@ https://www.r-bloggers.com/2019/08/causal-inference-with-dags-in-r/#:~:text=In%2
 <!-- ======================================================= -->
 ## Resources { }
 
-Links to other online tutorials or resources.
+
+
+Much of the above regarding the DOT language is adapted from the tutorial [at this site](https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/)  
+
+Another more in-depth [tutorial on DiagammeR](http://rich-iannone.github.io/DiagrammeR/)
+
+This page on [Sankey diagrams](https://www.displayr.com/sankey-diagrams-r/
+)  
 
 
 
