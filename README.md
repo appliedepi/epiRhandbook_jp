@@ -9,49 +9,39 @@
 
 **This book strives to:**  
 
-* Serve as a quick R code reference manual  
-* Provide task-centered examples for addressing common epidemiologic problems  
-* Assist epidemiologists transitioning to R from SAS, STATA, SPSS, and Excel  
-* Be accessible in settings with low internet-connectivity via an **offline version** ([instructions here](https://epirhandbook.com/download-handbook-and-data.html))  
+* Serve as a quick epi R code reference manual  
+* Provide task-centered examples addressing common epidemiological problems  
+* Assist epidemiologists transitioning to R  
+* Be accessible in settings with low internet-connectivity via an **offline version**
   
 
 <img src="https://github.com/appliedepi/epiRhandbook_eng/blob/master/images/epiRhandbook_HexSticker_500x500.png" width="200" height="200">
 
 <span style="color: black;">**Written by epis, for epis**</span>
-
-We are applied epidemiologists from around the world, writing in our spare time to offer this resource to the community. Your encouragement and feedback is most welcome:  
+We are applied epis from around the world, writing in our spare time to offer this resource to the community. Your encouragement and feedback is most welcome:  
 
 * Structured **[feedback form](https://forms.gle/A5SnRVws7tPD15Js9)**  
-* Email **epiRhandbook@gmail.com** or tweet **@[epirhandbook](https://twitter.com/epirhandbook)**  
+* Email **epiRhandbook@gmail.com** or tweet **[\@epiRhandbook](https://twitter.com/epirhandbook)**  
 * Submit issues to our **[Github repository](https://github.com/epirhandbook/Epi_R_handbook)**  
 
 
-**How is this different than other R books?**  
+## How to use this handbook  
 
-* It is written by epidemiologists, for epidemiologists - leveraging experience in local, national, academic, and emergency settings  
-* It provides examples of epidemic curves, transmission chains, epidemic modeling and projections, age and sex pyramids and standardization, record matching, outbreak detection, survey analysis, causal diagrams, survival analysis, GIS basics, phylogenetic trees, automated reports, etc...  
 
-## How to read this handbook  
-
-**Online version**  
-
-* Search via the search box above the Table of Contents 
+* Browse the pages in the Table of Contents, or use the search box
 * Click the "copy" icons to copy code  
+* You can follow-along with [the example data][Download handbook and data]  
 * See the "Resources" section of each page for further material  
-* "Follow-along" by [downloading the example data](https://epirhandbook.com/download-handbook-and-data.html)  
 
 **Offline version**  
 
-See instructions to download the offline version in the [Download handbook and data](https://epirhandbook.com/download-handbook-and-data.html) page.  
+See instructions in the [Download handbook and data] page.  
 
 **Languages**  
 
 We want to translate this into languages other than English. If you can help, please contact us.  
 
 
-
-# Edit or contribute
-We welcome your comments and suggestions at the [feedback survey](https://forms.gle/A5SnRVws7tPD15Js9), by email to **epiRhandbook@gmail.com** or via issue/pull request at our [Github repository](https://github.com/nsbatra/R_epi_handbook).  
 
 
 <!-- ======================================================= -->
@@ -62,15 +52,16 @@ This handbook is produced by a collaboration of epidemiologists from around the 
 This handbook is **not** an approved product of any specific organization. Although we strive for accuracy, we provide no guarantee of the content in this book.  
 
 
+
 ### Contributors  
 
 **Editor-in-Chief:** [Neale Batra](https://www.linkedin.com/in/neale-batra/) 
 
 **Project core team:** [Neale Batra](https://www.linkedin.com/in/neale-batra/), [Alex Spina](https://github.com/aspina7), [Amrish Baidjoe](https://twitter.com/Ammer_B), Pat Keating, [Henry Laurenson-Schafer](https://github.com/henryls1), [Finlay Campbell](https://github.com/finlaycampbell)  
 
-**Authors**: [Neale Batra](https://www.linkedin.com/in/neale-batra/), [Alex Spina](https://github.com/aspina7), [Paula Blomquist](https://www.linkedin.com/in/paula-bianca-blomquist-53188186/), [Finlay Campbell](https://github.com/finlaycampbell), [Henry Laurenson-Schafer](https://github.com/henryls1), [Isaac Florence](www.Twitter.com/isaacatflorence), [Natalie Fischer](www.linkedin.com/in/nataliefischer211), Aminata Ndiaye, [Liza Coyer]( https://www.linkedin.com/in/liza-coyer-86022040/), [Jonathan Polonsky](https://twitter.com/jonny_polonsky), [Yurie Izawa](https://ch.linkedin.com/in/yurie-izawa-a1590319), [Chris Bailey](https://twitter.com/cbailey_58?lang=en), [Daniel Molling](https://www.linkedin.com/in/daniel-molling-4005716a/), [Isha Berry](https://twitter.com/ishaberry2), [Emma Buajitti](https://twitter.com/buajitti), [Mathilde Mousset](https://mathildemousset.wordpress.com/research/), [Sara Hollis](https://www.linkedin.com/in/saramhollis/), Wen Lin  
+**Authors**: [Neale Batra](https://www.linkedin.com/in/neale-batra/), [Alex Spina](https://github.com/aspina7), [Paula Blomquist](https://www.linkedin.com/in/paula-bianca-blomquist-53188186/), [Finlay Campbell](https://github.com/finlaycampbell), [Henry Laurenson-Schafer](https://github.com/henryls1), [Isaac Florence](www.Twitter.com/isaacatflorence), [Natalie Fischer](www.linkedin.com/in/nataliefischer211), [Aminata Ndiaye](https://twitter.com/aminata_fadl), [Liza Coyer]( https://www.linkedin.com/in/liza-coyer-86022040/), [Jonathan Polonsky](https://twitter.com/jonny_polonsky), [Yurie Izawa](https://ch.linkedin.com/in/yurie-izawa-a1590319), [Chris Bailey](https://twitter.com/cbailey_58?lang=en), [Daniel Molling](https://www.linkedin.com/in/daniel-molling-4005716a/), [Isha Berry](https://twitter.com/ishaberry2), [Emma Buajitti](https://twitter.com/buajitti), [Mathilde Mousset](https://mathildemousset.wordpress.com/research/), [Sara Hollis](https://www.linkedin.com/in/saramhollis/), Wen Lin  
 
-**Reviewers**: Pat Keating, Annick Lenglet, Margot Charette, Daniely Xavier, Esther Kukielka, Michelle Sloan, Aybüke Koyuncu, Rachel Burke, Kate Kelsey, [Berhe Etsay](https://www.linkedin.com/in/berhe-etsay-5752b1154/), John Rossow, Mackenzie Zendt, James Wright, Laura Haskins, [Flavio Finger](ffinger.github.io), Tim Taylor, [Jae Hyoung Tim Lee](https://www.linkedin.com/in/jaehyoungtlee/), Brianna Bradley, [Wayne Enanoria](https://www.linkedin.com/in/wenanoria), Manual Albela Miranda, [Molly Mantus](https://www.linkedin.com/in/molly-mantus-174550150/), Pattama Ulrich, Joseph Timothy, Adam Vaughan, Olivia Varsaneux, Lionel Monteiro, Joao Muianga  
+**Reviewers**: Pat Keating, Annick Lenglet, Margot Charette, Daniely Xavier, Esther Kukielka, Michelle Sloan, Aybüke Koyuncu, Rachel Burke, Kate Kelsey, [Berhe Etsay](https://www.linkedin.com/in/berhe-etsay-5752b1154/), John Rossow, Mackenzie Zendt, James Wright, Laura Haskins, [Flavio Finger](ffinger.github.io), Tim Taylor, [Jae Hyoung Tim Lee](https://www.linkedin.com/in/jaehyoungtlee/), [Brianna Bradley](https://www.linkedin.com/in/brianna-bradley-bb8658155), [Wayne Enanoria](https://www.linkedin.com/in/wenanoria), Manual Albela Miranda, [Molly Mantus](https://www.linkedin.com/in/molly-mantus-174550150/), Pattama Ulrich, Joseph Timothy, Adam Vaughan, Olivia Varsaneux, Lionel Monteiro, Joao Muianga  
 
 **Illustrations**: Calder Fong  
 
@@ -86,6 +77,7 @@ This handbook is **not** an approved product of any specific organization. Altho
 
 ### Funding and support   
 
+
 The handbook received supportive funding via a COVID-19 emergency capacity-building grant from [TEPHINET](https://www.tephinet.org/), the global network of Field Epidemiology Training Programs (FETPs).  
 
 Administrative support was provided by the EPIET Alumni Network ([EAN](https://epietalumni.net/)), with special thanks to Annika Wendland. EPIET is the European Programme for Intervention Epidemiology Training.  
@@ -94,8 +86,6 @@ Special thanks to Médecins Sans Frontières (MSF) Operational Centre Amsterdam 
 
 
 *This publication was supported by Cooperative Agreement number NU2GGH001873, funded by the Centers for Disease Control and Prevention through TEPHINET, a program of The Task Force for Global Health. Its contents are solely the responsibility of the authors and do not necessarily represent the official views of the Centers for Disease Control and Prevention, the Department of Health and Human Services, The Task Force for Global Health, Inc. or TEPHINET.*
-
-
 
 ### Inspiration   
 
@@ -123,5 +113,5 @@ Academic courses and epidemiologist training programs are welcome to use this ha
 
 ## Code of Conduct
 
-Please note that the epirhandbook project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/0/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
+Please note that the epiRhandbook project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/0/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
 
