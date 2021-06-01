@@ -722,7 +722,7 @@ To formally test which weeks are most highly related between cases and temperatu
 We can use the cross-correlation function (`CCF()`) from the **feasts** package. 
 You could also visualise (rather than using `arrange`) using the `autoplot()` function. 
 
-```{r cross_correlation}
+```{r cross_correlation, warning=FALSE}
 
 counts %>% 
   ## calculate cross-correlation between interpolated counts and temperature
@@ -741,10 +741,13 @@ counts %>%
 
 We see from this that a lag of 4 weeks is most highly correlated, 
 so we make a lagged temperature variable to include in our regression. 
+Note that the first four weeks of our data in the lagged temperature variable 
+are missing (`NA`) - as there are not four weeks prior to get data from. So we 
+have to drop these missings and store as a new dataset called `lag_counts`. 
 
 ```{r lag_tempvar}
 
-counts <- counts %>% 
+lag_counts <- counts %>% 
   ## create a new variable for temperature lagged by four weeks
   mutate(t2m_lag4 = lag(t2m, n = 4)) %>% 
   drop_na(t2m_lag4)                        # drop missing
@@ -772,8 +775,8 @@ model <- glm_nb_model(
     t2m_lag4
     )
 
-## fit your model using the counts dataset
-fitted_model <- trending::fit(model, counts)
+## fit your model using the counts dataset (without missings in first four weeks)
+fitted_model <- trending::fit(model, lag_counts)
 
 ## calculate confidence intervals and prediction intervals 
 observed <- predict(fitted_model)
@@ -994,8 +997,7 @@ counts <- counts %>%
         h = num_weeks
         )
       )
-    ) %>% 
-  drop_na(date)             # drop missing
+    )
 
 ```
 
