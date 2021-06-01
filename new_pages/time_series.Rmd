@@ -320,7 +320,7 @@ counts <- counts %>%
 ## alternatively interpolate missings by linear trend 
 ## between two nearest adjacent points
 counts <- counts %>% 
-  mutate(case_int = na_interpolation(case_miss)
+  mutate(case_int = imputeTS::na_interpolation(case_miss)
          )
 
 ## to check what values have been imputed compared to the original
@@ -746,7 +746,8 @@ so we make a lagged temperature variable to include in our regression.
 
 counts <- counts %>% 
   ## create a new variable for temperature lagged by four weeks
-  mutate(t2m_lag4 = lag(t2m, n = 4))
+  mutate(t2m_lag4 = lag(t2m, n = 4)) %>% 
+  drop_na(t2m_lag4)                        # drop missing
 
 ```
 
@@ -993,7 +994,8 @@ counts <- counts %>%
         h = num_weeks
         )
       )
-    )
+    ) %>% 
+  drop_na(date)             # drop missing
 
 ```
 
@@ -1010,7 +1012,7 @@ list (equivalent of using square brackets, e.g. `dat[[1]]`), and can then fit
 our model to the baseline data, and then use the `predict()` function for our data
 of interest after the cut-off.  
 
-See the page on [Iteration](https://epirhandbook.com/iteration-loops-and-lists.html) to learn more about **purrr**.  
+See the page on [Iteration, loops, and lists] to learn more about **purrr**.  
 
 ```{r forecast_regression, warning = FALSE}
 # split data for fitting and prediction
@@ -1243,7 +1245,7 @@ forecasts <- purrr::map(unique(case_roll$.id),
   
   # forecast with data want to predict with 
   forecasts <- fitted_model %>% 
-    predict(pred_data) %>% 
+    predict(pred_data %>% select(-case_int)) %>% 
     ## only keep the week and the forecast estimate
     select(epiweek, estimate)
     

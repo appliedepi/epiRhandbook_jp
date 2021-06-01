@@ -85,7 +85,7 @@ Once you have created your function, you can verify each of these components by 
 
 ## Basic syntax and structure
 
-- A function will need to be named properly so that its job is easily understandable as soon as we read its name. Actually this is already the case with majority of the base R architecture. Functions like  `mean()`, `print()`, `summary()` have name that are very straightforward 
+- A function will need to be named properly so that its job is easily understandable as soon as we read its name. Actually this is already the case with majority of the base R architecture. Functions like  `mean()`, `print()`, `summary()` have names that are very straightforward 
 
 - A function will need arguments, such as the data to work on and other objects that can be static values among other options  
 
@@ -111,9 +111,9 @@ We can create our first function that will be called `contain_covid19()`.
 
 contain_covid19 <- function(barrier_gest, wear_mask, get_vaccine){
   
-                            if (barrier_gest == "yes" & wear_mask =="yes" & get_vaccine == "yes" ) 
+                            if(barrier_gest == "yes" & wear_mask == "yes" & get_vaccine == "yes" ) 
        
-                            return ("success")
+                            return("success")
   
   else("please make sure all are yes, this pandemic has to end!")
 }
@@ -152,27 +152,34 @@ Then let's look what happens if one of the values is `"no"` or **not** `"yes"`.
 
 ```{r}
 
-contain_covid19(barrier_gest="yes", wear_mask="yes", get_vaccine="no")
+contain_covid19(barrier_gest = "yes", wear_mask = "yes", get_vaccine = "no")
 ```
 
-If we provide an argument that is not recognized, we get an error: `Error in contain_covid19(barrier_gest = "sometimes", wear_mask = "yes",  : 
-  could not find function "contain_covid19"`
+If we provide an argument that is not recognized, we get an error: 
 
 ```{r, eval=F}
-contain_covid19(barrier_gest="sometimes", wear_mask="yes", get_vaccine="no")
+contain_covid19(barrier_gest = "sometimes", wear_mask = "yes", get_vaccine = "no")
 ```
+
+`Error in contain_covid19(barrier_gest = "sometimes", wear_mask = "yes",  : 
+  could not find function "contain_covid19"`
+
 
 <span style="color: black;">**_NOTE:_** Some functions  (most of time very short and straightforward) may not need a name and can be used directly on a line of code or inside another function to do quick task. They are called **anonymous functions** .</span>
 
 For instance below is a first anonymous function that   keeps only character variables the dataset.
 
-```{r}
-
+```{r, eval=F}
 linelist %>% 
   dplyr::slice_head(n=10) %>%  #equivalent to R base "head" function and that return first n observation of the  dataset
-  select(function(x) is.character(x)) %>% 
+  select(function(x) is.character(x)) 
+```
+  
+```{r, echo=F}
+linelist %>% 
+  dplyr::slice_head(n=10) %>%  #equivalent to R base "head" function and that return first n observation of the  dataset
+  select(function(x) is.character(x)) %>%  
 DT::datatable(rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
-
 ```
 
 
@@ -180,12 +187,18 @@ Then another function that selects every second observation of our dataset (may 
 In this case, the proper function writing outside dplyr would be `function (x) (x%%2 == 0)` to apply to the vector containing all row numbers.
 
 
-```{r}
-
+```{r, eval=F}
 linelist %>%   
    slice_head(n=20) %>% 
-   tibble::rownames_to_column() %>% #add indices of each obs as rownames to clearly see the final selection
-    filter(row_number() %%2 == 0) %>% 
+   tibble::rownames_to_column() %>% # add indices of each obs as rownames to clearly see the final selection
+   filter(row_number() %%2 == 0)
+```
+
+```{r, echo=F}
+linelist %>%   
+   slice_head(n=20) %>% 
+   tibble::rownames_to_column() %>%    # add indices of each obs as rownames to clearly see the final selection
+   filter(row_number() %%2 == 0) %>% 
 DT::datatable(rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
 
 ```
@@ -193,7 +206,14 @@ DT::datatable(rownames = FALSE, filter="top", options = list(pageLength = 10, sc
 
 A possible base R code for the same task would be:
 
-```{r}
+```{r, eval = F}
+
+linelist_firstobs <- head(linelist, 20)
+
+linelist_firstobs[base::Filter(function(x) (x%%2 == 0), seq(nrow(linelist_firstobs))),]
+```
+
+```{r, echo=F}
 
 linelist_firstobs <- head(linelist, 20)
 
@@ -203,15 +223,15 @@ DT::datatable(rownames = FALSE, filter="top", options = list(pageLength = 10, sc
 ```
 
 
-<span style="color: orange;">**_CAUTION:_** Tough it is true that using functions can help us with our code, it can nevertheless be  time consuming to write some functions or to fix one if it has not been thought thoroughly, written adequately and is returning errors as a result. For this reason it is often recommended to first write the R code, make sure it does what we intend it to do, and then transform it into a function with its three main components as listed above. </span>
+<span style="color: orange;">**_CAUTION:_** Though it is true that using functions can help us with our code, it can nevertheless be  time consuming to write some functions or to fix one if it has not been thought thoroughly, written adequately and is returning errors as a result. For this reason it is often recommended to first write the R code, make sure it does what we intend it to do, and then transform it into a function with its three main components as listed above. </span>
 
-## Examples of functions
+## Examples  
 
-## A function that returns proportions tables for several variables of interest.
+### Return proportion tables for several columns {.unnumbered}  
 
-Yes we already have nice functions in many packages allowing to summarize information in a very easy and nice way. But we will still try fo make our own in our first steps to getting used to writing functions.
+Yes, we already have nice functions in many packages allowing to summarize information in a very easy and nice way. But we will still try to make our own, in our first steps to getting used to writing functions.
 
-In this example we want to show how writing a simple function would avoid you copy-pasting the same code a multiple times.
+In this example we want to show how writing a simple function would avoid you copy-pasting the same code multiple times.
 
 ```{r}
 
@@ -267,14 +287,14 @@ base::lapply(linelist[,c("gender","age_cat", "outcome")], table)
 
 <span style="color: darkgreen;">**_TIP:_** R is often defined as a functional programming language and almost anytime you run a line of code you are using some built-in functions. A good habit to be more comfortable with writing functions is to often have an internal look at how the basic functions you are using daily are built. The shortcut to do so is selecting the function name and then clicking on`Ctrl+F2` or `fn+F2` or `Cmd+F2` (depending on your computer) .</span>
 
-## Using *purrr*: writing a function that can be iteratively applied
+## Using **purrr**: writing functions that can be iteratively applied
 
-### Modify multiple variables class in a dataset.
+### Modify class of multiple columns in a dataset {.unnumbered}  
 
-Let's say many character variables in the original `linelist` data need to be changes to "factor" for analysis and plotting purposes. Instead of repeating the step several times, we can just use `lapply` to do the transformation of all variables concerned on a single line of code.
+Let's say many character variables in the original `linelist` data need to be changes to "factor" for analysis and plotting purposes. Instead of repeating the step several times, we can just use `lapply()` to do the transformation of all variables concerned on a single line of code.
 
 
-<span style="color: orange;">**_CAUTION:_** `lapply` returns a list, thus its use may require an additional modification as a last step.</span>
+<span style="color: orange;">**_CAUTION:_** `lapply()` returns a list, thus its use may require an additional modification as a last step.</span>
 
 
 ```{r, include=FALSE}
@@ -288,7 +308,7 @@ linelist_factor1 <- linelist %>%
 ```
 
 
-The same step can be done using `map_if` function from the *purrr* package
+The same step can be done using `map_if()` function from the **purrr** package
 
 ```{r}
 
@@ -302,9 +322,9 @@ linelist_factor2 %>%
 ```
 
 
-### Iteratively produce graphs for different levels of a variable
+### Iteratively produce graphs for different levels of a variable {.unnumbered}
 
-We will produce here piechart to look at the distribution of patient's outcome in China during the H7N9 outbreak for each province. Instead of repeating the code for each of them, we will just apply a funtion that we will create.
+We will produce here pie chart to look at the distribution of patient's outcome in China during the H7N9 outbreak for each province. Instead of repeating the code for each of them, we will just apply a function that we will create.
 
 ```{r}
 
@@ -345,7 +365,7 @@ chart_outcome_province(flu_china,"Jiangsu")
 
 
 
-### Iteratively produce tables for different levels of a variable
+### Iteratively produce tables for different levels of a variable {.unnumbered}
 
 Here we will create three indicators to summarize in a table and we would like to produce this table for each of the provinces. Our indicators are the delay between onset and hospitalization, the percentage of recovery and the median age of cases.
 
@@ -445,7 +465,7 @@ print_indic_prov(table_indic_all, "Jiangsu")
 Functional programming is meant to ease code and facilitates its reading. It should produce the contrary. The tips below will help you having a clean code and easy to read code. 
 
 
-### Naming and syntax
+### Naming and syntax {.unnumbered}
 
 - Avoid using character that could have been easily already taken by other functions already existing in your environment
 
@@ -473,7 +493,7 @@ mtcars %>%
 ```
 
 
-### Testing and Error handling
+### Testing and Error handling {.unnumbered}
 
 The more complicated a function's task the higher the possibility of errors. Thus it is sometimes necessary to add some verification within the funtion to help quickly understand where the error is from and find a way t fix it.
 
@@ -542,7 +562,8 @@ linelist %>%
 ```
 
 
-- As said previously, well commenting our codes is already a good way for having documentation on  a work
+As said previously, well commenting our codes is already a good way for having documentation in our work.  
+
 
 <!-- ======================================================= -->
 ## Resources

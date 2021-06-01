@@ -32,3 +32,7 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 # Settings
 
 options(scipen=1, digits=7)
+
+# print only text (not code)
+#library(knitr)
+#opts_chunk$set(list(echo = FALSE, eval = FALSE))

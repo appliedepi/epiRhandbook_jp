@@ -142,7 +142,7 @@ the columns we have specified within the function. The `drop_na` function will
 filter out any rows where the specified columns have an `NA` value; in this
 case, we only want to keep the rows where the infector is known.
 
-```{r transmission_chains_create_contacts, eval=T}
+```{r transmission_chains_create_contacts,}
 ## generate contacts
 contacts <- linelist %>%
   transmute(
@@ -162,7 +162,7 @@ that infection is going _from_ the infector _to_ the case, so we need to specify
 the `from` and `to` arguments accordingly. We therefore also set the `directed`
 argument to `TRUE`, which will affect future operations.
 
-```{r transmission_chains_create_epicontacts, eval=T}
+```{r transmission_chains_create_epicontacts,}
 ## generate epicontacts object
 epic <- make_epicontacts(
   linelist = linelist,
@@ -178,7 +178,7 @@ in the linelist has been renamed to `id` and the `case_id` and `infector`
 columns in the contacts have been renamed to `from` and `to`. This ensures
 consistency in subsequent handling, visualisation and analysis operations.
 
-```{r transmission_chains_view_epicontacts, eval=T}
+```{r transmission_chains_view_epicontacts,}
 ## view epicontacts object
 epic
 ```
@@ -196,7 +196,7 @@ male cases in the linelist that have an infection date between April and
 July 2014 (dates are specified as ranges), and transmission links that occured
 in the hospital.
 
-```{r transmission_chains_subset_nodes, eval=T}
+```{r transmission_chains_subset_nodes,}
 sub_attributes <- subset(
   epic,
   node_attribute = list(
@@ -216,7 +216,7 @@ epicontacts object to keep only the transmission links involving the male cases
 infected between April and July which we had filtered for above. We can see that
 only two known transmission links fit that specification.
 
-```{r transmission_chains_thin, eval=T}
+```{r transmission_chains_thin,}
 sub_attributes <- thin(sub_attributes, what = "contacts")
 nrow(sub_attributes$contacts)
 ```
@@ -256,13 +256,13 @@ dataset, and can be parameterized as follows:
 - **common**: IDs that appear in both contacts dataset and line list
     
 For example, what are the first ten IDs in the contacts dataset?
-```{r transmission_chains_get_ids, eval=T}
+```{r transmission_chains_get_ids,}
 contacts_ids <- get_id(epic, "contacts")
 head(contacts_ids, n = 10)
 ```
 
 How many IDs are found in both the linelist and the contacts?
-```{r transmission_chains_get_both, eval=T}
+```{r transmission_chains_get_both,}
 length(get_id(epic, "common"))
 ```
 
@@ -276,7 +276,7 @@ function. We will first filter the **epicontacts** object to include only the
 cases with onset dates in June 2014 using the `subset` function, and only
 include the contacts linked to those cases using the `thin` function.
 	
-```{r transmission_chains_basic_plot_sub, eval=T}
+```{r transmission_chains_basic_plot_sub,}
 ## subset epicontacts object
 sub <- epic %>%
   subset(
@@ -287,7 +287,7 @@ sub <- epic %>%
 
 We can then create the basic, interactive plot very simply as follows:
 
-```{r transmission_chains_basic_plot, eval=T}
+```{r transmission_chains_basic_plot,}
 ## plot epicontacts object
 plot(
   sub,
@@ -326,7 +326,7 @@ provide a gradient of colours between the ones specified.
 Here an example, where color represents the outcome, shape the gender and size
 the age:
 
-```{r transmission_chains_node_attribute, eval=T}
+```{r transmission_chains_node_attribute,}
 plot(
   sub, 
   node_color = "outcome",
@@ -352,7 +352,7 @@ arguments. The specific colors and widths of the edges can be specified as follo
 
 Here an example:
 
-```{r transmission_chains_edge_attribute, eval=T}
+```{r transmission_chains_edge_attribute,}
 
 plot(
   sub, 
@@ -381,7 +381,7 @@ represents the date of symptom onset. We have also specified the `arrow_size`
 argument to ensure the arrows are not too large, and set `label = FALSE` to make
  the figure less cluttered.
 
-```{r transmission_chains_x_axis, eval=T}
+```{r transmission_chains_x_axis,}
 plot(
   sub,
   x_axis = "date_onset",
@@ -410,7 +410,7 @@ representation, however can result in overlapping edges in a densely connected
 network. The second shape is `rectangle`, which produces a tree resembling a
 phylogeny. For example:
 
-```{r transmission_chains_rectangle, eval=T}
+```{r transmission_chains_rectangle,}
 plot(
   sub,
   x_axis = "date_onset",
@@ -429,7 +429,7 @@ Each case node can be assigned a unique vertical position by toggling the
 `position_dodge` argument. The position of unconnected cases (i.e. with no
 reported contacts) is specified using the `unlinked_pos` argument.
 
-```{r transmission_chains_dodge, eval=T}
+```{r transmission_chains_dodge,}
 plot(
   sub,
   x_axis = "date_onset",
@@ -451,7 +451,7 @@ specified using the `parent_pos` argument. The default option is to place the
 parent node in the middle, however it can be placed at the bottom (`parent_pos =
 'bottom'`) or at the top (`parent_pos = 'top'`).
 
-```{r transmission_chains_parent_pos, eval=T}
+```{r transmission_chains_parent_pos,}
 plot(
   sub,
   x_axis = "date_onset",
@@ -513,7 +513,7 @@ outcome, and keep the outcome and hospital variables which we use to define the
 node shape and colour. Note that you can have more than one timeline row/event
 per case, for example if a case is transferred between multiple hospitals.
 
-```{r transmission_chains_create_timeline, eval=T}
+```{r transmission_chains_create_timeline,}
 
 ## generate timeline
 timeline <- linelist %>%
@@ -540,7 +540,7 @@ See `?vis_temporal_interactive` (the function called when plotting an
 epicontacts object) for detailed documentation on the arguments. Each argument
 is annotated in the code below too:
 
-```{r transmission_chains_vis_timeline, eval=T}
+```{r transmission_chains_vis_timeline,}
 
 ## define shapes
 shapes <- c(
@@ -626,7 +626,7 @@ plot(
 We can get an overview of some of the network properties using the
 `summary` function.
 
-```{r transmission_chains_summarise_epicontacts, eval=T}
+```{r transmission_chains_summarise_epicontacts,}
 ## summarise epicontacts object
 summary(epic)
 ```
@@ -643,7 +643,7 @@ of onset of disease is extracted from the line list in order to compute the
 difference between disease date of onset for each pair. The value that is
 produced from this comparison represents the **serial interval (si)**.
 
-```{r transmission_chains_pairwise, eval=T}
+```{r transmission_chains_pairwise,}
 si <- get_pairwise(epic, "date_onset")   
 summary(si)
 tibble(si = si) %>%
@@ -663,7 +663,7 @@ the values. When applied to columns that are characters or categorical,
 for arbitrary processing (see "f" argument), these discrete combinations can be
 easily tabulated and analyzed.
     
-```{r transmission_chains_pairwise_2, eval=T}
+```{r transmission_chains_pairwise_2,}
 head(get_pairwise(epic, "gender"), n = 10)
 get_pairwise(epic, "gender", f = table)
 fisher.test(get_pairwise(epic, "gender", f = table))
@@ -677,7 +677,7 @@ The `get_clusters()` function can be used for to identify connected components
 in an `epicontacts` object. First, we use it to retrieve a `data.frame`
 containing the cluster information:
 
-```{r transmission_chains_cluster, eval=T}
+```{r transmission_chains_cluster,}
 clust <- get_clusters(epic, output = "data.frame")
 table(clust$cluster_size)
 ggplot(clust, aes(cluster_size)) +
@@ -691,7 +691,7 @@ ggplot(clust, aes(cluster_size)) +
 Let us look at the largest clusters. For this, we add cluster information to the
 `epicontacts` object and then subset it to keep only the largest clusters:
 
-```{r transmission_chains_cluster_2, eval=T}
+```{r transmission_chains_cluster_2,}
 epic <- get_clusters(epic)
 max_size <- max(epic$linelist$cluster_size)
 plot(subset(epic, cs = max_size))
@@ -706,7 +706,7 @@ who was in contact with many others. The `type` argument indicates that we want
 to count both the in-degree and out-degree, the `only_linelist` argument
 indicates that we only want to calculate the degree for cases in the linelist.
 
-```{r transmission_chains_degree, eval=T}
+```{r transmission_chains_degree,}
 deg_both <- get_degree(epic, type = "both", only_linelist = TRUE)
 ```
 

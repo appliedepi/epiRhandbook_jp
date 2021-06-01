@@ -122,7 +122,7 @@ In this handbook we emphasize `p_load()` from **pacman**, which installs the pac
 You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
 
 	
-```{r epidemic_models_packages, eval = TRUE}
+```{r epidemic_models_packages, }
 pacman::p_load(
    rio,          # File import
    here,         # File locator
@@ -345,7 +345,7 @@ plot(epinow_res)
 
 We can also look at various summary statistics:
 
-```{r epidemic_models_epinow_summary, eval=T}
+```{r epidemic_models_epinow_summary,}
 ## summary table
 epinow_res$summary
 ```
@@ -360,7 +360,7 @@ estimates <- as_tibble(epinow_res$estimates$summarised)
 estimates
 ```
 
-```{r epidemic_models_tibble_show, eval=T, echo = F}
+```{r epidemic_models_tibble_show,  echo = F}
 ## show outputs
 estimates <- as_tibble(epinow_res$estimates$summarised)
 DT::datatable(
@@ -463,7 +463,7 @@ further details.
 
 We will create the input using **incidence2**. See the page on [Epidemic curves] for more examples with the **incidence2** package. Since there have been updates to the **incidence2** package that don't completely align with `estimateR()`'s expected input, there are some minor additional steps needed. The incidence object consists of a tibble with dates and their respective case counts. We use `complete()` from **tidyr** to ensure all dates are included (even those with no cases), and then `rename()` the columns to align with what is expected by `estimate_R()` in a later step.  
 
-```{r epidemic_models_epiestim_incidence, eval=T}
+```{r epidemic_models_epiestim_incidence,}
 ## get incidence from onset date
 cases <- incidence2::incidence(linelist, date_index = date_onset) %>% # get case counts by day
   tidyr::complete(date_index = seq.Date(                              # ensure all dates are represented
@@ -486,7 +486,7 @@ standard deviation of the serial interval in a `config` object created using the
 function `make_config`. We use a mean and standard deviation of 12.0 and 5.2, respectively, defined in
 [this paper](https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-014-0196-0):
 
-```{r epidemic_models_epiestim_config, eval=T}
+```{r epidemic_models_epiestim_config,}
 ## make config
 config_lit <- make_config(
   mean_si = 12.0,
@@ -496,7 +496,7 @@ config_lit <- make_config(
 
 We can then estimate R<sub>t</sub> with the `estimate_R` function:
 
-```{r epidemic_models_epiestim_lit, eval=T, warning = FALSE}
+```{r epidemic_models_epiestim_lit,  warning = FALSE}
 epiestim_res_lit <- estimate_R(
   incid = cases,
   method = "parametric_si",
@@ -506,7 +506,7 @@ epiestim_res_lit <- estimate_R(
 
 and plot a summary of the outputs:
 
-```{r epidemic_models_epiestim_lit_plot, eval=T, warning = FALSE}
+```{r epidemic_models_epiestim_lit_plot,  warning = FALSE}
 plot(epiestim_res_lit)
 ```
 
@@ -542,7 +542,7 @@ using `get_pairwise`, to a gamma distribution. We use the handy `fit_disc_gamma`
 from the **epitrix** package for this fitting procedure, as we require a
 _discretised_ distribution.
 
-```{r epidemic_models_incubation_estimate_epiestim, eval=T, warning = FALSE}
+```{r epidemic_models_incubation_estimate_epiestim,  warning = FALSE}
 ## estimate gamma serial interval
 serial_interval <- fit_disc_gamma(get_pairwise(epic, "date_onset"))
 ```
@@ -550,7 +550,7 @@ serial_interval <- fit_disc_gamma(get_pairwise(epic, "date_onset"))
 We then pass this information to the `config` object, run **EpiEstim**
 again and plot the results:
 
-```{r epidemic_models_epiestim_emp, eval=T, warning = FALSE}
+```{r epidemic_models_epiestim_emp,  warning = FALSE}
 ## make config
 config_emp <- make_config(
   mean_si = serial_interval$mu,
@@ -578,7 +578,7 @@ clunky way of specifying these estimations times, in that you have to provide a
 vector of __integers__ referring to the start and end dates for each time
 window.
 
-```{r epidemic_models_epiestim_config_late, eval=T}
+```{r epidemic_models_epiestim_config_late,}
 
 ## define a vector of dates starting on June 1st
 start_dates <- seq.Date(
@@ -604,7 +604,7 @@ config_partial <- make_config(
 ```
 Now we re-run **EpiEstim** and can see that the estimates only start from June:
 
-```{r epidemic_models_epiestim_config_late_run, eval=T}
+```{r epidemic_models_epiestim_config_late_run,}
 
 ## run epiestim
 epiestim_res_partial <- estimate_R(
@@ -812,7 +812,7 @@ convert these values into the shape and scale parameters required for a gamma
 distribution, we will use the function `gamma_mucv2shapescale` from the
 **epitrix** package.
 
-```{r epidemic_models_projections_distcrete, eval=T}
+```{r epidemic_models_projections_distcrete,}
 
 ## get shape and scale parameters from the mean mu and the coefficient of
 ## variation (e.g. the ratio of the standard deviation to the mean)
@@ -832,7 +832,7 @@ Here is a quick check to make sure the serial interval looks correct. We
 access the density of the gamma distribution we have just defined by `$d`, which
 is equivalent to calling `dgamma`:
 
-```{r epidemic_models_projections_distcrete_plot, eval=T}
+```{r epidemic_models_projections_distcrete_plot,}
 
 ## check to make sure the serial interval looks correct
 qplot(
@@ -874,7 +874,7 @@ using `get_pairwise`, to a gamma distribution. We use the handy `fit_disc_gamma`
 from the **epitrix** package for this fitting procedure, as we require a
 _discretised_ distribution.
 
-```{r epidemic_models_incubation_estimate_projections, eval=T, warning = FALSE}
+```{r epidemic_models_incubation_estimate_projections,  warning = FALSE}
 ## estimate gamma serial interval
 serial_interval <- fit_disc_gamma(get_pairwise(epic, "date_onset"))
 
@@ -895,7 +895,7 @@ element in a vector), and simulate 1000 values from a gamma distribution using
 `rgamma`. You can also provide your own vector of R<sub>t</sub> values that you
 want to use for forward projections.
 
-```{r epidemic_models_projection_setup, eval=T, warning = FALSE}
+```{r epidemic_models_projection_setup,  warning = FALSE}
 
 ## create incidence object from dates of onset
 inc <- incidence::incidence(linelist$date_onset)
@@ -915,7 +915,7 @@ We then use the `project()` function to make the actual forecast. We specify how
 many days we want to project for via the `n_days` arguments, and specify the
 number of simulations using the `n_sim` argument.
 
-```{r epidemic_models_make_projection, eval=T}
+```{r epidemic_models_make_projection,}
 
 ## make projection
 proj <- project(
@@ -949,7 +949,7 @@ proj_df <- as.data.frame(proj)
 proj_df
 ```
 
-```{r epidemic_models_projection_dt, eval=T, echo = F}
+```{r epidemic_models_projection_dt,  echo = F}
 
 ## convert to data frame for raw data
 proj_df <- as.data.frame(proj)
