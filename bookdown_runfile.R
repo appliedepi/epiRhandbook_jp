@@ -19,6 +19,12 @@ bookdown::render_book(
      output_format = 'bookdown::bs4_book',
      config_file = "_small_bookdown.yml")
 
+
+# To print only text with no code or figures, adjust this in the common.R script, also look at top of index.rmd
+# print only text (not code)
+#library(knitr)
+#opts_chunk$set(list(echo = FALSE, eval = FALSE))
+
 ################################################################################
 
 # WHOLE HANDBOOK WITHOUT TABS (long html)

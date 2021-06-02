@@ -31,7 +31,7 @@ pacman::p_load(
 
 For this page, we import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
 
-```{r, eval=T, echo=F}
+```{r,  echo=F}
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 
 ```
@@ -51,9 +51,15 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 
 <!-- ======================================================= -->
-## Colour schemes {#ggplot_tips_colors}
+## Scales for color, fill, axes, etc. {#ggplot_tips_colors}
 
-One thing that can initially be difficult to understand with **ggplot2** is control of colour schemes. Note that this section discusses the color of *plot objects* (geoms/shapes) such as points, bars, lines, tiles, etc. To adjust color of accessory text, titles, or background color see the [Themes](#ggplot_basics_themes) section of the [ggplot basics] page. 
+In **ggplot2**, when aesthetics of plotted data (e.g. size, color, shape, fill, plot axis) are mapped to columns in the data, the exact display can be adjusted with the corresponding "scale" command. In this section we explain some common scale adjustments.  
+
+
+
+### Color schemes
+
+One thing that can initially be difficult to understand with **ggplot2** is control of color schemes. Note that this section discusses the color of *plot objects* (geoms/shapes) such as points, bars, lines, tiles, etc. To adjust color of accessory text, titles, or background color see the [Themes](#ggplot_basics_themes) section of the [ggplot basics] page. 
 
 To control "color" of *plot objects* you will be adjusting either the `color = ` aesthetic (the *exterior* color) or the `fill = ` aesthetic (the *interior* color). One exception to this pattern is `geom_point()`, where you really only get to control `color = `, which controls the color of the point (interior and exterior).  
 
@@ -171,6 +177,117 @@ ggplot(data = linelist)+
   labs(title = "Adjustment of scales") # Adjust the title of the fill legend
 ```
 
+### Continuous axes scales {.unnumbered}  
+
+When data are mapping to the plot axes, these too can be adjusted with scales commands. A common example is adjusting the display of an axis (e.g. y-axis) that is mapped to a column with continuous data. 
+
+We may want to adjust the breaks or display of the values in the ggplot using `scale_y_continuous()`. As noted above, use the argument `breaks = ` to provide a sequence of values that will serve as "breaks" along the scale. These are the values at which numbers will display. To this argument, you can provide a `c()` vector containing the desired break values, or you can provide a regular sequence of numbers using the **base** R function `seq()`. This `seq()` function accepts `to = `, `from = `, and `by = `.
+
+```{r, warning=F, message=F, out.width=c('50%', '50%'), fig.show='hold'}
+# BASELINE - no scale adjustment
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(x = outcome, fill = gender))+
+  labs(title = "Baseline - no scale adjustments")
+
+# 
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(x = outcome, fill = gender))+
+  scale_y_continuous(
+    breaks = seq(
+      from = 0,
+      to = 3000,
+      by = 100)
+  )+
+  labs(title = "Adjusted y-axis breaks")
+
+```
+
+
+
+#### Display percents {.unnumbered}  
+
+If your original data values are proportions, you can easily display them as percents with "%" by providing `labels = scales::percent` in your scales command, as shown below.  
+
+While an alternative would be to convert the values to character and add a "%" character to the end, this approach will cause complications because your data will no longer be continuous numeric values. 
+
+
+```{r, warning=F, message=F, out.width=c('50%', '50%'), fig.show='hold'}
+# Original y-axis proportions
+#############################
+linelist %>%                                   # start with linelist
+  group_by(hospital) %>%                       # group data by hospital
+  summarise(                                   # create summary columns
+    n = n(),                                     # total number of rows in group
+    deaths = sum(outcome == "Death", na.rm=T),   # number of deaths in group
+    prop_death = deaths/n) %>%                   # proportion deaths in group
+  ggplot(                                      # begin plotting
+    mapping = aes(
+      x = hospital,
+      y = prop_death))+ 
+  geom_col()+
+  theme_minimal()+
+  labs(title = "Display y-axis original proportions")
+
+
+
+# Display y-axis proportions as percents
+########################################
+linelist %>%         
+  group_by(hospital) %>% 
+  summarise(
+    n = n(),
+    deaths = sum(outcome == "Death", na.rm=T),
+    prop_death = deaths/n) %>% 
+  ggplot(
+    mapping = aes(
+      x = hospital,
+      y = prop_death))+
+  geom_col()+
+  theme_minimal()+
+  labs(title = "Display y-axis as percents (%)")+
+  scale_y_continuous(
+    labels = scales::percent                    # display proportions as percents
+  )
+
+```
+
+#### Log scale {.unnumbered}  
+
+To transform a continuous axis to log scale, add `trans = "log2"` to the scale command. For purposes of example, we create a data frame of regions with their respective `preparedness_index` and cumulative cases values.  
+
+```{r}
+plot_data <- data.frame(
+  region = c("A", "B", "C", "D", "E", "F", "G", "H", "I"),
+  preparedness_index = c(8.8, 7.5, 3.4, 3.6, 2.1, 7.9, 7.0, 5.6, 1.0),
+  cases_cumulative = c(15, 45, 80, 20, 21, 7, 51, 30, 1442)
+)
+
+plot_data
+```
+
+The cumulative cases for region "I" are dramatically greater than all the other regions. In circumstances like this, you may elect to display the y-axis using a log scale so the reader can see differences between the regions with fewer cumulative cases.  
+
+```{r, warning=F, message=F, out.width=c('50%', '50%'), fig.show='hold'}
+# Original y-axis
+preparedness_plot <- ggplot(data = plot_data,  
+       mapping = aes(
+         x = preparedness_index,
+         y = cases_cumulative))+
+  geom_point(size = 2)+            # points for each region 
+  geom_text(
+    mapping = aes(label = region),
+    vjust = 1.5)+                  # add text labels
+  theme_minimal()
+
+preparedness_plot                  # print original plot
+
+
+# print with y-axis transformed
+preparedness_plot+                   # begin with plot saved above
+  scale_y_continuous(trans = "log2") # add transformation for y-axis
+```
+
+
 
 ### Gradient scales {.unnumbered}  
 
@@ -247,6 +364,7 @@ trans_matrix +
 
 ### Palettes {.unnumbered}  
 
+#### Colorbrewer and Viridis {.unnumbered}
 More generally, if you want predefined palettes, you can use the `scale_xxx_brewer` or `scale_xxx_viridis_y` functions.  
 
 The 'brewer' functions can draw from [colorbrewer.org](colorbrewer.org) palettes.  
@@ -311,7 +429,7 @@ Changing the order that discrete variables appear in is often difficult to under
 We can look at a common example using age groups - by default the 5-9 age group will be placed in the middle of the age groups (given alphanumeric order), but we can move it behind the 0-4 age group of the chart by releveling the factors.
 
 
-```{r, eval = T, warning=F, message=F}
+```{r, , warning=F, message=F}
 ggplot(
   data = linelist %>% drop_na(age_cat5),                         # remove rows where age_cat5 is missing
   mapping = aes(x = fct_relevel(age_cat5, "5-9", after = 1))) +  # relevel factor
@@ -326,6 +444,9 @@ ggplot(
 
 ```
 
+#### **ggthemr** {.unnnumbered}  
+
+Also consider using the **ggthemr** package. You can download this package from Github using the instructions [here](https://github.com/Mikata-Project/ggthemr). It offers palettes that are very aesthetically pleasing, but be aware that these typically have a maximum number of values that can be limiting if you want more than 7 or 8 colors.  
 
 
 
@@ -434,7 +555,7 @@ A few tips:
 
 See this is very in-depth [tutorial](https://ggrepel.slowkow.com/articles/examples.html) for more.  
 
-```{r, eval = T, warning=F, message=F}
+```{r, , warning=F, message=F}
 pacman::p_load(ggrepel)
 
 linelist %>%                                               # start with linelist
@@ -512,7 +633,7 @@ The single most useful set of functions for working with dates in `ggplot2` are 
   2. `date_labels` allows you to define the format dates are shown in. You can pass a date format string to these arguments (e.g. `"%b-%d-%Y"`):
 
 
-```{r, eval = T, warning=F, message=F}
+```{r, , warning=F, message=F}
 # make epi curve by date of onset when available
 ggplot(linelist, aes(x = date_onset)) +
   geom_histogram(binwidth = 7) +
@@ -535,7 +656,7 @@ Highlighting specific elements in a chart is a useful way to draw attention to a
 
 The **gghighlight** package uses the `gghighlight()` function to achieve this effect. To use this function, supply a logical statement to the function - this can have quite flexible outcomes, but here we'll show an example of the age distribution of cases in our linelist, highlighting them by outcome.
 
-```{r, eval = T, warning=F, message=F}
+```{r, , warning=F, message=F}
 # load gghighlight
 library(gghighlight)
 
@@ -554,7 +675,7 @@ ggplot(
 
 This also works well with faceting functions - it allows the user to produce facet plots with the background data highlighted that doesn't apply to the facet! Below we count cases by week and plot the epidemic curves by hospital (`color = ` and `facet_wrap()` set to `hospital` column).  
 
-```{r, eval = T, warning=F, message=F}
+```{r, , warning=F, message=F}
 
 # produce a histogram of all cases by age
 linelist %>% 
@@ -609,7 +730,7 @@ While faceting (described in the [ggplot basics] page) is a convenient approach 
 The **cowplot** package has a fairly wide range of functions, but the easiest use of it can be achieved through the use of `plot_grid()`. This is effectively a way to arrange predefined plots in a grid formation. We can work through another example with the malaria dataset - here we can plot the total cases by district, and also show the epidemic curve over time.
 
 
-```{r, eval = T, warning=F, message=F}
+```{r, , warning=F, message=F}
 malaria_data <- rio::import(here::here("data", "malaria_facility_count_data.rds")) 
 
 # bar chart of total cases by district
@@ -894,7 +1015,7 @@ aligned_plotted                                                                #
 <!-- For example, if we want to show the number of positive RDTs in the malaria dataset for facility 1, showing 0-4 year olds and all cases on chart: -->
 
 
-<!-- ```{r, eval = T, warning=F, message=F} -->
+<!-- ```{r, , warning=F, message=F} -->
 
 <!-- # take malaria data from facility 1 -->
 <!-- malaria_facility_1 <- malaria_data %>% -->

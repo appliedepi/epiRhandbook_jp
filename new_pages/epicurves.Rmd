@@ -194,20 +194,20 @@ To *plot* the *incidence* object, use `plot()` on the *name of the incidence obj
 plot(epi_day)
 ```
 
-If you notice lots of tiny white vertical lines (like above) try to adjust the size of your image. For example, if you export your plot with `ggsave()`, you can provide numbers to `width = ` and `height = `. If you widen the plot those lines may disappear.    
+If you notice lots of tiny white vertical lines, try to adjust the size of your image. For example, if you export your plot with `ggsave()`, you can provide numbers to `width = ` and `height = `. If you widen the plot those lines may disappear.    
 
 
 
 ### Change time interval of case aggregation {.unnumbered}  
-The `interval` argument of `incidence()` defines how the observations are grouped into vertical bars. 
+The `interval = ` argument of `incidence()` defines how the observations are grouped into vertical bars. 
 
 **Specify interval**  
 
-**incidence2** provides flexibility and understandable syntax for specifying how you want to aggregate your cases into epicurve bars. Provide a value like the ones below to the `interval = ` argument:   
+**incidence2** provides flexibility and understandable syntax for specifying how you want to aggregate your cases into epicurve bars. Provide a value like the ones below to the `interval = ` argument. You can write any of the below as plural (e.g. "week**s**"), and you can add numbers before (e.g. "3 months").  
 
 Argument option | Further explanation 
 ------------------- | ------------------------------------ |
-Number (1, 7, 13, 14, etc.) | Number of days  
+Number (1, 7, 13, 14, etc.) | Number of days per interval  
 "week" | note: Monday start day is default
 "2 weeks" | or 3, 4, 5...
 "Sunday week" | weeks beginning on Sundays (could also use Thursday, etc.)
@@ -255,25 +255,25 @@ plot(epi_year)+    labs(title = "Years")
 ```
 
 
-**Begin at first case**  
+<!-- **Begin at first case**   -->
 
-If you want the intervals to begin at the first case, you can add the argument `standard = TRUE` to the `incidence()` command. This only works if the interval is either "week", "month", "quarter" or "year".  
+<!-- If you want the intervals to begin at the first case, you can add the argument `standard = TRUE` to the `incidence()` command. This only works if the interval is either "week", "month", "quarter" or "year".   -->
 
-**First and late date**  
+**First date**
 
-You can optionally specify the `first_date = ` and `last_date = ` in the `incidence()` command. If given, the data will be trimmed to this range.  
+You can optionally specify a value of class Date (e.g. `as.Date("2016-05-01")`) to `firstdate = ` in the `incidence()` command. If given, the data will be trimmed to this range and the intervals will begin on this date. 
 
 
 
 ### Groups {.unnumbered}
 
-Groups are specified in the `incidence()` command, and can be used to color the bars or to facet the data. To specify groups in your data provide the column name(s) to the `groups =` argument in the `incidence()` command (no quotes). If specifying multiple columns, put their names within `c()`.
+Groups are specified in the `incidence()` command, and can be used to color the bars or to facet the data. To specify groups in your data provide the column name(s) to the `groups =` argument in the `incidence()` command (no quotes around the column name). If specifying multiple columns, put their names within `c()`.
 
 You can specify that cases with missing values in the grouping columns be listed as a distinct `NA` group by setting `na_as_group = TRUE`. Otherwise, they will be excluded from the plot.   
 
-* To color the bars by a grouping column*, you must again provide the column name to `fill = ` in the `plot()` command.  
+* To *color the bars by a grouping column*, you must again provide the column name to `fill = ` in the `plot()` command.  
 
-* To facet based on a grouping column*, see the section below on facets with **incidence2**.  
+* To *facet based on a grouping column*, see the section below on facets with **incidence2**.  
 
 In the example below, the cases in the whole outbreak are grouped by their age category. Missing values are included as a group. The epicurve interval is weeks.  
 
@@ -312,7 +312,7 @@ plot(
   stack = FALSE)    # side-by-side (not stacked)
 ``` 
 
-
+You can set the `na_as_group = ` argument to FALSE in the `incidence()` command to remove rows with missing values from the plot.  
 
 
 
@@ -336,7 +336,7 @@ central_data <- linelist %>%
 central_outbreak <- incidence(central_data, date_index = date_onset, interval = "week")
 
 # plot the incidence object
-plot(central_outbreak) + labs(title = "Weekly case incidence at Central Hospital")
+plot(central_outbreak, title = "Weekly case incidence at Central Hospital")
 ```
 
 
@@ -344,7 +344,7 @@ plot(central_outbreak) + labs(title = "Weekly case incidence at Central Hospital
 
 ### Aggregated counts {.unnumbered}
 
-If your original data are aggregated (counts), provide the name of the column that contains the case counts to the `count = ` argument when creating the incidence object.  
+If your original data are aggregated (counts), provide the name of the column that contains the case counts to the `count = ` argument when creating the incidence object with `incidence()`.  
 
 For example, this data frame `count_data` is the linelist aggregated into daily counts by hospital. The first 50 rows look like this:  
 
@@ -355,7 +355,7 @@ DT::datatable(head(count_data,50), rownames = FALSE, options = list(pageLength =
 If you are beginning your analysis with daily count data like the dataset above, your `incidence()` command to convert this to a weekly epicurve by hospital would look like this:  
 
 ```{r}
-epi_counts <- incidence(
+epi_counts <- incidence(              # create weekly incidence object
   count_data,                         # dataset with counts aggregated by day
   date_index = date_hospitalisation,  # column with dates
   count = n_cases,                    # column with counts
@@ -392,9 +392,9 @@ epi_wks_hosp_out <- incidence(
 
 # plot
 incidence2::facet_plot(
-  x = epi_wks_hosp_out,    # incidence object
-  facets = hospital,   # facet column
-  fill = outcome)      # fill column
+  epi_wks_hosp_out,      # incidence object
+  facets = hospital,     # facet column
+  fill = outcome)        # fill column
 
 ```
 
@@ -404,41 +404,63 @@ Note that the package **ggtree** (used for displaying phylogenetic trees) also h
 
 ### Modifications with `plot()` {.unnumbered} 
 
-An epicurve produced by **incidence2** can be modified via these arguments *within the **incidence2** `plot()` function*.  
+An epicurve produced by **incidence2** can be modified via these arguments *within the `plot()` function*.  
 
-**Here are `plot()` arguments relating to the bars:**  
+**Here are `plot()` arguments that modify the appearance of the bars:**  
 
 Argument | Description | Examples
 ------------------|---------------------------------------|-------------------
-`fill = `|Bar color. Either a color name or a column name previously specified to `groups = ` in `incidence()` command|`fill = "red"`, or `fill = gender`  
-`na_as_group = `|If FALSE, missing values of a grouping column are excluded from plot|`na_as_group = FALSE`
-`border = ` |Color around each bar/box, or grouping within a bar|`border = "white"` 
+`fill = `|Bar color. Either a color name or a column name previously specified to `groups = ` in the `incidence()` command|`fill = "red"`, or `fill = gender`  
+`color = ` |Color around each bar, or around each grouping within a bar|`border = "white"` 
 `legend = `|Location of legend|One of "bottom", "top", "left", "right", or "none"  
 `alpha = `|Transparency of bars/boxes|1 is fully opaque, 0 is fully transparent
-`show_cases = `|Logical; if TRUE, each case shows as a box. Displays best on smaller outbreaks. Can be used with `coord_equal = T` to ensure squares.|`show_cases = TRUE`
-`coord_equal = `|For use if `show_cases = TRUE`; if TRUE the x and y axes display with equal ratio|`coord_equal = TRUE`
+`width = `|Value between 0 and 1 indicating the relative size of the bars to their time interval|`width = .7`  
+`show_cases = `|Logical; if TRUE, each case shows as a box. Displays best on smaller outbreaks.|`show_cases = TRUE`  
 
-
-**Here are `plot()` arguments relating to the date axis:**  
+**Here are `plot()` arguments that modify the date axis:**  
 
 Argument(s)|Description
 ----------------------|----------------------------------------------------
-`n_breaks = `|Number of x-axis label breaks, absent other modifications. These will start counting from the interval of the first case.  
-`angle = `|Angle of x-axis date labels|`angle = 45`  
-`group_labels = `|Used if plotting weekly interval. If FALSE labels will appear YYYY-MM-DD, else YYYY-Www (absent other modifications)
+`centre_dates = `|TRUE/FALSE as to whether date displays appear under center of bars, or at beginning of bars  
+`date_format = `|Adjust the date display format using strptime ("%") syntax. Only works if `centre_dates = FALSE` (details below).  
+`n.breaks = `|Approximate number of x-axis label breaks desired.  
+`angle = `|Angle of x-axis date labels (number of degrees)  
+`size = `|Size of text in points  
 
-<span style="color: darkgreen;">**_TIP:_** For breaks every "nth" interval (e.g. every 4th), use `n_breaks = nrow(i)/n` (where “i” is your incidence object name and “n” is a number). If your data are grouped, you will need to multiply "n" by the number of unique groups.</span>  
+Note that the `date_breaks = ` argument only works if `centre_dates = FALSE`. Provide a character value in quotation marks using the strptime syntax below, as detailed in the [Working with dates] page. You can use `\n` for a "newline".  
+
+%d = Day number of month (5, 17, 28, etc.)  
+%j = Day number of the year (Julian day 001-366)  
+%a = Abbreviated weekday (Mon, Tue, Wed, etc.)  
+%A = Full weekday (Monday, Tuesday, etc.)  
+%w = Weekday number (0-6, Sunday is 0)  
+%u = Weekday number (1-7, Monday is 1)  
+%W = Week number (00-53, Monday is week start)  
+%U = Week number (01-53, Sunday is week start)  
+%m = Month number (e.g. 01, 02, 03, 04)  
+%b = Abbreviated month (Jan, Feb, etc.)  
+%B = Full month (January, February, etc.)  
+%y = 2-digit year  (e.g. 89)  
+%Y = 4-digit year  (e.g. 1989)  
+%h = hours (24-hr clock)  
+%m = minutes  
+%s = seconds  
+%z = offset from GMT  
+%Z = Time zone (character)
+
+
+<!-- <span style="color: darkgreen;">**_TIP:_** For breaks every "nth" interval (e.g. every 4th), use `n.breaks = nrow(i)/n` (where “i” is your incidence object name and “n” is a number). If your data are grouped, you will need to multiply "n" by the number of unique groups.</span>   -->
 
 
 
-**Here are `plot()` arguments relating to labels:**
+**Here are `plot()` arguments that modify plot labels:**
 
 Argument(s)|Description
 ----------------------|----------------------------------------------------
 `title = `|Title of plot|`title = "Epidemic curve of Acute Jaundice Syndrome (AJS)"`
 `xlab = `|Title of x-axis|`xlab = "Date of onset"`  
 `ylab = `|Title of y-axis|`ylab = "Daily case"`  
-`size = `|Size of x-axis text in pts (use ggplot's theme() to adjust other sizes etc.)  
+`size = `|Size of x-axis text in pts (use ggplot's theme() to adjust other sizes)  
 
 
 An example using many of the above arguments:  
@@ -453,7 +475,7 @@ central_outbreak <- incidence(
   central_data,
   date_index = date_onset,
   interval = "week",
-  groups = c(outcome))
+  groups = outcome)
 
 # plot incidence object
 plot(
@@ -466,12 +488,13 @@ plot(
   show_cases = TRUE,                    # show each case as an individual box
   alpha = 0.7,                          # transparency 
   border = "grey",                      # box border
-  n_breaks = nrow(central_outbreak)/15, # date labels every X weeks
-  angle = 45                            # angle of date labels
+  angle = 30,                           # angle of date labels
+  centre_dates = FALSE,                 # date labels at edge of bar
+  date_format = "%a %d %b %Y\n(Week %W)" # adjust how dates are displayed
   )
 ```
 
-To further adjust plot appearance, see the section below on applying `ggplot()` to the **incidence** plot.  
+To further adjust plot appearance, see the section below on modifications with `ggplot()`.  
 
 
 
@@ -507,23 +530,12 @@ plot(
   xlab = "Week of onset",               # x-axis label
   ylab = "Week of onset",               # y-axis label
   show_cases = TRUE,                    # show each case as an individual box
-  #centre_ticks = TRUE,                  # ticks appear in center of interval
   alpha = 0.7,                          # transparency 
-  n_breaks = 20,
   border = "grey",                      # box border
-  #format = "%a %d %B\n%Y (Week %W)",    # overwritten below
-  #n_breaks = nrow(central_outbreak)/15, # overwritten below
-  angle = 45                           # angle of date labels
+  centre_dates = FALSE,                   
+  date_format = "%a %d %b\n%Y (Week %W)", 
+  angle = 30                           # angle of date labels
   )+
-  
-  # Add modifications using ggplot() functions
-  # NOT CURRENTLY FUNCTIONAL WITH VERSION 1.0.0 OF INCIDENCE 2
-  #############################################################
-  # scale_x_date(                              # converts to ggplot date scale (changes default label format)
-  #   expand = c(0,0),                         # remove excess space on left and right
-  #   date_labels = "%a %d %B\n%Y (Week %W)",  # set how dates appear
-  #   date_breaks = "6 weeks"                  # set how often dates appear
-  #   )+      
   
   scale_y_continuous(
     breaks = seq(from = 0, to = 30, by = 5),  # specify y-axis increments by 5
@@ -765,7 +777,7 @@ rolling_avg <- incidence(                    # make incidence object
   i2extras::add_rolling_average(before = 6)  # add rolling averages (in this case, by gender)
 
 # plot
-plot(rolling_avg, n_breaks = 3) # faceted automatically because rolling average on groups
+plot(rolling_avg, n.breaks = 3) # faceted automatically because rolling average on groups
 ```
 
 To learn how to apply rolling averages more generally on data, see the Handbook page on [Moving averages].  

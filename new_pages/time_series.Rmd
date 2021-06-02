@@ -320,7 +320,7 @@ counts <- counts %>%
 ## alternatively interpolate missings by linear trend 
 ## between two nearest adjacent points
 counts <- counts %>% 
-  mutate(case_int = na_interpolation(case_miss)
+  mutate(case_int = imputeTS::na_interpolation(case_miss)
          )
 
 ## to check what values have been imputed compared to the original
@@ -585,7 +585,7 @@ model <- glm_nb_model(
 fitted_model <- trending::fit(model, counts)
 
 ## calculate confidence intervals and prediction intervals 
-observed <- predict(fitted_model)
+observed <- predict(fitted_model, simulate_pi = FALSE)
 
 ## plot your regression 
 ggplot(data = observed, aes(x = epiweek)) + 
@@ -722,7 +722,7 @@ To formally test which weeks are most highly related between cases and temperatu
 We can use the cross-correlation function (`CCF()`) from the **feasts** package. 
 You could also visualise (rather than using `arrange`) using the `autoplot()` function. 
 
-```{r cross_correlation}
+```{r cross_correlation, warning=FALSE}
 
 counts %>% 
   ## calculate cross-correlation between interpolated counts and temperature
@@ -742,6 +742,15 @@ counts %>%
 We see from this that a lag of 4 weeks is most highly correlated, 
 so we make a lagged temperature variable to include in our regression. 
 
+<span style="color: red;">**_DANGER:_** Note that the first four weeks of our data
+in the lagged temperature variable are missing (`NA`) - as there are not four 
+weeks prior to get data from. In order to use this dataset with the **trending** 
+`predict()` function, we need to use the the `simulate_pi = FALSE` argument within
+`predict()` further down. If we did want to use the simulate option, then 
+we have to drop these missings and store as a new data set by adding `drop_na(t2m_lag4)` 
+to the code chunk below.</span>  
+ 
+
 ```{r lag_tempvar}
 
 counts <- counts %>% 
@@ -757,6 +766,12 @@ counts <- counts %>%
 We fit a negative binomial regression as done previously. This time we add the 
 temperature variable lagged by four weeks. 
 
+<span style="color: orange;">**_CAUTION:_** Note the use of `simulate_pi = FALSE`
+within the `predict()` argument. This is because the default behaviour of **trending** 
+is to use the **ciTools** package to estimate a prediction interval. This does not 
+work if there are `NA` counts, and also produces more granular intervals. 
+See `?trending::predict.trending_model_fit` for details. </span>  
+
 ```{r nb_reg_bivar, warning = FALSE}
 
 ## define the model you want to fit (negative binomial) 
@@ -765,7 +780,7 @@ model <- glm_nb_model(
   case_int ~
     ## use epiweek to account for the trend
     epiweek +
-    ## use the furier terms to account for seasonality
+    ## use the fourier terms to account for seasonality
     fourier + 
     ## use the temperature lagged by four weeks 
     t2m_lag4
@@ -775,7 +790,7 @@ model <- glm_nb_model(
 fitted_model <- trending::fit(model, counts)
 
 ## calculate confidence intervals and prediction intervals 
-observed <- predict(fitted_model)
+observed <- predict(fitted_model, simulate_pi = FALSE)
 
 ```
 
@@ -882,7 +897,7 @@ what we expect, then it could suggest there is an outbreak.
 The second method is based on similar principles but uses the **surveillance** package,
 which has a number of different algorithms for aberration detection.
 
-<span style="color: orange;">**_CAUTION:_** Normally, you are interested in the current year (where you only know counts up to the present week). So in this example we are pretending to be in week 52 of 2011.</span>
+<span style="color: orange;">**_CAUTION:_** Normally, you are interested in the current year (where you only know counts up to the present week). So in this example we are pretending to be in week 39 of 2011.</span>
 
 <!-- ======================================================= -->
 ### **trending** package {.unnumbered}
@@ -1010,7 +1025,13 @@ list (equivalent of using square brackets, e.g. `dat[[1]]`), and can then fit
 our model to the baseline data, and then use the `predict()` function for our data
 of interest after the cut-off.  
 
-See the page on [Iteration](https://epirhandbook.com/iteration-loops-and-lists.html) to learn more about **purrr**.  
+See the page on [Iteration, loops, and lists] to learn more about **purrr**.  
+
+<span style="color: orange;">**_CAUTION:_** Note the use of `simulate_pi = FALSE`
+within the `predict()` argument. This is because the default behaviour of **trending** 
+is to use the **ciTools** package to estimate a prediction interval. This does not 
+work if there are `NA` counts, and also produces more granular intervals. 
+See `?trending::predict.trending_model_fit` for details. </span>  
 
 ```{r forecast_regression, warning = FALSE}
 # split data for fitting and prediction
@@ -1038,11 +1059,11 @@ fitted_model <- trending::fit(model, fitting_data)
 
 # get confint and estimates for fitted data
 observed <- fitted_model %>% 
-  predict()
+  predict(simulate_pi = FALSE)
 
 # forecast with data want to predict with 
 forecasts <- fitted_model %>% 
-  predict(pred_data)
+  predict(pred_data, simulate_pi = FALSE)
 
 ## combine baseline and predicted datasets
 observed <- bind_rows(observed, forecasts)
@@ -1080,7 +1101,7 @@ ggplot(data = observed, aes(x = epiweek)) +
   annotate(geom = "text", 
            label = "Forecast", 
            x = cut_off, 
-           y = max(observed$upper_pi), 
+           y = max(observed$upper_pi) - 250, 
            angle = 90, 
            vjust = 1
            ) + 
@@ -1126,6 +1147,12 @@ We then put estimates in one data set and merge with the original case counts,
 to use the **yardstick** package to compute measures of accuracy. 
 We compute four measures including: Root mean squared error (RMSE), Mean absolute error	
 (MAE), Mean absolute scaled error (MASE), Mean absolute percent error (MAPE).
+
+<span style="color: orange;">**_CAUTION:_** Note the use of `simulate_pi = FALSE`
+within the `predict()` argument. This is because the default behaviour of **trending** 
+is to use the **ciTools** package to estimate a prediction interval. This does not 
+work if there are `NA` counts, and also produces more granular intervals. 
+See `?trending::predict.trending_model_fit` for details. </span>  
 
 ```{r cross_validation, warning = FALSE}
 
@@ -1243,7 +1270,7 @@ forecasts <- purrr::map(unique(case_roll$.id),
   
   # forecast with data want to predict with 
   forecasts <- fitted_model %>% 
-    predict(pred_data) %>% 
+    predict(pred_data, simulate_pi = FALSE) %>% 
     ## only keep the week and the forecast estimate
     select(epiweek, estimate)
     
@@ -1513,6 +1540,12 @@ We then use these terms to fit a negative binomial regression, and produce a
 table with percentage change. What this example shows is that there was no 
 significant change. 
 
+<span style="color: orange;">**_CAUTION:_** Note the use of `simulate_pi = FALSE`
+within the `predict()` argument. This is because the default behaviour of **trending** 
+is to use the **ciTools** package to estimate a prediction interval. This does not 
+work if there are `NA` counts, and also produces more granular intervals. 
+See `?trending::predict.trending_model_fit` for details. </span>  
+
 ```{r interrupted_regression, warning = FALSE}
 
 
@@ -1534,7 +1567,7 @@ model <- glm_nb_model(
 fitted_model <- trending::fit(model, counts)
 
 ## calculate confidence intervals and prediction intervals 
-observed <- predict(fitted_model)
+observed <- predict(fitted_model, simulate_pi = FALSE)
 
 
 
