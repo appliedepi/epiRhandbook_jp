@@ -55,7 +55,7 @@ This handbook is **not** an approved product of any specific organization. Altho
 
 ### Contributors  
 
-**Editor-in-Chief:** [Neale Batra](https://www.linkedin.com/in/neale-batra/) 
+**Editor:** [Neale Batra](https://www.linkedin.com/in/neale-batra/) 
 
 **Project core team:** [Neale Batra](https://www.linkedin.com/in/neale-batra/), [Alex Spina](https://github.com/aspina7), [Amrish Baidjoe](https://twitter.com/Ammer_B), Pat Keating, [Henry Laurenson-Schafer](https://github.com/henryls1), [Finlay Campbell](https://github.com/finlaycampbell)  
 
@@ -114,7 +114,7 @@ Academic courses and epidemiologist training programs are welcome to use this ha
 
 ## Citation  
 
-The Epidemiologist R Handbook. <a rel="license" href="https://zenodo.org/badge/231610102.svg"><img alt="DOI" style="border-width:0" src="https://zenodo.org/badge/231610102.svg" /></a><br />
+Batra, Neale, et al. The Epidemiologist R Handbook. 2021. <a rel="license" href="https://zenodo.org/badge/231610102.svg"><img alt="DOI" style="border-width:0" src="https://zenodo.org/badge/231610102.svg" /></a><br />
 
 
 
