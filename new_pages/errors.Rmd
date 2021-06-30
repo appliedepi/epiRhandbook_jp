@@ -1,48 +1,62 @@
 
-# Common errors  
+# よくあるエラー { #errors }
 
-This page includes a running list of common errors and suggests solutions for troubleshooting them.  
+この章では、一般的なエラーの一覧と、トラブルシューティングの方法を紹介します。 
 
+訳注：R のエラーメッセージは、全てが日本語に翻訳されているわけではありません。日本語版があるものについては英語版の後に日本語版を示しています。
 
-## Interpreting error messages  
+## エラーメッセージの読み方  
 
-R errors can be cryptic at times, so Google is your friend. Search the error message with "R" and look for recent posts in [StackExchange.com](StackExchange.com), [stackoverflow.com](stackoverflow.com), [community.rstudio.com](community.rstudio.com), twitter (#rstats), and other forums used by programmers to filed questions and answers. Try to find recent posts that have solved similar problems.  
-
-If after much searching you cannot find an answer to your problem, consider creating a *reproducible example* ("reprex") and posting the question yourself. See the page on [Getting help] for tips on how to create and post a reproducible example to forums. 
-
-
-## Common errors  
-
-Below, we list some common errors and potential explanations/solutions. Some of these are borrowed from Noam Ross who analyzed the most common forum posts on Stack Overflow about R error messages (see analysis [here](https://github.com/noamross/zero-dependency-problems/blob/master/misc/stack-overflow-common-r-errors.md))  
+R のエラーは不可解なことも多々あるので、Google が頼りになります。エラーメッセージを "R" で検索し、[StackExchange.com](StackExchange.com)、[stackoverflow.com](stackoverflow.com)、[community.rstudio.com](community.rstudio.com)、twitter(#rstats)、その他プログラマーが質問や回答を提出するためのフォーラムで最近の投稿を探します。似たような問題を解決した最近の投稿を探してみてください。 
 
 
-### Typo errors {.unnumbered}  
+いくら探しても答えが見つからない場合は、<u>再現可能な例</u>（"reprex"）を作成して、自分で質問を投稿することを検討してください。再現可能な例を作成してフォーラムに投稿する方法については、[ヘルプ](#help)の章を参照してください。
+
+
+## よくあるエラー  
+
+以下に、いくつかの一般的なエラーと、その説明や解決策の可能性を示します。ここの内容は、Stack Overflow で R のエラーメッセージに関する最も一般的なフォーラムの投稿を分析した Noam Ross 氏の意見を部分的に参考にしています（分析結果は[こちら](https://github.com/noamross/zero-dependency-problems/blob/master/misc/stack-overflow-common-r-errors.md)をご覧ください）。 
+
+
+### 打ち間違いエラー {.unnumbered}  
 
 ```
 Error: unexpected symbol in:
-"  geom_histogram(stat = "identity")+
+  geom_histogram(stat = "identity")+
   tidyquant::geom_ma(n=7, size = 2, color = "red" lty"
 ```
-If you see "unexpected symbol", check for missing commas  
 
+```
+エラー:   想定外のシンボルです  以下の部分: 
+  geom_histogram(stat = "identity")+
+  tidyquant::geom_ma(n=7, size = 2, color = "red" lty"
+```
 
+想定外のシンボル（"unexpected symbol"） と表示された場合は、カンマが抜けていないか確認してください。 
 
-### Package errors {.unnumbered}  
+### パッケージエラー {.unnumbered}  
 
 ```
 could not find function "x"...
 ```
-This likely means that you typed the function name incorrectly, or forgot to install or load a package.
 
+```
+関数 "x" を見つけることができませんでした 
+```
+
+これは、関数名を間違って入力したか、パッケージをインストールまたは読み込み忘れた可能性があります。
 
 ```
 Error in select(data, var) : unused argument (var)
 ```
-You think you are using `dplyr::select()` but the `select()` function has been masked by `MASS::select()` - specify `dplyr::` or re-order your package loading so that dplyr is after all the others.
 
-Other common masking errors stem from: `plyr::summarise()` and `stats::filter()`. Consider using the [**conflicted** package](https://www.tidyverse.org/blog/2018/06/conflicted/).
+```
+select(data, var) でエラー:使われていない引数 %s
+```
 
+自分では `dplyr::select()` を使っているつもりでも、実際は `select()` 関数が `MASS::select()` によってマスクされています。`dplyr::` を指定するか、パッケージの読み込み順を変えて、dplyr が他のパッケージの後に来るようにしてください。
 
+マスクされたことによるエラーは、この他に `plyr::summary()` や `stats::filter()` でよく発生します。[**conflicted** パッケージ](https://www.tidyverse.org/blog/2018/06/conflicted/)の使用を検討してください。
 
 
 ```
@@ -50,88 +64,107 @@ Error in install.packages : ERROR: failed to lock directory ‘C:\Users\Name\Doc
 Try removing ‘C:\Users\Name\Documents\R\win-library\4.0/00LOCK’
 ```
 
-If you get an error saying you need to remove an "00LOCK" file, go to your "R" library in your computer directory (e.g. R/win-library/) and look for a folder called "00LOCK". Delete this manually, and try installing the package again. A previous install process was probably interrupted, which led to this.  
+```
+install.packages でエラー: ディレクトリ‘C:\Users\Name\Documents\R\win-library\4.0’の変更を禁止にできません。 
+‘C:\Users\Name\Documents\R\win-library\4.0/00LOCK’を削除してください
+```
+
+もし、"00LOCK" ファイルを削除なさいというエラーが出た場合、コンピュータのディレクトリにある "R" ライブラリ（例：R/win-library/）に行き、"00LOCK" というフォルダを探してください。これを手動で削除して、再度パッケージをインストールしてみてください。以前、インストール作業を中断してこの状態になったと考えられます。 
 
 
-
-
-### Object errors {.unnumbered}  
+### オブジェクトのエラー {.unnumbered}  
 
 ```
 No such file or directory:
 ```
-If you see an error like this when you try to export or import: Check the spelling of the file and filepath, and if the path contains slashes make sure they are forward `/` and not backward `\`. Also make sure you used the correct file extension (e.g. .csv, .xlsx).  
 
+エクスポートまたはインポートしようとしたときにこのエラーが表示される場合は、次のことを確認してください。ファイルとファイルパスのスペルを確認してください。また、パスにスラッシュが含まれている場合は、前向きのスラッシュ `/` であり、後ろ向きのスラッシュ `\` （バックスラッシュ）ではないことを確認してください。また、正しいファイル拡張子を使用していることを確認してください（例：.csv、.xlsx）。 
 
 ```
 object 'x' not found 
 ```
-This means that an object you are referencing does not exist. Perhaps code above did not run properly?  
 
+```
+エラー:  オブジェクト 'x' がありません 
+```
+
+これは、参照しているオブジェクトが存在していないことを意味します。ここよりも前のコードが正しく実行されなかったのではないでしょうか？ 
 
 ```
 Error in 'x': subscript out of bounds
 ```
-This means you tried to access something (an element of a vector or a list) that was not there.  
-
-
-
-
-### Function syntax errors {.unnumbered}
 
 ```
-# ran recode without re-stating the x variable in mutate(x = recode(x, OLD = NEW)
+'x' でエラー : 添え字が許される範囲外です
+```
+
+このエラーは、存在しないもの（ベクトルやリストの要素）にアクセスしようとしたことを意味します。 
+
+
+### 関数の文法エラー {.unnumbered}
+
+```
+# mutate(x = recode(x, OLD = NEW) で変数 x を再定義せずに recode を実行した
 Error: Problem with `mutate()` input `hospital`.
 x argument ".x" is missing, with no default
 i Input `hospital` is `recode(...)`.
 ```
-This error above (`argument .x is missing, with no default`) is common in `mutate()` if you are supplying a function like `recode()` or `replace_na()` where it expects you to provide the column name as the first argument. This is easy to forget.  
+
+```
+引数 ".x" がありませんし、省略時既定値もありません 
+```
+
+上記のエラー（`argument .x is missing, with no default`）は、`mutate()` において、`recode()` や `replace_na()` のように、第一引数にカラム名を指定することが期待される関数を指定している場合によく見られます。よく忘れることがあります。
 
 
-
-### Logic errors {.unnumbered}  
+### 論理的エラー {.unnumbered}  
 
 ```
 Error in if
 ```
 
-This likely means an `if` statement was applied to something that was not TRUE or FALSE.  
+```
+if (...) { でエラー: 
+```
+
+これは、TRUE でも FALSE でもないものに `if` 文が適用されたことを意味していると思われます。 
 
 
-### Factor errors {.unnumbered}  
+### ファクタのエラー {.unnumbered}  
 
 ```
-#Tried to add a value ("Missing") to a factor (with replace_na operating on a factor)
+# ファクタクラスに、許されていない値 ("Missing") を追加しようとする ( replace_na をオプションで使用)
 Problem with `mutate()` input `age_cat`.
 i invalid factor level, NA generated
 i Input `age_cat` is `replace_na(age_cat, "Missing")`.invalid factor level, NA generated
 ```
-If you see this error about invalid factor levels, you likely have a column of class Factor (which contains pre-defined levels) and tried to add a new value to it. Convert it to class Character before adding a new value.  
+
+このエラーは無効なファクタ水準（level）に関するものです。このエラーが表示された場合、ファクタクラス（あらかじめ定義されたレベルを含む）の列があり、そこに新しい値を追加しようとした可能性があります。新しい値を追加する前に、文字列クラスに変換してください。 
 
 
-### Plotting errors {.unnumbered}  
+### プロットのエラー {.unnumbered}  
 
 `Error: Insufficient values in manual scale. 3 needed but only 2 provided.`
-ggplot() scale_fill_manual() values = c("orange", "purple") ... insufficient for number of factor levels ... consider whether NA is now a factor level...
+
+例えば、ggplot() 関数の scale_fill_manual() オプションを values = c("orange", "purple")  と設定していた場合、ファクタ水準の数が十分ではありません。NA が正しくファクタの水準になっているかどうかを確認してください。
 
 ```
 Can't add x object
 ```
-You probably have an extra `+` at the end of a ggplot command that you need to delete.
+ggplot のコマンドの最後に余分な `+` がついていると思われます。削除しましょう。
 
 
-### R Markdown errors {.unnumbered}  
+### R Markdown エラー {.unnumbered}  
 
-If the error message contains something like `Error in options[[sprintf("fig.%s", i)]]`, check that your knitr options at the top of each chunk correctly use the `out.width = ` or `out.height = ` and *not* `fig.width=` and `fig.height=`.
+エラーメッセージに `Error in options[[sprintf("fig.%s", i)]]` のような内容が含まれている場合は、各チャンクの先頭にある knitr のオプションが、`out.width = ` または `out.height = ` を正しく使用しており、`fig.width = ` および `fig.height = ` を使用して<u>いない</u>ことを確認してください。
 
-### Miscellaneous {.unnumbered}  
+### その他 {.unnumbered}  
 
-Consider whether you re-arranged piped **dplyr** verbs and didn't replace a pipe in the middle, or didn't remove a pipe from the end after re-arranging.
+パイプされた **dplyr** 動詞を再配置して、途中でパイプを交換しなかったのか、再配置した後に最後からパイプを削除し忘れていないかを確認してください。
 
- 
 
 
 <!-- ======================================================= -->
-## Resources { }
+## 参考文献 { }
 
-This is another blog post that lists common [R programming errors faced by beginners](https://www.r-bloggers.com/2016/06/common-r-programming-errors-faced-by-beginners/)
+こちらは、Rのよくあるエラーについてのブログです: [R programming errors faced by beginners](https://www.r-bloggers.com/2016/06/common-r-programming-errors-faced-by-beginners/)
