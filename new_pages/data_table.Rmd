@@ -1,227 +1,230 @@
 
-# Data Table { }  
+# data.table パッケージを使用したデータ処理 {#data-table}  
      
-The handbook focusses on the **dplyr** “verb” functions and the **magrittr** pipe operator `%>%` as a method to clean and group data, but the **data.table** package offers an alternative method that you may encounter in your R career.  
+このハンドブックでは、データを整理しグルーピングする方法として、**dplyr** パッケージの「動詞」関数と **magrittr** パッケージのパイプ演算子 `%>%` に焦点を当てています。一方、**data.table** パッケージは、R を使用していく上で出会うかもしれない、データ処理の代替手段を提供します。
 
 
 
 <!-- ======================================================= -->
-## Intro to data tables {  }
+## データテーブルの概要 {  }
 
-A data table is a 2-dimensional data structure like a data frame that allows complex grouping operations to be performed. The data.table syntax is structured so that operations can be performed on rows, columns and groups. 
+データテーブル（data table）は、データフレームのような 2 次元のデータ構造であり、複雑なグルーピング操作を実行できます。data.table 構文は、行、列、およびグループに対して操作を実行できるように構成されています。
 
-The structure is **DT[i, j, by]**, separated by 3 parts; the **i, j** and **by** arguments. The **i** argument allows for subsetting of required rows, the **j** argument allows you to operate on columns and the **by** argument allows you operate on columns by groups.
+data.table 構文は **DT[i, j, by]** と表記され、**i**、**j**、**by** という 3 つの部品で構成されています。 **i** 引数を使用すると、必要な行をサブセット化できます。**j** 引数を使用すると、列を操作できます。**by** 引数を使用すると、グループごとに列を操作できます。
   
-This page will address the following topics:  
+この章では、以下のトピックについて説明します。
 
-* Importing data and use of `fread()` and `fwrite()`
-* Selecting and filtering rows using the **i** argument
-* Using helper functions `%like%`, `%chin%`, `%between%` 
-* Selecting and computing on columns using the **j** argument
-* Computing by groups using the **by** argument
-* Adding and updating data to data tables using `:=`
+* データのインポートと `fread()` および `fwrite()` の使用
+* **i** 引数を使用した行の選択とフィルタリング
+* ヘルパー関数 `%like%`、`%chin%`,、`%between%` の使用
+* **j** 引数を使用した列の選択と計算
+* **by** 引数を使用したグループごとの計算
+* `:=` を使用してデータテーブルにデータを追加および更新する
 
 <!-- ======================================================= -->
-## Load packages and import data { }
+## パッケージの読み込みとデータのインポート { }
 
-### Load packages {.unnumbered}  
+### パッケージの読み込み {.unnumbered}  
 
-Using the `p_load()` function from **pacman**, we load (and install if necessary) packages required for this analysis.
+**pacman** パッケージの `p_load()` 関数を使用して、この分析に必要なパッケージを読み込み（および必要に応じてインストールし）ます。
      
      
 ```{r}
 pacman::p_load(
-  rio,        # to import data
-  data.table, # to group and clean data
-  tidyverse,  # allows use of pipe (%>%) function in this chapter
+  rio,        # データのインポート
+  data.table, # データのグループ化
+  tidyverse,  # この章でパイプ（%>%）関数を使用可にする
   here 
   ) 
 ```
 
 
-### Import data {.unnumbered}
+### データのインポート {.unnumbered}
 
-This page will explore some of the core functions of **data.table** using the case linelist referenced throughout the handbook.
+この章では、ハンドブック全体で参照されている症例ラインリストを使用して、**data.table** パッケージのコア機能のいくつかを説明します。
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data. From here we use `data.table()` to convert the data frame to a data table.
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、<a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは **rio** パッケージの `import()` を利用してインポートしましょう（**rio** パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）`data.table()` を使用してデータフレームをデータテーブルに変換します。
 
 ```{r}
 linelist <- rio::import(here("data", "linelist_cleaned.xlsx")) %>% data.table()
 ```
 
-The `fread()` function is used to directly import regular delimited files, such as .csv files, directly to a data table format. This function, and its counterpart, `fwrite()`, used for writing data.tables as regular delimited files are very fast and computationally efficient options for large databases.
+`fread()` 関数は、.csv ファイルなどの普通の区切り付きファイルをデータテーブルに直接インポートするために使用されます。この関数と対を成す `fwrite()` は、普通の区切り付きファイルへデータテーブルを書き込むために使用されます。これらの関数は、大規模なデータベースにとって非常に高速で計算効率の高い選択肢です。
 
 
-The first 20 rows of `linelist`:  
+`linelist` の最初の 20 行を表示します。
 
 ```{r message=FALSE, echo=F, eval=FALSE}
 DT::datatable(head(linelist,20), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Base R commands such as `dim()` that are used for data frames can also be used for data tables
+データフレームに使用される `dim()` などの R の **base** パッケージ（以下、**base** R）のコマンドは、データテーブルにも使用できます。
 
 ```{r}
-dim(linelist) #gives the number of rows and columns in the data table
+dim(linelist) #データテーブルの行と列の数を示す
 ```
 
 
 <!-- ======================================================= -->
-## The i argument: selecting and filtering rows{ }
+## i 引数： 行の選択とフィルタリング { }
      
-Recalling the **DT[i, j, by]** structure, we can filter rows using either row numbers or logical expressions. The i argument is first; therefore, the syntax **DT[i]** or **DT[i,]** can be used. 
+先ほど説明した **DT[i, j, by]** data.table 構文を使い、行番号または論理式のいずれかを使用して行をフィルタリングできます。i 引数は構文における最初の引数です。 したがって、**DT[i]** または **DT[i,]** 構文を使用できます。
 
-The first example retrieves the first 5 rows of the data table, the second example subsets cases are 18 years or over, and the third example subsets cases 18 years old or over but not diagnosed at the Central Hospital:
+以下の 1 つ目の例ではデータテーブルの最初の 5 行を取得し、2 つ目の例では 18 歳以上の症例をサブセット化し、3 つ目の例では 18 歳以上であるが Central Hospital で診断されていない症例をサブセット化します。
 
 
 ```{r, eval=F}
-linelist[1:5] #returns the 1st to 5th row
-linelist[age >= 18] #subsets cases are equal to or over 18 years
-linelist[age >= 18 & hospital != "Central Hospital"] #subsets cases equal to or over 18 years old but not diagnosed at the Central Hospital
+linelist[1:5] #1 行目から 5 行目を取得
+linelist[age >= 18] #18 歳以上をサブセット化
+linelist[age >= 18 & hospital != "Central Hospital"] #18 歳以上であるが、Central Hospital で診断されていない症例のサブセット
 
 ```
 
-Using .N in the i argument represents the total number of rows in the data table. This can be used to subset on the row numbers: 
+i 引数に .N を使用すると、データテーブルの行の総数を表示します。 この書式は、行番号によるサブセット化に使用できます。
 
 ```{r, eval=F}
-linelist[.N] #returns the last row
-linelist[15:.N] #returns the 15th to the last row
+linelist[.N] #最後の行を取得
+linelist[15:.N] #15 行目から最後の行を取得
 ```
 
 
-### Using helper functions for filtering {.unnumbered}  
+### ヘルパー関数を使用したフィルタリング {.unnumbered}  
 
-Data table uses helper functions that make subsetting rows easy. The `%like%` function is used to match a pattern in a column, `%chin%` is used to match a specific character, and the `%between%` helper function is used to match numeric columns within a prespecified range.
+data.table 構文では、行のサブセット化を容易にするヘルパー関数を使用します。`%like%` 関数は列内をパターンマッチングで比較するために使用され、`%chin%` は特定の文字が含まれるか比較するために使用され、`%between%` ヘルパー関数は事前に用意した範囲に数値型列を抽出するために使用されます。
 
-In the following examples we:
-*  filter rows where the hospital variable contains “Hospital”
-*  filter rows where the outcome is “Recover” or “Death”
-*  filter rows in the age range 40-60
+以下では、3 点を例示します。
+
+* hospital 列に文字列「Hospital」が含まれる行をフィルタリングする
+* 予後が「回復」または「死」である行をフィルタリングする
+* 年齢の範囲が 40〜60 歳の行をフィルタリングする
 
 ```{r, eval=F}
-linelist[hospital %like% "Hospital"] #filter rows where the hospital variable contains “Hospital”
-linelist[outcome %chin% c("Recover", "Death")] #filter rows where the outcome is “Recover” or “Death”
-linelist[age %between% c(40, 60)] #filter rows in the age range 40-60
+linelist[hospital %like% "Hospital"] #hospital 列に文字列「Hospital」が含まれる行をフィルタリングする
+linelist[outcome %chin% c("Recover", "Death")] #予後が「回復」または「死」である行をフィルタリングする
+linelist[age %between% c(40, 60)] #年齢の範囲が 40〜60 歳の行をフィルタリングする
 
-#%between% must take a vector of length 2, whereas %chin% can take vectors of length >= 1
+#%between% を使う際は長さ 2 のベクトルが必要だが、%chin% を使う場合は長さ 1 以上のベクトルが使用できる。
 
 ```
 
-## The j argument: selecting and computing on columns{ }
+## j 引数：列の選択と計算 { }
 
-Using the **DT[i, j, by]** structure, we can select columns using numbers or names. The **j** argument is second; therefore, the syntax **DT[, j]** is used. To facilitate computations on the **j** argument, the column is wrapped using either `list()` or `.()`. 
+**DT[i, j, by]** data.table 構文を使用すると、数値または名前を使用して列を選択できます。**j** 引数は構文における 2 番目の引数です。 したがって、**DT[, j]** 構文が使用されます。**j** 引数の計算を容易にするために、選択する列は `list()` または `.()` のいずれかを使用してまとめます。
 
 
-### Selecting columns {.unnumbered} 
+### 列の選択 {.unnumbered} 
 
-The first example retrieves the first, third and fifth columns of the data table, the second example selects all columns except the height, weight and gender columns. The third example uses the `.()` wrap to select the **case_id** and **outcome** columns.
+以下の 1 つ目の例では、データテーブルの 1 番目、3 番目、5 番目の列を取得し、2 つ目の例では、身長、体重、性別の列を除くすべての列を選択します。3 つ目の例では、`.()` を使用して、**case_id** 列と**outcome** 列を選択します。
 
 
 ```{r, eval=F}
 linelist[ , c(1,3,5)]
 linelist[ , -c("gender", "age", "wt_kg", "ht_cm")]
-linelist[ , list(case_id, outcome)] #linelist[ , .(case_id, outcome)] works just as well
+linelist[ , list(case_id, outcome)] #linelist[ , .(case_id, outcome)]でも可
 
 ```
 
-### Computing on columns {.unnumbered} 
+### 列内の計算 {.unnumbered} 
 
-By combining the **i** and **j** arguments it is possible to filter rows and compute on the columns. Using **.N** in the **j** argument also represents the total number of rows in the data table and can be useful to return the number of rows after row filtering.
+**i** 引数と **j** 引数を組み合わせることにより、行をフィルタリングして列内の計算が可能です。 **j** 引数に **.N** を使用すると、データテーブルの行の総数を表し、行フィルタリング後に行数を取得するのに役立ちます。
 
-In the following examples we:
-* Count the number of cases that stayed over 7 days in hospital
-* Calculate the mean age of the cases that died at the military hospital
-* Calculate the standard deviation, median, mean age of the cases that recovered at the central hospital
+以下では、3 点を例示します。
+
+* 入院 7 日以上の症例数をカウント
+* "Military" を病院名に含む病院で死亡した症例の平均年齢
+* Central Hospital で回復した症例の年齢の標準偏差、中央値、平均
 
 ```{r}
 linelist[days_onset_hosp > 7 , .N]
-linelist[hospital %like% "Military" & outcome %chin% "Death", .(mean(age, na.rm = T))] #na.rm = T removes N/A values
+linelist[hospital %like% "Military" & outcome %chin% "Death", .(mean(age, na.rm = T))] #na.rm = T は N/A 値を除外します
 linelist[hospital == "Central Hospital" & outcome == "Recover", 
                  .(mean_age = mean(age, na.rm = T),
                    median_age = median(age, na.rm = T),
-                   sd_age = sd(age, na.rm = T))] #this syntax does not use the helper functions but works just as well
+                   sd_age = sd(age, na.rm = T))] #この構文はヘルパー関数を使用しないが、使用する場合と同様に機能する
 
 ```
 
-Remember using the .() wrap in the j argument facilitates computation, returns a data table and allows for column naming.
+j 引数において .() 構文を使用すると、計算が容易になり、データテーブルを戻り値と返し、列に名前を付けることができます。
 
-## The by argument: computing by groups{ }
+## by 引数：グルーピングを用いた計算 { }
 
-The **by** argument is the third argument in the **DT[i, j, by]** structure. The **by** argument accepts both a character vector and the `list()` or `.()` syntax. Using the `.()` syntax in the **by** argument allows column renaming on the fly.
+**by** 引数は、**DT[i, j, by]** data.table 構文の 3 番目の引数です。 **by** 引数には、文字型ベクトルと `list()` 構文または `.()` 構文を使用できます。 **by** 引数に `.()` 構文を使用すると、列名をその場で変更できます。
 
-In the following examples we:	
-* group the number of cases by hospital
-* in cases 18 years old or over, calculate the mean height and weight of cases according to gender and whether they recovered or died
-* in admissions that lasted over 7 days, count the number of cases according to the month they were admitted and the hospital they were admitted to
+以下では、3 点を例示します。
+
+* 症例数を病院ごとにグルーピング
+* 18 歳以上の症例を、性別や回復したか死亡したかによってグルーピングし、身長と体重の平均を計算
+* 7 日間以上入院したグループで、入院した月と入院した病院に応じて症例数を集計
 
 
-````{r}
-linelist[, .N, .(hospital)] #the number of cases by hospital
+```{r}
+linelist[, .N, .(hospital)] #病院別の症例数
 linelist[age > 18, .(mean_wt = mean(wt_kg, na.rm = T),
-                             mean_ht = mean(ht_cm, na.rm = T)), .(gender, outcome)] #NAs represent the categories where the data is missing
+                             mean_ht = mean(ht_cm, na.rm = T)), .(gender, outcome)] #NA は、データが欠測しているカテゴリを表す
 linelist[days_onset_hosp > 7, .N, .(month = month(date_hospitalisation), hospital)]
 
 ```
 
-Data.table also allows the chaining expressions as follows:
+data.table 構文では、次のように式を組み合わせることもできます。
 
-````{r}
+```{r}
 
-linelist[, .N, .(hospital)][order(-N)][1:3] #1st selects all cases by hospital, 2nd orders the cases in descending order, 3rd subsets the 3 hospitals with the largest caseload
+linelist[, .N, .(hospital)][order(-N)][1:3] #1 番目の構文は病院ごとにすべての症例を選択し、2 番目の構文は症例を降順で並べ替え、3 番目の構文は症例数上位 3 つの病院をサブセット化する
 
-
-```
-
-In these examples we are following the assumption that a row in the data table is equal to a new case, and so we can use the **.N** to represent the number of rows in the data table. Another useful function to represent the number of unique cases is `uniqueN()`, which returns the number of unique values in a given input. This is illustrated here:
-
-````{r}
-
-linelist[, .(uniqueN(gender))] #remember .() in the j argument returns a data table
 
 ```
 
-The answer is 3, as the unique values in the gender column are m, f and N/A. Compare with the base R function `unique()`, which returns all the unique values in a given input:
+前述の例では、データテーブルの行は新しい症例に相当するという仮定に従っているため、**.N** を使用してデータテーブルの行数を表すことができます。個別の症例数を表すもう 1 つの便利な関数は、`uniqueN()` です。この関数は、与えられた入力から、重複のない個別の総数を取得できます。 以下のように実行します。
 
-````{r}
+```{r}
+
+linelist[, .(uniqueN(gender))] # j 引数の .() はデータテーブルを戻り値として返すことを覚えておいてください
+
+```
+
+性別の列に含まれる個別の値は m、f、および N/A であるため、戻り値は 3 になります。 与えられた入力の個別の値すべてを取得する base R 関数 `unique()` と比較してください。
+
+```{r}
 
 linelist[, .(unique(gender))]
 ```
 
-To find the number of unique cases in a given month we would write the following:
+特定の月における個別の症例数を取得するには、以下のように記述します。
 
-````{r}
+```{r}
 
 linelist[, .(uniqueN(case_id)), .(month = month(date_hospitalisation))]
 
 ```
 
-## Adding and updating to data tables { }
+## データテーブルへのデータの追加と更新 { }
 
-The `:=` operator is used to add or update data in a data table. Adding columns to your data table can be done in the following ways:
+`:=` 演算子は、データテーブルへデータを追加または更新するために使用されます。 データテーブルへの列の追加は、以下の方法で実行できます。
 
-````{r}
+```{r}
 
-linelist[, adult := age >= 18] #adds one column
-linelist[, c("child", "wt_lbs") := .(age < 18, wt_kg*2.204)] #to add multiple columns requires c("") and list() or .() syntax
+linelist[, adult := age >= 18] # 1 列追加
+linelist[, c("child", "wt_lbs") := .(age < 18, wt_kg*2.204)] #複数の列を追加するには、c("") と list() または .() 構文が必要
 linelist[, `:=` (bmi_in_range = (bmi > 16 & bmi < 40),
-                         no_infector_source_data = is.na(infector) | is.na(source))] #this method uses := as a functional operator `:=`
-linelist[, adult := NULL] #deletes the column
+                         no_infector_source_data = is.na(infector) | is.na(source))] #この方法では、関数演算子 `:=` として := を使用
+linelist[, adult := NULL] #列の削除
 
 ```
 
 
-Further complex aggregations are beyond the scope of this introductory chapter, but the idea is to provide a popular and viable alternative to **dplyr** for grouping and cleaning data. The **data.table** package is a great package that allows for neat and readable code.
+より複雑な集計は、入門の範囲を超えています。本章ではデータのグルーピングと整理のために、一般的で実行可能な **dplyr** パッケージの代替手段を提供することを目的としています。**data.table** パッケージは、読みやすいコードを可能にする優れたパッケージです。
 
 
-## Resources {  }
+## 参考資料 {  }
 
-Here are some useful resources for more information:
+詳細については、以下の資料をご覧ください。
 * https://cran.r-project.org/web/packages/data.table/vignettes/datatable-intro.html
 * https://github.com/Rdatatable/data.table
 * https://s3.amazonaws.com/assets.datacamp.com/img/blog/data+table+cheat+sheet.pdf
 * https://www.machinelearningplus.com/data-manipulation/datatable-in-r-complete-guide/
 * https://www.datacamp.com/community/tutorials/data-table-r-tutorial
 
-You can perform any summary function on grouped data; see the Cheat Sheet here for more info:
+グルーピングされたデータに対して任意の要約機能を実行できます。 詳細については、こちらのチートシートをご参照ください。
 https://s3.amazonaws.com/assets.datacamp.com/blog_assets/datatable_Cheat_Sheet_R.pdf
 
 
