@@ -1,39 +1,39 @@
-# Writing functions  
+# 関数の作成 {#writing-functions}
 
 
 <!-- ======================================================= -->
-## Preparation {  }
+## 準備 {  }
 
 
-### Load packages {-}
+### パッケージの読み込み {-}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+以下のコードは、分析に必要なパッケージの読み込みを行います。このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの `p_load()` を主に使用しています。`p_load()` は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** （以下、**base** R）の `library()` を使用して読み込むこともできます。R のパッケージに関する詳細は [R の基礎](#basics)の章をご覧ください。
 
 ```{r, echo=F, warning=F, message=F}
 pacman::p_load(
-  rio,          # File import
-  here,         # File locator
-  skimr,        # get overview of data
-  tidyverse,    # data management + ggplot2 graphics, 
-  gtsummary,    # summary statistics and tests
-  janitor,      # adding totals and percents to tables
-  scales,       # easily convert proportions to percents  
-  flextable,     # converting tables to HTML
-  purrr,          #makes functional programming easier
-  readr,          #to read csv files
-  highcharter     #to create highchart object and draw particular plot
+  rio,          # ファイルのインポート
+  here,         # ファイルパスの生成
+  skimr,        # データの要約統計量の表示
+  tidyverse,    # データマネジメントとggplot2によるグラフィックス 
+  gtsummary,    # 要約統計量と回帰分析の表作成
+  janitor,      # 表に合計値とパーセンテージを加える
+  scales,       # 割合をパーセンテージに簡単に変換する  
+  flextable,     # 表を HTML に変換
+  purrr,          #関数プログラミングを容易にする
+  readr,          #csv ファイルの読み込み
+  highcharter     #highchart オブジェクトを作成し、特定のプロットを描く
 
   )
 ```
 
-### Import data {-}
+### データのインポート {-}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instructions in the [Download book and data] page. The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data.
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。データをダウンロードし同じように行いたい場合、[ハンドブックとデータのダウンロード](#data-used)の章をご覧ください。データは **rio** パッケージの import() を利用してインポートしましょう。データをインポートする様々な方法については [インポートとエクスポート](#importing)の章をご覧ください。
 
-We will also use in the last part of this page some data on H7N9 flu from 2013.
+また、この章の最後では、2013年のH7N9インフルエンザのデータを使用します。
 
 ```{r, echo=F}
-# import the linelists into R
+# ラインリスト（linelist）データを R に取り込む
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 
 flu_china <- rio::import(here::here("data", "case_linelists", "fluH7N9_China_2013.csv"))
@@ -41,57 +41,57 @@ flu_china <- rio::import(here::here("data", "case_linelists", "fluH7N9_China_201
 ```
 
 
-## Functions  
+## 関数  
 
-Functions are helpful in programming since they allow to make codes easier to understand, somehow shorter and less prone to errors (given there were no errors in the function itself).
+関数はコードを理解しやすく、短く、エラーを起こしにくくすることができるため、プログラミングにおいて役立ちます(関数自体にエラーがない場合)。
 
-If you have come so far to this handbook, it means you have came across endless functions since in R, every operation is a function call
-`+, for, if, [, $, { …`. For example `x + y` is the same as`'+'(x, y)`
+このハンドブックをここまで読んでくださった方は、無数の関数に出会ったことになります。というのも、R ではすべての演算子が関数呼び出しになるからです。
+`+, for, if, [, $, { …`. 例えば、`x + y` は `'+'(x, y)` と同じです。
 
-R is one the languages that offers the most possibility to work with functions and give enough tools to the user to easily write them. We should not think about functions as fixed at the top or at the end of the programming chain, R offers the possibility to use them as if they were vectors and even to use them inside other functions, lists...
+R は、複数の関数を共に扱う可能性が最も高い言語であり、また、ユーザが簡単に関数を書けるように十分なツールが提供されている言語の 1 つです。私たちはプログラムの繋がりを最初から最後まで考える必要はなく、R では複数の関数をベクトルのように使用したり、他の関数やリストの中で使用することもできます。
 
-Lot of very advanced resources on functional programming exist and we will only give here an insight to help you start with functional programming with short practical examples. You are then encouraged to visit the links on references to read more about it.
-
-
+関数型プログラミングに関する非常に高度な資料は数多く存在しますが、ここでは短い実用的な例を用いて、関数型プログラミングを始めるためのヒントを提供するにとどめます。その後、参考資料のリンクを参照して、さらに詳しい情報を得ることをお勧めします。
 
 
 
-## Why would you use a function? 
 
-Before answering this question, it is important to note that you have already had tips to get to write your very first R functions in the page on [Iteration, loops, and lists] of this handbook. In fact, use of "if/else" and loops is often a core part of many of our functions since they easily help to either broaden the application of our code allowing multiple conditions or to iterate codes for repeating tasks.
 
-- I am repeating multiple times the same block of code to apply it to a different variable or data?
+## なぜ関数を使うのか? 
 
-- Getting rid of it will it substantially shorten my overall code and make it run quicker?
+見出しの質問に答える前に、次の点が重要です。このハンドブックの [ループと反復処理・リストの操作](#iteration)の章に、最初の R 関数を書くためのヒントがすでにあります。実際、if/else や loop の使用は、関数の中で多くの機能の中核です。なぜなら、複数の条件分岐によって、記述したコードが様々な場面に適用できたり、ループ文によってコードを繰り返し実行するのに役立ったりするからです。
 
-- Is it possible that the code I have written is used again but with a different value at many places of the code?
+- 別々の変数やデータに、同じコードを複数回繰り返し適用するか？
 
-If the answer to one of the previous questions is "YES", then you probably need to write a function
+- 繰り返しの適用を取り除くことで、コード全体が大幅に短縮され、実行速度が速くなるか？
 
-## How does R  build functions?
+- 記述したコードが他の箇所で再度使用されているが、再度使用されたコードの複数箇所で異なる値が使用される可能性はあるか？
 
-Functions in R have three main components:
+前述の質問の答えが YES であれば、おそらく関数を書く必要があるでしょう。
 
-- the `formals()` which is the list of arguments which controls how we can call the function
+## R でどのように関数を作成するか?
 
-- the `body()` that is the code inside the function i.e. within the brackets or following the parenthesis depending on how we write it
+R の関数は主に 3 つの要素で構成されています:
 
-and,
+- `formals()`、関数の呼び出し方を制御する引数のリストを返す
 
-- the `environment()` which will help locate the function's variables and determines how the function finds value.
+- `body()`、関数内にコードを記述する。例、コードの記述方法によって、大括弧（{}）の内側や括弧（()）の後など
+
+そして、
+
+- `environment()`、関数の変数の位置を特定するのに役立ち、関数が値を見つける方法を決定する
  
-Once you have created your function, you can verify each of these components by calling the function associated.
+関数を作成したら、関連する関数を呼び出すことで、これらの各構成要素を検証することができます。
  
 
-## Basic syntax and structure
+## 基本的な構文と構造
 
-- A function will need to be named properly so that its job is easily understandable as soon as we read its name. Actually this is already the case with majority of the base R architecture. Functions like  `mean()`, `print()`, `summary()` have names that are very straightforward 
+- 関数には適切な名前を付ける必要があり、名前を読んだだけでその内容が容易に理解できるようにしなければなりません。実際、Rの基本的な関数の大部分ですでに当てはまります。`mean()`、`print()`、`summary()` のような関数は、非常にわかりやすい名前となっています 
 
-- A function will need arguments, such as the data to work on and other objects that can be static values among other options  
+- 関数は、引数を必要とします。例えば、処理するデータや静的な値、その他のオプションオブジェクトなどです 
 
-- And finally a function will give an output based on its core task and the arguments it has been given. Usually we will use the built-in functions as `print()`, `return()`... to produce the output. The output can be a logical value, a number, a character, a data frame...in short any kind of R object.
+- そして最後に、関数はその中核となるタスクと与えられた引数に基づいて出力を行います。通常、出力を得るためには、`print()` や `return()` などの組み込み関数を使用します。論理値、数値、文字、データフレームなど、要するにあらゆる種類の R オブジェクトを出力できます。
 
-Basically this is the composition of a function:
+基本的に下記が関数の構成です:
 
 ```{r, eval=FALSE}
 
@@ -105,7 +105,7 @@ function_name <- function(argument_1, argument_2, argument_3){
 
 ```
 
-We can create our first function that will be called `contain_covid19()`. 
+`contain_covid19()` という名前の関数を最初に作ります。 
 
 ```{r}
 
@@ -121,7 +121,7 @@ contain_covid19 <- function(barrier_gest, wear_mask, get_vaccine){
 
 ```
 
-We can then verify the components of our newly created function.
+新しく作成した関数の要素を検証します。
 
 ```{r}
 
@@ -132,7 +132,7 @@ environment(contain_covid19)
 ```
 
 
-Now we will test our function. To call our written function, you use it as you use all R functions i.e by writing the function name and adding the required arguments.
+では、作成した関数をテストしてみましょう。作成した関数を呼び出すには、他の R 関数と同様に、関数名を記述し、必要な引数を追加します。
 
 ```{r}
 
@@ -140,7 +140,7 @@ contain_covid19(barrier_gest = "yes", wear_mask = "yes", get_vaccine = "yes")
 
 ```
 
-We can write again the name of each argument for precautionary reasons. But without specifying them, the code should work since R has in memory the positioning of each argument. So as long as you put the values of the arguments in the correct order, you can skip writing the arguments names when calling the functions.
+明示的に各引数の名前をあらためて指定できます。しかし、R は各引数の定義順序を記憶しているので、あらためて指定しなくても、上記のコードは動作するはずです。つまり、引数の値を正しい順序で書く限り、関数を呼び出すときに引数の名前を省略できるのです。
 
 ```{r}
 
@@ -148,14 +148,14 @@ contain_covid19("yes", "yes", "yes")
 
 ```
 
-Then let's look what happens if one of the values is `"no"` or **not** `"yes"`.
+次に、片方の値が `"no"` または **not** `"yes"` の場合はどうなるかを見てみましょう。
 
 ```{r}
 
 contain_covid19(barrier_gest = "yes", wear_mask = "yes", get_vaccine = "no")
 ```
 
-If we provide an argument that is not recognized, we get an error: 
+関数定義に定義されていない引数を与えると、エラーが発生します: 
 
 ```{r, eval=F}
 contain_covid19(barrier_gest = "sometimes", wear_mask = "yes", get_vaccine = "no")
@@ -165,46 +165,46 @@ contain_covid19(barrier_gest = "sometimes", wear_mask = "yes", get_vaccine = "no
   could not find function "contain_covid19"`
 
 
-<span style="color: black;">**_NOTE:_** Some functions  (most of time very short and straightforward) may not need a name and can be used directly on a line of code or inside another function to do quick task. They are called **anonymous functions** .</span>
+<span style="color: black;">**<u>備考:</u>** 一部の関数(多くは非常に短くわかりやすい関数です)には、関数名を必要としないものもあり、コード内で直接使用したり、他の関数内で使用したりして、素早い実装ができます。 これらの関数は **無名関数** と呼ばれています。</span>
 
-For instance below is a first anonymous function that   keeps only character variables the dataset.
+例えば、以下は、データセットの文字型変数のみを保持する無名関数です。
 
 ```{r, eval=F}
 linelist %>% 
-  dplyr::slice_head(n=10) %>%  #equivalent to R base "head" function and that return first n observation of the  dataset
+  dplyr::slice_head(n=10) %>%  #base R パッケージにある "head" 関数に相当し、データセットの最初の n 個の観測データを返す
   select(function(x) is.character(x)) 
 ```
   
 ```{r, echo=F}
 linelist %>% 
-  dplyr::slice_head(n=10) %>%  #equivalent to R base "head" function and that return first n observation of the  dataset
+  dplyr::slice_head(n=10) %>%  #base R パッケージにある "head" 関数に相当し、データセットの最初の n 個の観測データを返す
   select(function(x) is.character(x)) %>%  
 DT::datatable(rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-Then another function that selects every second observation of our dataset (may be relevant when we have longitudinal data with many records per patient for instance after having ordered by date or visit).
-In this case, the proper function writing outside dplyr would be `function (x) (x%%2 == 0)` to apply to the vector containing all row numbers.
+次は、観測データを 2 行ごと選択する関数です(例えば、患者ごとに多くのレコードを持つ縦持ちデータがある場合、日付や訪問で順番に並べた後などに適切なことがあります)。
+この例では、dplyr 処理外に記述する適切な関数は、すべての行番号を含むベクトルに適用する `function (x) (x%%2 == 0)` となります。
 
 
 ```{r, eval=F}
 linelist %>%   
    slice_head(n=20) %>% 
-   tibble::rownames_to_column() %>% # add indices of each obs as rownames to clearly see the final selection
+   tibble::rownames_to_column() %>% # 最終的な抽出行を明示するために、各観測行のインデックスを rowname として追加する
    filter(row_number() %%2 == 0)
 ```
 
 ```{r, echo=F}
 linelist %>%   
    slice_head(n=20) %>% 
-   tibble::rownames_to_column() %>%    # add indices of each obs as rownames to clearly see the final selection
+   tibble::rownames_to_column() %>%    # 最終的な抽出行を明示するために、各観測行のインデックスを rowname として追加する
    filter(row_number() %%2 == 0) %>% 
 DT::datatable(rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
 
 ```
 
 
-A possible base R code for the same task would be:
+base R を利用すると以下のように書くことができます:
 
 ```{r, eval = F}
 
@@ -223,28 +223,28 @@ DT::datatable(rownames = FALSE, filter="top", options = list(pageLength = 10, sc
 ```
 
 
-<span style="color: orange;">**_CAUTION:_** Though it is true that using functions can help us with our code, it can nevertheless be  time consuming to write some functions or to fix one if it has not been thought thoroughly, written adequately and is returning errors as a result. For this reason it is often recommended to first write the R code, make sure it does what we intend it to do, and then transform it into a function with its three main components as listed above. </span>
+<span style="color: orange;">**<u>注意:</u>** 関数を使うことがコード実装に役立つのは事実です。しかしながら、複数の関数を記述することに時間を浪費したり、あるいは、十分に考えられておらず、また、適切に書かれていない、つまり、結果としてエラーを返す関数の修正に時間を浪費する可能性があります。そのため、まず R のコードを書き、そのコードが意図した動作をすることを確認してから、上記のような 3 つの主要な要素を持つ関数にすることを推奨します。</span>
 
-## Examples  
+## 例  
 
-### Return proportion tables for several columns {.unnumbered}  
+### それぞれの列の割合を返す {.unnumbered}  
 
-Yes, we already have nice functions in many packages allowing to summarize information in a very easy and nice way. But we will still try to make our own, in our first steps to getting used to writing functions.
+確かに、多くのパッケージには、情報を非常に簡単かつ良い方法で要約することができる素晴らしい関数がすでにあります。しかし、関数を書くことに慣れるための最初のステップとして自分で作ってみることにします。
 
-In this example we want to show how writing a simple function would avoid you copy-pasting the same code multiple times.
+下記の例では、シンプルな関数を書くことで、同じコードを何度もコピーペーストする必要がないことを示します。
 
 ```{r}
 
 proptab_multiple <- function(my_data, var_to_tab){
   
-  #print the name of each variable of interest before doing the tabulation
+  #表組みする前に対象となる各変数名を表示する
   print(var_to_tab)
 
   with(my_data,
-       rbind( #bind the results of the two following function by row
-        #tabulate the variable of interest: gives only numbers
+       rbind( #次の 2 つの関数の結果を行ごとに結合する
+        #対象となる変数を表にする: 数値のみ
           table(my_data[[var_to_tab]], useNA = "no"),
-          #calculate the proportions for each variable of interest and round the value to 2 decimals
+          #対象となる各変数ごとに割合を計算し、その値を小数第 2 位に丸める
          round(prop.table(table(my_data[[var_to_tab]]))*100,2)
          )
        )
@@ -260,10 +260,10 @@ proptab_multiple(linelist, "outcome")
 
 ```
 
-<span style="color: darkgreen;">**_TIP:_** As shown above, it is very important to comment your functions as you would do for the general programming. Bear in mind that a function's aim is to make a code ready to read, shorter and more efficient. Then one should be able to understand what the function does just by reading its name and should have more details reading the comments.</span>
+<span style="color: darkgreen;">**<u>ヒント:</u>** 上記のように、一般的なプログラミングと同様に、関数にコメントを付けることが非常に重要です。関数作成の目的は、コードを読みやすく、短く、効率的にすることであることを覚えておいてください。関数の名前を読んだだけで、その関数が何をするのか理解できるようにし、コメントを読むことでより詳細な情報を得られるようにします。</span>
 
 
-A second option is to use this function in another one via a loop to make the process at once:
+もう一つの方法は、ループ内でこの関数を使用し、一度に処理を行うことです。:
 
 ```{r}
 
@@ -276,7 +276,7 @@ for(var_to_tab in c("gender","age_cat",  "outcome")){
 
 ```
 
-A simpler way could be using the base R "apply" instead of a "for loop" as expressed below:
+よりシンプルな方法としては、"for loop" の代わりに base R の "apply" を使用することで、以下のように表現できます:
 
 ```{r, include= FALSE, eval=FALSE}
 
@@ -285,16 +285,16 @@ base::lapply(linelist[,c("gender","age_cat", "outcome")], table)
 ```
 
 
-<span style="color: darkgreen;">**_TIP:_** R is often defined as a functional programming language and almost anytime you run a line of code you are using some built-in functions. A good habit to be more comfortable with writing functions is to often have an internal look at how the basic functions you are using daily are built. The shortcut to do so is selecting the function name and then clicking on`Ctrl+F2` or `fn+F2` or `Cmd+F2` (depending on your computer) .</span>
+<span style="color: darkgreen;">**<u>ヒント：</u>** R は関数型プログラミング言語として定義されており、ほとんどの場合、コードを実行する際には組み込み関数を使用します。関数の書き方に慣れるための良い習慣は、普段使用している基本的な関数がどのように作られているか内部動作を確認することです。そのための RStudio のショートカットは、関数名を選択してから `Ctrl+F2` または `fn+F2` または`Cmd+F2`(お使いのコンピュータによって異なります)を押します。</span>
 
-## Using **purrr**: writing functions that can be iteratively applied
+## **purrr** の使用: 繰り返し利用可能な関数の作成
 
-### Modify class of multiple columns in a dataset {.unnumbered}  
+### データセット内の複数のカラムのクラスを変更する {.unnumbered}  
 
-Let's say many character variables in the original `linelist` data need to be changes to "factor" for analysis and plotting purposes. Instead of repeating the step several times, we can just use `lapply()` to do the transformation of all variables concerned on a single line of code.
+例えば、分析やプロットのために、元の `linelist` データに含まれる多くの文字型変数を「因子型」に変換する必要があるとします。この変換ステップを何度も繰り返し実行する代わりに、`lapply()` を使えば、1 行のコードですべての文字型変数の変換を行うことができます
 
 
-<span style="color: orange;">**_CAUTION:_** `lapply()` returns a list, thus its use may require an additional modification as a last step.</span>
+<span style="color: orange;">**<u>注意:</u>** `lapply()` はリストを返すので、使用の際には変換の最終ステップとして追加の修正が必要になるかもしれません。</span>
 
 
 ```{r, include=FALSE}
@@ -308,7 +308,7 @@ linelist_factor1 <- linelist %>%
 ```
 
 
-The same step can be done using `map_if()` function from the **purrr** package
+同じことは **purrr** パッケージの `map_if()` を使って行うことができます。
 
 ```{r}
 
@@ -322,17 +322,17 @@ linelist_factor2 %>%
 ```
 
 
-### Iteratively produce graphs for different levels of a variable {.unnumbered}
+### 異なる変数で繰り返しグラフを作成する {.unnumbered}
 
-We will produce here pie chart to look at the distribution of patient's outcome in China during the H7N9 outbreak for each province. Instead of repeating the code for each of them, we will just apply a function that we will create.
+H7N9 発生時の患者の転帰の分布を、中国各省ごとに見ていくための円グラフを作成します。各省それぞれにコードを繰り返すのではなく、以下に作成する関数を適用するだけです。
 
 ```{r}
 
-#precising options for the use of highchart
+#highchart カラーテーマを使用するためのオプションの設定
 options(highcharter.theme =   highcharter::hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
 
-#create a function called "chart_outcome_province" that takes as argument the dataset and the name of the province for which to plot the distribution of the outcome.
+#"chart_outcome_province" という関数を作成する。この関数はデータセットと、結果の分布をプロットする州の名前を引数として取る。
 
 chart_outcome_province <- function(data_used, prov){
   
@@ -365,9 +365,9 @@ chart_outcome_province(flu_china,"Jiangsu")
 
 
 
-### Iteratively produce tables for different levels of a variable {.unnumbered}
+### 異なる変数で繰り返し表を作成する {.unnumbered}
 
-Here we will create three indicators to summarize in a table and we would like to produce this table for each of the provinces. Our indicators are the delay between onset and hospitalization, the percentage of recovery and the median age of cases.
+3 つの指標を作成して表にまとめ、各州ごとに作成します。指標は、発症から入院までの期間、回復の割合、症例の年齢の中央値です。
 
 ```{r}
 
@@ -403,19 +403,19 @@ indic_3 <-  flu_china %>%
   select(province, median_age_cases)  %>% 
   distinct()
 
-#join the three indicator datasets
+#3 つの指標データセットの結合
 
 table_indic_all <- indic_1 %>% 
   dplyr::left_join(indic_2, by = "province") %>% 
         left_join(indic_3, by = "province")
 
 
-#print the indicators in a flextable
+#指標を flextable で表示する
 
 
 print_indic_prov <-  function(table_used, prov){
   
-  #first transform a bit the dataframe for printing ease
+  #まず、表示しやすいようにデータフレームを少し変換する
   indic_prov <- table_used %>%
     filter(province==prov) %>%
     pivot_longer(names_to = "Indicateurs", cols = 2:4) %>% 
@@ -460,25 +460,25 @@ print_indic_prov(table_indic_all, "Jiangsu")
 ```
 
 
-## Tips and best Practices for well functioning functions
+## 関数をよりよく使うためのヒントとベストプラクティス
 
-Functional programming is meant to ease code and facilitates its reading. It should produce the contrary. The tips below will help you having a clean code and easy to read code. 
-
-
-### Naming and syntax {.unnumbered}
-
-- Avoid using character that could have been easily already taken by other functions already existing in your environment
-
-- It is recommended for the function name to be short and straightforward to understand for another reader
-
-- It is preferred to use verbs as the function name and nouns for the argument names.
+関数型プログラミングは、コードを簡単にし、その読み取りを容易にするためのものです。また、逆も成り立ちます。以下のヒントは、きれいなコードと読みやすいコードの作成に役立つでしょう。
 
 
-### Column names and tidy evaluation {.unnumbered}  
+### 命名と構文 {.unnumbered}
 
-If you want to know how to reference *column names* that are provided to your code as arguments, read this [tidyverse programming guidance](https://dplyr.tidyverse.org/articles/programming.html). Among the topics covered are *tidy evaluation* and use of the *embrace* `{{ }}` "double braces"
+- 環境に存在する他の関数と、容易に重複してしまう可能性のある名前の使用は避けてください
 
-For example, here is a quick skeleton template code from page tutorial mentioned just above:  
+- 関数名は短く、他の方が理解しやすいようにすることをお勧めします
+
+- 関数名には動詞を使い、引数名には名詞を使うのが好ましいです。
+
+
+### カラム名と tidy evaluation {.unnumbered}  
+
+コードに引数として与えられた<u>列名</u>を参照する方法を知りたい場合は、[tidyverse programming guidance](https://dplyr.tidyverse.org/articles/programming.html) を参照ください。トピックの中には、<u>tidy evaluation</u>と<u>包括演算子</u> `{{ }}` (二重括弧)の利用方法が含まれています。
+
+前述した tidyverse チュートリアルページにある、テンプレートコード例です:  
 
 ```{r, eval=F}
 
@@ -493,11 +493,11 @@ mtcars %>%
 ```
 
 
-### Testing and Error handling {.unnumbered}
+### テストとエラー処理 {.unnumbered}
 
-The more complicated a function's task the higher the possibility of errors. Thus it is sometimes necessary to add some verification within the funtion to help quickly understand where the error is from and find a way t fix it.
+関数のタスクが複雑であればあるほど、エラーが発生する可能性は高くなります。そのため、エラーの原因がどこにあるのかを素早く理解し、エラーの修正方法を見つけるために、関数内に何らかの検証工程を加えることが必要な場合があります。
 
-- It can be more than recommended to introduce a check on the missingness of one argument using `missing(argument)`. This simple check can return "TRUE" or "FALSE" value.
+- `missing(引数)` を用いて引数の欠落を確認することが推奨されます。この簡単な確認は "TRUE" もしくは "FALSE" を返します。
 
 ```{r , error=TRUE}
 
@@ -521,7 +521,7 @@ contain_covid19_missing(get_vaccine = "yes")
 ```
 
 
-- Use `stop()` for more detectable errors.
+- より検出しやすいエラーには、`stop()` を使用します。
 
 ```{r, error=TRUE}
 
@@ -541,11 +541,11 @@ contain_covid19_stop(barrier_gest=1, wear_mask="yes", get_vaccine = "no")
 
 ```
 
-- As we see when we run most of the built-in functions, there are messages and warnings that can pop-up in certain conditions. We can integrate those in our written functions by using the functions `message()` and `warning()`.
+- ほとんどの組み込み関数は実行時に、特定の条件でポップアップするメッセージや警告があります。関数 `message()` や `warning()` を使って、これらのメッセージを自作の関数に組み込むことができます。
 
-- We can handle errors also by using `safely()` which takes one function as an argument and executes it in a safe way. In fact the function will execute without stopping if it encounters an error. `safely()` returns as output a **list** with two objects which are the results and the error it "skipped".
+- 引数として関数を受取り、安全な方法で実行する `safely()` を使うことで、エラーを処理することもできます。実際、この関数は、エラーが発生しても停止することなく実行されます。`safely()` は出力として、関数の結果とスキップしたエラーの2つのオブジェクトを持つ**リスト**を返します。
 
-We can verify by first running the `mean()` as  function, then run it with `safely()`.
+下記コードでは、linelise 各行に対し `mean()` を実行し、次に `safely()` を実行することで結果とエラーを検証できます。
 
 
 ```{r, warning=FALSE}
@@ -562,11 +562,11 @@ linelist %>%
 ```
 
 
-As said previously, well commenting our codes is already a good way for having documentation in our work.  
+以前述べたように、コードにコメントをつけることは、作業内容を明示するための良い方法です。  
 
 
 <!-- ======================================================= -->
-## Resources
+## 参考資料
 
 
 [R for Data Science link](https://r4ds.had.co.nz/functions.html)   
