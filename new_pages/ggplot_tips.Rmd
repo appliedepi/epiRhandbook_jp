@@ -1,35 +1,35 @@
 
-# ggplot tips {}
+# ggplotのヒント {}
 
-In this page we will cover tips and tricks to make your ggplots sharp and fancy. See the page on [ggplot basics] for the fundamentals.  
+このページでは、ggplotを使ってより美しい図を作るためのヒント・トリックを紹介します。より基礎的な使い方については、前章 [ggplot の基礎](#ggplot-basics)のページを参照してください。 
 
-There a several extensive [**ggplot2** tutorials](https://ggplot2.tidyverse.org/) linked in the Resources section. You can also download this [data visualization with ggplot cheatsheet](https://rstudio.com/resources/cheatsheets/) from the RStudio website. We strongly recommend that you peruse for inspiration at the [R graph gallery](https://www.r-graph-gallery.com/) and [Data-to-viz](https://www.data-to-viz.com/caveats.html). 
+この章の終わりにあるリソースのページには、ggplot2に関するいくつかの詳細な[チュートリアル](https://ggplot2.tidyverse.org/)を掲載しています。RStudio のウェブサイトからはこちらの [ggplot によるデータ可視化のためのチートシート](https://rstudio.com/resources/cheatsheets/)をダウンロードすることができます。また [R グラフギャラリー](https://www.r-graph-gallery.com/)と [Data-to-viz](https://www.data-to-viz.com/caveats.html) は美しい図を作るインスピレーションを得るためにとてもおすすめのウェブサイトです。
 
 
 
 <!-- ======================================================= -->
-## Preparation {}
+## 準備 {}
 
-### Load packages {.unnumbered}
+### パッケージの読み込み {.unnumbered}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+以下のコードにより必要なパッケージを読み込みます。このハンドブックでは **pacman** パッケージの `p_load()` を使うことで、パッケージのインストールと読み込みを同時に行っています。インストールされたパッケージの読み込みはRの基本パッケージ **base**　に含まれる `library()` でも可能です。詳細は[R の基礎](#r-basics)のページを参照してください。 
 
 ```{r}
 pacman::p_load(
-  tidyverse,      # includes ggplot2 and other
-  rio,            # import/export
-  here,           # file locator
-  stringr,        # working with characters   
-  scales,         # transform numbers
-  ggrepel,        # smartly-placed labels
-  gghighlight,    # highlight one part of plot
-  RColorBrewer    # color scales
+  tidyverse,      # ggplot2およびその他の関数
+  rio,            # 読み込み・書き出し
+  here,           # ファイル位置指定
+  stringr,        # 文字の操作
+  scales,         # 数値の操作
+  ggrepel,        # スマートなラベル作成
+  gghighlight,    # 図の一部のハイライト
+  RColorBrewer    # 色スケール
 )
 ```
 
-### Import data {.unnumbered}  
+### データの読み込み {.unnumbered}  
 
-For this page, we import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
+このページでは、エボラウイルスパンデミックのシミュレーションデータから、症例リストを読み込みます。チュートリアルに沿って操作したい場合は、<a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>こちらのリンク</a>から整頓されたラインリスト（.rdsファイル）をダウンロードしてください。 **rio** パッケージの `import()` を使ってデータを読み込みます（この関数は.xlsx、.csv、.rdsなど多くのファイル形式を処理できます。詳細は[インポートとエクスポート](#import-and-export)のページを参照してください）。
 
 ```{r,  echo=F}
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
@@ -40,10 +40,10 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 linelist <- rio::import("linelist_cleaned.rds")
 ```
 
-The first 50 rows of the linelist are displayed below.
+以下にラインリストの最初の 50 行を表示します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストをテーブルで表示
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
@@ -51,51 +51,50 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 
 <!-- ======================================================= -->
-## Scales for color, fill, axes, etc. {#ggplot_tips_colors}
+## color、fill、座標軸などのスケール {#ggplot_tips_colors}
 
-In **ggplot2**, when aesthetics of plotted data (e.g. size, color, shape, fill, plot axis) are mapped to columns in the data, the exact display can be adjusted with the corresponding "scale" command. In this section we explain some common scale adjustments.  
+**ggplot2** で描画する図のエステティック属性（size、color、shape、fill、座標軸など）をデータフレームの列に対応させるとき、それぞれの "scale" を操作することで、どのように図に反映するかを詳細に調整することができます。
 
 
+### 配色
 
-### Color schemes
+**ggplot2** を使う上で最初に躓きやすいものが配色の調整です。この節では点や線、棒グラフやタイルなど、<u>図のオブジェクト</u>（geoms/shapes）の配色を扱うことに注意してください。テキストやタイトル、背景などの色の調整に関しては [ggplot の基礎](#ggplot-basics)のページの[テーマ](#ggplot_basics_themes)の節を参照してください。
 
-One thing that can initially be difficult to understand with **ggplot2** is control of color schemes. Note that this section discusses the color of *plot objects* (geoms/shapes) such as points, bars, lines, tiles, etc. To adjust color of accessory text, titles, or background color see the [Themes](#ggplot_basics_themes) section of the [ggplot basics] page. 
+<u>図のオブジェクト</u>の "色" を調整するとき、影響されるエステティクスパラメータは `color = `（<u>外側</u>の色）もしくは `fill = `（<u>内側</u>の色）です。`geom_point()` では例外的に `color = `のみを調整することで、点の色（内と外両方）を操作します。
 
-To control "color" of *plot objects* you will be adjusting either the `color = ` aesthetic (the *exterior* color) or the `fill = ` aesthetic (the *interior* color). One exception to this pattern is `geom_point()`, where you really only get to control `color = `, which controls the color of the point (interior and exterior).  
-
-When setting colour or fill you can use colour names recognized by R like `"red"` (see [complete list](http://sape.inf.usi.ch/quick-reference/ggplot2/colour) or enter `?colors`), or a specific hex colour such as `"#ff0505"`.
+色を指定するには、R が認識できる `"red"` のような色の名前（[こちらのリスト](http://sape.inf.usi.ch/quick-reference/ggplot2/colour)を参照するか、`?colors` コマンドで一覧が表示できます）か、`"#ff0505"` のような16進コードを用います。
 
 ```{r, warning=F, message=F}
-# histogram - 
-ggplot(data = linelist, mapping = aes(x = age))+       # set data and axes
-  geom_histogram(              # display histogram
-    binwidth = 7,                # width of bins
-    color = "red",               # bin line color
-    fill = "lightblue")          # bin interior color (fill) 
+# ヒストグラム
+ggplot(data = linelist, mapping = aes(x = age))+       # データと軸を指定
+  geom_histogram(              # ヒストグラムを表示
+    binwidth = 7,                # ビンの幅
+    color = "red",               # ビンの外側の色
+    fill = "lightblue")          # ビンの内側の色
 ```
 
 
 
-As explained the [ggplot basics] section on [mapping data to the plot](#ggplot_basics_mapping), aesthetics such as `fill = ` and `color = ` can be defined either *outside* of a `mapping = aes()` statement or *inside* of one. If *outside* the `aes()`, the assigned value should be static (e.g. `color = "blue"`) and will apply for *all* data plotted by the geom. If *inside*, the aesthetic should be mapped to a column, like `color = hospital`, and the expression will vary by the value for that row in the data. A few examples:  
+前章 [ggplot の基礎](#ggplot-basics)の[データを図にマップする](#ggplot_basics_mapping)のページで示した通り、`fill = ` や `color = ` などのエステティック属性は `mapping = aes()` の<u>外側</u>と<u>内側</u>どちらからでも定義できます。`aes()` の<u>外側</u>で定義する場合、値は定数でなければならず（例 `color = "blue"`）、その geom で描画される<u>全て</u>のデータポイントに適応されます。<u>内側</u>から定義する場合、エステティック属性は `color = hospital` のようにデータフレームの列に対応され、描画のされ方は各行の値に依存します。以下にいくつかの例を示します：  
 
 ```{r, out.width=c('50%', '50%'), fig.show='hold', warning=F, message=F}
-# Static color for points and for line
+# 点と線の色を単一色で指定する
 ggplot(data = linelist, mapping = aes(x = age, y = wt_kg))+     
   geom_point(color = "purple")+
   geom_vline(xintercept = 50, color = "orange")+
   labs(title = "Static color for points and line")
 
-# Color mapped to continuous column
+# 連続数からなる列に色を対応させる
 ggplot(data = linelist, mapping = aes(x = age, y = wt_kg))+     
   geom_point(mapping = aes(color = temp))+         
   labs(title = "Color mapped to continuous column")
 
-# Color mapped to discrete column
+# 離散数からなる列に色を対応させる
 ggplot(data = linelist, mapping = aes(x = age, y = wt_kg))+     
   geom_point(mapping = aes(color = gender))+         
   labs(title = "Color mapped to discrete column")
 
-# bar plot, fill to discrete column, color to static value
+# 棒グラフのfillを離散数からなる列、colorを単一色で指定する
 ggplot(data = linelist, mapping = aes(x = hospital))+     
   geom_bar(mapping = aes(fill = gender), color = "yellow")+         
   labs(title = "Fill mapped to discrete column, static color")
@@ -103,88 +102,88 @@ ggplot(data = linelist, mapping = aes(x = hospital))+
 ```
 
 
-### Scales {#ggplot_tips_scales .unnumbered}  
+### スケール {#ggplot_tips_scales .unnumbered}  
 
-Once you map a column to a plot aesthetic (e.g. `x = `, `y = `, `fill = `, `color = `...), your plot will gain a scale/legend. See above how the scale can be continuous, discrete, date, etc. values depending on the class of the assigned column. If you have multiple aesthetics mapped to columns, your plot will have multiple scales.  
+列をエステティクスに対応させると（例 `x = `、`y = `、`fill = `、`color = `...）、 図にスケールとレジェンドが加わります。上記の例を見ると、スケールが連続数、離散数、日付など、スケールが対応する列のクラスによって変化する様子が分かると思います。列に対応するエステティクスが複数あるときは、スケールもその数だけ存在します。
 
-You can control the scales with the appropriate `scales_()` function. The scale functions of **ggplot()** have 3 parts that are written like this: `scale_AESTHETIC_METHOD()`.  
+スケールは一連の `scales_()` 関数を使うことで操作することができます。これらの関数は `scale_AESTHETIC_METHOD()` のように、3 つの部分からなります：  
 
-1) The first part, `scale_()`, is fixed.  
-2) The second part, the AESTHETIC, should be the aesthetic that you want to adjust the scale for (`_fill_`, `_shape_`, `_color_`, `_size_`, `_alpha_`...) - the options here also include `_x_` and `_y_`.  
-3) The third part, the METHOD, will be either `_discrete()`, `continuous()`, `_date()`, `_gradient()`, or `_manual()` depending on the class of the column and *how* you want to control it. There are others, but these are the most-often used.  
+1) 最初の部分 `scale_()` は共通です。 
+2) 2 つ目の部分 AESTHETIC　はスケールを調整したいエステティック属性（`_fill_`、`_shape_`、`_color_`、`_size_`、`_alpha_`...) が入ります - ここには `_x_` や `_y_` も含まれます。  
+3) 最後に来る METHOD は列のクラスまたは目的に応じて `_discrete()`、`continuous()`、`_date()`、`_gradient()`、`_manual()` などが入ります。その他のオプションもありますが、ここに挙げたものが最もよく使われます。  
 
-Be sure that you use the correct function for the scale! Otherwise your scale command will not appear to change anything. If you have multiple scales, you may use multiple scale functions to adjust them! For example:  
+スケールを操作する際は、適切な関数を使うことに気をつけてください。間違った関数を使うと、狙った結果が得られません。複数のスケールがある場合も、複数の対応する関数を用いてそれらを操作することができます
 
-### Scale arguments {.unnumbered}  
+### スケール引数 {.unnumbered}  
 
-Each kind of scale has its own arguments, though there is some overlap. Query the function like `?scale_color_discrete` in the R console to see the function argument documentation.  
+スケールを操作するための関数はそれぞれ独自の、しかし一部は共通した、引数を持ちます。`?scale_color_discrete` などのコマンドを R コンソールで実行することで、引数の解説を表示できます。
 
-For continuous scales, use `breaks = ` to provide a sequence of values with `seq()` (take `to = `, `from = `, and `by = ` as shown in the example below. Set `expand = c(0,0)` to eliminate padding space around the axes (this can be used on any `_x_` or `_y_` scale.  
+連続数のスケールでは、`breaks = ` と `seq()`（以下の例のように `to = `、`from = `、and `by = `を引数に取ります）を組み合わせて操作します。さらに `expand = c(0,0)` を設定することで軸の両端の余白を削除できます。この引数は `_x_` または `_y_` を含むスケール関数のいずれでも使用できます。  
 
-For discrete scales, you can adjust the order of level appearance with `breaks = `, and how the values display with the `labels = ` argument. Provide a character vector to each of those (see example below). You can also drop `NA` easily by setting `na.translate = FALSE`.  
+離散数のスケールでは、レベルが表示される順序を `breaks = `、値の表示を `labels = `で操作できます。以下の例のように、各引数に文字ベクトルを指定してください。また、`NA` は `na.translate = FALSE` で簡単に除外することができます。
 
-The nuances of date scales are covered more extensively in the [Epidemic curves] page.  
-
-
-### Manual adjustments {.unnumbered}  
-
-One of the most useful tricks is using "manual" scaling functions to explicitly assign colors as you desire. These are functions with the syntax `scale_xxx_manual()` (e.g. `scale_colour_manual()` or `scale_fill_manual()`). Each of the below arguments are demonstrated in the code example below.  
-
-* Assign colors to data values with the `values = ` argument  
-* Specify a color for `NA` with `na.value = `  
-* Change how the values are *written* in the legend with the `labels = ` argument  
-* Change the legend title with `name = `  
+日付スケールについては[流行曲線](#epidemic-curves)のページでより詳しく解説しています。
 
 
-Below, we create a bar plot and show how it appears by default, and then with three scales adjusted - the continuous y-axis scale, the discrete x-axis scale, and manual adjustment of the fill (interior bar color).  
+### マニュアルでの調整 {.unnumbered}  
+
+"マニュアル" スケール関数を用いることの利点の一つとして、望む色を具体的に指定することができます。これらの関数は `scale_xxx_manual()` の形（例：`scale_colour_manual()` や `scale_fill_manual()`）を取ります。例を通して下に挙げた引数の使用法をそれぞれ見ていきましょう。
+
+* `values = `により色を指定します。  
+* `na.value = `により `NA` の色を指定します。  
+* `labels = `により<u>凡例中の表記</u>を指定します。  
+* `name = `により凡例のタイトルを指定します。
+
+
+以下の例では、まず棒グラフを初期設定で作成します。次に 3 つのスケール – 連続数の y 軸、離散値の x 軸、fill（バー内部の色指定）のマニュアル調整 – を変更したグラフを作成します。
 
 
 ```{r, warning=F, message=F}
-# BASELINE - no scale adjustment
+# 初期設定 - スケール調整なし
 ggplot(data = linelist)+
   geom_bar(mapping = aes(x = outcome, fill = gender))+
   labs(title = "Baseline - no scale adjustments")
 
-# SCALES ADJUSTED
+# スケール調整あり
 ggplot(data = linelist)+
   
   geom_bar(mapping = aes(x = outcome, fill = gender), color = "black")+
   
-  theme_minimal()+                   # simplify background
+  theme_minimal()+                   # 背景をシンプルにする
   
-  scale_y_continuous(                # continuous scale for y-axis (counts)
-    expand = c(0,0),                 # no padding
+  scale_y_continuous(                # 連続数のy軸（カウント）
+    expand = c(0,0),                 # パディングなし
     breaks = seq(from = 0,
                  to = 3000,
                  by = 500))+
   
-  scale_x_discrete(                   # discrete scale for x-axis (gender)
-    expand = c(0,0),                  # no padding
-    drop = FALSE,                     # show all factor levels (even if not in data)
-    na.translate = FALSE,             # remove NA outcomes from plot
-    labels = c("Died", "Recovered"))+ # Change display of values
+  scale_x_discrete(                   # 離散値のx軸（性別）
+    expand = c(0,0),                  # パディングなし
+    drop = FALSE,                     # 全てのファクターレベルを表示（データに存在しないものを含む）
+    na.translate = FALSE,             # NAを図から除外
+    labels = c("Died", "Recovered"))+ # 表記の変更
     
   
-  scale_fill_manual(                  # Manually specify fill (bar interior color)
-    values = c("m" = "violetred",     # reference values in data to assign colors
+  scale_fill_manual(                  # fillの色をマニュアル指定する（バー内部の色）
+    values = c("m" = "violetred",     # 色の指定
                "f" = "aquamarine"),
-    labels = c("m" = "Male",          # re-label the legend (use "=" assignment to avoid mistakes)
+    labels = c("m" = "Male",          # レジェンドの表記を変更（"="を使い間違いをなくす）
               "f" = "Female",
               "Missing"),
-    name = "Gender",                  # title of legend
-    na.value = "grey"                 # assign a color for missing values
+    name = "Gender",                  # レジェンドタイトル
+    na.value = "grey"                 # 欠測地の色を指定
   )+
-  labs(title = "Adjustment of scales") # Adjust the title of the fill legend
+  labs(title = "Adjustment of scales") # fillレジェンドのタイトルを設定
 ```
 
-### Continuous axes scales {.unnumbered}  
+### 連続数の座標軸スケール {.unnumbered}  
 
-When data are mapping to the plot axes, these too can be adjusted with scales commands. A common example is adjusting the display of an axis (e.g. y-axis) that is mapped to a column with continuous data. 
+データを座標軸に反映させる場合でも、スケール関数を用いて表示方法を操作することができます。よくある例として、y 軸などの座標軸を連続数からなる列に対応させる場合を紹介します。
 
-We may want to adjust the breaks or display of the values in the ggplot using `scale_y_continuous()`. As noted above, use the argument `breaks = ` to provide a sequence of values that will serve as "breaks" along the scale. These are the values at which numbers will display. To this argument, you can provide a `c()` vector containing the desired break values, or you can provide a regular sequence of numbers using the **base** R function `seq()`. This `seq()` function accepts `to = `, `from = `, and `by = `.
+`scale_y_continuous()` を用いて、座標軸のブレークや値の表示方法を変更することを考えます。前述のとおり、breaks = により入力する一連の数字によって座標軸上のブレークポイントが指定できます。ここで入力された数字が座標軸上に表示される数字に対応します。`c()` ベクターにより表示させたい数字を直接入力するか、**base** 関数 `seq()` を用いて表示される数字の開始（`from = `）と終わり（`to = `）、インターバル（`by = `）をそれぞれ入力することができます。
 
 ```{r, warning=F, message=F, out.width=c('50%', '50%'), fig.show='hold'}
-# BASELINE - no scale adjustment
+# 基本構文 – スケール操作なし
 ggplot(data = linelist)+
   geom_bar(mapping = aes(x = outcome, fill = gender))+
   labs(title = "Baseline - no scale adjustments")
@@ -204,23 +203,23 @@ ggplot(data = linelist)+
 
 
 
-#### Display percents {.unnumbered}  
+#### 割合をパーセントで表示する {.unnumbered}  
 
-If your original data values are proportions, you can easily display them as percents with "%" by providing `labels = scales::percent` in your scales command, as shown below.  
+座標軸に対応させるデータの値が割合のとき、以下のようにスケール関数中に `labels = scales::percent` を加えることで、簡単にパーセント表示に変更することができます。
 
-While an alternative would be to convert the values to character and add a "%" character to the end, this approach will cause complications because your data will no longer be continuous numeric values. 
+値の種類を文字に変更し "%" を付加することでもパーセント表示が得られますが、その場合データが連続数ではなくなるため好ましくありません。 
 
 
 ```{r, warning=F, message=F, out.width=c('50%', '50%'), fig.show='hold'}
-# Original y-axis proportions
+# 元々の割合表示
 #############################
-linelist %>%                                   # start with linelist
-  group_by(hospital) %>%                       # group data by hospital
-  summarise(                                   # create summary columns
-    n = n(),                                     # total number of rows in group
-    deaths = sum(outcome == "Death", na.rm=T),   # number of deaths in group
-    prop_death = deaths/n) %>%                   # proportion deaths in group
-  ggplot(                                      # begin plotting
+linelist %>%                                   # ラインリストから始める
+  group_by(hospital) %>%                       # 病院毎にグループ分け
+  summarise(                                   # 要約列の作成
+    n = n(),                                     # グループ毎の行数
+    deaths = sum(outcome == "Death", na.rm=T),   # グループ毎の死亡数
+    prop_death = deaths/n) %>%                   # グループ毎の死亡割合
+  ggplot(                                      # 図の作成
     mapping = aes(
       x = hospital,
       y = prop_death))+ 
@@ -230,7 +229,7 @@ linelist %>%                                   # start with linelist
 
 
 
-# Display y-axis proportions as percents
+# パーセント表示
 ########################################
 linelist %>%         
   group_by(hospital) %>% 
@@ -246,14 +245,14 @@ linelist %>%
   theme_minimal()+
   labs(title = "Display y-axis as percents (%)")+
   scale_y_continuous(
-    labels = scales::percent                    # display proportions as percents
+    labels = scales::percent                    # 割合をパーセント表示
   )
 
 ```
 
-#### Log scale {.unnumbered}  
+#### Log スケール {.unnumbered}  
 
-To transform a continuous axis to log scale, add `trans = "log2"` to the scale command. For purposes of example, we create a data frame of regions with their respective `preparedness_index` and cumulative cases values.  
+Logスケールを用いるには、`trans = "log2"` をスケール関数に加えます。例として、各地域とその `preparedness_index` および累積症例数を列にもつデータフレームを考えます。
 
 ```{r}
 plot_data <- data.frame(
@@ -265,35 +264,35 @@ plot_data <- data.frame(
 plot_data
 ```
 
-The cumulative cases for region "I" are dramatically greater than all the other regions. In circumstances like this, you may elect to display the y-axis using a log scale so the reader can see differences between the regions with fewer cumulative cases.  
+地域 "I" の症例数は他と比べて遥かに高くなっています。このような場合、y 軸を log スケールにすることで、症例数が少ない地域間の差異を見やすくすることができます。
 
 ```{r, warning=F, message=F, out.width=c('50%', '50%'), fig.show='hold'}
-# Original y-axis
+# もともとのy軸スケール
 preparedness_plot <- ggplot(data = plot_data,  
        mapping = aes(
          x = preparedness_index,
          y = cases_cumulative))+
-  geom_point(size = 2)+            # points for each region 
+  geom_point(size = 2)+            # 地域毎のデータを表す散布図
   geom_text(
     mapping = aes(label = region),
-    vjust = 1.5)+                  # add text labels
+    vjust = 1.5)+                  # テキストラベルの追加
   theme_minimal()
 
-preparedness_plot                  # print original plot
+preparedness_plot                  # 図を表示
 
 
-# print with y-axis transformed
-preparedness_plot+                   # begin with plot saved above
-  scale_y_continuous(trans = "log2") # add transformation for y-axis
+# y軸をlogスケールで表示
+preparedness_plot+                   # 上記の図を修正する
+  scale_y_continuous(trans = "log2") # y軸のスケールを変更
 ```
 
 
 
-### Gradient scales {.unnumbered}  
+### 勾配スケール {.unnumbered}  
 
-Fill gradient scales can involve additional nuance. The defaults are usually quite pleasing, but you may want to adjust the values, cutoffs, etc.  
+配色に勾配スケールを用いることで、表現の幅を広げることができます。初期設定でも美しい図が得られますが、値や切り捨て値などの詳細を調整したい場合もあります。
 
-To demonstrate how to adjust a continuous color scale, we'll use a data set from the [Contact tracing] page that contains the ages of cases and of their source cases.  
+ここでは、[コンタクトトレーシング](#contact-tracing-1)のページで扱った各症例とその感染源の年齢を値に持つデータを用いて、連続数に対応するカラースケールの調整方法を紹介します。 
 
 
 ```{r, warning=F, message=F}
@@ -301,7 +300,7 @@ case_source_relationships <- rio::import(here::here("data", "godata", "relations
   select(source_age, target_age) 
 ```
 
-Below, we produce a "raster" heat tile density plot. We won't elaborate how (see the link in paragraph above) but we will focus on how we can adjust the color scale. Read more about the `stat_density2d()` **ggplot2** function [here](https://ggplot2.tidyverse.org/reference/geom_density_2d.html). Note how the `fill` scale is *continuous*.  
+以下の例では、ラスターヒートマップを描画します。ヒートマップについての詳細はここでは扱わず（前段落のリンクを参照してください）、カラースケールの変更方法に焦点を当てます。**ggplot2** の `stat_density2d()` 関数については[こちら](https://ggplot2.tidyverse.org/reference/geom_density_2d.html)を参照してください。`fill` スケールが連続数であることに注意してください。
 
 ```{r, warn=F, message=F}
 trans_matrix <- ggplot(
@@ -314,45 +313,45 @@ trans_matrix <- ggplot(
   theme_minimal()
 ```
 
-Now we show some variations on the fill scale: 
+ここでいくつかのバリエーションを紹介します：
 
 ```{r, out.width=c('50%', '50%'), fig.show='hold', warning=F, message=F}
 trans_matrix
 trans_matrix + scale_fill_viridis_c(option = "plasma")
 ```
 
-Now we show some examples of actually adjusting the break points of the scale:  
+ブレークポイントを変更する例も見ていきましょう：
 
-* `scale_fill_gradient()` accepts two colors (high/low)  
-* `scale_fill_gradientn()` accepts a vector of any length of colors to `values = ` (intermediate values will be interpolated)  
-* Use [`scales::rescale()`](https://www.rdocumentation.org/packages/scales/versions/0.4.1/topics/rescale) to adjust how colors are positioned along the gradient; it rescales your vector of positions to be between 0 and 1.  
+* `scale_fill_gradient()` は2つの色（high/low）を入力に取ります
+* `scale_fill_gradient()` は `values = `で長さの制限なく色のベクトルを入力に取ります。間の値は自動で補完されます。
+* [`scales::rescale()`](https://www.rdocumentation.org/packages/scales/versions/0.4.1/topics/rescale) によって各色が勾配のどの位置に置かれるかを指定できます。この関数は数字ベクトルをとり、0 から 1 の間で色の位置をリスケールします。 
 
 
 ```{r, out.width=c('50%', '50%'), fig.show='hold', warning=F, message=F}
 trans_matrix + 
-  scale_fill_gradient(     # 2-sided gradient scale
-    low = "aquamarine",    # low value
-    high = "purple",       # high value
-    na.value = "grey",     # value for NA
-    name = "Density")+     # Legend title
+  scale_fill_gradient(     # 2色スケール
+    low = "aquamarine",    # 低い値の色
+    high = "purple",       # 高い値の色
+    na.value = "grey",     # NAの色
+    name = "Density")+     # レジェンドタイトル
   labs(title = "Manually specify high/low colors")
 
-# 3+ colors to scale
+# 3色以上の指定
 trans_matrix + 
-  scale_fill_gradientn(    # 3-color scale (low/mid/high)
-    colors = c("blue", "yellow","red") # provide colors in vector
+  scale_fill_gradientn(    # 3色（low/mid/high）
+    colors = c("blue", "yellow","red") # ベクターで色を指定
   )+
   labs(title = "3-color scale")
 
-# Use of rescale() to adjust placement of colors along scale
+# rescale()で色の配置を調整
 trans_matrix + 
-  scale_fill_gradientn(    # provide any number of colors
+  scale_fill_gradientn(    # 任意の数の色を指定
     colors = c("blue", "yellow","red", "black"),
-    values = scales::rescale(c(0, 0.05, 0.07, 0.10, 0.15, 0.20, 0.3, 0.5)) # positions for colors are rescaled between 0 and 1
+    values = scales::rescale(c(0, 0.05, 0.07, 0.10, 0.15, 0.20, 0.3, 0.5)) # 色の位置を0から1の間で指定
     )+
   labs(title = "Colors not evenly positioned")
 
-# use of limits to cut-off values that get fill color
+# limitsにより配色される下限・上限値を設定
 trans_matrix + 
   scale_fill_gradientn(    
     colors = c("blue", "yellow","red"),
@@ -362,29 +361,29 @@ trans_matrix +
 ```
 
 
-### Palettes {.unnumbered}  
+### カラーパレット {.unnumbered}  
 
-#### Colorbrewer and Viridis {.unnumbered}
-More generally, if you want predefined palettes, you can use the `scale_xxx_brewer` or `scale_xxx_viridis_y` functions.  
+#### Colorbrewer と Viridis {.unnumbered}
+一般的に、もし既成のカラーパレットを使いたい場合は `scale_xxx_brewer` もしくは `scale_xxx_viridis_y` 関数を利用することができます。　
 
-The 'brewer' functions can draw from [colorbrewer.org](colorbrewer.org) palettes.  
+'brewer' 関数は [colorbrewer.org](colorbrewer.org) にあるパレットを使用します。  
 
-The 'viridis' functions draw from viridis (colourblind friendly!) palettes, which "provide colour maps that are perceptually uniform in both colour and black-and-white. They are also designed to be perceived by viewers with common forms of colour blindness." (read more [here](https://ggplot2.tidyverse.org/reference/scale_viridis.html) and [here](https://bids.github.io/colormap/)). Define if the palette is discrete, continuous, or binned by specifying this at the end of the function (e.g. discrete is `scale_xxx_viridis_d`).
+'Viridis' 関数は viridis（色覚障害の方でも見やすい！）パレットを使用します。Viridis は "色付きでも白黒でも同様に認識でき、かつ色覚障害があるひとにも識別しやすい色調になっています。"（詳細は[こちら](https://ggplot2.tidyverse.org/reference/scale_viridis.html)と[こちら](https://bids.github.io/colormap/)のリンクを参照してください。）カラーパレットが連続数、離散数、もしくはビニングスケールかによって、関数の末尾を変更します（例：離散数では `scale_xxx_viridis_d`）。
 
-It is advised that you test your plot in this [color blindness simulator](https://www.color-blindness.com/coblis-color-blindness-simulator/). If you have a red/green color scheme, try a "hot-cold" (red-blue) scheme instead as described [here](https://www.visualisingdata.com/2019/08/five-ways-to-design-for-red-green-colour-blindness/#:~:text=The%20pink%2Dred%20through%20to,green%20hues%20used%20by%20default.)  
+作成した図は[色覚障害シミュレータ](https://www.color-blindness.com/coblis-color-blindness-simulator/)で色覚障害があるひとへの見え方をテストするようにしましょう。赤と緑の配色は色覚障害がある場合は識別しづらいため、[こちら](https://www.visualisingdata.com/2019/08/five-ways-to-design-for-red-green-colour-blindness/#:~:text=The%20pink%2Dred%20through%20to,green%20hues%20used%20by%20default.)で紹介されているように "熱冷"（赤・青）配色を代わりに用いましょう。 
 
-Here is an example from the [ggplot basics] page, using various color schemes. 
+ここでは [ggplot の基礎](#ggplot-basics)のページで扱った例を用いて、さまざまな配色を見ていきましょう。
 
 ```{r, out.width=c('50%'), fig.show='hold', warning=F, message=F} 
-symp_plot <- linelist %>%                                         # begin with linelist
-  select(c(case_id, fever, chills, cough, aches, vomit)) %>%     # select columns
-  pivot_longer(                                                  # pivot longer
+symp_plot <- linelist %>%                                         # ラインリストから始める
+  select(c(case_id, fever, chills, cough, aches, vomit)) %>%     # 列を選択
+  pivot_longer(                                                  # データを伸長
     cols = -case_id,                                  
     names_to = "symptom_name",
     values_to = "symptom_is_present") %>%
-  mutate(                                                        # replace missing values
+  mutate(                                                        # 欠測値を入れ替える
     symptom_is_present = replace_na(symptom_is_present, "unknown")) %>% 
-  ggplot(                                                        # begin ggplot!
+  ggplot(                                                        # ggplotの入力開始！
     mapping = aes(x = symptom_name, fill = symptom_is_present))+
   geom_bar(position = "fill", col = "black") +                    
   theme_classic() +
@@ -394,22 +393,21 @@ symp_plot <- linelist %>%                                         # begin with l
     y = "Symptom status (proportion)"
   )
 
-symp_plot  # print with default colors
+symp_plot  # 初期設定による配色で表示
 
 #################################
 # print with manually-specified colors
 symp_plot +
   scale_fill_manual(
-    values = c("yes" = "black",         # explicitly define colours
+    values = c("yes" = "black",         # 個別に色を指定する
                "no" = "white",
                "unknown" = "grey"),
-    breaks = c("yes", "no", "unknown"), # order the factors correctly
-    name = ""                           # set legend to no title
-
+    breaks = c("yes", "no", "unknown"), # ファクターの並び替え
+    name = ""                           # タイトルなし
   ) 
 
 #################################
-# print with viridis discrete colors
+# viridisによる離散スケールの配色
 symp_plot +
   scale_fill_viridis_d(
     breaks = c("yes", "no", "unknown"),
@@ -422,17 +420,17 @@ symp_plot +
 
 
 <!-- ======================================================= -->
-## Change order of discrete variables {}  
+## 離散値の順序変更 {}  
 
-Changing the order that discrete variables appear in is often difficult to understand for people who are new to `ggplot2` graphs. It's easy to understand how to do this however once you understand how `ggplot2` handles discrete variables under the hood. Generally speaking, if a discrete varaible is used, it is automatically converted to a `factor` type - which orders factors by alphabetical order by default. To handle this, you simply have to reorder the factor levels to reflect the order you would like them to appear in the chart. For more detailed information on how to reorder `factor` objects, see the factor section of the guide. 
+`ggplot2` に慣れないうちは、図に現れる離散値の順序変更はしばしば難しく感じられるでしょう。しかし、一度仕組みを理解すれば簡単です。一般的に離散値は `factor` として扱われ、アルファベット順に並べられます。これを並べ替えるには、ファクター のレベルを表示したい順序に変更するだけです。`factor` の並べ替えについてのさらなる詳細は [ファクター](#factors)のページを参照してください。
 
-We can look at a common example using age groups - by default the 5-9 age group will be placed in the middle of the age groups (given alphanumeric order), but we can move it behind the 0-4 age group of the chart by releveling the factors.
+例として年齢グループの並べ替えを見てみましょう。初期設定ではアルファベット順に従い、5-9 歳のグループは図の中央に配置されています。ファクターのレベルを変更することで、これを 0-4 歳の後に移動することができます。
 
 
 ```{r, , warning=F, message=F}
 ggplot(
-  data = linelist %>% drop_na(age_cat5),                         # remove rows where age_cat5 is missing
-  mapping = aes(x = fct_relevel(age_cat5, "5-9", after = 1))) +  # relevel factor
+  data = linelist %>% drop_na(age_cat5),                         # age_cat5を欠測した行の削除
+  mapping = aes(x = fct_relevel(age_cat5, "5-9", after = 1))) +  # ファクターレベルの変更
 
   geom_bar() +
   
@@ -446,16 +444,16 @@ ggplot(
 
 #### **ggthemr** {.unnnumbered}  
 
-Also consider using the **ggthemr** package. You can download this package from Github using the instructions [here](https://github.com/Mikata-Project/ggthemr). It offers palettes that are very aesthetically pleasing, but be aware that these typically have a maximum number of values that can be limiting if you want more than 7 or 8 colors.  
+**ggthemr** パッケージも有用なパッケージの１つです。[こちらの Github](https://github.com/Mikata-Project/ggthemr) からチュートリアルに従ってダウンロードできます。このパッケージはとても美しいカラーパレットを使用できますが、扱える色の数に上限があるため、7-8 色以上の図を作成する際には注意が必要です。
 
 
 
 
 
 
-## Contour lines  
+## 等高線プロット
 
-Contour plots are helpful when you have many points that might cover each other ("overplotting"). The case-source data used above are again plotted, but more simply using `stat_density2d()` and `stat_density2d_filled()` to produce discrete contour levels - like a topographical map. Read more about the statistics [here](https://ggplot2.tidyverse.org/reference/geom_density_2d.html).  
+等高線プロットは、散布図だとデータポイントが多く重なり合ってしまうような場合（"オーバープロッティング" といいます）に有用です。先程の症例-感染源の年齢データを、ここでは `stat_density2d()` と `stat_density2d_filled()` を用いて地形図のように等高線プロットで描画します。統計学的な詳細については[こちら](https://ggplot2.tidyverse.org/reference/geom_density_2d.html)を参照してください。
 
 
 ```{r, out.width=c('50%'), fig.show='hold', warning=F, message=F}
@@ -477,47 +475,47 @@ case_source_relationships %>%
 
 
 
-## Marginal distributions  
+## 周辺分布
 
-To show the distributions on the edges of a `geom_point()` scatterplot, you can use the **ggExtra** package and its function `ggMarginal()`. Save your original ggplot as an object, then pass it to `ggMarginal()` as shown below. Here are the key arguments:  
+`geom_point()` による散布図の外側にデータ分布を示すには、**ggExtra** パッケージの `ggMarginal()` が有用です。オブジェクトとして保存したプロットデータを、以下のように `ggMarginal()` に入力します。いくつかの重要な引数を示します：
 
-* You must specify the `type = ` as either "histogram", "density" "boxplot", "violin", or "densigram".  
-* By default, marginal plots will appear for both axes. You can set `margins = ` to "x" or "y" if you only want one.  
-* Other optional arguments include `fill = ` (bar color), `color = ` (line color), `size = ` (plot size relative to margin size, so larger number makes the marginal plot smaller).  
-* You can provide other axis-specific arguments to `xparams = ` and `yparams = `. For example, to have different histogram bin sizes, as shown below.  
+* `type = ` を用いてプロットのタイプを "histogram"、"density"、"boxplot"、"violin"、"densigram" のいずれかに指定する必要があります。
+* 初期設定では、x 軸と y 軸両方に分布図が表示されます。どちらか一方のみにしたい場合は、`margins = `を "x" または "y" に設定します。
+* 他に設定できる引数として `fill = `（バーの内側の色）`color = `（線の色）、`size = `（メインの図とマージン部分の比率。数字が大きいほどマージン部分は小さくなります）があります。
+* `xparams = `と `yparams = `を用いて、座標軸を指定してその他のパラメータを設定できます。以下の例では、軸ごとに異なるビンの幅を指定しています。
 
-You can have the marginal plots reflect groups (columns that have been assigned to `color = ` in your `ggplot()` mapped aesthetics). If this is the case, set the `ggMarginal()` argument `groupColour = ` or `groupFill = ` to `TRUE`, as shown below.  
+周辺分布にデータ内のグループ（`ggplot()` 内のエステティクスで `color = `に指定されている列）を反映させることもできます。その場合は以下のように、`ggMarginal()` 内の `groupColour = `もしくは `groupFill = `を `TRUE` に設定します。
 
-Read more at [this vignette](https://cran.r-project.org/web/packages/ggExtra/vignettes/ggExtra.html), in the [R Graph Gallery](https://www.r-graph-gallery.com/277-marginal-histogram-for-ggplot2.html) or the function R documentation `?ggMarginal`.  
+より詳しい解説は[こちらのビネット](https://cran.r-project.org/web/packages/ggExtra/vignettes/ggExtra.html)、[R グラフギャラリー](https://www.r-graph-gallery.com/277-marginal-histogram-for-ggplot2.html)もしくは `?ggMarginal` を R コンソールに入力して表示できるページを参照してください。
 
 ```{r, message=FALSE, warning=FALSE}
-# Install/load ggExtra
+# ggExtraのインストールと読み込み
 pacman::p_load(ggExtra)
 
-# Basic scatter plot of weight and age
+# 体重と年齢を基本の散布図で図示する
 scatter_plot <- ggplot(data = linelist)+
   geom_point(mapping = aes(y = wt_kg, x = age)) +
   labs(title = "Scatter plot of weight and age")
 ```
 
-To add marginal histograms use `type = "histogram"`. You can optionally set `groupFill = TRUE` to get stacked histograms.     
+ヒストグラムを周辺図として追加する場合は `type = "histogram"` を指定します。さらに `groupFill = TRUE` と設定することで多重ヒストグラムを描画できます。
 
 ```{r, message=FALSE, warning=FALSE}
-# with histograms
+# ヒストグラム
 ggMarginal(
-  scatter_plot,                     # add marginal histograms
-  type = "histogram",               # specify histograms
-  fill = "lightblue",               # bar fill
-  xparams = list(binwidth = 10),    # other parameters for x-axis marginal
-  yparams = list(binwidth = 5))     # other parameters for y-axis marginal
+  scatter_plot,                     # 周辺分布図を追加
+  type = "histogram",               # ヒストグラムを指定
+  fill = "lightblue",               # バー内の色を指定
+  xparams = list(binwidth = 10),    # x軸側の分布図のパラメータ
+  yparams = list(binwidth = 5))     # y軸側の分布図のパラメータ
 ```
 
-Marginal density plot with grouped/colored values:  
+グループ毎に色分けされた周辺分布図：
 
 ```{r, message=FALSE, warning=FALSE}
 
-# Scatter plot, colored by outcome
-# Outcome column is assigned as color in ggplot. groupFill in ggMarginal set to TRUE
+# 性別毎に色分けされた散布図
+# ggplotのcolorを性別の列に対応させる。ggMarginalのgroupFillをTRUEに設定する。
 scatter_plot_color <- ggplot(data = linelist %>% drop_na(gender))+
   geom_point(mapping = aes(y = wt_kg, x = age, color = gender)) +
   labs(title = "Scatter plot of weight and age")+
@@ -526,91 +524,92 @@ scatter_plot_color <- ggplot(data = linelist %>% drop_na(gender))+
 ggMarginal(scatter_plot_color, type = "density", groupFill = TRUE)
 ```
 
-Set the `size = ` arguemnt to adjust the relative size of the marginal plot. Smaller number makes a larger marginal plot. You also set `color = `. Below are is a marginal boxplot, with demonstration of the `margins = ` argument so it appears on only one axis:  
+`size = `によって周辺分布図のサイズを指定します。数字が小さいほど大きな周辺分布図が得られます。また `color = `も設定できます。以下の例は周辺分布ボックスプロットで、`margins = `により片方の軸にのみ表示させています：
 
 ```{r, message=FALSE, warning=FALSE}
-# with boxplot 
+# ボックスプロット
 ggMarginal(
   scatter_plot,
-  margins = "x",      # only show x-axis marginal plot
+  margins = "x",      # x軸側にのみ周辺分布図を表示
   type = "boxplot")   
 ```
 
 
 
 <!-- ======================================================= -->
-## Smart Labeling {}  
+## スマートラベリング {}  
 
-In **ggplot2**, it is also possible to add text to plots. However, this comes with the notable limitation where text labels often clash with data points in a plot, making them look messy or hard to read. There is no ideal way to deal with this in the base package, but there is a **ggplot2** add-on, known as **ggrepel** that makes dealing with this very simple! 
 
-The **ggrepel** package provides two new functions, `geom_label_repel()` and `geom_text_repel()`, which replace `geom_label()` and `geom_text()`. Simply use these functions instead of the base functions to produce neat labels. Within the function, map the aesthetics `aes()` as always, but include the argument `label = ` to which you provide a column name containing the values you want to display (e.g. patient id, or name, etc.). You can make more complex labels by combining columns and newlines (`\n`) within `str_glue()` as shown below.  
+**ggplot2** では図中にテキストを表示することもできます。しかし、テキストと図中のデータポイントが重なり読みづらくなってしまうということがしばしば起こります。R の base 関数ではこの問題を解決することは難しいですが、**ggrepel** という追加パッケージを使うことでうまく処理することができます！
 
-A few tips:  
+**ggrepel** パッケージは `geom_label()` と `geom_text()` それぞれの代わりとなる新しい関数`geom_label_repel()` と `geom_text_repel()` を提供してくれます。これらの関数を基本関数の代わりに使うだけで、整ったラベルを作ることができます。これらの関数内では `aes()` を通常通り設定しますが、その中で `label = `によりラベルに使いたい列（例：患者 ID や名前など）を指定します。また `str_glue()` を使えば、以下の例のように複数の列を改行（`\n`）で繋いでより複雑なラベルを作ることも可能です。
 
-* Use `min.segment.length = 0` to always draw line segments, or `min.segment.length = Inf` to never draw them  
-* Use `size = ` outside of `aes()` to set text size  
-* Use `force = ` to change the degree of repulsion between labels and their respective points (default is 1)  
-* Include `fill = ` within `aes()` to have label colored by value  
-  * A letter "a" may appear in the legend - add `guides(fill = guide_legend(override.aes = aes(color = NA)))+` to remove it  
+いくつかのヒントを示します：
 
-See this is very in-depth [tutorial](https://ggrepel.slowkow.com/articles/examples.html) for more.  
+* `min.segment.length = 0` と設定すると常にデータポイントとラベルを繋ぐ線が描画され、逆に `min.segment.length = Inf` と設定すれば常に線は描画されません。
+* `size = ` を `aes()` の外側で設定することで文字サイズを指定できます。
+* `force = `によりラベルとデータポイント間をどの程度離すかを設定できます（初期設定は 1 ）。
+* `fill = `を `aes()` 内で設定することでラベルの色を指定できます。
+  * その場合、レジェンドには文字 "a" が表示されますが、これは `guides(fill = guide_legend(override.aes = aes(color = NA)))` により除くことができます。
+
+より詳細なチュートリアルは[こちら](https://ggrepel.slowkow.com/articles/examples.html)を参照してください。
 
 ```{r, , warning=F, message=F}
 pacman::p_load(ggrepel)
 
-linelist %>%                                               # start with linelist
-  group_by(hospital) %>%                                   # group by hospital
-  summarise(                                               # create new dataset with summary values per hospital
-    n_cases = n(),                                           # number of cases per hospital
-    delay_mean = round(mean(days_onset_hosp, na.rm=T),1),    # mean delay per hospital
+linelist %>%                                               # ラインリスト
+  group_by(hospital) %>%                                   # 病院でグループ分け
+  summarise(                                               # 病院毎にまとめた新しいデータフレームを作る
+    n_cases = n(),                                           # 病院毎の症例数
+    delay_mean = round(mean(days_onset_hosp, na.rm=T),1),    # 病院毎の発症までの平均日数
   ) %>% 
-  ggplot(mapping = aes(x = n_cases, y = delay_mean))+      # send data frame to ggplot
-  geom_point(size = 2)+                                    # add points
-  geom_label_repel(                                        # add point labels
+  ggplot(mapping = aes(x = n_cases, y = delay_mean))+      # ggplotにデータを入力
+  geom_point(size = 2)+                                    # 散布図
+  geom_label_repel(                                        # ラベルの追加
     mapping = aes(
       label = stringr::str_glue(
-        "{hospital}\n{n_cases} cases, {delay_mean} days")  # how label displays
+        "{hospital}\n{n_cases} cases, {delay_mean} days")  # ラベルの表示を指定
       ), 
-    size = 3,                                              # text size in labels
-    min.segment.length = 0)+                               # show all line segments                
-  labs(                                                    # add axes labels
+    size = 3,                                              # ラベルの文字サイズ
+    min.segment.length = 0)+                               # 全てのデータポイントとラベル間に線を表示              
+  labs(                                                    # 図と座標軸のタイトル
     title = "Mean delay to admission, by hospital",
     x = "Number of cases",
     y = "Mean delay (days)")
 ```
 
-You can label only a subset of the data points - by using standard `ggplot()` syntax to provide different `data = ` for each `geom` layer of the plot. Below, All cases are plotted, but only a few are labeled.    
+一部のデータポイントのみをラベルすることもできます - 通常の `ggplot()` 構文内の `data = `により、それぞれの `geom` レイヤーに異なるデータセットを指定します。以下の例では全てのデータポイントを描画しつつ、一部のデータポイントのみをラベルします。
 
 ```{r, warning=F, message=FALSE}
 
 ggplot()+
-  # All points in grey
+  # 全ての点を灰色にする
   geom_point(
-    data = linelist,                                   # all data provided to this layer
+    data = linelist,                                   # 全てのデータポイントを描画
     mapping = aes(x = ht_cm, y = wt_kg),
     color = "grey",
-    alpha = 0.5)+                                              # grey and semi-transparent
+    alpha = 0.5)+                                              # 灰色・半透明の点
   
-  # Few points in black
+  # 一部の点を黒くする
   geom_point(
-    data = linelist %>% filter(days_onset_hosp > 15),  # filtered data provided to this layer
+    data = linelist %>% filter(days_onset_hosp > 15),  # フィルターしたデータを指定
     mapping = aes(x = ht_cm, y = wt_kg),
-    alpha = 1)+                                                # default black and not transparent
+    alpha = 1)+                                                # 初期設定通り黒・透明化なしの点
   
-  # point labels for few points
+  # 一部の点にラベルを付加する
   geom_label_repel(
-    data = linelist %>% filter(days_onset_hosp > 15),  # filter the data for the labels
+    data = linelist %>% filter(days_onset_hosp > 15),  # フィルターしたデータのみをラベルする
     mapping = aes(
       x = ht_cm,
       y = wt_kg,
-      fill = outcome,                                          # label color by outcome
-      label = stringr::str_glue("Delay: {days_onset_hosp}d")), # label created with str_glue()
-    min.segment.length = 0) +                                  # show line segments for all
+      fill = outcome,                                          # 臨床結果ごとに色分け
+      label = stringr::str_glue("Delay: {days_onset_hosp}d")), # str_glue()によりラベルを作成
+    min.segment.length = 0) +                                  # 全てのデータポイントとラベル間に線を表示
   
-  # remove letter "a" from inside legend boxes
+  # レジェンド内の文字"a"を削除
   guides(fill = guide_legend(override.aes = aes(color = NA)))+
   
-  # axis labels
+  # 座標軸のラベル
   labs(
     title = "Cases with long delay to admission",
     y = "weight (kg)",
@@ -622,25 +621,25 @@ ggplot()+
 
 
 <!-- ======================================================= -->
-## Time axes {}
+## 時間スケール {}
 
-Working with time axes in ggplot can seem daunting, but is made very easy with a few key functions. Remember that when working with time or date that you should ensure that the correct variables are formatted as date or datetime class - see the [Working with dates] page for more information on this, or [Epidemic curves] page (ggplot section) for examples.
+ggplot で時間スケールを使用すると聞くと難しく感じるかもしれませんが、いくつかのキーになる関数を用いることでとても簡単に行うことができます。時間や日付を扱う際は、変数が正しくフォーマットされていることを確認してください。詳細は[日付の扱い](#working-with-dates-1)のページまたは前章 [ggplotの基礎](#ggplot-basics)内[流行曲線](#epidemic-curves)のページを参照してください。
 
-The single most useful set of functions for working with dates in `ggplot2` are the scale functions (`scale_x_date()`, `scale_x_datetime()`, and their cognate y-axis functions). These functions let you define how often you have axis labels, and how to format axis labels. To find out how to format dates, see the _working with dates_ section again! You can use the `date_breaks` and `date_labels` arguments to specify how dates should look:
+`ggplot2` で日付を扱う際に最も有用な関数はスケール関数（`scale_x_date()`、`scale_x_datetime()`、そしてそれらに対応する y 軸用の関数）です。これらの関数を用いることで、軸ラベルの個数やフォーマットを変更することができます。日付のフォーマットについては、_working with dates_ をまた参照してください！`date_breaks` や `date_labels` といった引数により日付の表示方法を変更することができます：
 
-  1. `date_breaks` allows you to specify how often axis breaks occur - you can pass a string here (e.g. `"3 months"`, or "`2 days"`)
+  1. `date_breaks` により軸スケールの区切り間隔を変更できます。入力は文字列を用います（例：`"3 months"` や `"2 days"` など）。
   
-  2. `date_labels` allows you to define the format dates are shown in. You can pass a date format string to these arguments (e.g. `"%b-%d-%Y"`):
+  2. `date_labels` により日付の表示方法を変更できます。ここでも文字列でフォーマットを指定します（例："%b-%d-%Y"）。
 
 
 ```{r, , warning=F, message=F}
-# make epi curve by date of onset when available
+# 観測された発症日から流行曲線を作成する
 ggplot(linelist, aes(x = date_onset)) +
   geom_histogram(binwidth = 7) +
   scale_x_date(
-    # 1 break every 1 month
+    # 1ヶ月ごとに軸ラベルを表示する
     date_breaks = "1 months",
-    # labels should show month then date
+    # 月・日をラベルとして表示する
     date_labels = "%b %d"
   ) +
   theme_classic()
@@ -650,42 +649,42 @@ ggplot(linelist, aes(x = date_onset)) +
 
 
 <!-- ======================================================= -->
-## Highlighting {}
+## 特定の要素を強調する {}
 
-Highlighting specific elements in a chart is a useful way to draw attention to a specific instance of a variable while also providing information on the dispersion of the full dataset. While this is not easily done in base **ggplot2**, there is an external package that can help to do this known as **gghighlight**. This is easy to use within the ggplot syntax.
+図中の特定の要素を強調することで、全てのデータポイントを表示しつつ、任意の変数や事象について注意を引くことができます。これについて **ggplot2** の基本関数はあまり得意ではありませんが、追加パッケージ **gghighlight** により簡単に行うことができます。このパッケージは ggplot の基本構文と容易に組み合わせることができます。
 
-The **gghighlight** package uses the `gghighlight()` function to achieve this effect. To use this function, supply a logical statement to the function - this can have quite flexible outcomes, but here we'll show an example of the age distribution of cases in our linelist, highlighting them by outcome.
+**gghighlight** パッケージの `gghighlight()` 関数を用います。入力には論理分を用います – これにより様々な要素を強調した図を作成することができますが、ここではラインリストから年齢の分布を、臨床結果を強調しながら図示してみましょう。
 
 ```{r, , warning=F, message=F}
-# load gghighlight
+# gghighlightを読み込む
 library(gghighlight)
 
-# replace NA values with unknown in the outcome variable
+# outcome列内のNA値を"Unknown"で入れ替える
 linelist <- linelist %>%
   mutate(outcome = replace_na(outcome, "Unknown"))
 
-# produce a histogram of all cases by age
+# 全症例の年齢分布をヒストグラムで図示
 ggplot(
   data = linelist,
   mapping = aes(x = age_years, fill = outcome)) +
   geom_histogram() + 
-  gghighlight::gghighlight(outcome == "Death")     # highlight instances where the patient has died.
+  gghighlight::gghighlight(outcome == "Death")     # 患者が亡くなっている症例の分布を強調する
 
 ```
 
-This also works well with faceting functions - it allows the user to produce facet plots with the background data highlighted that doesn't apply to the facet! Below we count cases by week and plot the epidemic curves by hospital (`color = ` and `facet_wrap()` set to `hospital` column).  
+これはファセットプロットとの相性も良いです – ファセットに用いた変数を図ごとに強調することができます！以下では週ごとの症例数を用いて流行曲線を作成し、病院ごとに分けて描画します（`color = `と `facet_wrap()` に `hospital` を設定）。
 
 ```{r, , warning=F, message=F}
 
-# produce a histogram of all cases by age
+# 週ごとの症例数をヒストグラムで表示
 linelist %>% 
   count(week = lubridate::floor_date(date_hospitalisation, "week"),
         hospital) %>% 
   ggplot()+
   geom_line(aes(x = week, y = n, color = hospital))+
   theme_minimal()+
-  gghighlight::gghighlight() +                      # highlight instances where the patient has died
-  facet_wrap(~hospital)                              # make facets by outcome
+  gghighlight::gghighlight() +                      # ファセット図毎に該当病院を強調
+  facet_wrap(~hospital)                              # 病院毎にファセットする
 
 ```
 
@@ -693,12 +692,12 @@ linelist %>%
 
 
 
-## Plotting multiple datasets  
+## 複数のデータセットをプロットする
 
-Note that properly aligning axes to plot from multiple datasets in the same plot can be difficult. Consider one of the following strategies:  
+複数のデータセットの座標軸を正確に揃えることは簡単ではありません。以下の 2 つのアプローチのどちらかを取りましょう：
 
-* Merge the data prior to plotting, and convert to "long" format with a column reflecting the dataset  
-* Use **cowplot** or a similar package to combine two plots (see below)  
+* 図を作成する前にデータを統合し、元のデータセットを区別するための列を追加する。
+* **cowplot** などのパッケージを用いて複数の図を組み合わせる（以下参照）。
 
 
 
@@ -706,34 +705,34 @@ Note that properly aligning axes to plot from multiple datasets in the same plot
 
 
 <!-- ======================================================= -->
-## Combine plots {}
+## 図の組み合わせ {}
 
-Two packages that are very useful for combining plots are **cowplot** and **patchwork**. In this page we will mostly focus on **cowplot**, with occassional use of **patchwork**.  
+複数の図を組み合わせるのに非常に便利な 2 つのパッケージが **cowplot** と **patchwork** です。 このページでは主に **cowplot** に焦点を当てつつ、**patchwork** についても一部で使用例を紹介します。
 
-Here is the online [introduction to cowplot](https://cran.r-project.org/web/packages/cowplot/vignettes/introduction.html). You can read the more extensive documentation for each function online [here](https://www.rdocumentation.org/packages/cowplot/versions/1.1.1). We will cover a few of the most common use cases and functions below.  
+**cowplot** のイントロダクションは[こちら](https://cran.r-project.org/web/packages/cowplot/vignettes/introduction.html)で見ることができます。含まれる各関数の詳細については[こちら](https://www.rdocumentation.org/packages/cowplot/versions/1.1.1)を参照してください。ここでは一部の最もよく用いられるものについて使用例を見ていきます。
 
-The **cowplot** package works in tandem with **ggplot2** - essentially, you use it to arrange and combine ggplots and their legends into compound figures. It can also accept **base** R graphics.  
+**cowplot** パッケージは **ggplot2** と並行して使われます - **cowplot** を使うことで、**ggplot2** で作成した複数の図と凡例を 1 つにまとめて表示することができます。入力にRの **base** 関数で作成した図を用いることも可能です。 
 
 ```{r}
 pacman::p_load(
-  tidyverse,      # data manipulation and visualisation
-  cowplot,        # combine plots
-  patchwork       # combine plots
+  tidyverse,      # データの整理と図示
+  cowplot,        # 図の組み合わせ
+  patchwork       # 図の組み合わせ
 )
 ```
 
 
-While faceting (described in the [ggplot basics] page) is a convenient approach to plotting, sometimes its not possible to get the results you want from its relatively restrictive approach. Here, you may choose to combine plots by sticking them together into a larger plot. There are three well known packages that are great for this - **cowplot**, **gridExtra**, and **patchwork**. However, these packages largely do the same things, so we'll focus on **cowplot** for this section. 
+図のファセット（[ggplot の基礎](#ggplot-basics)のページを参照）は便利な手法ではあるものの、表示方法に限りがあるため、望んだ図が得られないことがままあります。代わりに、複数の図を組み合わせて 1 つの図にしてしまうことも可能です。そのためのパッケージとして **cowplot**、**gridExtra**、**patchwork** の3つがあり、どれも大まかに同様の結果を得ることができます。ここでは **cowplot** に焦点を当て、使い方を見ていきましょう。
 
 ### `plot_grid()` {.unnumbered}
 
-The **cowplot** package has a fairly wide range of functions, but the easiest use of it can be achieved through the use of `plot_grid()`. This is effectively a way to arrange predefined plots in a grid formation. We can work through another example with the malaria dataset - here we can plot the total cases by district, and also show the epidemic curve over time.
+**cowplot** パッケージには多くの関数がありますが、そのうち最も使いやすいものが `plot_grid()` です。この関数は、複数の図をグリッドにそって並べることができます。ここではマラリアデータセットを使って、地区毎の症例数、および時間毎の流行曲線を並べて図示する例を見ていきます。
 
 
 ```{r, , warning=F, message=F}
 malaria_data <- rio::import(here::here("data", "malaria_facility_count_data.rds")) 
 
-# bar chart of total cases by district
+# 地区毎の症例数を棒グラフで図示
 p1 <- ggplot(malaria_data, aes(x = District, y = malaria_tot)) +
   geom_bar(stat = "identity") +
   labs(
@@ -743,7 +742,7 @@ p1 <- ggplot(malaria_data, aes(x = District, y = malaria_tot)) +
   ) +
   theme_minimal()
 
-# epidemic curve over time
+# 時間毎の流行曲線
 p2 <- ggplot(malaria_data, aes(x = data_date, y = malaria_tot)) +
   geom_col(width = 1) +
   labs(
@@ -753,10 +752,10 @@ p2 <- ggplot(malaria_data, aes(x = data_date, y = malaria_tot)) +
   theme_minimal()
 
 cowplot::plot_grid(p1, p2,
-                  # 1 column and two rows - stacked on top of each other
+                  # 2行1列で2つの図を並べる
                    ncol = 1,
                    nrow = 2,
-                   # top plot is 2/3 as tall as second
+                   # 上下の図の高さの比を2:3に設定
                    rel_heights = c(2, 3))
 
 
@@ -765,19 +764,19 @@ cowplot::plot_grid(p1, p2,
 
 
 
-### Combine legends {.unnumbered}  
+### 凡例を組み合わせる {.unnumbered}  
 
-If your plots have the same legend, combining them is relatively straight-forward. Simple use the **cowplot** approach above to combine the plots, but remove the legend from one of them (de-duplicate).  
+もし複数の図が同じ凡例を持つ場合、それらを統合することは比較的単純です。上記の例と同様 **cowplot** により図を組み合わせ、そのうちの 1 つを残してレジェンドを取り除きます。
 
-If your plots have different legends, you must use an alternative approach:  
+複数の図が異なるレジェンドを持つ場合は、以下のアプローチを取ります：
 
-1) Create and save your plots *without legends* using `theme(legend.position = "none")`  
-2) Extract the legends from each plot using `get_legend()` as shown below - *but extract legends from the plots modified to actually show the legend*  
-3) Combine the legends into a legends panel  
-4) Combine the plots and legends panel  
+1) `theme(legend.position = "none")` を用いてレジェンドを持たない図を作成する。
+2) 以下の例のように `get_legend()` を用いて各図 – <u>レジェンドを表示するよう変更したもの</u> - からレジェンドを抜き出す。
+3) 抽出したレジェンドをレジェンドパネルにまとめる。 
+4) 図とレジェンドパネルを組み合わせる。
 
 
-For demonstration we show the two plots separately, and then arranged in a grid with their own legends showing (ugly and inefficient use of space):  
+先ずは、2 つの図をレジェンドを統合せずに組み合わせます（美しくなく非効率なスペースの使い方）：
 
 ```{r, out.width=c('50%'), fig.show='hold', warning=F, message=F}
 p1 <- linelist %>% 
@@ -804,17 +803,17 @@ p2 <- linelist %>%
 
 ```
 
-Here is how the two plots look when combined using `plot_grid()` without combining their legends:  
+`plot_grid()` でレジェンドはそのままに図を組み合わせます：  
 
 ```{r, warning=F, message=F}
 cowplot::plot_grid(p1, p2, rel_widths = c(0.3))
 ```
 
-And now we show how to combine the legends. Essentially what we do is to define each plot *without* its legend (`theme(legend.position = "none"`), and then we define each plot's legend *separately*, using the `get_legend()` function from **cowplot**. When we extract the legend from the saved plot, we need to add `+` the legend back in, including specifying the placement ("right") and smaller adjustments for alignment of the legends and their titles. Then, we combine the legends together vertically, and then combine the two plots with the newly-combined legends. Voila!  
+次に、凡例を統合した場合を見てみましょう。初めに<u>凡例なし</u>の図を作成し（`theme(legend.position = "none"`）、**cowplot** パッケージの `get_legend()` により凡例を別に抽出します。凡例を抜き出す際には、`+` シンボルを用いて、配置（“right”）やタイトルも指定しながら凡例を戻し入れる必要があります。最後に2つの凡例を上下に結合し、先に作成した図と組み合わせて完成です！
 
 ```{r, warning=F, message=F}
 
-# Define plot 1 without legend
+# レジェンドなし図1を作成
 p1 <- linelist %>% 
   mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
   count(hospital, outcome) %>% 
@@ -827,7 +826,7 @@ p1 <- linelist %>%
   labs(title = "Cases by outcome")
 
 
-# Define plot 2 without legend
+# レジェンドなし図2を作成
 p2 <- linelist %>% 
   mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
   count(hospital, age_cat) %>% 
@@ -844,49 +843,49 @@ p2 <- linelist %>%
   labs(title = "Cases by age")
 
 
-# extract legend from p1 (from p1 + legend)
+# p1（p1 + レジェンド）からレジェンドを抜き出す
 leg_p1 <- cowplot::get_legend(p1 +
-                                theme(legend.position = "right",        # extract vertical legend
-                                      legend.justification = c(0,0.5))+ # so legends  align
-                                labs(fill = "Outcome"))                 # title of legend
-# extract legend from p2 (from p2 + legend)
+                                theme(legend.position = "right",        # レジェンドの抜き出し
+                                      legend.justification = c(0,0.5))+ # レジェンドの配列
+                                labs(fill = "Outcome"))                 # レジェンドタイトル
+# p2（p2 + レジェンド）からレジェンドを抜き出す
 leg_p2 <- cowplot::get_legend(p2 + 
-                                theme(legend.position = "right",         # extract vertical legend   
-                                      legend.justification = c(0,0.5))+  # so legends align
-                                labs(fill = "Age Category"))             # title of legend
+                                theme(legend.position = "right",         # レジェンドの抜き出し
+                                      legend.justification = c(0,0.5))+  # レジェンドの配列
+                                labs(fill = "Age Category"))             # レジェンドタイトル
 
-# create a blank plot for legend alignment
+# レジェンド配置用の空白図を作成
 #blank_p <- patchwork::plot_spacer() + theme_void()
 
-# create legends panel, can be one on top of the other (or use spacer commented above)
+# レジェンドパネルを作成。2つのレジェンドを上下に組み合わせる（もしくは上記コメント中のplot_spacer()を用いる）
 legends <- cowplot::plot_grid(leg_p1, leg_p2, nrow = 2, rel_heights = c(.3, .7))
 
-# combine two plots and the combined legends panel
+# 2つの図とレジェンドパネルを組み合わせる
 combined <- cowplot::plot_grid(p1, p2, legends, ncol = 3, rel_widths = c(.4, .4, .2))
 
-combined  # print
+combined  # 図を表示
 
 
 ```
 
-This solution was learned from [this post](https://stackoverflow.com/questions/52060601/ggplot-multiple-legends-arrangement) with a minor fix to align legends from [this post](https://github.com/wilkelab/cowplot/issues/33).  
+上記のアプローチは[こちらのポスト](https://stackoverflow.com/questions/52060601/ggplot-multiple-legends-arrangement)を参照し、 レジェンド配置のための小さな修正を[こちら](https://github.com/wilkelab/cowplot/issues/33)を参考に加えています。
 
 
-<span style="color: darkgreen;">**_TIP:_** Fun note - the "cow" in **cowplot** comes from the creator's name - Claus O. Wilke.</span>  
+<span style="color: darkgreen;">**_コラム：_****cowplot** の "cow" は **cowplot** パッケージ製作者の名前 - Claus O. Wilke - から来ています。</span>  
 
 
-### Inset plots {.unnumbered} 
+### 図の中に図を挿入する {.unnumbered} 
 
-You can inset one plot in another using **cowplot**. Here are things to be aware of:  
+**cowplot** では図の内部にさらに違う図を表示することもできます。使用に際していくつかの注意点があります：
 
-* Define the main plot with `theme_half_open()` from **cowplot**; it may be best to have the legend either on top or bottom  
-* Define the inset plot. Best is to have a plot where you do not need a legend. You can remove plot theme elements with `element_blank()` as shown below.  
-* Combine them by applying `ggdraw()` to the main plot, then adding `draw_plot()` on the inset plot and specifying the coordinates (x and y of lower left corner), height and width as proportion of the whole main plot.  
+* **cowplot** パッケージの `theme_half_open()` でメインの図を指定します；凡例は図の上部もしくは下部に配置すると良いでしょう。
+* 埋め込む図を作成します。凡例の必要のない図を用いることが好ましいです。さらに以下のように、`element_blank()` を用いてプロットの `theme` 要素を削除することができます。
+* `ggdraw()` によりメインの図と組み合わせます。さらに `draw_plot()` により内部プロットの座標（埋め込む図の左下隅の位置 x と y）、高さと幅をメイン図との比で指定します。
 
 
 ```{r, out.width=c('100%'), fig.show='hold', warning=F, message=F}
 
-# Define main plot
+# メイン図の作成
 main_plot <- ggplot(data = linelist)+
   geom_histogram(aes(x = date_onset, fill = hospital))+
   scale_fill_brewer(type = "qual", palette = 1, na.value = "grey")+ 
@@ -895,7 +894,7 @@ main_plot <- ggplot(data = linelist)+
   labs(title = "Epidemic curve and outcomes by hospital")
 
 
-# Define inset plot
+# 埋め込み図の作成
 inset_plot <- linelist %>% 
   mutate(hospital = recode(hospital, "St. Mark's Maternity Hospital (SMMH)" = "St. Marks")) %>% 
   count(hospital, outcome) %>% 
@@ -909,7 +908,7 @@ inset_plot <- linelist %>%
     labs(title = "Cases by outcome") 
 
 
-# Combine main with inset
+# 2つの図を組み合わせる
 cowplot::ggdraw(main_plot)+
      draw_plot(inset_plot,
                x = .6, y = .55,    #x = .07, y = .65,
@@ -918,36 +917,36 @@ cowplot::ggdraw(main_plot)+
 ```
 
 
-This technique is explained more in these two vignettes:  
+より深く知りたい場合は、以下のビニエット（vignette）を参照してください：  
 
-[Wilke lab](https://wilkelab.org/cowplot/articles/drawing_with_on_plots.html)  
-[draw_plot() documentation](https://www.rdocumentation.org/packages/cowplot/versions/1.1.1/topics/draw_plot)
+[Wilke 研究室](https://wilkelab.org/cowplot/articles/drawing_with_on_plots.html)  
+[draw_plot() 使用の手引き](https://www.rdocumentation.org/packages/cowplot/versions/1.1.1/topics/draw_plot)
 
 
 
 
 <!-- ======================================================= -->
-## Dual axes {}
+## 二重座標軸 {}
 
-A secondary y-axis is often a requested addition to a `ggplot2` graph. While there is a robust debate about the validity of such graphs in the data visualization community, and they are often not recommended, your manager may still want them. Below, we present one method to achieve them: using the **cowplot** package to combine two separate plots.  
+`ggplot2` を使用していて、1 つの図に 2 つ目の y 軸を表示したい場合があります。データの可視化において、そのような二重 y 軸の正当性は議論の的であり、またしばしば推奨されないものではありますが、あなたの上司がそれを求めてくるかもしれません。ここでは、それを実現する 1 つの方法を紹介します：**cowplot** を用いて、異なる y 軸を持つ 2 つの図を組み合わせましょう。
 
-This approach involves creating two separate plots - one with a y-axis on the left, and the other with y-axis on the right. Both will use a specific `theme_cowplot()` and must have the same x-axis. Then in a third command the two plots are aligned and overlaid on top of each other. The functionalities of **cowplot**, of which this is only one, are described in depth at this [site](https://wilkelab.org/cowplot/articles/aligning_plots.html).  
+この方法では、2 つの独立した図を作成します – y 軸を 1 つは左側に、もう 1 つは右側に持つようにします。どちらも `theme_cowplot()` を使用して作成し、x 軸は同一でなくてはなりません。次に、作成した 2 つの図を重ね合わせます。これらは **cowplot** の持つ機能の内のほんの 1 つですが、[こちらのページ](https://wilkelab.org/cowplot/articles/aligning_plots.html)でさらに詳しく解説されています。
 
-To demonstrate this technique we will overlay the epidemic curve with a line of the weekly percent of patients who died. We use this example because the alignment of dates on the x-axis is more complex than say, aligning a bar chart with another plot. Some things to note:  
+以下では例として、流行曲線を週毎の死亡患者数のパーセンテージを示す折れ線グラフと重ね合わせます。この例のように日付を x 軸に持つ図を重ね合わせるのは、例えば棒グラフを他の図と重ね合わせる場合などに比べてより複雑です。いくつか注意点を挙げます：
 
-* The epicurve and the line are aggregated into weeks prior to plotting *and* the `date_breaks` and `date_labels` are identical - we do this so that the x-axes of the two plots are the same when they are overlaid.  
-* The y-axis is moved to the right-side for plot 2 with the `position = ` argument of `scale_y_continuous()`.  
-* Both plots make use of `theme_cowplot()`  
+* 流行曲線と折れ線グラフは、描画前に週毎の値に変換し、さらに `date_breaks` と `date_labels` が同じ値を取るようにします - これは 2 つの図が完全に同じ x 軸を持つようにするためです。
+* 片方の図の y 軸は `scale_y_continuous()` の `position = `によって右側に移動します。
+* どちらの図も `theme_cowplot()` を使用します。
 
-Note there is another example of this technique in the [Epidemic curves] page - overlaying cumulative incidence on top of the epicurve.  
+ちなみに [Epidemic curves](#epidemic-curves) のページでも別の例 - 累積症例数と流行曲線を組み合わせ - を示しています。
 
-**Make plot 1**  
-This is essentially the epicurve. We use `geom_area()` just to demonstrate its use (area under a line, by default)  
+**図 1 の作成**  
+流行曲線を作成します。ここでは `geom_area()` をその紹介も兼ねて使用します（曲線下面積の図示）。
 
 ```{r, warning=F, message=F}
-pacman::p_load(cowplot)            # load/install cowplot
+pacman::p_load(cowplot)            # cowplotの読み込み
 
-p1 <- linelist %>%                 # save plot as object
+p1 <- linelist %>%                 # 図をオブジェクトとして保存
      count(
        epiweek = lubridate::floor_date(date_onset, "week")) %>% 
      ggplot()+
@@ -960,15 +959,15 @@ p1 <- linelist %>%                 # save plot as object
        y = "Weekly cases"
      )
 
-p1                                      # view plot 
+p1                                      # 図の表示
 ```
 
-**Make plot 2**  
-Create the second plot showing a line of the weekly percent of cases who died.  
+**図 2 の作成**  
+週毎の死亡患者のパーセンテージを示す折れ線グラフを作成します。
 
 ```{r, warning=F, message=F}
 
-p2 <- linelist %>%         # save plot as object
+p2 <- linelist %>%         # 図をオブジェクトとして保存
      group_by(
        epiweek = lubridate::floor_date(date_onset, "week")) %>% 
      summarise(
@@ -988,17 +987,17 @@ p2 <- linelist %>%         # save plot as object
             title = "Weekly case incidence and percent deaths"
           )
 
-p2     # view plot
+p2     # 図の表示
 ```
 
-Now we align the plot using the function `align_plots()`, specifying horizontal and vertical alignment ("hv", could also be "h", "v", "none"). We specify alignment of all axes as well (top, bottom, left, and right) with "tblr". The output is of class list (2 elements).    
+`align_plots()` によって2つの図の縦横（"hv"、または "h"、"v"、"none" のいずれか）を重ね合わせます。全ての軸（上下左右）についても同様に "tblr" で指定します。出力はリスト（要素 2 つ）になります。 
 
-Then we draw the two plots together using `ggdraw()` (from **cowplot**) and referencing the two parts of the `aligned_plots` object.  
+最後に `ggdraw()`（**cowplot** パッケージ）を用いて、`aligned_plots` 内の各図を指定することで 2 つの図を重ねて表示します。
 
 ```{r, warning=F, message=F}
-aligned_plots <- cowplot::align_plots(p1, p2, align="hv", axis="tblr")         # align the two plots and save them as list
-aligned_plotted <- ggdraw(aligned_plots[[1]]) + draw_plot(aligned_plots[[2]])  # overlay them and save the visual plot
-aligned_plotted                                                                # print the overlayed plots
+aligned_plots <- cowplot::align_plots(p1, p2, align="hv", axis="tblr")         # 2 つの図の配置を合わせリストオブジェクトとして保存
+aligned_plotted <- ggdraw(aligned_plots[[1]]) + draw_plot(aligned_plots[[2]])  # 重ね合わせた図を保存
+aligned_plotted                                                                # 図の表示
 
 ```
 
@@ -1061,44 +1060,44 @@ aligned_plotted                                                                #
 
 
 
-## Packages to help you  
+## 役に立つパッケージ  
 
 
-There are some really neat R packages specifically designed to help you navigate **ggplot2**:  
+**ggplot2** を使いこなすうえで、いくつかの R パッケージが非常に便利です：
 
 
-### Point-and-click **ggplot2** with **equisse**  {.unnumbered}
+### **ggplot2** を GUI 上で操作する：**equisse**  {.unnumbered}
 
-"This addin allows you to interactively explore your data by visualizing it with the ggplot2 package. It allows you to draw bar plots, curves, scatter plots, histograms, boxplot and sf objects, then export the graph or retrieve the code to reproduce the graph."
+"このアドインは ggplot2 を使用したインタラクティブなデータ解析を可能にします。棒グラフ、曲線、散布図、ヒストグラム、ボックスプロットや sf オブジェクトなどを作成し、できた図を書き出したり、それらを作成するためのコードを抽出することができます。"
 
-Install and then launch the addin via the RStudio menu or with `esquisse::esquisser()`.
+インストールおよびアドインの立ち上げは RStudio のメニューまたは `esquisse::esquisser()` コマンドから行うことができます。
 
-See the [Github page](https://github.com/dreamRs/esquisse)
+こちらの [Github ページ](https://github.com/dreamRs/esquisse)と
 
-[Documentation](https://dreamrs.github.io/esquisse/index.html)
-
-
-
+[使用手引き](https://dreamrs.github.io/esquisse/index.html)を参照してください。
 
 
 
 
 
 
-## Miscellaneous  
 
 
-### Numeric display {.unnumbered}  
 
-You can disable scientific notation by running this command prior to plotting.  
+## その他  
+
+
+### 数の表記 {.unnumbered}  
+
+図を作成する前に以下のコマンドを使用することで、数の科学的表記をオフにすることができます：
 
 ```{r, eval=F}
 options(scipen=999)
 ```
 
-Or apply `number_format()` from the **scales** package to a specific value or column, as shown below.  
+または以下のように、**scales** パッケージの `number_format()` を特定の値または列に対して使用します。
 
-Use functions from the package **scales** to easily adjust how numbers are displayed. These can be applied to columns in your data frame, but are shown on individual numbers for purpose of example.  
+**scales** パッケージに含まれる関数を用いることで、数の表記方を簡単に変更することができます。これらはデータフレームの列に対しても使用できますが、ここでは例を示すため個別の数値に対して使用しています。
 
 ```{r}
 scales::number(6.2e5)
@@ -1110,37 +1109,37 @@ scales::dollar(56)
 scales::scientific(100000)
 ```
 
-## Resources
+## 参考文献
 
-Inspiration
-[ggplot graph gallery](https://www.tidyverse.org/blog/2018/07/ggplot2-3-0-0/)
+インスピレーション
+[ggplot グラフギャラリー](https://www.tidyverse.org/blog/2018/07/ggplot2-3-0-0/)
 
-Presentation of data
-European Centre for Disease Prevention and Control [Guidelines of presentation of surveillance data](https://ecdc.europa.eu/sites/portal/files/documents/Guidelines%20for%20presentation%20of%20surveillance%20data-final-with-cover-for-we....pdf) 
+データの表示
+欧州疾病予防管理センター [調査データの表示方法についてのガイドライン](https://ecdc.europa.eu/sites/portal/files/documents/Guidelines%20for%20presentation%20of%20surveillance%20data-final-with-cover-for-we....pdf) 
 
 
-Facets and labellers
-[Using labellers for facet strips](http://www.cookbook-r.com/Graphs/Facets_(ggplot2)/#modifying-facet-label-text)
-[Labellers](https://ggplot2.tidyverse.org/reference/labellers.html)
+ファセットとラベル
+[ラベラーを使ったファセット図のラベル変更](http://www.cookbook-r.com/Graphs/Facets_(ggplot2)/#modifying-facet-label-text)
+[ラベラー](https://ggplot2.tidyverse.org/reference/labellers.html)
 
-Adjusting order with factors
+ファクターの並べ替え
 [fct_reorder](https://forcats.tidyverse.org/reference/fct_reorder.html)  
 [fct_inorder](https://forcats.tidyverse.org/reference/fct_inorder.html)  
-[How to reorder a boxplot](https://cmdlinetips.com/2019/02/how-to-reorder-a-boxplot-in-r/)  
-[Reorder a variable in ggplot2](https://www.r-graph-gallery.com/267-reorder-a-variable-in-ggplot2.html)  
-[R for Data Science - Factors](https://r4ds.had.co.nz/factors.html)  
+[ボックスプロットの並べ替え](https://cmdlinetips.com/2019/02/how-to-reorder-a-boxplot-in-r/)  
+[ggplot2 の変数の並べ替え](https://www.r-graph-gallery.com/267-reorder-a-variable-in-ggplot2.html)  
+[データサイエンスのための R - ファクター](https://r4ds.had.co.nz/factors.html)  
 
-Legends  
-[Adjust legend order](https://stackoverflow.com/questions/38425908/reverse-stacking-order-without-affecting-legend-order-in-ggplot2-bar-charts)  
+レジェンド  
+[レジェンドの並べ替え](https://stackoverflow.com/questions/38425908/reverse-stacking-order-without-affecting-legend-order-in-ggplot2-bar-charts)  
 
-Captions
-[Caption alignment](https://stackoverflow.com/questions/64701500/left-align-ggplot-caption)  
+キャプション
+[キャプションの整列](https://stackoverflow.com/questions/64701500/left-align-ggplot-caption)  
 
-Labels  
+ラベル  
 [ggrepel](https://ggrepel.slowkow.com/articles/examples.html)  
 
-Cheatsheets  
-[Beautiful plotting with ggplot2](http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/)  
+チートシート 
+[ggplot2 による美しい図の作り方](http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/)  
 
 
 
