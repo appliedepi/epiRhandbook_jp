@@ -74,7 +74,7 @@ count_data <- linelist %>%
 エボラ出血熱のシミュレーションで得られた症例のデータセットを取り込みます。\[Download handbook and data\]のページで説明しています。ファイルが作業ディレクトリにある場合、ファイルパスにはファイル名のみ指定します。
 
 ```{r, eval=F}
-linelist <- import("linelist_cleaned.xlsx") 
+linelist <- import("linelist_cleaned.rds") 
 ```
 
 最初の50行を表示します：
@@ -89,7 +89,7 @@ DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 
 以下のコードで、病院ごとの週別の集計数を含んだデータセットを`linelist` から作成します。
 
 ```{r, eval=F}
-# import the counts data into R
+# 集計データをRにインポート
 count_data <- linelist %>% 
   group_by(hospital, date_hospitalisation) %>% 
   summarize(n_cases = dplyr::n()) %>% 
@@ -100,68 +100,72 @@ count_data <- linelist %>%
 最初の50行を表示します：
 
 ```{r message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストを表形式で表示
 DT::datatable(head(count_data, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### Set parameters {.unnumbered}
+### パラメータの設定 {.unnumbered}
 
 For production of a report, you may want to set editable parameters such as the date for which the data is current (the "data date"). You can then reference the object `data_date` in your code when applying filters or in dynamic captions.
 
+レポートを作成する際に、データが最新である日付（「データ日」）などの編集可能なパラメータを設定したい場合があります。これにより、フィルターやダイナミックキャプションを適用する際に、コード内でオブジェクトdata_dateを参照することができます
+
 ```{r set_parameters}
-## set the report date for the report
+## レポート用にレポート日を設定
 ## note: can be set to Sys.Date() for the current date
 data_date <- as.Date("2015-05-15")
 ```
 
-### Verify dates {.unnumbered}
+### 日付の確認 {.unnumbered}
 
-Verify that each relevant date column is class Date and has an appropriate range of values. You can do this simply using `hist()` for histograms, or `range()` with `na.rm=TRUE`, or with `ggplot()` as below.
+関連する各日付列が日付型であり、また適切な範囲であるを確認します。欠損値を除外 ( `na.rm=TRUE` )した上で `range()` を用いて範囲を確認することが出来ますし、 ヒストグラムで確認する場合は `hist()` あるいは以下のように `ggplot()` を使って簡単に行うことも出来ます。
 
 ```{r, out.width = c('50%', '50%', '50%'), fig.show='hold', warning=F, message=F}
-# check range of onset dates
+# 発症日の範囲を確認
 ggplot(data = linelist)+
   geom_histogram(aes(x = date_onset))
 ```
 
 <!-- ======================================================= -->
 
-## **incidence2** package による流行曲線
+## **incidence2** パッケージ による流行曲線
 
 以下では、**incidence2** パッケージを使用して流行曲線を作成する方法を示します。このパッケージの作者は、ユーザーが **ggplot2** の構文を知らなくても流行曲線を作成できるようにしています。このページの多くは **incidence2**の [github page](https://github.com/reconhub/incidence2) から引用しています。
 
 <!-- ======================================================= -->
 
-### Simple example {.unnumbered}
+### 簡単な例 {.unnumbered}
 
-**2 steps are required to plot an epidemic curve with the *incidence2* package:**
+***incidence2*** パッケージによる流行曲線の作り方は2つのステップからなります：
 
-1)  **Create** an *incidence object* (using the function `incidence()`)
+1)  *incidence* オブジェクトの作成 （ `incidence()` 関数の使用）
 
-    -   Provide the data\
-    -   Specify the date column to `date_index =`\
-    -   Specify the `interval =` into which the cases should be aggregated (daily, weekly, monthly..)\
-    -   Specify any grouping columns (e.g. gender, hospital, outcome)\
+    -   データを準備\
+    -   `date_index =` に日付列を指定\
+    -   `interval =` で症例の集計単位を指定 （日、週、月等）\
+    -   グループ化する列の指定 （例：性別、病院、転帰）\
 
-2)  **Plot** the incidence object
+2)  *incidence* オブジェクトの可視化
 
-    -   Specify labels, colors, titles, etc.
+    -   ラベル、色、タイトル等の指定
 
 Below, we load the **incidence2** package, create the incidence object from the `linelist` on column `date_onset` and aggregated cases by day. We then print a summary of the incidence object.
 
+以下では、incidence2 パッケージをロードし `linelist` の `date_onset` 列（発症日） から incidence オブジェクトを作成し、発症日ごとの症例を集計しています。そして、 incidence オブジェクトのサマリーを表示します。
+
 ```{r, warning=F, message=F}
-# load incidence2 package
+# incidence2 パッケージのロード
 pacman::p_load(incidence2)
 
-# create the incidence object, aggregating cases by day
-epi_day <- incidence(       # create incidence object
-  x = linelist,             # dataset
-  date_index = date_onset,  # date column
-  interval = "day"          # date grouping interval
+# incidence オブジェクトを発症日別に集計して作成
+epi_day <- incidence(       # incidence オブジェクトの作成
+  x = linelist,             # データセットの指定
+  date_index = date_onset,  # 日付列の指定
+  interval = "day"          # 集計単位の指定
   )
 ```
 
-The **incidence2** object itself looks like a tibble (like a data frame) and can be printed or further manipulated like a data frame.
+**incidence2** オブジェクト自体は、（データフレームのような）tibble のようなっていて、データフレームのように表示したり、さらに操作したりすることが出来ます。
 
 ```{r}
 class(epi_day)
@@ -169,72 +173,76 @@ class(epi_day)
 
 Here is what it looks like when printed. It has a `date_index` column and a `count` column.
 
+以下のように表示されます。 `date_index` と `count` 列があります。
+
 ```{r}
 epi_day
 ```
 
-You can also print a summary of the object:
+オブジェクトのサマリーも表示出来ます：
 
 ```{r}
-# print summary of the incidence object
+# incidence オブジェクトのサマリーを表示
 summary(epi_day)
 ```
 
-To *plot* the *incidence* object, use `plot()` on the *name of the incidence object*. In the background, the function `plot.incidence2()` is called, so to read the **incidence2**-specific documentation you would run `?plot.incidence2`.
+incidence オブジェクトを可視化するには incidence オブジェクトに対して `plot()` を使用します。バックグラウンドでは、 `plot.incidence2()` 関数が呼び出されるので、**incidence2** 固有のドキュメントを読むには `?plot.incidence2` を実行します。
 
 ```{r}
-# plot the incidence object
+# incidence オブジェクトの可視化
 plot(epi_day)
 ```
 
 If you notice lots of tiny white vertical lines, try to adjust the size of your image. For example, if you export your plot with `ggsave()`, you can provide numbers to `width =` and `height =`. If you widen the plot those lines may disappear.
 
-### Change time interval of case aggregation {.unnumbered}
+白い縦線が多く表示される場合は、画像のサイズを調整しましょう。例えば、 `ggsave()` を使って図を出力した場合、 `width =` と `height =` に数字を入れることでサイズを調整出来ます。 プロットの幅を広げれば、これらの線は消えるでしょう。
 
-The `interval =` argument of `incidence()` defines how the observations are grouped into vertical bars.
+### 症例集計の時間単位の変更 {.unnumbered}
 
-**Specify interval**
+`incidence()` の `interval =` という引数を用いることで観察された症例をどのような時間単位で集計するかを定義します
 
-**incidence2** provides flexibility and understandable syntax for specifying how you want to aggregate your cases into epicurve bars. Provide a value like the ones below to the `interval =` argument. You can write any of the below as plural (e.g. "week**s**"), and you can add numbers before (e.g. "3 months").
+**時間単位の指定**
 
-| Argument option             | Further explanation                                        |
-|-----------------------------|------------------------------------------------------------|
-| Number (1, 7, 13, 14, etc.) | Number of days per interval                                |
-| "week"                      | note: Monday start day is default                          |
-| "2 weeks"                   | or 3, 4, 5...                                              |
-| "Sunday week"               | weeks beginning on Sundays (could also use Thursday, etc.) |
-| "2 Sunday weeks"            | or 3, 4, 5...                                              |
-| "MMWRweek"                  | week starts on Sundays - see US CDC                        |
-| "month"                     | 1st of month                                               |
-| "quarter"                   | 1st of month of quarter                                    |
-| "2 months"                  | or 3, 4, 5...                                              |
-| "year"                      | 1st day of calendar year                                   |
+**incidence2** は症例数を流行曲線に集約する方法を指定するための柔軟で分かりやすい構文を与えます。 `interval =` 引数には以下のような値を指定します。下記のいずれも複数形で書くことが出来（例："weeks"）、前に数字を付けることも出来ます（例："3 months"）。
 
-Below are examples of how different intervals look when applied to the linelist. Note how the default format and frequency of the date *labels* on the x-axis change as the date interval changes.
+| 引数オプション          | 補足説明                               |
+|-------------------------|----------------------------------------|
+| 数字 (1, 7, 13, 14, 等) | 集計単位となる日数                     |
+| "week"                  | メモ：月曜から始まるのがデフォルト     |
+| "2 weeks"               | または3、４、５等                      |
+| "Sunday week"           | 日曜から始まる週 ( Thursday 等も可能） |
+| "2 Sunday weeks"        | または3、４、５等                      |
+| "MMWRweek"              | week starts on Sundays - see US CDC    |
+| "month"                 | 1st of month                           |
+| "quarter"               | 1st of month of quarter                |
+| "2 months"              | または3、４、５等                      |
+| "year"                  | カレンダー年の最初の日                 |
+
+以下は、異なる間隔を `linelist` に適用した場合の表示例です。X軸上の日付ラベルのデフォルトフォーマットと頻度が、時間間隔の変更に伴ってどのように変化するかに注目してください。
 
 ```{r incidence, out.width=c('50%', '50%', '50%', '50%'), fig.show='hold', warning=F, message=F}
-# Create the incidence objects (with different intervals)
+# incidence オブジェクトの作成 (異なる時間感覚)
 ##############################
-# Weekly (Monday week by default)
+# 週 (月曜から始まるのがデフォルト)
 epi_wk      <- incidence(linelist, date_onset, interval = "Monday week")
 
-# Sunday week
+# 日曜から始まる週
 epi_Sun_wk  <- incidence(linelist, date_onset, interval = "Sunday week")
 
-# Three weeks (Monday weeks by default)
+# 3週 (月曜から始まるのがデフォルト)
 epi_2wk     <- incidence(linelist, date_onset, interval = "2 weeks")
 
-# Monthly
+# 月
 epi_month   <- incidence(linelist, date_onset, interval = "month")
 
-# Quarterly
+# 四半期
 epi_quarter   <- incidence(linelist, date_onset, interval = "quarter")
 
-# Years
+# 年
 epi_year   <- incidence(linelist, date_onset, interval = "year")
 
 
-# Plot the incidence objects (+ titles for clarity)
+# incidence オブジェクトの可視化 (分かりやすいようにタイトルを変更)
 ############################
 plot(epi_wk)+      labs(title = "Monday weeks")
 plot(epi_Sun_wk)+  labs(title = "Sunday weeks")
