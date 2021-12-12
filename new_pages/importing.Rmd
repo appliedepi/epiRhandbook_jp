@@ -266,15 +266,15 @@ DT::datatable(head(linelist_2headers, 5), rownames = FALSE, filter="top", option
 2)  最初の2行（ヘッダーと2行目）をスキップして、データを再度インポートします\
 3)  縮小されたデータフレームに正しい名前を指定します
 
-The exact argument used to bind the correct column names depends on the type of data file (.csv, .tsv, .xlsx, etc.). 正しい列名を指定するために使用される正確な引数は、データファイルのタイプ（.csv、.tsv、.xlsx など ）によって異なります。これは、**rio** がファイルタイプごとに異なる関数を使用しているためです（上記の表を参照）。
+正しい列名を指定するために使用される正確な引数は、データファイルのタイプ（.csv、.tsv、.xlsx など ）によって異なります。これは、**rio** がファイルタイプごとに異なる関数を使用しているためです（上記の表を参照）。
 
 **エクセルファイルの場合:** (`col_names =`)
 
 ```{r, eval=F}
-# import first time; store the column names
-linelist_raw_names <- import("linelist_raw.xlsx") %>% names()  # save true column names
+# 1回目のインポートでは列名を保存
+linelist_raw_names <- import("linelist_raw.xlsx") %>% names()  # 本来の列名を保存
 
-# import second time; skip row 2, and assign column names to argument col_names =
+# 2回目のインポートでは、二行目をスキップし、列名を引数col_names = に割り当てる
 linelist_raw <- import("linelist_raw.xlsx",
                        skip = 2,
                        col_names = linelist_raw_names
@@ -284,32 +284,32 @@ linelist_raw <- import("linelist_raw.xlsx",
 **CSVファイルの場合:** (`col.names =`)
 
 ```{r, eval=F}
-# import first time; sotre column names
-linelist_raw_names <- import("linelist_raw.csv") %>% names() # save true column names
+# 1回目のインポートでは列名を保存
+linelist_raw_names <- import("linelist_raw.csv") %>% names() # 本来の列名を保存
 
-# note argument for csv files is 'col.names = '
+# csvファイルの引数は 'col.names='であることに注意
 linelist_raw <- import("linelist_raw.csv",
                        skip = 2,
                        col.names = linelist_raw_names
                        ) 
 ```
 
-**Backup option** - changing column names as a separate command
+**バックアップオプションとして** - 列名を別のコマンドとして変更する
 
 ```{r, eval=F}
-# assign/overwrite headers using the base 'colnames()' function
+# ベースの関数の colnames() 関数を使用してヘッダーを割り当てる/上書きする
 colnames(linelist_raw) <- linelist_raw_names
 ```
 
-#### Make a data dictionary {.unnumbered}
+#### データディクショナリの作成 {.unnumbered}
 
-Bonus! If you do have a second row that is a data dictionary, you can easily create a proper data dictionary from it. This tip is adapted from this [post](https://alison.rbind.io/post/2018-02-23-read-multiple-header-rows/).
+ボーナス！データディクショナリである2行目がある場合は、そこから適切なデータディクショナリを簡単に作成できます。このヒントは、この[投稿](https://alison.rbind.io/post/2018-02-23-read-multiple-header-rows/)を基にしています。
 
 ```{r}
-dict <- linelist_2headers %>%             # begin: linelist with dictionary as first row
-  head(1) %>%                             # keep only column names and first dictionary row                
-  pivot_longer(cols = everything(),       # pivot all columns to long format
-               names_to = "Column",       # assign new column names
+dict <- linelist_2headers %>%             # はじめに、一行目としてディクショナリを含むラインリスト
+  head(1) %>%                             # 列名とディクショナリの一行目のみを保持する           
+  pivot_longer(cols = everything(),       # すべての列を長い形式に変更
+               names_to = "Column",       # 新しい列名を割り当てる
                values_to = "Description")
 ```
 
@@ -317,11 +317,11 @@ dict <- linelist_2headers %>%             # begin: linelist with dictionary as f
 DT::datatable(dict, rownames = FALSE, filter="top", options = list(pageLength = 4, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Combine the two header rows {.unnumbered}
+#### 2つのヘッダー行を組み合わせる {.unnumbered}
 
-In some cases when your raw dataset has *two* header rows (or more specifically, the 2nd row of data is a secondary header), you may want to "combine" them or add the values in the second header row into the first header row.
+元のデータセットにヘッダーが[二行]{.ul}がある場合（特に、データの2行目がセカンダリヘッダーである場合）、それらを "結合" するか、2番目のヘッダー行の値を最初のヘッダー行に追加することができます。
 
-The command below will define the data frame's column names as the combination (pasting together) of the first (true) headers with the value immediately underneath (in the first row).
+以下のコマンドは、データフレームの列名を、最初の（本来の）ヘッダーとそのすぐ下（最初の行）の値の組み合わせ（一緒に貼り付ける）として定義します。
 
 ```{r, eval=F}
 names(my_data) <- paste(names(my_data), my_data[1, ], sep = "_")
@@ -331,36 +331,36 @@ names(my_data) <- paste(names(my_data), my_data[1, ], sep = "_")
 
 ### グーグルシート {.unnumbered}
 
-You can import data from an online Google spreadsheet with the **googlesheet4** package and by authenticating your access to the spreadsheet.
+**googlesheet4** パッケージを使用し、スプレッドシートへのアクセスを認証することにより、オンラインの Google スプレッドシートからデータをインポートすることができます。
 
 ```{r, eval=F}
 pacman::p_load("googlesheets4")
 ```
 
-Below, a demo Google sheet is imported and saved. This command may prompt confirmation of authentification of your Google account. Follow prompts and pop-ups in your internet browser to grant Tidyverse API packages permissions to edit, create, and delete your spreadsheets in Google Drive.
+以下のように、デモの Google シートをインポートして保存します。このコマンドは、 Google アカウントの認証の確認を求める場合があります。インターネットブラウザのプロンプトとポップアップに従って、Tidyverse API パッケージに、 Google ドライブでスプレッドシートを編集、作成、および削除する権限を付与します。
 
-The sheet below is "viewable for anyone with the link" and you can try to import it.
+以下のシートは "リンクを持っている人は誰でも閲覧可能" と設定されているので、インポートすることができます。
 
 ```{r, eval=F}
 Gsheets_demo <- read_sheet("https://docs.google.com/spreadsheets/d/1scgtzkVLLHAe5a6_eFQEwkZcc14yFUx1KgOMZ4AKUfY/edit#gid=0")
 ```
 
-The sheet can also be imported using only the sheet ID, a shorter part of the URL:
+シートは、URLの短い部分であるシート ID のみを使用してインポートすることもできます。
 
 ```{r, eval=F}
 Gsheets_demo <- read_sheet("1scgtzkVLLHAe5a6_eFQEwkZcc14yFUx1KgOMZ4AKUfY")
 ```
 
-Another package, **googledrive** offers useful functions for writing, editing, and deleting Google sheets. For example, using the `gs4_create()` and `sheet_write()` functions found in this package.
+別のパッケージである**googledrive** は、 Google スプレッドシートの作成、編集、削除に役立つ機能を提供します。たとえば、このパッケージにある `gs4_create()` 関数と `sheet_write()` 関数を使用します。
 
-Here are some other helpful online tutorials:\
+その他のオンライン資料:\
 [basic Google sheets importing tutorial](https://arbor-analytics.com/post/getting-your-data-into-r-from-google-sheets/)\
 [more detailed tutorial](https://googlesheets4.tidyverse.org/articles/googlesheets4.html)\
 [interaction between the googlesheets4 and tidyverse](https://googlesheets4.tidyverse.org/articles/articles/drive-and-sheets.html)
 
-## Multiple files - import, export, split, combine
+## 複数のファイルをインポート、エクスポート、分割、結合する
 
-See the page on \[Iteration, loops, and lists\] for examples of how to import and combine multiple files, or multiple Excel workbook files. That page also has examples on how to split a data frame into parts and export each one separately, or as named sheets in an Excel workbook.
+See the page on \[Iteration, loops, and lists\] for examples of how to import and combine multiple files, or multiple Excel workbook files. 複数のファイルまたは複数のExcelブックファイルをインポートして結合する方法の例については、 \[Iteration, loops, and lists\] のページを参照してください。このページでは、データフレームをパーツに分割し、それぞれを個別にエクスポートする方法、または Excel ワークブックの名前付きシートとしてエクスポートする方法の例もカバーしています。
 
 <!-- ======================================================= -->
 
@@ -372,10 +372,13 @@ See the page on \[Iteration, loops, and lists\] for examples of how to import an
 
 R コマンドを使用して、.csv ファイルを Github から R に容易に直接インポートすることができます。
 
-1)  Go to the Github repo, locate the file of interest, and click on it\
-2)  Click on the "Raw" button (you will then see the "raw" csv data, as shown below)\
-3)  Copy the URL (web address)\
-4)  Place the URL in quotes within the `import()` R command
+1)  Github リポジトリに移動し、目的のファイルを見つけてクリックします\
+
+2)  "Raw" ボタンをクリックします（次に示すように、 "Raw" の csv データが表示されます）
+
+3)  URL（ウェブアドレス）をコピーする\
+
+4)   `import()` Rコマンド内でURLを引用符で囲みます
 
 ```{r, out.width=c('100%', '100%'), fig.align = "left", echo=F}
 knitr::include_graphics(here::here("images", "download_csv_raw.png"))
@@ -383,19 +386,19 @@ knitr::include_graphics(here::here("images", "download_csv_raw.png"))
 
 ### XLSX ファイル {.unnumbered}
 
-You may not be able to view the "Raw" data for some files (e.g. .xlsx, .rds, .nwk, .shp)
+一部のファイル（.xlsx、.rds、.nwk、.shp など）の "Raw" データを表示できない場合があります
 
-1)  Go to the Github repo, locate the file of interest, and click on it\
-2)  Click the "Download" button, as shown below\
-3)  Save the file on your computer, and import it into R
+1)  Githubリポジトリに移動し、目的のファイルを見つけてクリックします\
+2)  以下に示すように、"Download" ボタンをクリックします\
+3)  ファイルをコンピューターに保存し、 R にインポートします
 
 ```{r , out.width=c('100%', '100%'), fig.align = "left", echo=F}
 knitr::include_graphics(here::here("images", "download_xlsx.png"))
 ```
 
-### Shapefiles {.unnumbered}
+### シェイプファイル {.unnumbered}
 
-Shapefiles have many sub-component files, each with a different file extention. One file will have the ".shp" extension, but others may have ".dbf", ".prj", etc. To download a shapefile from Github, you will need to download each of the sub-component files individually, and save them in the *same* folder on your computer. In Github, click on each file individually and download them by clicking on the "Download" button.
+シェープファイルには多くのサブコンポーネントファイルがあり、それぞれファイル拡張子が異なります。One file will have the ".shp" extension, but others may have ".dbf", ".prj", etc. To download a shapefile from Github, you will need to download each of the sub-component files individually, and save them in the *same* folder on your computer. In Github, click on each file individually and download them by clicking on the "Download" button.
 
 Once saved to your computer you can import the shapefile as shown in the \[GIS basics\] page using `st_read()` from the **sf** package. You only need to provide the filepath and name of the ".shp" file - as long as the other related files are within the same folder on your computer.
 
