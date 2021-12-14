@@ -1448,27 +1448,25 @@ count_data <- linelist %>%
 
 **ラインリスト（linelist）**
 
-エボラ出血熱のシミュレーションで得られた症例のデータセットを取り込みます。Download handbook and data\]のページで説明しています。ファイルは作業ディレクトリにあると仮定しているので、このファイルパスにはサブフォルダは指定していません。
-
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow step-by-step, see instruction in the \[Download handbook and data\] page. We assume the file is in the working directory so no sub-folders are specified in this file path.
+エボラ出血熱のシミュレーションで得られた症例のデータセットを取り込みます。\[Download handbook and data\]のページで説明しています。ファイルが作業ディレクトリにある場合、ファイルパスにはファイル名のみ指定します。
 
 ```{r, eval=F}
-linelist <- import("linelist_cleaned.xlsx")
+linelist <- import("linelist_cleaned.rds") 
 ```
 
-The first 50 rows are displayed below.
+最初の50行を表示します：
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストを表形式で表示
 DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-**Case counts aggregated by hospital**
+病院ごとの症例数
 
-For the purposes of the handbook, the dataset of weekly aggregated counts by hospital is created from the `linelist` with the following code.
+以下のコードで、病院ごとの週別の集計数を含んだデータセットを`linelist` から作成します。
 
 ```{r, eval=F}
-# import the counts data into R
+# 集計データをRにインポート
 count_data <- linelist %>% 
   group_by(hospital, date_hospitalisation) %>% 
   summarize(n_cases = dplyr::n()) %>% 
@@ -1476,71 +1474,75 @@ count_data <- linelist %>%
   ungroup()
 ```
 
-The first 50 rows are displayed below:
+最初の50行を表示します：
 
 ```{r message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストを表形式で表示
 DT::datatable(head(count_data, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### Set parameters {.unnumbered}
+### パラメータの設定 {.unnumbered}
 
 For production of a report, you may want to set editable parameters such as the date for which the data is current (the "data date"). You can then reference the object `data_date` in your code when applying filters or in dynamic captions.
 
+レポートを作成する際に、データが最新である日付（「データ日」）などの編集可能なパラメータを設定したい場合があります。これにより、フィルターやダイナミックキャプションを適用する際に、コード内でオブジェクトdata_dateを参照することができます
+
 ```{r set_parameters}
-## set the report date for the report
+## レポート用にレポート日を設定
 ## note: can be set to Sys.Date() for the current date
 data_date <- as.Date("2015-05-15")
 ```
 
-### Verify dates {.unnumbered}
+### 日付の確認 {.unnumbered}
 
-Verify that each relevant date column is class Date and has an appropriate range of values. You can do this simply using `hist()` for histograms, or `range()` with `na.rm=TRUE`, or with `ggplot()` as below.
+関連する各日付列が日付型であり、また適切な範囲であるを確認します。欠損値を除外 ( `na.rm=TRUE` )した上で `range()` を用いて範囲を確認することが出来ますし、 ヒストグラムで確認する場合は `hist()` あるいは以下のように `ggplot()` を使って簡単に行うことも出来ます。
 
 ```{r, out.width = c('50%', '50%', '50%'), fig.show='hold', warning=F, message=F}
-# check range of onset dates
+# 発症日の範囲を確認
 ggplot(data = linelist)+
   geom_histogram(aes(x = date_onset))
 ```
 
 <!-- ======================================================= -->
 
-## Epicurves with **incidence2** package
+## **incidence2** パッケージ による流行曲線
 
-Below we demonstrate how to make epicurves using the **incidence2** package. The authors of this package have tried to allow the user to create and modify epicurves without needing to know **ggplot2** syntax. Much of this page is adapted from the package vignettes, which can be found at the **incidence2** [github page](https://github.com/reconhub/incidence2).
+以下では、**incidence2** パッケージを使用して流行曲線を作成する方法を示します。このパッケージの作者は、ユーザーが **ggplot2** の構文を知らなくても流行曲線を作成できるようにしています。このページの多くは **incidence2**の [github page](https://github.com/reconhub/incidence2) から引用しています。
 
 <!-- ======================================================= -->
 
-### Simple example {.unnumbered}
+### 簡単な例 {.unnumbered}
 
-**2 steps are required to plot an epidemic curve with the *incidence2* package:**
+***incidence2*** パッケージによる流行曲線の作り方は2つのステップからなります：
 
-1)  **Create** an *incidence object* (using the function `incidence()`)
+1)  *incidence* オブジェクトの作成 （ `incidence()` 関数の使用）
 
-    -   Provide the data\
-    -   Specify the date column to `date_index =`\
-    -   Specify the `interval =` into which the cases should be aggregated (daily, weekly, monthly..)\
-    -   Specify any grouping columns (e.g. gender, hospital, outcome)\
+    -   データを準備\
+    -   `date_index =` に日付列を指定\
+    -   `interval =` で症例の集計単位を指定 （日、週、月等）\
+    -   グループ化する列の指定 （例：性別、病院、転帰）\
 
-2)  **Plot** the incidence object
+2)  *incidence* オブジェクトの可視化
 
-    -   Specify labels, colors, titles, etc.
+    -   ラベル、色、タイトル等の指定
 
 Below, we load the **incidence2** package, create the incidence object from the `linelist` on column `date_onset` and aggregated cases by day. We then print a summary of the incidence object.
 
+以下では、incidence2 パッケージをロードし `linelist` の `date_onset` 列（発症日） から incidence オブジェクトを作成し、発症日ごとの症例を集計しています。そして、 incidence オブジェクトのサマリーを表示します。
+
 ```{r, warning=F, message=F}
-# load incidence2 package
+# incidence2 パッケージのロード
 pacman::p_load(incidence2)
 
-# create the incidence object, aggregating cases by day
-epi_day <- incidence(       # create incidence object
-  x = linelist,             # dataset
-  date_index = date_onset,  # date column
-  interval = "day"          # date grouping interval
+# incidence オブジェクトを発症日別に集計して作成
+epi_day <- incidence(       # incidence オブジェクトの作成
+  x = linelist,             # データセットの指定
+  date_index = date_onset,  # 日付列の指定
+  interval = "day"          # 集計単位の指定
   )
 ```
 
-The **incidence2** object itself looks like a tibble (like a data frame) and can be printed or further manipulated like a data frame.
+**incidence2** オブジェクト自体は、（データフレームのような）tibble のようなっていて、データフレームのように表示したり、さらに操作したりすることが出来ます。
 
 ```{r}
 class(epi_day)
@@ -1548,72 +1550,73 @@ class(epi_day)
 
 Here is what it looks like when printed. It has a `date_index` column and a `count` column.
 
+以下のように表示されます。 `date_index` と `count` 列があります。
+
 ```{r}
 epi_day
 ```
 
-You can also print a summary of the object:
+オブジェクトのサマリーも表示出来ます：
 
 ```{r}
-# print summary of the incidence object
+# incidence オブジェクトのサマリーを表示
 summary(epi_day)
 ```
 
-To *plot* the *incidence* object, use `plot()` on the *name of the incidence object*. In the background, the function `plot.incidence2()` is called, so to read the **incidence2**-specific documentation you would run `?plot.incidence2`.
+incidence オブジェクトを可視化するには incidence オブジェクトに対して `plot()` を使用します。バックグラウンドでは、 `plot.incidence2()` 関数が呼び出されるので、**incidence2** 固有のドキュメントを読むには `?plot.incidence2` を実行します。
 
 ```{r}
-# plot the incidence object
+# incidence オブジェクトの可視化
 plot(epi_day)
 ```
 
-If you notice lots of tiny white vertical lines, try to adjust the size of your image. For example, if you export your plot with `ggsave()`, you can provide numbers to `width =` and `height =`. If you widen the plot those lines may disappear.
+白い縦線が多く表示される場合は、画像のサイズを調整しましょう。例えば、 `ggsave()` を使って図を出力した場合、 `width =` と `height =` に数字を入れることでサイズを調整出来ます。 プロットの幅を広げれば、これらの線は消えるでしょう。
 
-### Change time interval of case aggregation {.unnumbered}
+### 症例集計の時間単位の変更 {.unnumbered}
 
-The `interval =` argument of `incidence()` defines how the observations are grouped into vertical bars.
+`incidence()` の `interval =` という引数を用いることで観察された症例をどのような時間単位で集計するかを定義します
 
-**Specify interval**
+**時間単位の指定**
 
-**incidence2** provides flexibility and understandable syntax for specifying how you want to aggregate your cases into epicurve bars. Provide a value like the ones below to the `interval =` argument. You can write any of the below as plural (e.g. "week**s**"), and you can add numbers before (e.g. "3 months").
+**incidence2** は症例数を流行曲線に集約する方法を指定するための柔軟で分かりやすい構文を与えます。 `interval =` 引数には以下のような値を指定します。下記のいずれも複数形で書くことが出来（例："weeks"）、前に数字を付けることも出来ます（例："3 months"）。
 
-| Argument option             | Further explanation                                        |
-|-----------------------------|------------------------------------------------------------|
-| Number (1, 7, 13, 14, etc.) | Number of days per interval                                |
-| "week"                      | note: Monday start day is default                          |
-| "2 weeks"                   | or 3, 4, 5...                                              |
-| "Sunday week"               | weeks beginning on Sundays (could also use Thursday, etc.) |
-| "2 Sunday weeks"            | or 3, 4, 5...                                              |
-| "MMWRweek"                  | week starts on Sundays - see US CDC                        |
-| "month"                     | 1st of month                                               |
-| "quarter"                   | 1st of month of quarter                                    |
-| "2 months"                  | or 3, 4, 5...                                              |
-| "year"                      | 1st day of calendar year                                   |
+| 引数オプション          | 補足説明                               |
+|-------------------------|----------------------------------------|
+| 数字 (1, 7, 13, 14, 等) | 集計単位となる日数                     |
+| "week"                  | メモ：月曜から始まるのがデフォルト     |
+| "2 weeks"               | または3、４、５等                      |
+| "Sunday week"           | 日曜から始まる週 ( Thursday 等も可能） |
+| "2 Sunday weeks"        | または3、４、５等                      |
+| "MMWRweek"              | week starts on Sundays - see US CDC    |
+| "month"                 | 1st of month                           |
+| "quarter"               | 1st of month of quarter                |
+| "2 months"              | または3、４、５等                      |
+| "year"                  | カレンダー年の最初の日                 |
 
-Below are examples of how different intervals look when applied to the linelist. Note how the default format and frequency of the date *labels* on the x-axis change as the date interval changes.
+以下は、異なる間隔を `linelist` に適用した場合の表示例です。X軸上の日付ラベルのデフォルトフォーマットと頻度が、時間間隔の変更に伴ってどのように変化するかに注目してください。
 
 ```{r incidence, out.width=c('50%', '50%', '50%', '50%'), fig.show='hold', warning=F, message=F}
-# Create the incidence objects (with different intervals)
+# incidence オブジェクトの作成 (異なる時間感覚)
 ##############################
-# Weekly (Monday week by default)
+# 週 (月曜から始まるのがデフォルト)
 epi_wk      <- incidence(linelist, date_onset, interval = "Monday week")
 
-# Sunday week
+# 日曜から始まる週
 epi_Sun_wk  <- incidence(linelist, date_onset, interval = "Sunday week")
 
-# Three weeks (Monday weeks by default)
+# 3週 (月曜から始まるのがデフォルト)
 epi_2wk     <- incidence(linelist, date_onset, interval = "2 weeks")
 
-# Monthly
+# 月
 epi_month   <- incidence(linelist, date_onset, interval = "month")
 
-# Quarterly
+# 四半期
 epi_quarter   <- incidence(linelist, date_onset, interval = "quarter")
 
-# Years
+# 年
 epi_year   <- incidence(linelist, date_onset, interval = "year")
 
-
-# Plot the incidence objects (+ titles for clarity)
+# incidence オブジェクトの可視化 (分かりやすいようにタイトルを変更)
 ############################
 plot(epi_wk)+      labs(title = "Monday weeks")
 plot(epi_Sun_wk)+  labs(title = "Sunday weeks")
@@ -1628,287 +1631,279 @@ plot(epi_year)+    labs(title = "Years")
 
 <!-- If you want the intervals to begin at the first case, you can add the argument `standard = TRUE` to the `incidence()` command. This only works if the interval is either "week", "month", "quarter" or "year".   -->
 
-**First date**
+**最初の日付**
 
-You can optionally specify a value of class Date (e.g. `as.Date("2016-05-01")`) to `firstdate =` in the `incidence()` command. If given, the data will be trimmed to this range and the intervals will begin on this date.
+You can optionally specify a value of class Date to `firstdate =` in the `incidence()` コマンドでは日付型（例： `as.Date("2016-05-01")` )の値を `firstdate =` として指定することが出来ます。その場合、データはこの範囲で切り取られ、指定した日を集計単位の最初とすることが出来ます。
 
-### Groups {.unnumbered}
+### グループ化 {.unnumbered}
 
-Groups are specified in the `incidence()` command, and can be used to color the bars or to facet the data. To specify groups in your data provide the column name(s) to the `groups =` argument in the `incidence()` command (no quotes around the column name). If specifying multiple columns, put their names within `c()`.
+グループは、 `incidence()` コマンドで指定され、棒グラフの色付けやデータのファセットに使用できます。データにグループを指定するには、 `incidence()` コマンドの `groups =` 引数に列名を指定します（列名は引用符で囲みません）。複数の列を指定する場合は、全ての列名を `c()` 内で指定します。
 
-You can specify that cases with missing values in the grouping columns be listed as a distinct `NA` group by setting `na_as_group = TRUE`. Otherwise, they will be excluded from the plot.
+`na_as_group = TRUE` を設定すると、グループ化された列で値が欠損している症例を、個別の `NA` グループとして集計するように指定できます。それ以外の場合は、図から除外されます。
 
--   To *color the bars by a grouping column*, you must again provide the column name to `fill =` in the `plot()` command.
+-   グループ化された列で棒グラフを色分けするためには、 `plot()` コマンドの `fill =` に列名を指定します。
 
--   To *facet based on a grouping column*, see the section below on facets with **incidence2**.
+-   グループ化された列でファセットを行うためには、下記の「**incidence2** によるファセット」のセクションを参照してください。
 
-In the example below, the cases in the whole outbreak are grouped by their age category. Missing values are included as a group. The epicurve interval is weeks.
+以下の例では、ラインリストの症例が年齢群によってグループ化されています。欠損値はグループとして含まれます。流行曲線の時間単位は週です。
 
 ```{r, message=F, warning=F}
-# Create incidence object, with data grouped by age category
+# incidence オブジェクトを年齢群でグループ化して作成
 age_outbreak <- incidence(
-  linelist,                # dataset
-  date_index = date_onset, # date column
-  interval = "week",       # Monday weekly aggregation of cases
-  groups = age_cat,        # age_cat is set as a group
-  na_as_group = TRUE)      # missing values assigned their own group
+  linelist,                # データセットの指定
+  date_index = date_onset, # 日付列の指定
+  interval = "week",       # 症例を月曜始まりの週単位で集計
+  groups = age_cat,        # age_cat をグループとして指定
+  na_as_group = TRUE)      # 欠損値を1つのグループとして扱うように指定
 
-# plot the grouped incidence object
+# グループ化された incidence オブジェクトの可視化
 plot(
-  age_outbreak,             # incidence object with age_cat as group
-  fill = age_cat)+          # age_cat is used for bar fill color (must have been set as a groups column above)
-labs(fill = "Age Category") # change legend title from default "age_cat" (this is a ggplot2 modification)
+  age_outbreak,             # 年齢群でグループ化したincidence オブジェクト
+  fill = age_cat)+          # age_cat で棒グラフの色分け (必ず上で age_cat がグループ化されている必要がある)
+labs(fill = "Age Category") # 凡例のタイトルをデフォルトの「age_cat」から変更する （ggplot2 の設定の変更）
 ```
 
-[***TIP:*** Change the title of the legend by adding `+` the **ggplot2** command `labs(fill = "your title")` to your **incidence2** plot.]{style="color: darkgreen;"}
+[***TIP:*** **ggplot2** のコマンドである `+ labs(fill = "your title")` で凡例のタイトルを変更出来ます。]{style="color: darkgreen;"}
 
 You can also have the grouped bars display side-by-side by setting `stack = FALSE` in `plot()`, as shown below:
 
+また、以下のように `plot()` で `stack = FALSE` と指定することで、グループ化された棒グラフを並べて表示することが出来ます。
+
 ```{r, warning=F, message=F}
-# Make incidence object of monthly counts. 
+# incidence オブジェクトを月単位で作成
 monthly_gender <- incidence(
  linelist,
  date_index = date_onset,
  interval = "month",
- groups = gender            # set gender as grouping column
+ groups = gender            # gender をグループとして指定
 )
 
 plot(
-  monthly_gender,   # incidence object
-  fill = gender,    # display bars colored by gender
-  stack = FALSE)    # side-by-side (not stacked)
+  monthly_gender,   # incidence オブジェクト
+  fill = gender,    # gender で棒グラフの色分け
+  stack = FALSE)    # 棒グラフをグループ毎に横に並べる (積み上げではなく)
 ```
 
 You can set the `na_as_group =` argument to FALSE in the `incidence()` command to remove rows with missing values from the plot.
 
-### Filtered data {.unnumbered}
+`incidence()` コマンドの `na_as_group =` 引数を FALSE と指定することで、欠損値のある行を図から除外することが出来ます。
 
-To plot the epicurve of a subset of data:
+### フィルタリングされたデータ {.unnumbered}
 
-1)  Filter the linelist data\
-2)  Provide the filtered data to the `incidence()` command\
-3)  Plot the incidence object
+データの一部を使って流行曲線を作成するためには：
 
-The example below uses data filtered to show only cases at Central Hospital.
+1)  linelist データに対してフィルタリングを行う\
+2)  `incidence()` コマンドにフィルタリングされたデータを指定する\
+3)  incidence オブジェクトを可視化する
+
+以下の例では、 Central Hospital の症例のみを表示するようにフィルタリングされたデータを使用しています。
 
 ```{r, warning=F, message=F}
-# filter the linelist
+# linelist をフィルタリング
 central_data <- linelist %>% 
   filter(hospital == "Central Hospital")
 
-# create incidence object using filtered data
+# フィルタリングされたデータを使用して incidence オブジェクトの作成
 central_outbreak <- incidence(central_data, date_index = date_onset, interval = "week")
 
-# plot the incidence object
+# incidence オブジェクトの可視化
 plot(central_outbreak, title = "Weekly case incidence at Central Hospital")
 ```
 
-### Aggregated counts {.unnumbered}
+### 集計値 {.unnumbered}
 
-If your original data are aggregated (counts), provide the name of the column that contains the case counts to the `count =` argument when creating the incidence object with `incidence()`.
+元のデータが集計（カウント）されている場合は、`incidence()`で incidence オブジェクトを作成する際に、`count =` 引数に症例カウントを含む列名を指定します。
 
 For example, this data frame `count_data` is the linelist aggregated into daily counts by hospital. The first 50 rows look like this:
+
+例えば、 `count_data` というデータフレームは、病院別の1日毎に症例数がカウントされています。最初の50行は次のようになっています。
 
 ```{r message=FALSE, echo=F}
 DT::datatable(head(count_data,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-If you are beginning your analysis with daily count data like the dataset above, your `incidence()` command to convert this to a weekly epicurve by hospital would look like this:
+上のデータセットのように日単位のカウントデータで分析を行う場合、これを病院別の週単位のエピカーブに変換する `incidence()` コマンドは次のようになります。
 
 ```{r}
-epi_counts <- incidence(              # create weekly incidence object
-  count_data,                         # dataset with counts aggregated by day
-  date_index = date_hospitalisation,  # column with dates
-  count = n_cases,                    # column with counts
-  interval = "week",                  # aggregate daily counts up to weeks
-  groups = hospital                   # group by hospital
+epi_counts <- incidence(              # incidence オブジェクトを週単位で作成
+  count_data,                         # 日単位で集計されたデータセットを指定
+  date_index = date_hospitalisation,  # 日付の列を指定
+  count = n_cases,                    # カウント数の列を指定
+  interval = "week",                  # 日単位のカウント数を週単位に変更するように指定
+  groups = hospital                   # hospital をグループとして指定
   )
 
-# plot the weekly incidence epi curve, with stacked bars by hospital
-plot(epi_counts,                      # incidence object
-     fill = hospital)                 # color the bars by hospital
+# 病院別でグループ化された積み上げ棒グラフの流行曲線を週単位で作成
+plot(epi_counts,                      # incidence オブジェクト
+     fill = hospital)                 # hospital で棒グラフの色分け
 ```
 
-### Facets/small multiples {.unnumbered}
+### ファセット/分割 {.unnumbered}
 
-To facet the data by group (i.e. produce "small multiples"):
+グループ別にデータをファセットする（つまり「小分割」を生成する）ためには：
 
-1)  Specify the faceting column to `groups =` when you create the incidence object\
-2)  Use the `facet_plot()` command instead of `plot()`\
-3)  Specify which grouping columns to use as `fill =` and which to use as `facets =`
+1)  incidence オブジェクトの作成時に、ファセットしたい列を `groups =` に指定する。\
+2)  `plot()` の代わりに `facet_plot()` コマンドを使用する。\
+3)  `fill =` としてグループ化する列と `facets =` として使用するグループ化する列を指定する。
 
-Below, we set both columns `hospital` and `outcome` as grouping columns in the `incidence()` command. Then, in `facet_plot()` we plot the epicurve, specifying that we want a different epicurve for each hospital and that within each epicurve the bars should be stacked and colored by outcome.
+以下では、 `incidence()` コマンドで、 `hospital` と `outcome` の両方の列をグループ化列として指定します。そして `facet_plot()` によって病院ごとに異なる流行曲線を作成し、各流行曲線の中で `outcome` 別に色分けされた棒グラフを重ねるように指定します。
 
 ```{r, warning=F, message=F}
 epi_wks_hosp_out <- incidence(
-  linelist,                      # dataset
-  date_index = date_onset,       # date column
-  interval = "month",            # monthly bars  
-  groups = c(outcome, hospital)  # both outcome and hospital are given as grouping columns
+  linelist,                      # データセットを指定
+  date_index = date_onset,       # 日付列を指定
+  interval = "month",            # 月単位に指定  
+  groups = c(outcome, hospital)  # outcome と hospital の2つをグループ化する列と指定指定
   )
 
-# plot
+# 可視化
 incidence2::facet_plot(
-  epi_wks_hosp_out,      # incidence object
-  facets = hospital,     # facet column
-  fill = outcome)        # fill column
+  epi_wks_hosp_out,      # incidence オブジェクト
+  facets = hospital,     # ファセット化する列名
+  fill = outcome)        # 色分けする列名 
 
 ```
 
 Note that the package **ggtree** (used for displaying phylogenetic trees) also has a function `facet_plot()` - this is why we specified `incidence2::facet_plot()` above.
 
-### Modifications with `plot()` {.unnumbered}
+系統樹の可視化に使用される ggtree パッケージにも `facet_plot()` という関数があるため注意が必要です - このため上記で `incidence2::facet_plot()` というように明示的に関数名を指定しています。
 
-An epicurve produced by **incidence2** can be modified via these arguments *within the `plot()` function*.
+### `plot()` に修正 {.unnumbered}
 
-**Here are `plot()` arguments that modify the appearance of the bars:**
+**incidence2** によって生成された 流行曲線 は、*`plot()`* 関数内の以下の引数によって修正することが出来ます。
 
-+----------------+-----------------------------------------------------------------------------------------------------------------+----------------------------------------------------+
-| Argument       | Description                                                                                                     | Examples                                           |
-+================+=================================================================================================================+====================================================+
-| `fill =`       | Bar color. Either a color name or a column name previously specified to `groups =` in the `incidence()` command | `fill = "red"`, or `fill = gender`                 |
-+----------------+-----------------------------------------------------------------------------------------------------------------+----------------------------------------------------+
-| `color =`      | Color around each bar, or around each grouping within a bar                                                     | `border = "white"`                                 |
-+----------------+-----------------------------------------------------------------------------------------------------------------+----------------------------------------------------+
-| `legend =`     | Location of legend                                                                                              | One of "bottom", "top", "left", "right", or "none" |
-+----------------+-----------------------------------------------------------------------------------------------------------------+----------------------------------------------------+
-| `alpha =`      | Transparency of bars/boxes                                                                                      | 1 is fully opaque, 0 is fully transparent          |
-+----------------+-----------------------------------------------------------------------------------------------------------------+----------------------------------------------------+
-| `width =`      | Value between 0 and 1 indicating the relative size of the bars to their time interval                           | `width = .7`                                       |
-+----------------+-----------------------------------------------------------------------------------------------------------------+----------------------------------------------------+
-| `show_cases =` | Logical; if TRUE, each case shows as a box. Displays best on smaller outbreaks.                                 | `show_cases = TRUE`                                |
-+----------------+-----------------------------------------------------------------------------------------------------------------+----------------------------------------------------+
+**以下は棒グラフの見た目を変更する `plot()` の引数です。**
 
-**Here are `plot()` arguments that modify the date axis:**
+| 引数           | 説明                                                                                                | 例                                                  |
+|----------------|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------|
+| `fill =`       | 棒グラフの色を指定する。 `incidence()` コマンドで `groups =` に指定された色名または列名のいずれか。 | `fill = "red"`、または `fill = gender`              |
+| `color =`      | 棒グラフの枠線、または棒グラフの中の各グループの枠線に色をつける。                                  | `border = "white"`                                  |
+| `legend =`     | 凡例の場所を指定する。                                                                              | "bottom"、"top"、"left", "right"、 "none"のいずれか |
+| `alpha =`      | 棒グラフの色の透明度を指定する                                                                      | 1が最も濃く、0が最も透明                            |
+| `width =`      | 時間間隔に対する棒グラフの相対的な大きさを示す0～1の値                                              | `width = .7`                                        |
+| `show_cases =` | 論理値。もし TRUE の場合は各症例が枠で表示される。アウトブレイクが小さい場合に適している。          |                                                     |
 
-+------------------+-------------------------------------------------------------------------------------------------------------------+
-| Argument(s)      | Description                                                                                                       |
-+==================+===================================================================================================================+
-| `centre_dates =` | TRUE/FALSE as to whether date displays appear under center of bars, or at beginning of bars                       |
-+------------------+-------------------------------------------------------------------------------------------------------------------+
-| `date_format =`  | Adjust the date display format using strptime ("%") syntax. Only works if `centre_dates = FALSE` (details below). |
-+------------------+-------------------------------------------------------------------------------------------------------------------+
-| `n.breaks =`     | Approximate number of x-axis label breaks desired.                                                                |
-+------------------+-------------------------------------------------------------------------------------------------------------------+
-| `angle =`        | Angle of x-axis date labels (number of degrees)                                                                   |
-+------------------+-------------------------------------------------------------------------------------------------------------------+
-| `size =`         | Size of text in points                                                                                            |
-+------------------+-------------------------------------------------------------------------------------------------------------------+
+**以下は時間軸を変更する `plot()` の引数です。**
 
-Note that the `date_breaks =` argument only works if `centre_dates = FALSE`. Provide a character value in quotation marks using the strptime syntax below, as detailed in the \[Working with dates\] page. You can use `\n` for a "newline".
+| 引数             | 説明                                                                                              |
+|------------------|---------------------------------------------------------------------------------------------------|
+| `centre_dates =` | 日付表示を棒グラフの中央に表示するか、先頭に表示するかについての TRUE/FALSE                       |
+| `date_format =`  | strptime ("%") 構文を使用して日付表示形式を調整。center_dates = FALSEの場合のみ動作（詳細は後述） |
+| `n.breaks =`     | X軸の日付ラベルの分割数の目安                                                                     |
+| `angle =`        | X軸の日付ラベルの角度                                                                             |
+| `size =`         | 文字サイズ                                                                                        |
 
-%d = Day number of month (5, 17, 28, etc.)\
-%j = Day number of the year (Julian day 001-366)\
-%a = Abbreviated weekday (Mon, Tue, Wed, etc.)\
-%A = Full weekday (Monday, Tuesday, etc.)\
-%w = Weekday number (0-6, Sunday is 0)\
-%u = Weekday number (1-7, Monday is 1)\
-%W = Week number (00-53, Monday is week start)\
-%U = Week number (01-53, Sunday is week start)\
-%m = Month number (e.g. 01, 02, 03, 04)\
-%b = Abbreviated month (Jan, Feb, etc.)\
-%B = Full month (January, February, etc.)\
-%y = 2-digit year (e.g. 89)\
-%Y = 4-digit year (e.g. 1989)\
-%h = hours (24-hr clock)\
-%m = minutes\
-%s = seconds\
-%z = offset from GMT\
-%Z = Time zone (character)
+`date_breaks =` 引数は、 `centre_dates = FALSE` の場合にのみ機能することに注意してください。\[Working with dates\]のページで説明されているように、以下のstrptime構文を使用して、引用符で囲まれた文字値を指定します。改行」には `\n` を使うことができます。
+
+%d = 日付 (5, 17, 28, etc.)\
+%j = 年における日付 (ユリウス通日 001-366)\
+%a = 省略された曜日名 (Mon, Tue, Wed 等)\
+%A = 省略されたいない曜日名 (Monday, Tuesday 等)\
+%w = 曜日番号 (0-6, 日曜日が0)\
+%u = 曜日番号 (1-7, 月曜日が1)\
+%W = 週番号 (00-53, 月曜日が週の始め)\
+%U = 週番号(01-53, 日曜日が週の始め)\
+%m = 月 (01, 02, 03, 04 等)\
+%b = 省略された月名 (Jan, Feb 等)\
+%B = 省略されていない月名 (January, February 等)\
+%y = 2桁年 (例：89)\
+%Y = 4桁年 (例：1989)\
+%h = 時間 (24時間単位)\
+%m = 分\
+%s = 秒\
+%z = グリニッジ標準時間からの時間差\
+%Z = タイムゾーン （文字列型）
 
 <!-- <span style="color: darkgreen;">**_TIP:_** For breaks every "nth" interval (e.g. every 4th), use `n.breaks = nrow(i)/n` (where “i” is your incidence object name and “n” is a number). If your data are grouped, you will need to multiply "n" by the number of unique groups.</span>   -->
 
 **Here are `plot()` arguments that modify plot labels:**
 
-+-------------+-------------------------------------------------------------------------+
-| Argument(s) | Description                                                             |
-+=============+=========================================================================+
-| `title =`   | Title of plot                                                           |
-+-------------+-------------------------------------------------------------------------+
-| `xlab =`    | Title of x-axis                                                         |
-+-------------+-------------------------------------------------------------------------+
-| `ylab =`    | Title of y-axis                                                         |
-+-------------+-------------------------------------------------------------------------+
-| `size =`    | Size of x-axis text in pts (use ggplot's theme() to adjust other sizes) |
-+-------------+-------------------------------------------------------------------------+
+**以下はラベルを変更する `plot()` の引数です。**
 
-An example using many of the above arguments:
+| 引数      | 説明                                                                                           |
+|-----------|------------------------------------------------------------------------------------------------|
+| `title =` | グラフのタイトル                                                                               |
+| `xlab =`  | x軸のタイトル                                                                                  |
+| `ylab =`  | y軸のタイトル                                                                                  |
+| `size =`  | x軸の文字のサイズ（単位：pt）（他のサイズを調整するには ggplot の theme() を使用してください。 |
+
+上記引数の例を示します：
 
 ```{r, warning=F, message=F}
-# filter the linelist
+# linelistのフィルタリング
 central_data <- linelist %>% 
   filter(hospital == "Central Hospital")
 
-# create incidence object using filtered data
+# フィルタリングデータを使った incidence オブジェクトの作成 
 central_outbreak <- incidence(
   central_data,
   date_index = date_onset,
   interval = "week",
   groups = outcome)
 
-# plot incidence object
+# incidence オブジェクトの可視化
 plot(
   central_outbreak,
-  fill = outcome,                       # box/bar color
-  legend = "top",                       # legend on top
-  title = "Cases at Central Hospital",  # title
-  xlab = "Week of onset",               # x-axis label
-  ylab = "Week of onset",               # y-axis label
-  show_cases = TRUE,                    # show each case as an individual box
-  alpha = 0.7,                          # transparency 
-  border = "grey",                      # box border
-  angle = 30,                           # angle of date labels
-  centre_dates = FALSE,                 # date labels at edge of bar
-  date_format = "%a %d %b %Y\n(Week %W)" # adjust how dates are displayed
+  fill = outcome,                       # グラフの色分け
+  legend = "top",                       # 凡例を一番上に置く
+  title = "Cases at Central Hospital",  # タイトル
+  xlab = "Week of onset",               # x軸のタイトル
+  ylab = "Week of onset",               # y軸のタイトル
+  show_cases = TRUE,                    # それぞれの症例を枠線で示す
+  alpha = 0.7,                          # 透明度 
+  border = "grey",                      # 症例ごとの枠線
+  angle = 30,                           # 日付ラベルの角度
+  centre_dates = FALSE,                 # 日付ラベルを各グラフの先頭に配置
+  date_format = "%a %d %b %Y\n(Week %W)" # 日付の記載方法の変更
   )
 ```
 
-To further adjust plot appearance, see the section below on modifications with `ggplot()`.
+グラフの見た目をさらに調整するには、以下の「 `ggplot()` による修正」のセクションを参照してください。
 
-### Modifications with ggplot2 {.unnumbered}
+### ggplot2 による調整 {.unnumbered}
 
-You can further modify an **incidence2** plot by adding **ggplot2** modifications with a `+` after the close of the incidence `plot()` function, as demonstrated below.
+以下に示すように、 **incidence2** の `plot()` 関数の終了後に `+` で **ggplot2** による調整を加えることが出来ます。
 
-Below, the **incidence2** plot finishes and then **ggplot2** commands are used to modify the axes, add a caption, and adjust the bold font and text size.
+下の例では、**incidence2** のプロットが終了した後、**ggplot2** コマンドを使って、軸の修正、脚注の追加、太字フォントと文字サイズの調整を行っています。
 
-Note that if you add `scale_x_date()`, most date formatting from `plot()` will be overwritten. See the `ggplot()` epicurves section and the Handbook page \[ggplot tips\] for more options.
+`scale_x_date()` を追加すると、`plot()` の日付フォーマットのほとんどが上書きされてしまうことに注意してください。他の多くの方法については、`ggplot()` の流行曲線のセクションと、このハンドブックの\[ggplot tips\]のページを参照してください。
 
 ```{r, warning=F, message=F}
-# filter the linelist
+# linelist のフィルタリング
 central_data <- linelist %>% 
   filter(hospital == "Central Hospital")
 
-# create incidence object using filtered data
+# フィルタリングデータを使った incidence オブジェクトの作成
 central_outbreak <- incidence(
   central_data,
   date_index = date_onset,
   interval = "week",
   groups = c(outcome))
 
-# plot incidence object
+# incidence オブジェクトの可視化
 plot(
   central_outbreak,
-  fill = outcome,                       # box/bar color
-  legend = "top",                       # legend on top
-  title = "Cases at Central Hospital",  # title
-  xlab = "Week of onset",               # x-axis label
-  ylab = "Week of onset",               # y-axis label
-  show_cases = TRUE,                    # show each case as an individual box
-  alpha = 0.7,                          # transparency 
-  border = "grey",                      # box border
+  fill = outcome,                       # グラフの色分け
+  legend = "top",                       # 凡例を一番上に置く
+  title = "Cases at Central Hospital",  # タイトル
+  xlab = "Week of onset",               # x軸のタイトル
+  ylab = "Week of onset",               # y軸のタイトル
+  show_cases = TRUE,                    # それぞれの症例を枠線で示す
+  alpha = 0.7,                          # 透明度 
+  border = "grey",                      # 症例ごとの枠線
   centre_dates = FALSE,                   
   date_format = "%a %d %b\n%Y (Week %W)", 
-  angle = 30                           # angle of date labels
+  angle = 30                           # 日付ラベルの角度
   )+
   
   scale_y_continuous(
-    breaks = seq(from = 0, to = 30, by = 5),  # specify y-axis increments by 5
-    expand = c(0,0))+                         # remove excess space below 0 on y-axis
+    breaks = seq(from = 0, to = 30, by = 5),  # y軸を5ずつで区分
+    expand = c(0,0))+                         # y軸の0以下の余分なスペースを削除
   
-  # add dynamic caption
+  # 脚注の追加
   labs(
-    fill = "Patient outcome",                               # Legend title
-    caption = stringr::str_glue(                            # dynamic caption - see page on characters and strings for details
+    fill = "Patient outcome",                               # 凡例タイトル
+    caption = stringr::str_glue(                            # 脚注（詳細は characters and strings に関するページを参照）
       "n = {central_cases} from Central Hospital
       Case onsets range from {earliest_date} to {latest_date}. {missing_onset} cases are missing date of onset and not shown",
       central_cases = nrow(central_data),
@@ -1916,59 +1911,65 @@ plot(
       latest_date = format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y'),      
       missing_onset = nrow(central_data %>% filter(is.na(date_onset)))))+
   
-  # adjust bold face, and caption position
+  # 太字フォントの追加と脚注の位置の指定
   theme(
-    axis.title = element_text(size = 12, face = "bold"),    # axis titles larger and bold
-    axis.text = element_text(size = 10, face = "bold"),     # axis text size and bold
-    plot.caption = element_text(hjust = 0, face = "italic") # move caption to left
+    axis.title = element_text(size = 12, face = "bold"),    # 軸タイトルを大きく、太字にする
+    axis.text = element_text(size = 10, face = "bold"),     # 軸の文字を大きく、太字にする
+    plot.caption = element_text(hjust = 0, face = "italic") # 脚注を左に寄せる
   )
   
 ```
 
-### Change colors {.unnumbered}
+### 色の変更 {.unnumbered}
 
-#### Specify a palette {.unnumbered}
+#### 色パレットの指定 {.unnumbered}
 
 Provide the name of a pre-defined palette to the `col_pal =` argument in `plot()`. The **incidence2** package comes with 2 pre-defined paletted: "vibrant" and "muted". In "vibrant" the first 6 colors and distinct and in "muted" the first 9 colors are distinct. After these numbers, the colors are interpolations/intermediaries of other colors. These pre-defined palettes can be found at [this website](https://personal.sron.nl/~pault/#sec:qualitative). The palettes exclude grey, which is reserved for missing data (use `na_color =` to change this default).
 
+`plot()` の `col_pal =` 引数に、定義済みの色パレットの名前を指定します。**incidence2** パッケージには、「vibrant 」と 「muted 」という2つの色パレットが付属しています。「vibrant 」では最初の6色が、「muted 」では最初の9色がそれぞれ異なる色となっています。それ以降の色は、他の色の補間となります。これらの定義されたパレットは、[このウェブサイト](https://personal.sron.nl/~pault/#sec:qualitative) で見ることができます。これらのパレットには灰色が含まれていませんが、これは欠損値があった場合に用いられるためです（`na_color =` を指定することでこのデフォルトを変更出来ます）。
+
 ```{r out.width = c('50%', '50%'), fig.show='hold', warning = F, message = F}
-# Create incidence object, with data grouped by age category  
+# age でグループ化された incidence オブジェクトの作成
 age_outbreak <- incidence(
   linelist,
-  date_index = date_onset,   # date of onset for x-axis
-  interval = "week",         # weekly aggregation of cases
+  date_index = date_onset,   # x軸を発症日に指定
+  interval = "week",         # 症例を週単位で集計
   groups = age_cat)
 
-# plot the epicurve with default palette
+# デフォルトの色パレットを用いて流行曲線を作成
 plot(age_outbreak, fill = age_cat, title = "'vibrant' default incidence2 palette")
 
-# plot with different color palette
+# 異なる色パレットを用いる場合は以下
 #plot(age_outbreak, fill = age_cat, col_pal = muted, title = "'muted' incidence2 palette")
 ```
 
 You can also use one of the **base** R palettes (put the name of the palette *without* quotes).
 
+また、R の**ベースの色**パレットを使用することも出来ます（パレットの名前を引用符なしで入れてください）。
+
 ```{r out.width = c('50%', '50%'), fig.show='hold', warning = F, message = F}
-# plot with base R palette
+# Rのベースの色パレットを使用して可視化
 plot(age_outbreak, fill = age_cat, col_pal = heat.colors, title = "base R heat.colors palette")
 
-# plot with base R palette
+# Rのベースの色パレットを使用して可視化
 plot(age_outbreak, fill = age_cat, col_pal = rainbow, title = "base R rainbow palette")
 ```
 
 You can also add a color palette from the **viridis** package or **RColorBrewer** package. First those packages must be loaded, then add their respective `scale_fill_*()` functions with a `+`, as shown below.
 
+**viridis** パッケージや **RColorBrewer** パッケージから色パレットを追加することも出来ます。これらのパッケージをロードしてから、それぞれの `scale_fill_*()` 関数を以下のように `+` で追加する必要があります。
+
 ```{r out.width = c('50%', '50%'), fig.show='hold', warning = F, message = F}
 pacman::p_load(RColorBrewer, viridis)
 
-# plot with color palette
+# 色パレットを使用して可視化
 plot(age_outbreak, fill = age_cat, title = "Viridis palette")+
   scale_fill_viridis_d(
     option = "inferno",     # color scheme, try also "plasma" or the default
     name = "Age Category",  # legend name
     na.value = "grey")      # for missing values
 
-# plot with color palette
+# 色パレットを使用して可視化
 plot(age_outbreak, fill = age_cat, title = "RColorBrewer palette")+
   scale_fill_brewer(
     palette = "Dark2",      # color palette, try also Accent, Dark2, Paired, Pastel1, Pastel2, Set1, Set2, Set3
@@ -1976,60 +1977,61 @@ plot(age_outbreak, fill = age_cat, title = "RColorBrewer palette")+
     na.value = "grey")      # for missing values
 ```
 
-#### Specify manually {.unnumbered}
+#### マニュアルで色を指定 {.unnumbered}
 
-To specify colors manually, add the **ggplot2** function `scale_fill_manual()` to the `plot()` with a `+` and provide the vector of colors names or HEX codes to the argument `values =`. The number of colors listed must equal the number of groups. Be aware of whether missing values are a group - they can be converted to a character value like "Missing" during your data preparation with the function `fct_explicit_na()` as explained in the page on \[Factors\].
+マニュアルで色を指定するには、**ggplot2** の関数 `scale_fill_manual()` を `plot()` に `+` で追加し、色の名前またはHEXコードのベクトルを引数 `values =` に与えます。 リストアップされた色の数は、グループの数と等しくなければなりません。欠損値がグループであるかどうかに注意してください。欠損値は、 \[Factors\]のページで説明したように、データの準備中に `fct_explicit_na()` という関数で「Missing」のような文字型に変換することが出来ます。
 
 ```{r out.width = c('50%', '50%'), fig.show='hold', warning=F, message=F}
-# manual colors
+# 色のマニュアル指定
 plot(age_outbreak, fill = age_cat, title = "Manually-specified colors")+
   scale_fill_manual(
-    values = c("darkgreen", "darkblue", "purple", "grey", "yellow", "orange", "red", "lightblue"),  # colors
-    name = "Age Category")      # Name for legend
+    values = c("darkgreen", "darkblue", "purple", "grey", "yellow", "orange", "red", "lightblue"),  # 色
+    name = "Age Category")      # 凡例のタイトル
 ```
 
-As mentioned in the \[ggplot tips\] page, you can create your own palettes using `colorRampPalette()` on a vector of colors and specifying the number of colors you want in return. This is a good way to get many colors in a ramp by specifying a few.
+\[ggplot tips\] ページにあるように、色のベクトルに `colorRampPalette()` を使って、欲しい色の数を指定することで、独自の色パレットを作ることができます。これは、いくつかの色を指定することで、多くの色を取得出来る良い方法です。
 
 ```{r}
 my_cols <- c("darkgreen", "darkblue", "purple", "grey", "yellow", "orange")
-my_palette <- colorRampPalette(my_cols)(12)  # expand the 6 colors above to 12 colors
+my_palette <- colorRampPalette(my_cols)(12)  # 6つの色を12色に拡張
 my_palette
 ```
 
-### Adjust level order {.unnumbered}
+### レベル順序の調整 {.unnumbered}
 
-To adjust the order of group appearance (on plot and in legend), the grouping column must be class Factor. See the page on \[Factors\] for more information.
+グループの表示順（グラフや凡例での表示）を調整するには、グループ化した列が因子型である必要があります。詳細は、 \[Factors\] のページを参照してください。
 
-First, let's see a weekly epicurve by hospital with the default ordering:
+まず、デフォルトの順序で病院別の週単位での流行曲線を見てみましょう：
 
 ```{r, message=F, warning=F}
-# ORIGINAL - hospital NOT as factor
+# オリジナル（hospital が因子型出ない場合）
 ###################################
 
-# create weekly incidence object, rows grouped by hospital and week
+# hospitalでグループ化された週単位の incidence オブジェクトの作成
 hospital_outbreak <- incidence(
   linelist,
   date_index = date_onset, 
   interval = "week", 
   groups = hospital)
 
-# plot incidence object
+# incidence オブジェクトの可視化
 plot(hospital_outbreak, fill = hospital, title = "ORIGINAL - hospital not a factor")
 ```
 
-Now, to adjust the order so that "Missing" and "Other" are at the top of the epicurve we can do the following:
+次に "Missing "と "Other "が流行曲線の一番上に来るように順番を調整するために以下のことを行います：
 
--   Load the package **forcats**, to work with factors\
+-   因子型を扱うために **forcats** パッケージをロードする
 
--   Adjust the dataset - in this case we'll define a new dataset (`plot_data`) in which:
+-   データセットの調整 - ここでは、新しいデータセット(`plot_data`)を定義します：
 
-    -   the `gender` column is defined as a factor the order of levels are set with `fct_relevel()` so that "Other" and "Missing" are first, so they appear at the top of the bars\
+    -   `gender` 列を因子型として定義した後に `fct_relevel()` でレベルの順序を設定し、"Other "と "Missing "が最初に来るようにすることで、棒グラフの一番上に表示されるようにします。
 
--   The incidence object is created and plotted as before\
+-   incidence オブジェクトを作成し、可視化します is created and plotted as before
 
--   We add **ggplot2** modifications
+-   **ggplot2** の修正を加えます。
 
     -   `scale_fill_manual()` to manually assign colors so that "Missing" is grey and "Other" is beige
+    -   `scale_fill_manual()` を使って、"Missing "が灰色、"Other "がベージュになるように、マニュアルで色を割り当てます。
 
 ```{r, message=F, warning=F}
 # MODIFIED - hospital as factor
@@ -2142,7 +2144,7 @@ To learn how to apply rolling averages more generally on data, see the Handbook 
 
 <!-- ======================================================= -->
 
-## Epicurves with ggplot2
+## ggplot2 を用いた流行曲線
 
 Using `ggplot()` to build your epicurve allows for more flexibility and customization, but requires more effort and understanding of how `ggplot()` works.
 
