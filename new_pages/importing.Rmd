@@ -132,7 +132,7 @@ linelist <- import("C:/Users/Laura/Documents/analysis/data/linelists/ebola_linel
 
 1)  RStudio の Environment Pane にて、"データセットのインポート"をクリックし、データの種類を選択します。
 2)  ファイル / データセットのインポート /（データの種類を選択）をクリックします\
-3)  手動選択をハードコーディングするには、ベースRコマンドの `file.choose()`（括弧を空のまま）を使用して、ユーザーがコンピューターからファイルを手動で選択できる**ポップアップウィンドウ**を表示します。以下に例を示します。
+3)  手動選択をハードコーディングするには、ベース R コマンドの `file.choose()`（括弧を空のまま）を使用して、ユーザーがコンピューターからファイルを手動で選択できる**ポップアップウィンドウ**を表示します。以下に例を示します。
 
 ```{r import_choose, eval=F}
 # ファイルの手動選択。このコマンドを実行すると、ポップアップウィンドウが表示される。
@@ -297,7 +297,7 @@ linelist_raw <- import("linelist_raw.csv",
 **バックアップオプションとして** - 列名を別のコマンドとして変更する
 
 ```{r, eval=F}
-# ベースの関数の colnames() 関数を使用してヘッダーを割り当てる/上書きする
+# ベース R の関数の colnames() 関数を使用してヘッダーを割り当てる/上書きする
 colnames(linelist_raw) <- linelist_raw_names
 ```
 
@@ -412,14 +412,14 @@ knitr::include_graphics(here::here("images", "download_shp.png"))
 
 ## 手動でのデータ入力
 
-### Entry by rows {.unnumbered}
+### 行ごとの入力 {.unnumbered}
 
-Use the `tribble` function from the **tibble** package from the tidyverse ([online tibble reference](https://tibble.tidyverse.org/reference/tribble.html)).
+tidyverse の **tibble** パッケージの `tribble` 関数を使用します([tribble のオンライン資料はこちら](https://tibble.tidyverse.org/reference/tribble.html)) 。
 
-Note how column headers start with a *tilde* (`~`). Also note that each column must contain only one class of data (character, numeric, etc.). You can use tabs, spacing, and new rows to make the data entry more intuitive and readable. Spaces do not matter between values, but each row is represented by a new line of code. For example:
+列のヘッダーが[チルダ]{.ul} (`~`) で始まります。また、各列のデータクラス（文字、数値など）は一つのみしか与えられないことに注意してください。タブ、間隔、および新しい行を使用して、データ入力をより直感的で読みやすくすることができます。値の間にスペースは関係ありませんが、各行は新しいコード行で表されます。 以下に例を示します。
 
 ```{r import_manual_row}
-# create the dataset manually by row
+# 行ごとに手動でデータセットを作成する
 manual_entry_rows <- tibble::tribble(
   ~colA, ~colB,
   "a",   1,
@@ -428,37 +428,37 @@ manual_entry_rows <- tibble::tribble(
   )
 ```
 
-And now we display the new dataset:
+新しいデータセットは以下のコマンドで表示できます。
 
 ```{r, echo=F}
-# display the new dataset
+# 新しいデータセットを表示する
 DT::datatable(manual_entry_rows)
 ```
 
-### Entry by columns {.unnumbered}
+### 列ごとの入力 {.unnumbered}
 
-Since a data frame consists of vectors (vertical columns), the **base** approach to manual dataframe creation in R expects you to define each column and then bind them together. This can be counter-intuitive in epidemiology, as we usually think about our data in rows (as above).
+データフレームはベクトル（垂直列）で構成されているため、Rで手動でデータフレームを作成する**基本的な**アプローチでは、各列を定義してから結合します。通常、上記に示したようにデータを行で考えるため、疫学では直感に反するかもしれません。
 
 ```{r import_manual_col}
-# define each vector (vertical column) separately, each with its own name
+# 各ベクトル（垂直列）を個別に定義し、それぞれに独自の名前を付ける
 PatientID <- c(235, 452, 778, 111)
 Treatment <- c("Yes", "No", "Yes", "Yes")
 Death     <- c(1, 0, 1, 0)
 ```
 
-[***CAUTION:*** All vectors must be the same length (same number of values).]{style="color: orange;"}
+[[**注意**]{.ul}***:***すべてのベクトルは同じ長さ（同じ数の値）である必要があります。]{style="color: orange;"}
 
-The vectors can then be bound together using the function `data.frame()`:
+次に、関数 `data.frame()` を使用してベクトルを結合できます。
 
 ```{r}
-# combine the columns into a data frame, by referencing the vector names
+# ベクトル名を元に、列をデータフレームに結合します
 manual_entry_cols <- data.frame(PatientID, Treatment, Death)
 ```
 
-And now we display the new dataset:
+以下のように新しいデータセットを表示します。
 
 ```{r, echo=F}
-# display the new dataset
+# 新しいデータセットを表示する
 DT::datatable(manual_entry_cols)
 ```
 
@@ -466,30 +466,30 @@ DT::datatable(manual_entry_cols)
 
 他の場所からデータをコピーしてクリップボードに保存する場合は、次の2つの方法のいずれかを試すことができます。
 
-From the **clipr** package, you can use `read_clip_tbl()` to import as a data frame, or just just `read_clip()` to import as a character vector. In both cases, leave the parentheses empty.
+**clipr** パッケージから、 `read_clip_tbl()` を使用してデータフレームとしてインポートするか、単に `read_clip()` を使用して文字ベクトルとしてインポートすることができます。どちらの場合も、括弧は空のままにしておきます。
 
 ```{r, eval=F}
-linelist <- clipr::read_clip_tbl()  # imports current clipboard as data frame
-linelist <- clipr::read_clip()      # imports as character vector
+linelist <- clipr::read_clip_tbl()  # 現在のクリップボードをデータフレームとしてインポートする
+linelist <- clipr::read_clip()      # 文字ベクトルとしてインポートする
 ```
 
 また、 パッケージ **clipr** を使用してシステムのクリップボードに簡単にエクスポートすることもできます。 エクスポートについては、以下のセクションを参照してください。
 
-Alternatively, you can use the the `read.table()` function from **base** R with `file = "clipboard")` to import as a data frame:
+または、 `file = "clipboard")` を指定して**ベース** R の `read.table()` 関数を使用して、データフレームとしてインポートすることもできます。
 
 ```{r, eval=F}
 df_from_clipboard <- read.table(
-  file = "clipboard",  # specify this as "clipboard"
-  sep = "t",           # separator could be tab, or commas, etc.
-  header=TRUE)         # if there is a header row
+  file = "clipboard",  # これを"クリップボード"として指定
+  sep = "t",           # 区切り文字はタブ、またはコンマなどが指定できます
+  header=TRUE)         # ヘッダー行がある場合
 ```
 
 ## 最新のファイルをインポート
 
 多くの場合、データセットの更新を毎日受け取ることがあります。 この場合、最新のファイルをインポートするコードを記述します。 以下に、これにアプローチする2つの方法を示します。
 
--   Selecting the file based on the date in the file name\
--   Selecting the file based on file metadata (last modification)
+-   ファイル名の日付に基づいてファイルを選択する\
+-   ファイルメタデータ（最新の変更）に基づくファイルの選択
 
 ### Dates in file name {.unnumbered}
 
@@ -564,20 +564,20 @@ And you can now import the latest file:
 import(here("data", "example", "linelists", latest_file)) # import 
 ```
 
-### Use the file info {.unnumbered}
+### ファイル情報を使用する {.unnumbered}
 
-If your files do not have dates in their names (or you do not trust those dates), you can try to extract the last modification date from the file metadata. Use functions from the package **fs** to examine the metadata information for each file, which includes the last modification time and the file path.
+ファイルの名前に日付が含まれていない場合（またはそれらの日付を信頼していない場合）、ファイルのメタデータから最終変更日を抽出してみてください。\\パッケージ **fs** の関数を使用して、最終変更時刻とファイルパスを含む各ファイルのメタデータ情報を調べます。
 
-Below, we provide the folder of interest to **fs**'s `dir_info()`. In this case, the folder of interest is in the R project in the folder "data", the sub-folder "example", and its sub-folder "linelists". The result is a data frame with one line per file and columns for `modification_time`, `path`, etc. You can see a visual example of this in the page on \[Directory interactions\].
+以下のように、 **fs** の `dir_info()` に対象のフォルダーを提供します。この場合、対象のフォルダーは、フォルダー "data"、サブフォルダー"example"、およびそのサブフォルダー"linelists"の R プロジェクトにあります。結果は、ファイルごとに1行、 `modification_time`, `path` などの列を持つデータフレームです。この視覚的な例は、\[Directory interactions\]のページで確認できます。
 
-We can sort this data frame of files by the column `modification_time`, and then keep only the top/latest row (file) with **base** R's `head()`. Then we can extract the file path of this latest file only with the **dplyr** function `pull()` on the column `path`. Finally we can pass this file path to `import()`. The imported file is saved as `latest_file`.
+このファイルのデータフレームを列`modification_time` で並べ替えてから、**ベース** Rの `head()` を含む最上位/最新の行（ファイル）のみを保持できます。次に、列パスの **dplyr** 関数 `pull()` を使用してのみ、この最新ファイルのファイルパスを抽出できます。Finally we can pass this file path to `import()`. The imported file is saved as `latest_file`.最後に、このファイルパス `import()` 内で指定し、インポートされたファイルは `latest_file` として保存されます。
 
 ```{r, eval=F}
-latest_file <- dir_info(here("data", "example", "linelists")) %>%  # collect file info on all files in directory
-  arrange(desc(modification_time)) %>%      # sort by modification time
-  head(1) %>%                               # keep only the top (latest) file
-  pull(path) %>%                            # extract only the file path
-  import()                                  # import the file
+latest_file <- dir_info(here("data", "example", "linelists")) %>%  # ディレクトリ内の全ファイルのファイル情報を収集
+  arrange(desc(modification_time)) %>%      # 変更時間で並べ替え
+  head(1) %>%                               # 一番上の（最新の）ファイルのみを保持する
+  pull(path) %>%                            # ファイルパスのみを抽出
+  import()                                  # ファイルをインポート
 
 ```
 
@@ -585,7 +585,7 @@ latest_file <- dir_info(here("data", "example", "linelists")) %>%  # collect fil
 
 ## APIs {#import_api}
 
-An "Automated Programming Interface" (API) can be used to directly request data from a website. APIs are a set of rules that allow one software application to interact with another. The client (you) sends a "request" and receives a "response" containing content. The R packages **httr** and **jsonlite** can facilitate this process.
+"自動プログラミングインターフェース"（API）を使用して、Web サイトからデータを直接リクエストできます。APIは、あるソフトウェアアプリケーションが別のソフトウェアアプリケーションと対話できるようにする一連のルールです。クライアント（あなた）は "リクエスト" を送信し、コンテンツを含む "レスポンス" を受信します。R パッケージ **httr** および **jsonlite** により、このプロセスを容易に行うことができます。
 
 Each API-enabled website will have its own documentation and specifics to become familiar with. Some sites are publicly available and can be accessed by anyone. Others, such as platforms with user IDs and credentials, require authentication to access their data.
 
