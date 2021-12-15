@@ -873,7 +873,7 @@ weekly_breaks_central <- seq.Date(
 
 -   同様に、「to 」の数値（日付ベクトルの最後の日付）は、逆の関数である `ceiling_date()` を用いて、最後の症例の翌月曜日を返すように作成されます。\
 
--    `seq.Date()` の引数 by には、日、週、月の任意の数を指定することが出来ます。\
+-   `seq.Date()` の引数 by には、日、週、月の任意の数を指定することが出来ます。\
 
 -   `week_start = 7` を使用することで日曜から開始される週にすることが出来ます。
 
@@ -1006,19 +1006,19 @@ aes(x = date_onset, group = gender, fill = gender)
 以下の適用されます：
 
 ```{r, warning=F, message=F}
-ggplot(data = linelist) +     # begin with linelist (many hospitals)
+ggplot(data = linelist) +     # データセットの指定（全病院データ）
   
-  # make histogram: specify bin break points: starts the Monday before first case, end Monday after last case
+  # ヒストグラムの作成: ビンの分割点の指定、 最初の症例の前の月曜日から始まり、最後の症例の次の月曜日で終わるように設定する
   geom_histogram(
     mapping = aes(
       x = date_onset,
-      group = hospital,       # set data to be grouped by hospital
-      fill = hospital),       # bar fill (inside color) by hospital
+      group = hospital,       # hospital でグループ化する
+      fill = hospital),       # hospital 毎に棒グラフを色分けする
     
-    # bin breaks are Monday weeks
-    breaks = weekly_breaks_all,   # sequence of weekly Monday bin breaks for whole outbreak, defined in previous code       
+    # ビン分割を月曜始まりの週ごとにする
+    breaks = weekly_breaks_all,   # 上のコードで定義済みの全症例に対する月曜始まりの週毎に分割する    
     
-    # Color around bars
+    # 枠線の色の指定
     color = "black")
 ```
 
@@ -1026,93 +1026,100 @@ ggplot(data = linelist) +     # begin with linelist (many hospitals)
 
 -   To *manually* set the fill for each group, use `scale_fill_manual()` (note: `scale_color_manual()` is different!).
 
-    -   Use the `values =` argument to apply a vector of colors.\
-    -   Use `na.value =` to specify a color for `NA` values.\
-    -   Use the `labels =` argument to change the text of legend items. To be safe, provide as a named vector like `c("old" = "new", "old" = "new")` or adjust the values in the data itself.\
-    -   Use `name =` to give a proper title to the legend\
+-   各グループの色分けをマニュアルで設定するには、 `scale_fill_manual()` を使用します (注意: `scale_color_manual()` と区別します!)。
+
+    -   色のベクトルを適用するには、`values =` 引数を使用します。\
+
+    -   欠損値の色を指定するには、`na.value =` を使用します。\
+
+    -   `labels =` 引数を使用して、凡例の項目名を変更します。念の為に、`c("old" = "new", "old" = "new")` のような名前付きベクトルとして提供するか、データ自体の値を調節してください。
+
+    -   凡例のタイトルを指定するためには、`name =` を使用します。\
 
 -   For more tips on color scales and palettes, see the page on \[ggplot basics\].
 
+-   色スケールやパレットに関する詳しい情報は、\[ggplot の基礎\]のページを参照してください。
+
 ```{r, warning=F, message=F}
-ggplot(data = linelist)+           # begin with linelist (many hospitals)
+ggplot(data = linelist)+           # データセットの指定（全病院データ）
   
-  # make histogram
+  # ヒストグラムの作成
   geom_histogram(
     mapping = aes(x = date_onset,
-        group = hospital,          # cases grouped by hospital
-        fill = hospital),          # bar fill by hospital
+        group = hospital,          # hospital でグループ化する
+        fill = hospital),          # hospital 毎に棒グラフを色分けする
     
-    # bin breaks
-    breaks = weekly_breaks_all,        # sequence of weekly Monday bin breaks, defined in previous code
+    # ビン分割
+    breaks = weekly_breaks_all,        # 上のコードで定義済みの全症例に対する月曜始まりの週毎に分割する  
     
-    # Color around bars
-    color = "black")+              # border color of each bar
+    # 枠線の色の指定
+    color = "black")+              # 枠線の色の指定
   
-  # manual specification of colors
+  # マニュアルでの色の指定
   scale_fill_manual(
     values = c("black", "orange", "grey", "beige", "blue", "brown"),
     labels = c("St. Mark's Maternity Hospital (SMMH)" = "St. Mark's"),
-    name = "Hospital") # specify fill colors ("values") - attention to order!
+    name = "Hospital") # 色の指定 - 順番に注意!
 ```
 
-### Adjust level order {.unnumbered}
+### レベル順の調整 {.unnumbered}
 
-The order in which grouped bars are stacked is best adjusted by classifying the grouping column as class Factor. You can then designate the factor level order (and their display labels). See the page on \[Factors\] or \[ggplot tips\] for details.
+グループ化された棒グラフを積み重ねる順番は、グループ化された列を Factor 型に分類することで調整出来ます。Factor型 のレベルの順番（とその表示ラベル）を指定することで調整します。詳しくは、\[因子（ファクタ）型データ\]または\[ggplot の基礎\]のページを参照してください。
 
-Before making the plot, use the `fct_relevel()` function from **forcats** package to convert the grouping column to class factor and manually adjust the level order, as detailed in the page on \[Factors\].
+グラフを作成する前に、**forcats** パッケージの `fct_relevel()` 関数を使って、\[因子（ファクタ）型データ\] のページで説明されているように、グループ化列をfactor 型に変換し、レベル順をマニュアルで調整してください。
 
 ```{r}
-# load forcats package for working with factors
+# forcats パッケージのロード
 pacman::p_load(forcats)
 
-# Define new dataset with hospital as factor
+# hospital をfactor 型としてデータセットを定義する
 plot_data <- linelist %>% 
-  mutate(hospital = fct_relevel(hospital, c("Missing", "Other"))) # Convert to factor and set "Missing" and "Other" as top levels to appear on epicurve top
+  mutate(hospital = fct_relevel(hospital, c("Missing", "Other"))) # factor 型に変換した後に"Missing"と"Other" 列が棒グラフの上に来るようにレベル順を調整する
 
-levels(plot_data$hospital) # print levels in order
+levels(plot_data$hospital) # レベル順を表示する
 ```
 
-In the below plot, the only differences from previous is that column `hospital` has been consolidated as above, and we use `guides()` to reverse the legend order, so that "Missing" is on the bottom of the legend.
+以下の例では、`hospital` 列を上記のように統合した上で凡例の順番を `guides()` 関数を用いて逆にした上で "**Missing**" が凡例の一番下に来るように変更しています。
 
 ```{r, warning=F, message=F}
-ggplot(plot_data) +                     # Use NEW dataset with hospital as re-ordered factor
+ggplot(plot_data) +                     # レベル順を変更した新しい hospital を使用する
   
-  # make histogram
+  # ヒストグラムの作成
   geom_histogram(
     mapping = aes(x = date_onset,
-        group = hospital,               # cases grouped by hospital
-        fill = hospital),               # bar fill (color) by hospital
+        group = hospital,               # hospital でグループ化する
+        fill = hospital),               # hospital 毎に棒グラフを色分けする
     
-    breaks = weekly_breaks_all,         # sequence of weekly Monday bin breaks for whole outbreak, defined at top of ggplot section
+    breaks = weekly_breaks_all,         # 以前のコードで定義済みの全症例に対する月曜始まりの週毎に分割する  
     
-    color = "black")+                   # border color around each bar
+    color = "black")+                   # 枠線の色の指定
     
-  # x-axis labels
+  # x軸のラベル
   scale_x_date(
-    expand            = c(0,0),         # remove excess x-axis space before and after case bars
-    date_breaks       = "3 weeks",      # labels appear every 3 Monday weeks
-    date_minor_breaks = "week",         # vertical lines appear every Monday week
-    date_labels       = "%d\n%b\n'%y")+ # date labels format
+    expand            = c(0,0),         # X軸の前後の余分なスペースを削除
+    date_breaks       = "3 weeks",      # データを3週ごとに表示
+    date_minor_breaks = "week",         # 縦縦罫線を1週ごとに表示
+    date_labels       = "%d\n%b\n'%y")+ # 日付ラベルのフォーマット
   
-  # y-axis
+  # y軸のラベル
   scale_y_continuous(
-    expand = c(0,0))+                   # remove excess y-axis space below 0
+    expand = c(0,0))+                   # y軸の前後の余分なスペースを削除
   
-  # manual specification of colors, ! attention to order
+  # 手動での色の指定、順番に注意！
   scale_fill_manual(
     values = c("grey", "beige", "black", "orange", "blue", "brown"),
     labels = c("St. Mark's Maternity Hospital (SMMH)" = "St. Mark's"),
     name = "Hospital")+ 
   
-  # aesthetic themes
-  theme_minimal()+                      # simplify plot background
+  # 外観の変更
+  theme_minimal()+                      # 背景を簡潔なものに指定
   
   theme(
-    plot.caption = element_text(face = "italic", # caption on left side in italics
+    plot.caption = element_text(face = "italic", # 脚注をイタリック体にして左に幅寄せ
                                 hjust = 0), 
-    axis.title = element_text(face = "bold"))+   # axis titles in bold
+    axis.title = element_text(face = "bold"))+   # 軸タイトルを太字に
   
-  # labels
+  # ラベルの指定
   labs(
     title    = "Weekly incidence of cases by hospital",
     subtitle = "Hospital as re-ordered factor",
@@ -1120,11 +1127,11 @@ ggplot(plot_data) +                     # Use NEW dataset with hospital as re-or
     y        = "Weekly cases")
 ```
 
-[***TIP:*** To reverse the order of the legend only, add this **ggplot2** command: `guides(fill = guide_legend(reverse = TRUE))`.]{style="color: darkgreen;"}
+[***TIP:*** 凡例の順番を逆にするには、以下の **ggplot2** コマンドを使用します: `guides(fill = guide_legend(reverse = TRUE))`.]{style="color: darkgreen;"}
 
-### Adjust legend {.unnumbered}
+### 凡例の調整 {.unnumbered}
 
-Read more about legends and scales in the \[ggplot tips\] page. Here are a few highlights:
+凡例やスケールについては、\[ggplot \]のページで詳しく説明しています。以下はそのハイライトです：
 
 -   Edit legend title either in the scale function or with `labs(fill = "Legend title")` (if your are using `color =` aesthetic, then use `labs(color = "")`)\
 -   `theme(legend.title = element_blank())` to have no legend title\
