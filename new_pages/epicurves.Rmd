@@ -761,7 +761,7 @@ rolling_avg <- incidence(                    # incidence オブジェクトの�
 plot(rolling_avg, n.breaks = 3) # グループごとに移動平均が作成されているので自動でファセット化される
 ```
 
-より一般的なデータに対して移動平均を算出する場合はこのハンドブックの [Moving averages] を参照して下さい。
+より一般的なデータに対して移動平均を算出する場合はこのハンドブックの [移動平均] を参照して下さい。
 
 <!-- ======================================================= -->
 
@@ -1133,125 +1133,131 @@ ggplot(plot_data) +                     # レベル順を変更した新しい h
 
 凡例やスケールについては、\[ggplot \]のページで詳しく説明しています。以下はそのハイライトです：
 
--   Edit legend title either in the scale function or with `labs(fill = "Legend title")` (if your are using `color =` aesthetic, then use `labs(color = "")`)\
--   `theme(legend.title = element_blank())` to have no legend title\
--   `theme(legend.position = "top")` ("bottom", "left", "right", or "none" to remove the legend)
--   `theme(legend.direction = "horizontal")` horizontal legend
--   `guides(fill = guide_legend(reverse = TRUE))` to reverse order of the legend
+-   凡例のタイトルを編集するには、scale 関数か、`labs(fill = "Legend title")` を使用します(`color =` aesthetic を使用している場合は `labs(color = "")` を使用)\
+-   `theme(legend.title = element_blank())` で凡例のタイトルを削除
+-   `theme(legend.position = "top")` （"bottom", "left", "right" で凡例をそれぞれ下、左、右に配置。または"none" で凡例が削除されます）
+-   `theme(legend.direction = "horizontal")` で凡例を水平に配置
+-   `guides(fill = guide_legend(reverse = TRUE))` で凡例の順序を逆にする
 
-### Bars side-by-side {.unnumbered}
+### 棒グラフの横並び表示 {.unnumbered}
 
-Side-by-side display of group bars (as opposed to stacked) is specified within `geom_histogram()` with `position = "dodge"` placed outside of `aes()`.
+グルーブ化された棒グラフを横並びに表示する(積み重ねではなく)には、`geom_histogram()`{style="padding: 0px 1px; border-width: 1px; border-style: solid; border-color: rgb(51, 80, 116) !important; border-image: initial; background-color: rgb(26, 58, 99) !important; font-family: Osaka-Mono, monospace !important; font-size: 9pt !important;"} の中で、`aes()`{style="padding: 0px 1px; border-width: 1px; border-style: solid; border-color: rgb(51, 80, 116) !important; border-image: initial; background-color: rgb(26, 58, 99) !important; font-family: Osaka-Mono, monospace !important; font-size: 9pt !important;"} の外に置か`position = "dodge"`{style="padding: 0px 1px; border-width: 1px; border-style: solid; border-color: rgb(51, 80, 116) !important; border-image: initial; background-color: rgb(26, 58, 99) !important; font-family: Osaka-Mono, monospace !important; font-size: 9pt !important;"} で指定します。
 
-If there are more than two value groups, these can become difficult to read. Consider instead using a faceted plot (small multiples). To improve readability in this example, missing gender values are removed.
+2つ以上のグループがある場合、読みにくくなることがあります。代わりにファセット化された可視化を行った方が良いかも知れません。以下の例では、見やすくするために性別の欠測値を削除しています。
 
 ```{r, warning=F, message=F}
-ggplot(central_data %>% drop_na(gender))+   # begin with Central Hospital cases dropping missing gender
+ggplot(central_data %>% drop_na(gender))+   # 性別の欠損値を除外する
     geom_histogram(
         mapping = aes(
           x = date_onset,
-          group = gender,         # cases grouped by gender
-          fill = gender),         # bars filled by gender
+          group = gender,         # gender でグループ化する
+          fill = gender),         # gender 毎に棒グラフを色分けする
         
-        # histogram bin breaks
-        breaks = weekly_breaks_central,   # sequence of weekly dates for Central outbreak - defined at top of ggplot section
+        # ヒストグラムのビン分割の指定
+        breaks = weekly_breaks_central,   # 上で定義したビンの分割
         
-        color = "black",          # bar edge color
+        color = "black",          # 枠線の色の指定
         
-        position = "dodge")+      # SIDE-BY-SIDE bars
+        position = "dodge")+      # 棒グラフを横並びに指定
                       
   
-  # The labels on the x-axis
-  scale_x_date(expand            = c(0,0),         # remove excess x-axis space below and after case bars
-               date_breaks       = "3 weeks",      # labels appear every 3 Monday weeks
-               date_minor_breaks = "week",         # vertical lines appear every Monday week
-               date_labels       = "%d\n%b\n'%y")+ # date labels format
+  # x軸のラベル
+  scale_x_date(expand            = c(0,0),         # X軸の前後の余分なスペースを削除
+               date_breaks       = "3 weeks",      # データを3週ごとに表示
+               date_minor_breaks = "week",         # 縦縦罫線を1週ごとに表示
+               date_labels       = "%d\n%b\n'%y")+ # 日付ラベルのフォーマット
   
-  # y-axis
-  scale_y_continuous(expand = c(0,0))+             # removes excess y-axis space between bottom of bars and the labels
+  # y軸のラベル
+  scale_y_continuous(expand = c(0,0))+             # y軸の前後の余分なスペースを削除
   
-  #scale of colors and legend labels
-  scale_fill_manual(values = c("brown", "orange"),  # specify fill colors ("values") - attention to order!
+  #手動での色の指定
+  scale_fill_manual(values = c("brown", "orange"),  # 手動での色の指定、順番に注意！
                     na.value = "grey" )+     
 
-  # aesthetic themes
-  theme_minimal()+                                               # a set of themes to simplify plot
-  theme(plot.caption = element_text(face = "italic", hjust = 0), # caption on left side in italics
-        axis.title = element_text(face = "bold"))+               # axis titles in bold
+  # 外観の変更
+  theme_minimal()+                                               # 背景を簡潔なものに指定
+  theme(plot.caption = element_text(face = "italic", hjust = 0), # 脚注をイタリック体にして左に幅寄せ
+        axis.title = element_text(face = "bold"))+               # 軸タイトルを太字に
   
-  # labels
+  # ラベルの指定
   labs(title    = "Weekly incidence of cases, by gender",
        subtitle = "Subtitle",
-       fill     = "Gender",                                      # provide new title for legend
+       fill     = "Gender",                                      # 凡例のタイトルを指定
        x        = "Week of symptom onset",
        y        = "Weekly incident cases reported")
 ```
 
-### Axis limits {.unnumbered}
+### 軸の範囲 {.unnumbered}
 
-There are two ways to limit the extent of axis values.
+軸の値の範囲を決める方法は2つあります。
 
-Generally the preferred way is to use the command `coord_cartesian()`, which accepts `xlim = c(min, max)` and `ylim = c(min, max)` (where you provide the min and max values). This acts as a "zoom" without actually removing any data, which is important for statistics and summary measures.
+一般的な方法は、`xlim = c(min, max)` と `ylim = c(min, max)` を包含する `coord_cartesian()` コマンドを使用することです（それぞれの min と max の値を指定します）。これは、実際にデータを削除することなく「ズーム」として機能し、統計量や要約尺度において重要です。
 
-Alternatively, you can set maximum and minimum date values using `limits = c()` within `scale_x_date()`. For example:
+また、scale_x\_date() 内で limits = c() を使用して、最初の日付と最後の日付を設定することもできます。
 
-```{r eval=F}
-scale_x_date(limits = c(as.Date("2014-04-01"), NA)) # sets a minimum date but leaves the maximum open.  
-```
-
-Likewise, if you want to the x-axis to extend to a specific date (e.g. current date), even if no new cases have been reported, you can use:
+例えば：
 
 ```{r eval=F}
-scale_x_date(limits = c(NA, Sys.Date()) # ensures date axis will extend until current date  
+scale_x_date(limits = c(as.Date("2014-04-01"), NA)) # 最初の日付を指定し、最後の日付は指定しない
 ```
 
-[***DANGER:*** Be cautious setting the y-axis scale breaks or limits (e.g. 0 to 30 by 5: `seq(0, 30, 5)`). Such static numbers can cut-off your plot too short if the data changes to exceed the limit!.]{style="color: red;"}
+同様に、新しい症例が報告されていない場合でも、x軸を特定の日付（例えば現在の日付）まで伸ばしたい場合は、次のように指定します：
 
-### Date-axis labels/gridlines {.unnumbered}
+```{r eval=F}
+scale_x_date(limits = c(NA, Sys.Date()) # 最後の日付を現在の日付に指定
+```
 
-[***TIP:*** Remember that date-axis **labels** are independent from the aggregation of the data into bars, but visually it can be important to align bins, date labels, and vertical grid lines.]{style="color: darkgreen;"}
+[注意：y軸の区切りや範囲の設定には注意が必要です（例：0から30までを5ごとに分割: `seq(0, 30, 5)`). このようなやり方では、データが設定範囲外の値だった場合にグラフが削除される場合があります！]{style="color: red;"}
 
-To **modify the date labels and grid lines**, use `scale_x_date()` in one of these ways:
+### 日付軸のラベルと罫線 {.unnumbered}
 
--   **If your histogram bins are days, Monday weeks, months, or years**:
+[***TIP：日付***軸のラベルはデータの集約とは関係ありませんが、視覚的にビン分割、日付ラベル、垂直罫線を揃えるために重要です]{style="color: darkgreen;"}
 
-    -   Use `date_breaks =` to specify the interval of labels and major gridlines (e.g. "day", "week", "3 weeks", "month", or "year")
-    -   Use `date_minor_breaks =` to specify interval of minor vertical gridlines (between date labels)\
-    -   Add `expand = c(0,0)` to begin the labels at the first bar\
-    -   Use `date_labels =` to specify format of date labels - see the Dates page for tips (use `\n` for a new line)\
+日付ラベルと罫線を変更するには、以下のいずれかの方法で `scale_x_date()` を使用します：
 
--   **If your histogram bins are Sunday weeks**:
+-   **ヒストグラムのビン分割が日、月、月曜始まりの週、月、年である場合：**
 
-    -   Use `breaks =` and `minor_breaks =` by providing a sequence of date breaks for each
-    -   You can still use `date_labels =` and `expand =` for formatting as described above
+    -   `date_breaks =` を使用して、ラベルと大きい罫線の間隔を指定します (例： "day"、 "week"、 "3 weeks"、"month"、"year")
 
-Some notes:
+    -   `date_minor_breaks =` を使用して、（日付ラベルの間の）小さい縦罫線の間隔を指定します
 
--   See the opening ggplot section for instructions on how to create a sequence of dates using `seq.Date()`.\
--   See [this page](https://rdrr.io/r/base/strptime.html) or the \[Working with dates\] page for tips on creating date labels.
+    -   最初の棒グラフからラベルを開始するために `expand = c(0,0)` を追加します\
 
-#### Demonstrations {.unnumbered}
+    -   日付のラベルの書式を指定するには `date_labels =` を使用します - ヒントは\[日付型データ\]のページを参照してください (改行には `\n` を使用)
 
-Below is a demonstration of plots where the bins and the plot labels/grid lines are aligned and not aligned:
+-   **ヒストグラムのビン分割が日曜始まりの週：**
+
+    -   `breaks =` と `minor_breaks =` を使用してそれぞれ一連の日付の区切りを指定します
+    -   上記のように `date_labels =` と `expand =` を使用してフォーマットすることは可能です
+
+注意点：
+
+-   `seq.Date()` を使用して日付のベクトルを作成する方法については、\[ggplot の基礎\]のセクションを参照して下さい
+
+-   日付ラベルを作成するためのヒントについては、このページまたは \[日付型データ\] ページを参照してください。
+
+#### デモンストレーション {.unnumbered}
+
+以下は、ビン分割とラベル、罫線が整列しているグラフと整列していないグラフのデモです：
 
 ```{r fig.show='hold', class.source = 'fold-hide', warning=F, message=F}
-# 7-day bins + Monday labels
+# 7日ごとのビン分割＋月曜ラベル
 #############################
 ggplot(central_data) +
   geom_histogram(
     mapping = aes(x = date_onset),
-    binwidth = 7,                 # 7-day bins with start at first case
+    binwidth = 7,                 # 最初の症例から7日ごとのビン分割
     color = "darkblue",
     fill = "lightblue") +
   
   scale_x_date(
-    expand = c(0,0),               # remove excess x-axis space below and after case bars
-    date_breaks = "3 weeks",       # Monday every 3 weeks
-    date_minor_breaks = "week",    # Monday weeks
-    date_labels = "%a\n%d\n%b\n'%y")+  # label format
+    expand = c(0,0),               # X軸の前後の余分なスペースを削除
+    date_breaks = "3 weeks",       # データを3週ごとに表示
+    date_minor_breaks = "week",    # 縦罫線を1週ごとに表示
+    date_labels = "%a\n%d\n%b\n'%y")+  # 日付ラベルのフォーマット
   
   scale_y_continuous(
-    expand = c(0,0))+              # remove excess space under x-axis, make flush
+    expand = c(0,0))+              # y軸の前後の余分なスペースを削除
   
   labs(
     title = "MISALIGNED",
@@ -1259,7 +1265,7 @@ ggplot(central_data) +
 
 
 
-# 7-day bins + Months
+# 7日ごとのビン分割＋月
 #####################
 ggplot(central_data) +
   geom_histogram(
@@ -1269,82 +1275,82 @@ ggplot(central_data) +
     fill = "lightblue") +
   
   scale_x_date(
-    expand = c(0,0),                  # remove excess x-axis space below and after case bars
-    date_breaks = "months",           # 1st of month
-    date_minor_breaks = "week",       # Monday weeks
-    date_labels = "%a\n%d %b\n%Y")+    # label format
+    expand = c(0,0),                  # X軸の前後の余分なスペースを削除
+    date_breaks = "months",           # 月の一番はじめの日
+    date_minor_breaks = "week",       # 縦罫線を1週ごとに表示
+    date_labels = "%a\n%d %b\n%Y")+    # 日付ラベルのフォーマット
   
   scale_y_continuous(
-    expand = c(0,0))+                # remove excess space under x-axis, make flush 
+    expand = c(0,0))+                # y軸の前後の余分なスペースを削除
   
   labs(
     title = "MISALIGNED",
     subtitle = "! CAUTION: 7-day bars start Thursdays with first case\nMajor gridlines and date labels at 1st of each month\nMinor gridlines weekly on Mondays\nNote uneven spacing of some gridlines and ticks unaligned with bars")
 
 
-# TOTAL MONDAY ALIGNMENT: specify manual bin breaks to be mondays
+# マニュアルでビン分割を月曜日に指定
 #################################################################
 ggplot(central_data) + 
   geom_histogram(
     mapping = aes(x = date_onset),
     
-    # histogram breaks set to 7 days beginning Monday before first case
-    breaks = weekly_breaks_central,    # defined earlier in this page
+    # 最初の症例の前の月曜日から始まる7日ごとのビン分割を指定
+    breaks = weekly_breaks_central,    # このページで定義済み
     
     color = "darkblue",
     
     fill = "lightblue") + 
   
   scale_x_date(
-    expand = c(0,0),                   # remove excess x-axis space below and after case bars
-    date_breaks = "4 weeks",           # Monday every 4 weeks
-    date_minor_breaks = "week",        # Monday weeks 
-    date_labels = "%a\n%d %b\n%Y")+      # label format
+    expand = c(0,0),                   # X軸の前後の余分なスペースを削除
+    date_breaks = "4 weeks",           # 4週ごとの月曜日
+    date_minor_breaks = "week",        # 月曜始まりの週
+    date_labels = "%a\n%d %b\n%Y")+      # 日付ラベルのフォーマット
   
   scale_y_continuous(
-    expand = c(0,0))+                # remove excess space under x-axis, make flush 
+    expand = c(0,0))+                # y軸の前後の余分なスペースを削除
   
   labs(
     title = "ALIGNED Mondays",
     subtitle = "7-day bins manually set to begin Monday before first case (28 Apr)\nDate labels and gridlines on Mondays as well")
 
 
-# TOTAL MONDAY ALIGNMENT WITH MONTHS LABELS:
+# ラベルを月にして整列
 ############################################
 ggplot(central_data) + 
   geom_histogram(
     mapping = aes(x = date_onset),
     
-    # histogram breaks set to 7 days beginning Monday before first case
-    breaks = weekly_breaks_central,            # defined earlier in this page
+    # 最初の症例の前の月曜日から始まる7日ごとのビン分割を指定
+    breaks = weekly_breaks_central,            # このページで定義済み
     
     color = "darkblue",
     
     fill = "lightblue") + 
   
   scale_x_date(
-    expand = c(0,0),                   # remove excess x-axis space below and after case bars
-    date_breaks = "months",            # Monday every 4 weeks
-    date_minor_breaks = "week",        # Monday weeks 
-    date_labels = "%b\n%Y")+          # label format
+    expand = c(0,0),                   # X軸の前後の余分なスペースを削除
+    date_breaks = "months",            # 4週ごとの月曜日
+    date_minor_breaks = "week",        # 月曜始まりの週
+    date_labels = "%b\n%Y")+          # 日付ラベルのフォーマット
   
   scale_y_continuous(
-    expand = c(0,0))+                # remove excess space under x-axis, make flush 
+    expand = c(0,0))+                # y軸の前後の余分なスペースを削除
   
-  theme(panel.grid.major = element_blank())+  # Remove major gridlines (fall on 1st of month)
+  theme(panel.grid.major = element_blank())+  # 大きい縦罫線の削除
           
   labs(
     title = "ALIGNED Mondays with MONTHLY labels",
     subtitle = "7-day bins manually set to begin Monday before first case (28 Apr)\nDate labels on 1st of Month\nMonthly major gridlines removed")
 
 
-# TOTAL SUNDAY ALIGNMENT: specify manual bin breaks AND labels to be Sundays
+# マニュアルでビン分割とラベルを日曜日に指定
 ############################################################################
 ggplot(central_data) + 
   geom_histogram(
     mapping = aes(x = date_onset),
     
-    # histogram breaks set to 7 days beginning Sunday before first case
+    # 最初の症例の前の日曜日から始まる7日ごとのビン分割を指定
     breaks = seq.Date(from = floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 7),
                       to   = ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 7),
                       by   = "7 days"),
@@ -1355,94 +1361,96 @@ ggplot(central_data) +
   
   scale_x_date(
     expand = c(0,0),
-    # date label breaks and major gridlines set to every 3 weeks beginning Sunday before first case
+    # 最初の症例の前の日曜日から始まる3週間ごとのラベルと大きい罫線を指定
     breaks = seq.Date(from = floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 7),
                       to   = ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 7),
                       by   = "3 weeks"),
     
-    # minor gridlines set to weekly beginning Sunday before first case
+    # 最初の症例の前の日曜日から始まる7日ごとの小さい罫線を指定
     minor_breaks = seq.Date(from = floor_date(min(central_data$date_onset, na.rm=T),   "week", week_start = 7),
                             to   = ceiling_date(max(central_data$date_onset, na.rm=T), "week", week_start = 7),
                             by   = "7 days"),
     
-    date_labels = "%a\n%d\n%b\n'%y")+  # label format
+    date_labels = "%a\n%d\n%b\n'%y")+  # 日付ラベルのフォーマット
   
   scale_y_continuous(
-    expand = c(0,0))+                # remove excess space under x-axis, make flush 
+    expand = c(0,0))+                # y軸の前後の余分なスペースを削除
   
   labs(title = "ALIGNED Sundays",
        subtitle = "7-day bins manually set to begin Sunday before first case (27 Apr)\nDate labels and gridlines manually set to Sundays as well")
 
 ```
 
-### Aggregated data {.unnumbered}
+### 集計データ {.unnumbered}
 
-Often instead of a linelist, you begin with aggregated counts from facilities, districts, etc. You can make an epicurve with `ggplot()` but the code will be slightly different. This section will utilize the `count_data` dataset that was imported earlier, in the data preparation section. This dataset is the `linelist` aggregated to day-hospital counts. The first 50 rows are displayed below.
+ラインリストではなく、施設や地域などの集計データのみがあることが多くあります。`ggplot()` で流行曲線を作成することができますが、コードが少し異なります。このセクションでは、先ほどのデータ準備のセクションでインポートした `count_data` データセットを使用します。このデータセットは、`linelist` から日別の症例数をカウントしたデータが含まれています。最初の50行を以下に表示します。
 
 ```{r message=FALSE, warning=F, echo=F}
-# display the linelist data as a table
+# count_dataの表を表示
 DT::datatable(head(count_data, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Plotting daily counts {.unnumbered}
+#### 日別カウントデータの可視化 {.unnumbered}
 
-We can plot a daily epicurve from these *daily counts*. Here are the differences to the code:
+日別カウントデータから流行曲線を作成することが出来ます。以下は以前のコードとの相違点です：
 
--   Within the aesthetic mapping `aes()`, specify `y =` as the counts column (in this case, the column name is `n_cases`)
--   Add the argument `stat = "identity"` within `geom_histogram()`, which specifies that bar height should be the `y =` value, not the number of rows as is the default\
--   Add the argument `width =` to avoid vertical white lines between the bars. For daily data set to 1. For weekly count data set to 7. For monthly count data, white lines are an issue (each month has different number of days) - consider transforming your x-axis to a categorical ordered factor (months) and using `geom_col()`.
+-   `aes()` 内で、日別カウントデータを `y =` に指定します (この場合、列名は `n_cases` です）。
+
+-   `geom_histogram()` に引数 `stat = "identity"` を追加し、棒グラフの高さをデフォルトの行数ではなく、`y =` として指定します。\
+
+-   棒グラフの間に縦の白線が入らないように、`width =` の引数を追加します。日別データの場合、1に設定します。週別カウントデータの場合は7に設定します。月別のカウントデータでは、白線が問題になります (各月で日数が異なるためです) - x 軸を因子型 (月) に変換して `geom_col()` を使用することを検討して下さい。
 
 ```{r, message=FALSE, warning=F}
 ggplot(data = count_data)+
   geom_histogram(
    mapping = aes(x = date_hospitalisation, y = n_cases),
    stat = "identity",
-   width = 1)+                # for daily counts, set width = 1 to avoid white space between bars
+   width = 1)+                # 日別カウントデータ の場合は set width = 1 で棒グラフの間のスペースを適切にする
   labs(
     x = "Date of report", 
     y = "Number of cases",
     title = "Daily case incidence, from daily count data")
 ```
 
-#### Plotting weekly counts {.unnumbered}
+#### 週別カウントデータの可視化 {.unnumbered}
 
-If your data are already case counts by week, they might look like this dataset (called `count_data_weekly`):
+もしデータが週ごとの症例数であれば、以下と同じようになっているはずです（count_data_weekly という変数名にしています）：
 
 ```{r, warning=F, message=F, echo=F}
-# Create weekly dataset with epiweek column
+# epiweek という列をもつ週別カウントデータの作成
 count_data_weekly <- count_data %>%
   mutate(epiweek = lubridate::floor_date(date_hospitalisation, "week")) %>% 
   group_by(hospital, epiweek, .drop=F) %>% 
   summarize(n_cases_weekly = sum(n_cases, na.rm=T))   
 ```
 
-The first 50 rows of `count_data_weekly` are displayed below. You can see that the counts have been aggregated into weeks. Each week is displayed by the first day of the week (Monday by default).
+`count_data_weekly` の最初の50行を以下に表示します。週単位で症例が集計されています。各週は、週の最初の日(デフォルトでは月曜日)で表示されます。
 
 ```{r message=FALSE, echo=F}
-# display the linelist data as a table
+# count_data_weekly の表を表示
 DT::datatable(count_data_weekly, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Now plot so that `x =` the epiweek column. Remember to add `y =` the counts column to the aesthetic mapping, and add `stat = "identity"` as explained above.
+`x =` epiweek となるようにプロットします。`y =` counts を追加し、上で説明したように `stat = "identity"` を追加することを忘れないで下さい。
 
 ```{r, warning=F, message=F}
 ggplot(data = count_data_weekly)+
   
   geom_histogram(
     mapping = aes(
-      x = epiweek,           # x-axis is epiweek (as class Date)
-      y = n_cases_weekly,    # y-axis height in the weekly case counts
-      group = hospital,      # we are grouping the bars and coloring by hospital
+      x = epiweek,           # x軸を疫学週に指定（日付型として）
+      y = n_cases_weekly,    # y軸を週別カウントデータに指定
+      group = hospital,      # hospital でグループ化して色分け
       fill = hospital),
-    stat = "identity")+      # this is also required when plotting count data
+    stat = "identity")+      # カウントデータをプロットする場合に必要
      
-  # labels for x-axis
+  # x軸のラベル
   scale_x_date(
-    date_breaks = "2 months",      # labels every 2 months 
-    date_minor_breaks = "1 month", # gridlines every month
-    date_labels = '%b\n%Y')+       #labeled by month with year below
+    date_breaks = "2 months",      # データを2か月ごとに表示
+    date_minor_breaks = "1 month", # 縦罫線を1か月ごとに表示
+    date_labels = '%b\n%Y')+       # 日付ラベルのフォーマット（月の下に年を記載）
      
-  # Choose color palette (uses RColorBrewer package)
+  # 色パレットを指定 （RColorBrewer パッケージを使用）
   scale_fill_brewer(palette = "Pastel2")+ 
   
   theme_minimal()+
@@ -1454,19 +1462,19 @@ ggplot(data = count_data_weekly)+
     title = "Weekly case incidence, from aggregated count data by hospital")
 ```
 
-### Moving averages {.unnumbered}
+### 移動平均 {.unnumbered}
 
-See the page on [Moving averages] for a detailed description and several options. Below is one option for calculating moving averages with the package **slider**. In this approach, *the moving average is calculated in the dataset prior to plotting*:
+詳細な説明といくつかのオプションについては、\[移動平均\]のページを参照して下さい。以下は、**slider** パッケージで移動平均を計算するためのオプションの1つです。この方法では、移動平均はプロットする前にデータセット上で計算されます。
 
-1)  Aggregate the data into counts as necessary (daily, weekly, etc.) (see \[Grouping data\] page)\
-2)  Create a new column to hold the moving average, created with `slide_index()` from **slider** package\
-3)  Plot the moving average as a `geom_line()` on top of (after) the epicurve histogram
+1)  データを必要に応じて集計します（日別、週別など）（\[データのグループ化\]ページを参照）。\
+2)  **slider** パッケージの `slide_index()` で移動平均の列を新規に作成します。\
+3)  移動平均を `geom_line()` で 流行曲線の上（後）にプロットします。
 
-See the helpful online [vignette for the **slider** package](https://cran.r-project.org/web/packages/slider/vignettes/slider.html)
+詳細は [**slider** パッケージ](https://cran.r-project.org/web/packages/slider/vignettes/slider.html)の説明を参照して下さい。
 
 ```{r, warning=F, message=F}
-# load package
-pacman::p_load(slider)  # slider used to calculate rolling averages
+# パッケージのロード
+pacman::p_load(slider)  # 移動平均の計算に slider を使用
 
 # make dataset of daily counts and 7-day moving average
 #######################################################
@@ -1882,35 +1890,36 @@ ggplot(plot_data, aes(x = date_onset, fill = tentative)) +
   
 ```
 
-## Multi-level date labels
+## 複数の日付ラベル
 
-If you want multi-level date labels (e.g. month and year) *without duplicating the lower label levels*, consider one of the approaches below:
+月や年など複数レベルの日付ラベルを、下位のラベルと重複することなく表示したい場合は、以下の方法のいずれかを検討して下さい：
 
-Remember - you can can use tools like `\n` *within* the `date_labels` or `labels` arguments to put parts of each label on a new line below. However, the code below helps you take years or months (for example) on a lower line *and only once*. A few notes on the code below:
+`date_labels` や `labels` の引数で、各ラベルの一部を下の行に配置するために `\n` 使うことができることも可能です。しかし、以下のコードでは、例えば年や月を下の行に、しかも一度だけ表示することができます。注意点は以下の通りです：
 
--   Case counts are aggregated into weeks for aesthetic reasons. See Epicurves page (aggregated data tab) for details.\
--   A `geom_area()` line is used instead of a histogram, as the faceting approach below does not work well with histograms.
+-   症例数は、外観上の理由から週単位で集計されています。詳細はこのページの**集計データ**のセクションを参照して下さい。
 
-**Aggregate to weekly counts**
+-   ヒストグラムの代わりに `geom_area()` が使われていますが、これは、以下のファセット化のアプローチがヒストグラムではうまく機能しないためです。
+
+**週別にデータをカウント**
 
 ```{r out.width = c('50%', '50%'), fig.show='hold', warning=F, message=F}
 
-# Create dataset of case counts by week
+# 週別にデータをカウントしたデータセットを作成
 #######################################
 central_weekly <- linelist %>%
-  filter(hospital == "Central Hospital") %>%   # filter linelist
+  filter(hospital == "Central Hospital") %>%   # フィルター
   mutate(week = lubridate::floor_date(date_onset, unit = "weeks")) %>%  
-  count(week) %>%                              # summarize weekly case counts
-  drop_na(week) %>%                            # remove cases with missing onset_date
-  complete(                                    # fill-in all weeks with no cases reported
+  count(week) %>%                              # 週別にカウント
+  drop_na(week) %>%                            # 発症日不明症例を除外
+  complete(                                    # 症例が一例もなかった週を0で埋める
     week = seq.Date(
       from = min(week),   
       to   = max(week),
       by   = "week"),
-    fill = list(n = 0))                        # convert new NA values to 0 counts
+    fill = list(n = 0))                        # NAを0に変換
 ```
 
-**Make plots**
+グラフ作成
 
 ```{r, warning=F, message=F}
 # plot with box border on year
@@ -1966,7 +1975,7 @@ The above techniques were adapted from [this](https://stackoverflow.com/question
 
 <!-- ======================================================= -->
 
-## Dual-axis
+## 二軸グラフ
 
 Although there are fierce discussions about the validity of dual axes within the data visualization community, many epi supervisors still want to see an epicurve or similar chart with a percent overlaid with a second axis. This is discussed more extensively in the \[ggplot tips\] page, but one example using the **cowplot** method is shown below:
 
