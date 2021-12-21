@@ -761,7 +761,7 @@ rolling_avg <- incidence(                    # incidence オブジェクトの�
 plot(rolling_avg, n.breaks = 3) # グループごとに移動平均が作成されているので自動でファセット化される
 ```
 
-より一般的なデータに対して移動平均を算出する場合はこのハンドブックの [移動平均] を参照して下さい。
+より一般的なデータに対して移動平均を算出する場合はこのハンドブックの [移動平均](#移動平均-1) を参照して下さい。
 
 <!-- ======================================================= -->
 
@@ -1462,7 +1462,7 @@ ggplot(data = count_data_weekly)+
     title = "Weekly case incidence, from aggregated count data by hospital")
 ```
 
-### 移動平均 {.unnumbered}
+### 移動平均 {#移動平均-1 .unnumbered}
 
 詳細な説明といくつかのオプションについては、\[移動平均\]のページを参照して下さい。以下は、**slider** パッケージで移動平均を計算するためのオプションの1つです。この方法では、移動平均はプロットする前にデータセット上で計算されます。
 
@@ -1476,48 +1476,48 @@ ggplot(data = count_data_weekly)+
 # パッケージのロード
 pacman::p_load(slider)  # 移動平均の計算に slider を使用
 
-# make dataset of daily counts and 7-day moving average
+# 週別カウントと7日間移動平均のデータセットを作成
 #######################################################
-ll_counts_7day <- linelist %>%    # begin with linelist
+ll_counts_7day <- linelist %>%    # ラインリスト
   
-  ## count cases by date
-  count(date_onset, name = "new_cases") %>%   # name new column with counts as "new_cases"
-  drop_na(date_onset) %>%                     # remove cases with missing date_onset
+  ## 日別にカウント
+  count(date_onset, name = "new_cases") %>%   # "new cases"という名前の列を作成
+  drop_na(date_onset) %>%                     # 発症日欠損症例を除外
   
-  ## calculate the average number of cases in 7-day window
+  ## 7日間移動平均数を計算
   mutate(
-    avg_7day = slider::slide_index(    # create new column
-      new_cases,                       # calculate based on value in new_cases column
-      .i = date_onset,                 # index is date_onset col, so non-present dates are included in window 
-      .f = ~mean(.x, na.rm = TRUE),    # function is mean() with missing values removed
-      .before = 6,                     # window is the day and 6-days before
-      .complete = FALSE),              # must be FALSE for unlist() to work in next step
-    avg_7day = unlist(avg_7day))       # convert class list to class numeric
+    avg_7day = slider::slide_index(    # 新しい列を作成
+      new_cases,                       # new_cases 列の値を用いる
+      .i = date_onset,                 # date_onset 列の含まれていない日付も移動平均に含める
+      .f = ~mean(.x, na.rm = TRUE),    # 欠損値を除外した上で平均をとる
+      .before = 6,                     # 日別に6日前までのデータを移動平均に含める
+      .complete = FALSE),              # 次のステップのために FALSE に設定する
+    avg_7day = unlist(avg_7day))       # list型から数字型に変換
 
 
-# plot
+# プロット
 ######
-ggplot(data = ll_counts_7day) +  # begin with new dataset defined above 
-    geom_histogram(              # create epicurve histogram
+ggplot(data = ll_counts_7day) +  # 以前のコードで定義済みのデータセット
+    geom_histogram(              # ヒストグラムの作成
       mapping = aes(
-        x = date_onset,          # date column as x-axis
-        y = new_cases),          # height is number of daily new cases
-        stat = "identity",       # height is y value
-        fill="#92a8d1",          # cool color for bars
-        colour = "#92a8d1",      # same color for bar border
+        x = date_onset,          # x軸の日付列を指定
+        y = new_cases),          # y軸に日別のカウント数を指定
+        stat = "identity",       # カウントデータように指定
+        fill="#92a8d1",          # かっこいい色を指定
+        colour = "#92a8d1",      # 枠線も同じ色に指定
         )+ 
-    geom_line(                   # make line for rolling average
+    geom_line(                   # 移動平均の線グラフを作成
       mapping = aes(
-        x = date_onset,          # date column for x-axis
-        y = avg_7day,            # y-value set to rolling average column
-        lty = "7-day \nrolling avg"), # name of line in legend
-      color="red",               # color of line
-      size = 1) +                # width of line
-    scale_x_date(                # date scale
+        x = date_onset,          # x軸の日付列を指定
+        y = avg_7day,            # y軸に日別の移動平均を指定
+        lty = "7-day \nrolling avg"), # 線グラフの凡例を記載
+      color="red",               # 線グラフの色の指定
+      size = 1) +                # 線グラフの太さの指定
+    scale_x_date(                # 日付軸のスケール
       date_breaks = "1 month",
       date_labels = '%d/%m',
       expand = c(0,0)) +
-    scale_y_continuous(          # y-axis scale
+    scale_y_continuous(          # y軸のスケール
       expand = c(0,0),
       limits = c(0, NA)) +       
     labs(
@@ -1525,35 +1525,35 @@ ggplot(data = ll_counts_7day) +  # begin with new dataset defined above
       y ="Number of confirmed cases",
       fill = "Legend")+ 
     theme_minimal()+
-    theme(legend.title = element_blank())  # removes title of legend
+    theme(legend.title = element_blank())  # 凡例のタイトルを削除
 ```
 
-### Faceting/small-multiples {.unnumbered}
+### ファセット化 {.unnumbered}
 
-As with other ggplots, you can create facetted plots ("small multiples"). As explained in the \[ggplot tips\] page of this handbook, you can use either `facet_wrap()` or `facet_grid()`. Here we demonstrate with `facet_wrap()`. For epicurves, `facet_wrap()` is typically easier as it is likely that you only need to facet on one column.
+他の ggplot と同様に、ファセット化されたグラフ（「複数の小グラフを並べたグラフ」）を作成することができます。 \[ggplotの基礎\] ページで説明されているように、 `facet_wrap()` と `facet_grid()` のどちらかを使用することができます。ここでは `facet_wrap()` を使って説明します。流行曲線の作成においては1つの列に対してのみファセットする必要があるため、一般的に `facet_wrap()` の方が簡単です。
 
-The general syntax is `facet_wrap(rows ~ cols)`, where to the left of the tilde (\~) is the name of a column to be spread across the "rows" of the facetted plot, and to the right of the tilde is the name of a column to be spread across the "columns" of the facetted plot. Most simply, just use one column name, to the right of the tilde: `facet_wrap(~age_cat)`.
+一般的な構文は `facet_wrap(rows ~ cols)` で、チルダ (\~) の左側はファセット化プロットの「行」に対する列の名前、チルダの右側はファセット化プロットの「列」に対する列の名前です。最も簡単な例では、チルダの右側に1つの列を指定します: `facet_wrap(~age_cat)`
 
-**Free axes**\
-You will need to decide whether the scales of the axes for each facet are "fixed" to the same dimensions (default), or "free" (meaning they will change based on the data within the facet). Do this with the `scales =` argument within `facet_wrap()` by specifying "free_x" or "free_y", or "free".
+**フリースケール**\
+各ファセットの軸のスケールを同じ値に「固定」（デフォルト）するか、「自由」（ファセット内のデータに基づいて変更する）にするかを指定します。これは、`facet_wrap()` 内の `scales =` 引数で、"free_x" か "free_y" か "free" を指定することで出来ます。
 
-**Number of cols and rows of facets**\
-This can be specified with `ncol =` and `nrow =` within `facet_wrap()`.
+**ファセットの列数と行数**\
+`facet_wrap()` 内で `ncol =` または `nrow =` で指定することが出来ます。
 
-**Order of panels**\
-To change the order of appearance, change the underlying order of the levels of the factor column used to create the facets.
+**パネルの順番**\
+順序を変更するには、ファセットを作成するために使用される因子型列のレベルの順序を変更します。
 
-**Aesthetics**\
-Font size and face, strip color, etc. can be modified through `theme()` with arguments like:
+**外観**\
+フォントサイズ、ヘッダ、色等は、以下のような引数を持つ `theme()` で変更することが出来ます：
 
--   `strip.text = element_text()` (size, colour, face, angle...)
--   `strip.background = element_rect()` (e.g. element_rect(fill="grey"))\
--   `strip.position =` (position of the strip "bottom", "top", "left", or "right")
+-   `strip.text = element_text()` (サイズ、ヘッダ、色、角度等)
+-   `strip.background = element_rect()` (例：element_rect(fill="grey"))
+-   `strip.position =` (ファセットのタイトルが記載されるボックスの場所を指定："bottom", "top", "left", or "right")
 
-**Strip labels**\
-Labels of the facet plots can be modified through the "labels" of the column as a factor, or by the use of a "labeller".
+**ファセットラベル**\
+ファセットプロットのラベルは、列の「ラベル」を用いるか「labeller」の使用によって変更することが出来ます。
 
-Make a labeller like this, using the function `as_labeller()` from **ggplot2**. Then provide the labeller to the `labeller =` argument of `facet_wrap()` as shown below.
+**ggplot2** の関数 `as_labeller()` を用いて、ラベラーを作成した後に、以下のように`facet_wrap()` の `labeller =` 引数にラベラーを指定します。
 
 ```{r, class.source = 'fold-show'}
 my_labels <- as_labeller(c(
@@ -1567,10 +1567,10 @@ my_labels <- as_labeller(c(
      "70+"   = "Over age 70"))
 ```
 
-**An example facetted plot** - facetted by column `age_cat`.
+`age_cat` 列でファセットしたグラフの作成例
 
 ```{r, warning=F, message=F}
-# make plot
+# プロットの作成
 ###########
 ggplot(central_data) + 
   
@@ -1578,196 +1578,198 @@ ggplot(central_data) +
     mapping = aes(
       x = date_onset,
       group = age_cat,
-      fill = age_cat),    # arguments inside aes() apply by group
+      fill = age_cat),    # aes() 内の引数はグループされる
       
-    color = "black",      # arguments outside aes() apply to all data
+    color = "black",      # aes() 外の引数は全データに適用される
         
-    # histogram breaks
-    breaks = weekly_breaks_central)+  # pre-defined date vector (see earlier in this page)
+    # ビン分割
+    breaks = weekly_breaks_central)+  # 以前のコードで定義済み
                       
-  # The labels on the x-axis
+  # x軸のラベル
   scale_x_date(
-    expand            = c(0,0),         # remove excess x-axis space below and after case bars
-    date_breaks       = "2 months",     # labels appear every 2 months
-    date_minor_breaks = "1 month",      # vertical lines appear every 1 month 
-    date_labels       = "%b\n'%y")+     # date labels format
+    expand            = c(0,0),         # X軸の前後の余分なスペースを削除
+    date_breaks       = "2 months",     # データを2月ごとに表示
+    date_minor_breaks = "1 month",      # 縦罫線を1月ごとに表示
+    date_labels       = "%b\n'%y")+     # 日付ラベルのフォーマット
   
-  # y-axis
-  scale_y_continuous(expand = c(0,0))+                       # removes excess y-axis space between bottom of bars and the labels
+  # y軸のラベル
+  scale_y_continuous(expand = c(0,0))+                       # y軸の前後の余分なスペースを削除
   
-  # aesthetic themes
-  theme_minimal()+                                           # a set of themes to simplify plot
+  # テーマの指定
+  theme_minimal()+                                           # 背景を簡潔なものに指定
   theme(
-    plot.caption = element_text(face = "italic", hjust = 0), # caption on left side in italics
+    plot.caption = element_text(face = "italic", hjust = 0), # 脚注をイタリック体にして左に幅寄せ
     axis.title = element_text(face = "bold"),
     legend.position = "bottom",
     strip.text = element_text(face = "bold", size = 10),
-    strip.background = element_rect(fill = "grey"))+         # axis titles in bold
+    strip.background = element_rect(fill = "grey"))+         # 軸タイトルを太字に
   
-  # create facets
+  # ファセットの作成
   facet_wrap(
     ~age_cat,
     ncol = 4,
     strip.position = "top",
     labeller = my_labels)+             
   
-  # labels
+  # ラベル
   labs(
     title    = "Weekly incidence of cases, by age category",
     subtitle = "Subtitle",
-    fill     = "Age category",                                      # provide new title for legend
+    fill     = "Age category",                                      # 凡例のタイトル
     x        = "Week of symptom onset",
     y        = "Weekly incident cases reported",
     caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; Case onsets range from {format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')} to {format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')}\n{nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown"))
 ```
 
-See this [link](https://ggplot2.tidyverse.org/reference/labellers.html) for more information on labellers.
+labellers に関してはこちらのリンク（[link](https://ggplot2.tidyverse.org/reference/labellers.html)）を参照して下さい
 
-#### Total epidemic in facet background {.unnumbered}
+#### ファセットの背景にトータルの流行曲線を表示 {.unnumbered}
 
-To show the total epidemic in the background of each facet, add the function `gghighlight()` with empty parentheses to the ggplot. This is from the package **gghighlight**. Note that the y-axis maximum in all facets is now based on the peak of the entire epidemic. There are more examples of this package in the \[ggplot tips\] page.
+各ファセットの背景にトータルの流行曲線を表示するには、**ggplot** に **gghighlight** パッケージの `gghighlight()` を追加します。すべてのファセットにおけるy軸の最大値が、トータルの流行曲線にしていることに注意して下さい。このパッケージの例は \[ggplotの基礎\] ページで多く紹介されています。
 
 ```{r, warning=F, message=F}
 ggplot(central_data) + 
   
-  # epicurves by group
+  # グループ化された流行曲線
   geom_histogram(
     mapping = aes(
       x = date_onset,
       group = age_cat,
-      fill = age_cat),  # arguments inside aes() apply by group
+      fill = age_cat),  # aes() 内の引数はグループされる
     
-    color = "black",    # arguments outside aes() apply to all data
+    color = "black",    # aes() 外の引数は全データに適用される
     
-    # histogram breaks
-    breaks = weekly_breaks_central)+     # pre-defined date vector (see top of ggplot section)                
+    # ビン分割
+    breaks = weekly_breaks_central)+     # 以前のコードで定義済み （ggplot セクション参照）                
   
-  # add grey epidemic in background to each facet
+  # ファセットの背景に全体の流行曲線を灰色で示す
   gghighlight::gghighlight()+
   
-  # labels on x-axis
+  # x軸のラベル
   scale_x_date(
-    expand            = c(0,0),         # remove excess x-axis space below and after case bars
-    date_breaks       = "2 months",     # labels appear every 2 months
-    date_minor_breaks = "1 month",      # vertical lines appear every 1 month 
-    date_labels       = "%b\n'%y")+     # date labels format
+    expand            = c(0,0),         # X軸の前後の余分なスペースを削除
+    date_breaks       = "2 months",     # データを2月ごとに表示
+    date_minor_breaks = "1 month",      # 縦罫線を1月ごとに表示 
+    date_labels       = "%b\n'%y")+     # 日付ラベルのフォーマット
   
-  # y-axis
-  scale_y_continuous(expand = c(0,0))+  # removes excess y-axis space below 0
+  # y軸のラベル
+  scale_y_continuous(expand = c(0,0))+  # y軸の前後の余分なスペースを削除
   
-  # aesthetic themes
-  theme_minimal()+                                           # a set of themes to simplify plot
+  # テーマの指定
+  theme_minimal()+                                           # 背景を簡潔なものに指定
   theme(
-    plot.caption = element_text(face = "italic", hjust = 0), # caption on left side in italics
+    plot.caption = element_text(face = "italic", hjust = 0), # 脚注をイタリック体にして左に幅寄せ
     axis.title = element_text(face = "bold"),
     legend.position = "bottom",
     strip.text = element_text(face = "bold", size = 10),
-    strip.background = element_rect(fill = "white"))+        # axis titles in bold
+    strip.background = element_rect(fill = "white"))+        # 軸タイトルを太字に
   
-  # create facets
+  # ファセットの作成
   facet_wrap(
-    ~age_cat,                          # each plot is one value of age_cat
-    ncol = 4,                          # number of columns
-    strip.position = "top",            # position of the facet title/strip
-    labeller = my_labels)+             # labeller defines above
+    ~age_cat,                          # それぞれのプロットに age_cat のグループを表示
+    ncol = 4,                          # 列数を指定
+    strip.position = "top",            # ファセットタイトルの位置を指定
+    labeller = my_labels)+             # 上で定義した labeller の指定
   
-  # labels
+  # ラベル
   labs(
     title    = "Weekly incidence of cases, by age category",
     subtitle = "Subtitle",
-    fill     = "Age category",                                      # provide new title for legend
+    fill     = "Age category",                                      # 凡例のタイトル
     x        = "Week of symptom onset",
     y        = "Weekly incident cases reported",
     caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; Case onsets range from {format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')} to {format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')}\n{nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown"))
 ```
 
-#### One facet with data {.unnumbered}
+#### 全データを含んだファセットの作成 {.unnumbered}
 
-If you want to have one facet box that contains all the data, duplicate the entire dataset and treat the duplicates as one faceting value. A "helper" function `CreateAllFacet()` below can assist with this (thanks to this [blog post](https://stackoverflow.com/questions/18933575/easily-add-an-all-facet-to-facet-wrap-in-ggplot2)). When it is run, the number of rows doubles and there will be a new column called `facet` in which the duplicated rows will have the value "all", and the original rows have the their original value of the faceting colum. Now you just have to facet on the `facet` column.
+全データを含むファセットボックスを表示したい場合は、データセット全体を複製し、複製したものを1つのファセットとして扱います。以下にコーディングした自作関数である「helper」関数 `CreateAllFacet()` により行うことが出来ます([このページ](https://stackoverflow.com/questions/18933575/easily-add-an-all-facet-to-facet-wrap-in-ggplot2)で紹介されています)。この関数を実行すると、行の数が2倍になり、`facet` という新しい列が作られます。その中で新たに複製された行は「all」という値を、元の行は `facet` 列の元の値を持つようになります。その後にこの `facet` 列に対してファセットを行います。
 
-Here is the helper function. Run it so that it is available to you.
+以下は helper 関数です。これを実行し、利用出来るようにします。
 
 ```{r}
-# Define helper function
+# helper 関数を定義する
 CreateAllFacet <- function(df, col){
      df$facet <- df[[col]]
      temp <- df
      temp$facet <- "all"
      merged <-rbind(temp, df)
      
-     # ensure the facet value is a factor
+     # ファセット値を因子型に指定
      merged[[col]] <- as.factor(merged[[col]])
      
      return(merged)
 }
 ```
 
-Now apply the helper function to the dataset, on column `age_cat`:
+次にこの helper 関数をデータセットの `age_cat` 列に適用します。
 
 ```{r}
-# Create dataset that is duplicated and with new column "facet" to show "all" age categories as another facet level
+# 複製されたデータセットに新たに「facet」列を追加し、別のファセットレベルとして「all」年齢区分を表示する。
 central_data2 <- CreateAllFacet(central_data, col = "age_cat") %>%
   
-  # set factor levels
+  # 因子のレベルを指定
   mutate(facet = fct_relevel(facet, "all", "0-4", "5-9",
                              "10-14", "15-19", "20-29",
                              "30-49", "50-69", "70+"))
 
-# check levels
+# レベルのチェック
 table(central_data2$facet, useNA = "always")
 ```
 
-Notable changes to the `ggplot()` command are:
+`ggplot()` コマンドにおける注意点は、以下の通りです：
 
--   The data used is now central_data2 (double the rows, with new column "facet")
--   Labeller will need to be updated, if used\
--   Optional: to achieve vertically stacked facets: the facet column is moved to rows side of equation and on right is replaced by "." (`facet_wrap(facet~.)`), and `ncol = 1`. You may also need to adjust the width and height of the saved png plot image (see `ggsave()` in \[ggplot tips\]).
+-   使用するデータは central_data2 (行数が 2 倍になり、新しい列 "facet" が追加)
+
+-   Labeller を使用する場合は、更新する必要があります。
+
+-   オプション：縦に積み重ねたファセットを実現するために：ファセット列を式の行側に移動し、右側を "." (`facet_wrap(facet~.)`) に置き換え、`ncol = 1`とします。保存される png ファイルの幅と高さを調整する必要があるでしょう (\[ggplotの基礎\] の `ggsave()` を参照してください)。
 
 ```{r, fig.height=12, fig.width=5, warning=F, message=F}
 ggplot(central_data2) + 
   
-  # actual epicurves by group
+  # グループ化された流行曲線
   geom_histogram(
         mapping = aes(
           x = date_onset,
           group = age_cat,
-          fill = age_cat),  # arguments inside aes() apply by group
-        color = "black",    # arguments outside aes() apply to all data
+          fill = age_cat),  # aes() 内の引数はグループされる
+        color = "black",    # aes() 外の引数は全データに適用される
         
-        # histogram breaks
-        breaks = weekly_breaks_central)+    # pre-defined date vector (see top of ggplot section)
+        # ビン分割
+        breaks = weekly_breaks_central)+    # 以前のコードで定義済み （ggplot セクション参照）   
                      
-  # Labels on x-axis
+  # x軸のラベル
   scale_x_date(
-    expand            = c(0,0),         # remove excess x-axis space below and after case bars
-    date_breaks       = "2 months",     # labels appear every 2 months
-    date_minor_breaks = "1 month",      # vertical lines appear every 1 month 
-    date_labels       = "%b\n'%y")+     # date labels format
+    expand            = c(0,0),         # X軸の前後の余分なスペースを削除
+    date_breaks       = "2 months",     # データを2月ごとに表示
+    date_minor_breaks = "1 month",      # 縦罫線を1月ごとに表示
+    date_labels       = "%b\n'%y")+     # 日付ラベルのフォーマット
   
-  # y-axis
-  scale_y_continuous(expand = c(0,0))+  # removes excess y-axis space between bottom of bars and the labels
+  # y軸のラベル
+  scale_y_continuous(expand = c(0,0))+  # y軸の前後の余分なスペースを削除
   
-  # aesthetic themes
-  theme_minimal()+                                           # a set of themes to simplify plot
+  # テーマの指定
+  theme_minimal()+                                           # 背景を簡潔なものに指定
   theme(
-    plot.caption = element_text(face = "italic", hjust = 0), # caption on left side in italics
+    plot.caption = element_text(face = "italic", hjust = 0), # 脚注をイタリック体にして左に幅寄せ
     axis.title = element_text(face = "bold"),
     legend.position = "bottom")+               
   
-  # create facets
-  facet_wrap(facet~. ,                            # each plot is one value of facet
+  # ファセットの作成
+  facet_wrap(facet~. ,                            # それぞれのプロットに一つのファセットを指定
              ncol = 1)+            
 
   # labels
   labs(title    = "Weekly incidence of cases, by age category",
        subtitle = "Subtitle",
-       fill     = "Age category",                                      # provide new title for legend
+       fill     = "Age category",                                      # 凡例のタイトル
        x        = "Week of symptom onset",
        y        = "Weekly incident cases reported",
        caption  = stringr::str_glue("n = {nrow(central_data)} from Central Hospital; Case onsets range from {format(min(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')} to {format(max(central_data$date_onset, na.rm=T), format = '%a %d %b %Y')}\n{nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown"))
 ```
 
-## Tentative data
+## 暫定データ
 
 The most recent data shown in epicurves should often be marked as tentative, or subject to reporting delays. This can be done in by adding a vertical line and/or rectangle over a specified number of days. Here are two options:
 
