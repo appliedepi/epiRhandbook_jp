@@ -439,8 +439,6 @@ incidence2::facet_plot(
 
 <!-- <span style="color: darkgreen;">**_TIP:_** For breaks every "nth" interval (e.g. every 4th), use `n.breaks = nrow(i)/n` (where “i” is your incidence object name and “n” is a number). If your data are grouped, you will need to multiply "n" by the number of unique groups.</span>   -->
 
-**Here are `plot()` arguments that modify plot labels:**
-
 **以下はラベルを変更する `plot()` の引数です。**
 
 +------------+------------------------------------------------------------------------------------------------+
@@ -648,7 +646,7 @@ plot(hospital_outbreak, fill = hospital, title = "ORIGINAL - hospital not a fact
 
     -   `gender` 列を因子型として定義した後に `fct_relevel()` でレベルの順序を設定し、"Other "と "Missing "が最初に来るようにすることで、棒グラフの一番上に表示されるようにします。
 
--   incidence オブジェクトを作成し、可視化します is created and plotted as before
+-   incidence オブジェクトを作成し、可視化します
 
 -   **ggplot2** の修正を加えます。
 
@@ -1024,8 +1022,6 @@ ggplot(data = linelist) +     # データセットの指定（全病院データ
 
 ### 色の調整 {.unnumbered}
 
--   To *manually* set the fill for each group, use `scale_fill_manual()` (note: `scale_color_manual()` is different!).
-
 -   各グループの色分けをマニュアルで設定するには、 `scale_fill_manual()` を使用します (注意: `scale_color_manual()` と区別します!)。
 
     -   色のベクトルを適用するには、`values =` 引数を使用します。\
@@ -1034,9 +1030,7 @@ ggplot(data = linelist) +     # データセットの指定（全病院データ
 
     -   `labels =` 引数を使用して、凡例の項目名を変更します。念の為に、`c("old" = "new", "old" = "new")` のような名前付きベクトルとして提供するか、データ自体の値を調節してください。
 
-    -   凡例のタイトルを指定するためには、`name =` を使用します。\
-
--   For more tips on color scales and palettes, see the page on \[ggplot basics\].
+    -   凡例のタイトルを指定するためには、`name =` を使用します。
 
 -   色スケールやパレットに関する詳しい情報は、\[ggplot の基礎\]のページを参照してください。
 
@@ -1771,31 +1765,33 @@ ggplot(central_data2) +
 
 ## 暫定データ
 
-The most recent data shown in epicurves should often be marked as tentative, or subject to reporting delays. This can be done in by adding a vertical line and/or rectangle over a specified number of days. Here are two options:
+流行曲線で示される最新のデータは、多くの場合、暫定的な値であり、報告遅れのために後から症例数が追加される可能性があることを明示した方が良いでしょう。これは、直近の日数分を垂直線や長方形で囲むことで行うことが出来ます。ここでは、2つの方法を紹介します。
 
-1)  Use `annotate()`:
+1)  `annotate()` の使用：
 
-    -   For a line use `annotate(geom = "segment")`. Provide `x`, `xend`, `y`, and `yend`. Adjust size, linetype (`lty`), and color.\
-    -   For a rectangle use `annotate(geom = "rect")`. Provide xmin/xmax/ymin/ymax. Adjust color and alpha.\
+    -   線の場合は `annotate(geom = "segment")` を使用します。 `x`、 `xend`、 `y`、 `yend` を指定し、サイズ、線の種類(`lty`）、色を調整します。\
+    -   長方形の場合は `annotate(geom = "rect")` を使用します。 xmin/xmax/ymin/ymax を指定し、色とアルファ値を調整します。
 
-2)  Group the data by tentative status and color those bars differently
+2)  データを暫定的なステータスでグループ化し、それらの棒グラフを異なる色で表示します。
 
-[***CAUTION:*** You might try `geom_rect()` to draw a rectangle, but adjusting the transparency does not work in a linelist context. This function overlays one rectangle for each observation/row!. Use either a very low alpha (e.g. 0.01), or another approach.]{style="color: orange;"}
+[***注意:*** 長方形の作成のために `geom_rect()` を試すかも知れませんが、ラインリストの場合は上手くいきません。この関数は、各観測点/行に対して1つの長方形を重ねます! 非常に低いアルファ値 (例えば 0.01) を使用するか、他の方法を用いてください。]{style="color: orange;"}
 
-### Using `annotate()` {.unnumbered}
+### `annotate()` の使用 {.unnumbered}
 
--   Within `annotate(geom = "rect")`, the `xmin` and `xmax` arguments must be given inputs of class Date.\
--   Note that because these data are aggregated into weekly bars, and the last bar extends to the Monday after the last data point, the shaded region may appear to cover 4 weeks\
--   Here is an `annotate()` [online example](https://ggplot2.tidyverse.org/reference/annotate.html)
+-   `annotate(geom = "rect")` 内で、 `xmin` と `xmax` の引数は日付型である必要があります。
+
+-   これらのデータは週単位の棒グラフに集約されており、最後の棒グラフは最後のデータポイントの次の月曜日まで伸びているので、シェードのエリアは4週間をカバーしているように見えるかもしれないことに注意してください。\
+
+-   `annotate()` の例は[こちら](https://ggplot2.tidyverse.org/reference/annotate.html)です。
 
 ```{r, warning=F, message=F}
 ggplot(central_data) + 
   
-  # histogram
+  # ヒストグラム
   geom_histogram(
     mapping = aes(x = date_onset),
     
-    breaks = weekly_breaks_central,   # pre-defined date vector - see top of ggplot section
+    breaks = weekly_breaks_central,   # 以前のコードで定義済み
     
     color = "darkblue",
     
@@ -1804,40 +1800,40 @@ ggplot(central_data) +
   # scales
   scale_y_continuous(expand = c(0,0))+
   scale_x_date(
-    expand = c(0,0),                   # remove excess x-axis space below and after case bars
-    date_breaks = "1 month",           # 1st of month
-    date_minor_breaks = "1 month",     # 1st of month
-    date_labels = "%b\n'%y")+          # label format
+    expand = c(0,0),                   # X軸の前後の余分なスペースを削除
+    date_breaks = "1 month",           # 月の最初の日
+    date_minor_breaks = "1 month",     # 月の最初の日
+    date_labels = "%b\n'%y")+          # 日付ラベルのフォーマット
   
-  # labels and theme
+  # ラベルとテーマの指定
   labs(
     title = "Using annotate()\nRectangle and line showing that data from last 21-days are tentative",
     x = "Week of symptom onset",
     y = "Weekly case indicence")+ 
   theme_minimal()+
   
-  # add semi-transparent red rectangle to tentative data
+  # 暫定データに対して半透明のシェードをかける
   annotate(
     "rect",
-    xmin  = as.Date(max(central_data$date_onset, na.rm = T) - 21), # note must be wrapped in as.Date()
-    xmax  = as.Date(Inf),                                          # note must be wrapped in as.Date()
+    xmin  = as.Date(max(central_data$date_onset, na.rm = T) - 21), # 日付型である必要があることに注意
+    xmax  = as.Date(Inf),                                          # 日付型である必要があることに注意
     ymin  = 0,
     ymax  = Inf,
-    alpha = 0.2,          # alpha easy and intuitive to adjust using annotate()
+    alpha = 0.2,          # annotate()では alpha 値で直感的に簡単に透明度を変えられる
     fill  = "red")+
   
-  # add black vertical line on top of other layers
+  # 黑の縦線を追加する
   annotate(
     "segment",
-    x     = max(central_data$date_onset, na.rm = T) - 21, # 21 days before last data
+    x     = max(central_data$date_onset, na.rm = T) - 21, # 最終日の21日前
     xend  = max(central_data$date_onset, na.rm = T) - 21, 
-    y     = 0,         # line begins at y = 0
-    yend  = Inf,       # line to top of plot
-    size  = 2,         # line size
+    y     = 0,         # 線がy = 0 の場所から始まるように指定
+    yend  = Inf,       # 線が一番上まで続くように指定
+    size  = 2,         # 線の太さを指定
     color = "black",
-    lty   = "solid")+   # linetype e.g. "solid", "dashed"
+    lty   = "solid")+   # 線の種類 （例； "solid", "dashed"）
 
-  # add text in rectangle
+  # 長方形の中に文字を追加
   annotate(
     "text",
     x = max(central_data$date_onset, na.rm = T) - 15,
@@ -1846,7 +1842,7 @@ ggplot(central_data) +
     angle = 90)
 ```
 
-The same black vertical line can be achieved with the code below, but using `geom_vline()` you lose the ability to control the height:
+同じ黒い縦線の追加は以下のコードでも可能ですが、`geom_vline()` を使うと、高さをコントロールする機能が失われます：
 
 ```{r, eval=F}
 geom_vline(xintercept = max(central_data$date_onset, na.rm = T) - 21,
@@ -1854,41 +1850,41 @@ geom_vline(xintercept = max(central_data$date_onset, na.rm = T) - 21,
            color = "black")
 ```
 
-### Bars color {.unnumbered}
+### 棒グラフの色を変える {.unnumbered}
 
-An alternative approach could be to adjust the color or display of the tentative bars of data themselves. You could create a new column in the data preparation stage and use it to group the data, such that the `aes(fill = )` of tentative data can be a different color or alpha than the other bars.
+別の方法として、暫定データに対して棒グラフ自体の色や表示を調整することも考えられます。データ準備段階で新しい列を作り、それを使ってデータをグループ化し、暫定データの `aes(fill = )` を他の棒グラフと異なる色やアルファ値にすることができます。
 
 ```{r, message=F, warning=F}
-# add column
+# 列の追加
 ############
 plot_data <- central_data %>% 
   mutate(tentative = case_when(
     date_onset >= max(date_onset, na.rm=T) - 7 ~ "Tentative", # tenative if in last 7 days
     TRUE                                       ~ "Reliable")) # all else reliable
 
-# plot
+# プロット
 ######
 ggplot(plot_data, aes(x = date_onset, fill = tentative)) + 
   
-  # histogram
+  # ヒストグラム
   geom_histogram(
-    breaks = weekly_breaks_central,   # pre-defined data vector, see top of ggplot page
+    breaks = weekly_breaks_central,   # 以前のコードで定義済み
     color = "black") +
 
   # scales
   scale_y_continuous(expand = c(0,0))+
   scale_fill_manual(values = c("lightblue", "grey"))+
   scale_x_date(
-    expand = c(0,0),                   # remove excess x-axis space below and after case bars
-    date_breaks = "3 weeks",           # Monday every 3 weeks
-    date_minor_breaks = "week",        # Monday weeks 
-    date_labels = "%d\n%b\n'%y")+      # label format
+    expand = c(0,0),                   # X軸の前後の余分なスペースを削除
+    date_breaks = "3 weeks",           # データを3週ごとに表示
+    date_minor_breaks = "week",        # 縦罫線を1週ごとに表示
+    date_labels = "%d\n%b\n'%y")+      # 日付ラベルのフォーマット
   
-  # labels and theme
+  # ラベルとテーマの指定
   labs(title = "Show days that are tentative reporting",
     subtitle = "")+ 
   theme_minimal()+
-  theme(legend.title = element_blank())                 # remove title of legend
+  theme(legend.title = element_blank())                 # 凡例のタイトルを削除
   
 ```
 
@@ -1924,91 +1920,91 @@ central_weekly <- linelist %>%
 グラフ作成
 
 ```{r, warning=F, message=F}
-# plot with box border on year
+# 軸タイトルの年に対して枠線を追加したグラフの作成
 ##############################
 ggplot(central_weekly) +
-  geom_area(aes(x = week, y = n),    # make line, specify x and y
-            stat = "identity") +             # because line height is count number
-  scale_x_date(date_labels="%b",             # date label format show month 
-               date_breaks="month",          # date labels on 1st of each month
-               expand=c(0,0)) +              # remove excess space on each end
+  geom_area(aes(x = week, y = n),    # xとyを指定して線グラフを作成
+            stat = "identity") +             # カウントデータを使うために指定
+  scale_x_date(date_labels="%b",             # 日付ラベルのフォーマット（月名を示す）
+               date_breaks="month",          # 日付ラベルを月ごとで分割
+               expand=c(0,0)) +              # X軸の前後の余分なスペースを削除
   scale_y_continuous(
-    expand  = c(0,0))+                       # remove excess space below x-axis
-  facet_grid(~lubridate::year(week), # facet on year (of Date class column)
+    expand  = c(0,0))+                       # y軸の前後の余分なスペースを削除
+  facet_grid(~lubridate::year(week), # （日付列の）年でファセット
              space="free_x",                
-             scales="free_x",                # x-axes adapt to data range (not "fixed")
-             switch="x") +                   # facet labels (year) on bottom
+             scales="free_x",                # x軸をデータの範囲で調整（ファセット間で固定しない）
+             switch="x") +                   # ファセットのラベルを下に持ってくる
   theme_bw() +
-  theme(strip.placement = "outside",         # facet labels placement
-        strip.background = element_rect(fill = NA, # facet labels no fill grey border
+  theme(strip.placement = "outside",         # ファセットのラベルの場所
+        strip.background = element_rect(fill = NA, # ファセットのラベルを灰色にして塗りつぶさをなしにする
                                         colour = "grey50"),
-        panel.spacing = unit(0, "cm"))+      # no space between facet panels
+        panel.spacing = unit(0, "cm"))+      # ファセット間のスペースをなくす
   labs(title = "Nested year labels, grey label border")
 
 
-# plot with no box border on year
+# 軸タイトルの年に対して枠線なしのグラフの作成
 #################################
 ggplot(central_weekly,
-       aes(x = week, y = n)) +              # establish x and y for entire plot
-  geom_line(stat = "identity",              # make line, line height is count number
-            color = "#69b3a2") +            # line color
-  geom_point(size=1, color="#69b3a2") +     # make points at the weekly data points
-  geom_area(fill = "#69b3a2",               # fill area below line
-            alpha = 0.4)+                   # fill transparency
-  scale_x_date(date_labels="%b",            # date label format show month 
-               date_breaks="month",         # date labels on 1st of each month
-               expand=c(0,0)) +             # remove excess space
+       aes(x = week, y = n)) +              # xとyを全プロットに対して指定
+  geom_line(stat = "identity",              # カウントデータを用いて線グラフを作成
+            color = "#69b3a2") +            # 線グラフの色
+  geom_point(size=1, color="#69b3a2") +     # 週ごとに点を作成
+  geom_area(fill = "#69b3a2",               # 線グラフの下のエリアを塗りつぶす
+            alpha = 0.4)+                   # 塗りつぶしの透明度の指定
+  scale_x_date(date_labels="%b",            # 日付ラベルのフォーマット（月名を示す）
+               date_breaks="month",         # 日付ラベルを月ごとで分割
+               expand=c(0,0)) +             # X軸の前後の余分なスペースを削除
   scale_y_continuous(
-    expand  = c(0,0))+                      # remove excess space below x-axis
-  facet_grid(~lubridate::year(week),        # facet on year (of Date class column)
+    expand  = c(0,0))+                      # y軸の前後の余分なスペースを削除
+  facet_grid(~lubridate::year(week),        # （日付列の）年でファセット
              space="free_x",                
-             scales="free_x",               # x-axes adapt to data range (not "fixed")
-             switch="x") +                  # facet labels (year) on bottom
+             scales="free_x",               # x軸をデータの範囲で調整（ファセット間で固定しない）
+             switch="x") +                  # ファセットのラベルを下に持ってくる
   theme_bw() +
-  theme(strip.placement = "outside",                     # facet label placement
-          strip.background = element_blank(),            # no facet lable background
+  theme(strip.placement = "outside",                     # ファセットのラベルの場所
+          strip.background = element_blank(),            # ファセットの背景の塗りつぶしをなくす
           panel.grid.minor.x = element_blank(),          
-          panel.border = element_rect(colour="grey40"),  # grey border to facet PANEL
-          panel.spacing=unit(0,"cm"))+                   # No space between facet panels
+          panel.border = element_rect(colour="grey40"),  # ファセットパネルの枠線を灰色にする
+          panel.spacing=unit(0,"cm"))+                   # ファセット間のスペースをなくす
   labs(title = "Nested year labels - points, shaded, no label border")
 ```
 
-The above techniques were adapted from [this](https://stackoverflow.com/questions/44616530/axis-labels-on-two-lines-with-nested-x-variables-year-below-months) and [this](https://stackoverflow.com/questions/20571306/multi-row-x-axis-labels-in-ggplot-line-chart) post on stackoverflow.com.
+上記の方法は、stackoverflow.comの[こちら](https://stackoverflow.com/questions/44616530/axis-labels-on-two-lines-with-nested-x-variables-year-below-months)と[こちら](https://stackoverflow.com/questions/44616530/axis-labels-on-two-lines-with-nested-x-variables-year-below-months)の投稿を参考にしています。
 
 <!-- ======================================================= -->
 
-## 二軸グラフ
+## 2軸グラフ
 
-Although there are fierce discussions about the validity of dual axes within the data visualization community, many epi supervisors still want to see an epicurve or similar chart with a percent overlaid with a second axis. This is discussed more extensively in the \[ggplot tips\] page, but one example using the **cowplot** method is shown below:
+データ可視化コミュニティーの中では、2軸グラフの有効性について激しい議論が交わされていますが、流行曲線やそれに類するグラフで、2軸目に割合を重ねたものを見たいと思う疫学専門家は依然として多くいます。これについては\[ggplotの基礎\]のページで詳しく説明していますが、**cowplot** メソッドを使った一例を以下に示します：
 
--   Two distinct plots are made, and then combined with **cowplot** package.\
--   The plots must have the exact same x-axis (set limits) or else the data and labels will not align\
--   Each uses `theme_cowplot()` and one has the y-axis moved to the right side of the plot
+-   2つの異なるプロットを作成し、**cowplot** パッケージで結合します。\
+-   2つのプロットは全く同じx軸（範囲を設定する）を持つ必要があり、そうでないとデータとラベルがずれてしまいます。\
+-   それぞれ `theme_cowplot()` を使用し、一方はy 軸をプロットの右側に移動します。
 
 ```{r, warning=F, message=F}
-#load package
+# パッケージのロード
 pacman::p_load(cowplot)
 
-# Make first plot of epicurve histogram
+# 最初の流行曲線を作成
 #######################################
 plot_cases <- linelist %>% 
   
-  # plot cases per week
+  # 週別の症例をプロット
   ggplot()+
   
-  # create histogram  
+  # ヒストグラムの作成 
   geom_histogram(
     
     mapping = aes(x = date_onset),
     
-    # bin breaks every week beginning monday before first case, going to monday after last case
-    breaks = weekly_breaks_all)+  # pre-defined vector of weekly dates (see top of ggplot section)
+    # 最初の症例の前の月曜から、最後の症例の次の月曜までが含まれる週ごとのビン分割を指定
+    breaks = weekly_breaks_all)+  # 以前に定義した週ごとの日付のベクトル
         
-  # specify beginning and end of date axis to align with other plot
+  # もう一つのグラフとの整合性を保つための最初と最後の日付の指定
   scale_x_date(
-    limits = c(min(weekly_breaks_all), max(weekly_breaks_all)))+  # min/max of the pre-defined weekly breaks of histogram
+    limits = c(min(weekly_breaks_all), max(weekly_breaks_all)))+  # 最初と最後の日付の指定
   
-  # labels
+  # ラベル
   labs(
       y = "Daily cases",
       x = "Date of symptom onset"
@@ -2016,73 +2012,73 @@ plot_cases <- linelist %>%
   theme_cowplot()
 
 
-# make second plot of percent died per week
+# 2つ目のグラフ（週ごとの死亡割合）の作成
 ###########################################
-plot_deaths <- linelist %>%                        # begin with linelist
-  group_by(week = floor_date(date_onset, "week")) %>%  # create week column
+plot_deaths <- linelist %>%                        # ラインリスト
+  group_by(week = floor_date(date_onset, "week")) %>%  # week 列を作成
   
-  # summarise to get weekly percent of cases who died
+  # 週ごとの死亡割合を集計
   summarise(n_cases = n(),
             died = sum(outcome == "Death", na.rm=T),
             pct_died = 100*died/n_cases) %>% 
   
-  # begin plot
+  # プロット
   ggplot()+
   
-  # line of weekly percent who died
-  geom_line(                                # create line of percent died
-    mapping = aes(x = week, y = pct_died),  # specify y-height as pct_died column
-    stat = "identity",                      # set line height to the value in pct_death column, not the number of rows (which is default)
+  # 週ごとの死亡割合の線グラフ
+  geom_line(                                # 週ごとの死亡割合の線グラフの作成
+    mapping = aes(x = week, y = pct_died),  # y軸に pct_died 列を指定
+    stat = "identity",                      # 行番号（デフォルト）ではなく、pct_death 列をy軸に指定
     size = 2,
     color = "black")+
   
-  # Same date-axis limits as the other plot - perfect alignment
+  # 最初のグラフと同じx軸の範囲にする
   scale_x_date(
-    limits = c(min(weekly_breaks_all), max(weekly_breaks_all)))+  # min/max of the pre-defined weekly breaks of histogram
+    limits = c(min(weekly_breaks_all), max(weekly_breaks_all)))+  # 最初と最後の日付の指定
   
   
-  # y-axis adjustments
-  scale_y_continuous(                # adjust y-axis
-    breaks = seq(0,100, 10),         # set break intervals of percent axis
-    limits = c(0, 100),              # set extent of percent axis
-    position = "right")+             # move percent axis to the right
+  # y軸の調整
+  scale_y_continuous(                # y軸の調整
+    breaks = seq(0,100, 10),         # 軸の分割をパーセント用に設定する
+    limits = c(0, 100),              # 軸の範囲をパーセント用に設定する
+    position = "right")+             # 軸を右に持ってくる
   
-  # Y-axis label, no x-axis label
+  # x軸のラベルを削除し、y軸のラベルを指定する
   labs(x = "",
-       y = "Percent deceased")+      # percent axis label
+       y = "Percent deceased")+      # %軸のラベル
   
-  theme_cowplot()                   # add this to make the two plots merge together nicely
+  theme_cowplot()                   # 2つのプロットを良い感じに重ねる
 ```
 
-Now use **cowplot** to overlay the two plots. Attention has been paid to the x-axis alignment, side of the y-axis, and use of `theme_cowplot()`.
+次に **cowplot** を使って2つのプロットを重ね合わせます。x軸を合わせること、y軸のサイド、`theme_cowplot()` の使用に注意します。
 
 ```{r, warning=F, message=F}
 aligned_plots <- cowplot::align_plots(plot_cases, plot_deaths, align="hv", axis="tblr")
 ggdraw(aligned_plots[[1]]) + draw_plot(aligned_plots[[2]])
 ```
 
-## Cumulative Incidence
+## 累積症例数
 
-Note: If using **incidence2**, see the section on how you can produce cumulative incidence with a simple function. This page will address how to calculate cumulative incidence and plot it with `ggplot()`.
+注意： **incidence2** を使用する場合、簡単な関数で累積症例数を生成する方法のセクションを参照してください。このページでは、累積症例数を計算し、`ggplot()` でプロットする方法について述べます。
 
-If beginning with a case linelist, create a new column containing the cumulative number of cases per day in an outbreak using `cumsum()` from **base** R:
+症例のラインリストから始める場合、ベース R の `cumsum()` を使用して、アウトブレイクにおける日ごとの累積症例数の列を新たに作成します。
 
 ```{r}
 cumulative_case_counts <- linelist %>% 
-  count(date_onset) %>%                # count of rows per day (returned in column "n")   
+  count(date_onset) %>%                # 日ごとの症例数（"n"列）
   mutate(                         
-    cumulative_cases = cumsum(n)       # new column of the cumulative number of rows at each date
+    cumulative_cases = cumsum(n)       # 日ごとの累積症例数列
     )
 ```
 
-The first 10 rows are shown below:
+最初の10行は以下のようになります：
 
 ```{r message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストを表で表示
 DT::datatable(head(cumulative_case_counts, 10), rownames = FALSE, options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-This cumulative column can then be plotted against `date_onset`, using `geom_line()`:
+この累積症例数の列は、`geom_line()` を使用して、`date_onset` に対してプロットすることが出来ます。
 
 ```{r, warning=F, message=F}
 plot_cumulative <- ggplot()+
@@ -2095,13 +2091,13 @@ plot_cumulative <- ggplot()+
 plot_cumulative
 ```
 
-It can also be overlaid onto the epicurve, with dual-axis using the **cowplot** method described above and in the \[ggplot tips\] page:
+また、上記や \[ggplotの基礎\] ページで説明されている cowplot を使って、2 軸で流行曲線に重ねることも出来ます：
 
 ```{r, warning=F, message=F}
-#load package
+#パッケージのロード
 pacman::p_load(cowplot)
 
-# Make first plot of epicurve histogram
+# 最初のグラフである流行曲線を作成
 plot_cases <- ggplot()+
   geom_histogram(          
     data = linelist,
@@ -2113,7 +2109,7 @@ plot_cases <- ggplot()+
   )+
   theme_cowplot()
 
-# make second plot of cumulative cases line
+# 2つ目のグラフである累積症例数の線グラフを作成
 plot_cumulative <- ggplot()+
   geom_line(
     data = cumulative_case_counts,
@@ -2132,7 +2128,7 @@ plot_cumulative <- ggplot()+
     axis.ticks = element_blank())
 ```
 
-Now use **cowplot** to overlay the two plots. Attention has been paid to the x-axis alignment, side of the y-axis, and use of `theme_cowplot()`.
+次に **cowplot** を使って2つのプロットを重ね合わせます。x軸を合わせること、y軸のサイド、`theme_cowplot()` の使用に注意します。
 
 ```{r, warning=F, message=F}
 aligned_plots <- cowplot::align_plots(plot_cases, plot_cumulative, align="hv", axis="tblr")
@@ -2141,4 +2137,4 @@ ggdraw(aligned_plots[[1]]) + draw_plot(aligned_plots[[2]])
 
 <!-- ======================================================= -->
 
-## Resources
+## リソース
