@@ -8,7 +8,7 @@ knitr::include_graphics(here::here("images", "Import_Export_1500x500.png"))
 
 -   **rio** パッケージを使用して、さまざまな種類のファイルを柔軟に `import()` および `export()` します。\
 
--   **here** パッケージを使用して、R プロジェクトルートに関連するファイルを検索する - これにより1台のコンピューターに固有のファイルパスによる複雑化を防ぎます。\
+-   **here** パッケージを使用して、R プロジェクトルートに関連するファイルを検索する - これにより1台のコンピューターに固有のファイルパスによる煩雑化を防ぎます。\
 
 -   以下のような具体的なインポートのシナリオがあります。
 
@@ -625,17 +625,17 @@ pacman::p_load(httr, jsonlite, tidyverse)
 
 今回のリクエストのパラメータは以下の通りです。
 
--   HTTP verb: GET\
--   API endpoint URL: <http://api.ratings.food.gov.uk/Establishments>\
--   Selected parameters: name, address, longitude, latitude, businessTypeId, ratingKey, localAuthorityId\
--   Headers: "x-api-version", 2\
--   Data format(s): JSON, XML\
--   Documentation: <http://api.ratings.food.gov.uk/help>
+-   HTTP 動詞: GET\
+-   API エンドポイント URL: <http://api.ratings.food.gov.uk/Establishments>\
+-   選択したパラメーター: name, address, longitude, latitude, businessTypeId, ratingKey, localAuthorityId\
+-   ヘッダー: "x-api-version", 2\
+-   データフォーマット: JSON, XML\
+-   ドキュメンテーション: <http://api.ratings.food.gov.uk/help>
 
-The R code would be as follows:
+Rコードは次のようになります。
 
 ```{r, eval=F, warning=F, message=F}
-# prepare the request
+# リクエストの準備
 path <- "http://api.ratings.food.gov.uk/Establishments"
 request <- GET(url = path,
              query = list(
@@ -645,74 +645,74 @@ request <- GET(url = path,
                pageSize = 5000),
              add_headers("x-api-version" = "2"))
 
-# check for any server error ("200" is good!)
+# サーバーエラーがないか確認（"200"が望ましい）
 request$status_code
 
-# submit the request, parse the response, and convert to a data frame
+# リクエストを送信し、レスポンスを解析して、データフレームに変換
 response <- content(request, as = "text", encoding = "UTF-8") %>%
   fromJSON(flatten = TRUE) %>%
   pluck("establishments") %>%
   as_tibble()
 ```
 
-You can now clean and use the `response` data frame, which contains one row per fast food facility.
+これで、ファーストフード施設ごとに1行を含む `response`データフレームをクリーンアップして使用できるようになりました。
 
 ### **認証が必要なデータ** {.unnumbered}
 
-Some APIs require authentication - for you to prove who you are, so you can access restricted data. To import these data, you may need to first use a POST method to provide a username, password, or code. This will return an access token, that can be used for subsequent GET method requests to retrieve the desired data.
+一部のAPIには認証が必要です。自分が誰であるかを証明することで、制限されたデータにアクセスできます。このようなデータをインポートするには、まず POST メソッドを使用して、ユーザー名、パスワード、またはコードを提供する必要がある場合があります。これにより、目的のデータを取得するためにその後の GET メソッドのリクエストで使用できるアクセストークンを取得できます。
 
-Below is an example of querying data from *Go.Data*, which is an outbreak investigation tool. *Go.Data* uses an API for all interactions between the web front-end and smartphone applications used for data collection. *Go.Data* is used throughout the world. Because outbreak data are sensitive and you should only be able to access data for *your* outbreak, authentication is required.
+以下に、アウトブレイク調査ツールである [Go.Data]{.ul} からデータをクエリする例を示します。[Go.Data]{.ul} は、データ収集に使用される Web フロントエンドとスマートフォンアプリケーション間のすべてのインタラクションに API を使用しています。[Go.Data]{.ul} は世界中で使用されています。アウトブレイクデータは機密性が高く、[自分の]{.ul}アウトブレイクに関するデータにしかアクセスできないため、認証が必要です。
 
-Below is some sample R code using **httr** and **jsonlite** for connecting to the *Go.Data* API to import data on contact follow-up from your outbreak.
+以下に、[Go.Data]{.ul} APIに接続して発生からの連絡先フォローアップに関するデータをインポートするために **httr** と **jsonlite** を使用したサンプル R コードを示します。
 
 ```{r, eval=F}
-# set credentials for authorization
-url <- "https://godatasampleURL.int/"           # valid Go.Data instance url
-username <- "username"                          # valid Go.Data username 
-password <- "password"                          # valid Go,Data password 
-outbreak_id <- "xxxxxx-xxxx-xxxx-xxxx-xxxxxxx"  # valid Go.Data outbreak ID
+# 認可のための認証情報を設定
+url <- "https://godatasampleURL.int/"           # 有効な Go.Data URL の例
+username <- "username"                          # 有効な Go.Data ユーザー名 
+password <- "password"                          # 有効な Go,Data パスワード
+outbreak_id <- "xxxxxx-xxxx-xxxx-xxxx-xxxxxxx"  # 有効な Go.Data アウトブレイク ID
 
-# get access token
-url_request <- paste0(url,"api/oauth/token?access_token=123") # define base URL request
+# アクセストークンを取得する
+url_request <- paste0(url,"api/oauth/token?access_token=123") # ベース URL リクエストを定義する
 
-# prepare request
+# リクエストの準備
 response <- POST(
   url = url_request,  
   body = list(
-    username = username,    # use saved username/password from above to authorize                               
+    username = username,    # 上記から保存したユーザー名/パスワードを使用して認証する                               
     password = password),                                       
     encode = "json")
 
-# execute request and parse response
+# リクエストの実行と応答の解析
 content <-
   content(response, as = "text") %>%
-  fromJSON(flatten = TRUE) %>%          # flatten nested JSON
+  fromJSON(flatten = TRUE) %>%          # ネストした JSON をフラット化する
   glimpse()
 
-# Save access token from response
-access_token <- content$access_token    # save access token to allow subsequent API calls below
+# 応答から得られたアクセストークンを保存する
+access_token <- content$access_token    # アクセストークンを保存して、以下の後続の API 呼び出しを許可します
 
-# import outbreak contacts
-# Use the access token 
+# アウトブレイクの連絡先をインポートする
+# アクセストークンを使用する 
 response_contacts <- GET(
-  paste0(url,"api/outbreaks/",outbreak_id,"/contacts"),          # GET request
+  paste0(url,"api/outbreaks/",outbreak_id,"/contacts"),          # GET リクエスト
   add_headers(
     Authorization = paste("Bearer", access_token, sep = " ")))
 
-json_contacts <- content(response_contacts, as = "text")         # convert to text JSON
+json_contacts <- content(response_contacts, as = "text")         # テキスト JSON に変換
 
-contacts <- as_tibble(fromJSON(json_contacts, flatten = TRUE))   # flatten JSON to tibble
+contacts <- as_tibble(fromJSON(json_contacts, flatten = TRUE))   # JSON をフラット化して tibble として保存
 ```
 
-[***CAUTION:*** If you are importing large amounts of data from an API requiring authentication, it may time-out. To avoid this, retrieve access_token again before each API GET request and try using filters or limits in the query.]{style="color: orange;"}
+[[**注意:**]{.ul}認証が必要な API から大量のデータをインポートする場合、タイムアウトになる場合があります。 これを回避するには、各 API GET リクエストの前にアクセストークンを再度取得し、クエリでフィルターまたは制限を使用してみてください。.]{style="color: orange;"}
 
-[***TIP:*** The `fromJSON()` function in the **jsonlite** package does not fully un-nest the first time it's executed, so you will likely still have list items in your resulting tibble. You will need to further un-nest for certain variables; depending on how nested your .json is. To view more info on this, view the documentation for the **jsonlite** package, such as the [`flatten()` function](https://rdrr.io/cran/jsonlite/man/flatten.html).]{style="color: darkgreen;"}
+[[***ヒント:***]{.ul}**jsonlite** パッケージの `fromJSON()` 関数では、最初の実行では完全にネストが解除されないため、tibble にリストアイテムが残っている可能性があります。**.json** がどの程度ネストされているかに応じて、特定の変数のネストをさらに解除する必要があります。この情報の詳細については、[`flatten()`関数](https://rdrr.io/cran/jsonlite/man/flatten.html)などの **jsonlite** パッケージの説明をご覧ください。]{style="color: darkgreen;"}
 
-For more details, View documentation on [LoopBack Explorer](https://loopback.io/doc/en/lb4/index.html), the \[Contact Tracing\] page or API tips on [Go.Data Github repository](https://worldhealthorganization.github.io/godata/api-docs)
+詳細は、LoopBack Explorer のドキュメント、[Go.Data Github レポジトリ](https://worldhealthorganization.github.io/godata/api-docs)の \[Contact Tracing\] ページ、または API tips をご覧ください。
 
-You can read more about the *httr* package [here](https://httr.r-lib.org/articles/quickstart.html)
+[httr]{.ul} パッケージの詳細は[こちら](https://httr.r-lib.org/articles/quickstart.html)をご覧ください。
 
-This section was also informed by [this tutorial](https://www.dataquest.io/blog/r-api-tutorial/) and [this tutorial](https://medium.com/@traffordDataLab/querying-apis-in-r-39029b73d5f1).
+このセクションは、[このチュートリアル](https://www.dataquest.io/blog/r-api-tutorial/)と[こちらのチュートリアル](https://medium.com/@traffordDataLab/querying-apis-in-r-39029b73d5f1) を参照しました。
 
 <!-- ======================================================= -->
 
@@ -720,15 +720,15 @@ This section was also informed by [this tutorial](https://www.dataquest.io/blog/
 
 ### rio パッケージを使って {.unnumbered}
 
-With **rio**, you can use the `export()` function in a very similar way to `import()`. First give the name of the R object you want to save (e.g. `linelist`) and then in quotes put the file path where you want to save the file, including the desired file name and file extension. For example:
+**rio** を使用すると、`import()` と同様の方法で `export()` 関数を使用できます。まず、保存する R オブジェクトの名前（`linelist` など）を指定してから、ファイルを保存する場所に、目的のファイル名とファイル拡張子を含むファイルパスを引用符で囲みます。例を以下に示します。
 
-This saves the data frame `linelist` as an Excel workbook to the working directory/R project root folder:
+以下のコードの実行により、データフレーム `linelist` がExcel ワークブックとして作業ディレクトリ/ R プロジェクトのルートフォルダに保存されます。
 
 ```{r, eval=F}
-export(linelist, "my_linelist.xlsx") # will save to working directory
+export(linelist, "my_linelist.xlsx") # 作業ディレクトリに保存される
 ```
 
-You could save the same data frame as a csv file by changing the extension. For example, we also save it to a file path constructed with `here()`:
+拡張子を変更することで、csv ファイルと同じデータフレームを保存できます。 たとえば、 `here()` で作成されたファイルパスにも保存します。
 
 ```{r, eval=F}
 export(linelist, here("data", "clean", "my_linelist.csv"))
@@ -736,16 +736,16 @@ export(linelist, here("data", "clean", "my_linelist.csv"))
 
 ### クリップボードにエクスポート {.unnumbered}
 
-To export a data frame to your computer's "clipboard" (to then paste into another software like Excel, Google Spreadsheets, etc.) you can use `write_clip()` from the **clipr** package.
+データフレームをコンピューターの "クリップボード" にエクスポートするには（Excel、Google スプレッドシートなどの別のソフトウェアに貼り付けるため）、**clipr** パッケージの`write_clip()` を使用できます。
 
 ```{r, eval=F}
-# export the linelist data frame to your system's clipboard
+# ラインリストデータフレームをシステムのクリップボードにエクスポートする
 clipr::write_clip(linelist)
 ```
 
 ## RDS ファイル {#import_rds}
 
-Along with .csv, .xlsx, etc, you can also export/save R data frames as .rds files. This is a file format specific to R, and is very useful if you know you will work with the exported data again in R.
+.csv、.xlsx などに加えて、R データフレームを .rds ファイルとしてエクスポート/保存することもできます。 これはRに固有のファイル形式であり、エクスポートされたデータを R で再度操作することがわかっている場合に非常に役立ちます。
 
 The classes of columns are stored, so you don't have do to cleaning again when it is imported (with an Excel or even a CSV file this can be a headache!). It is also a smaller file, which is useful for export and import if your dataset is large.
 
