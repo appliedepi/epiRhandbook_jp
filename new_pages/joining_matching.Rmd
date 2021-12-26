@@ -36,56 +36,56 @@ pacman::p_load(
 
 ### データのインポート {.unnumbered}
 
-まず、シミュレートされたエボラ出血熱の流行から、整理された症例のラインリストをインポートします。[クリックして "整理された" ラインリストをダウンロード](https://github.com/appliedepi/epirhandbook_eng/raw/master/data/case_linelists/linelist_cleaned.rds)します（.rds ファイルとして）。Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the \[Import and export\] page for details).
+まず、シミュレートされたエボラ出血熱の流行から、整理された症例のラインリストをインポートします。[クリックして "整理された" ラインリストをダウンロード](https://github.com/appliedepi/epirhandbook_eng/raw/master/data/case_linelists/linelist_cleaned.rds)します（.rds ファイルとして）。`import()` 関数を使用して **rio** パッケージからデータをインポートします（.xlsx、.csv、.rds などの多くのファイルタイプを処理します。詳細については、\[データのインポート・エクスポート\] のページをご覧ください）。
 
 ```{r, echo=F}
-# import the linelist into R
+# ラインリストを R にインポートする
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
-# import case linelist 
+# 症例ラインリストをインポートする 
 linelist <- import("linelist_cleaned.rds")
 ```
 
-The first 50 rows of the linelist are displayed below.
+ラインリストの最初の50行が下に表示されます。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストデータを表として表示する
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 <!-- ======================================================= -->
 
-### Example datasets {.unnumbered}
+### データセットの例 {.unnumbered}
 
-In the joining section below, we will use the following datasets:
+以下のデータの結合セクションでは、次のデータセットを使用します。
 
-1)  A "miniature" version of the case `linelist`, containing only the columns `case_id`, `date_onset`, and `hospital`, and only the first 10 rows\
-2)  A separate data frame named `hosp_info`, which contains more details about each hospital
+1)  `case_id`、`date_onset`、`hospital` の列の最初の10行のみを含む、症例 `linelist` の "ミニチュア" 版。\
+2)  各病院の詳細な情報を含む、 `hosp_info` という名前の別のデータフレーム。
 
-In the section on probabilistic matching, we will use two different small datasets. The code to create those datasets is given in that section.
+確率的マッチングの項では、2種類の小さなデータセットを使用する。これらのデータセットを作成するためのコードはそのセクションに記載されています。
 
-#### "Miniature" case linelist {#joins_llmini .unnumbered}
+#### "ミニチュア" 症例ラインリスト {#joins_llmini .unnumbered}
 
-Below is the the miniature case linelist, which contains only 10 rows and only columns `case_id`, `date_onset`, and `hospital`.
+以下はミニチュアの症例のラインリストで、`case_id`、`date_onset`、`hospital` の列の最初の10行のみが含まれています。
 
 ```{r}
-linelist_mini <- linelist %>%                 # start with original linelist
-  select(case_id, date_onset, hospital) %>%   # select columns
-  head(10)                                    # only take the first 10 rows
+linelist_mini <- linelist %>%                 # 元のラインリストから始める
+  select(case_id, date_onset, hospital) %>%   # 列を選択
+  head(10)                                    # 最初の10行のみを取得します
 ```
 
 ```{r message=FALSE, echo=F}
 DT::datatable(linelist_mini, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-#### Hospital information data frame {#joins_hosp_info .unnumbered}
+#### 病院情報データフレーム {#joins_hosp_info .unnumbered}
 
-Below is the code to create a separate data frame with additional information about seven hospitals (the catchment population, and the level of care available). Note that the name "Military Hospital" belongs to two different hospitals - one a primary level serving 10000 residents and the other a secondary level serving 50280 residents.
+以下は、7つの病院に関する追加情報（患者数、利用可能な医療レベル）を含む別のデータフレームを作成するためのコードです。 Nなお、"Military Hospital" という名称は、住民10000人を収容する一次病院と住民50280人を収容する二次病院の2つに属しています。
 
 ```{r}
-# Make the hospital information data frame
+# 病院情報データフレームを作成する
 hosp_info = data.frame(
   hosp_name     = c("central hospital", "military", "military", "port", "St. Mark's", "ignace", "sisters"),
   catchment_pop = c(1950280, 40500, 10000, 50280, 12000, 5000, 4200),
@@ -93,48 +93,48 @@ hosp_info = data.frame(
 )
 ```
 
-Here is this data frame:
+このデータフレームは以下の通りです。
 
 ```{r message=FALSE, echo=F}
-# display the hospital data as a table
+# 病院のデータを表として表示する
 DT::datatable(hosp_info, rownames = FALSE, options = list(pageLength = nrow(hosp_info)))
 ```
 
 <!-- ======================================================= -->
 
-### Pre-cleaning {.unnumbered}
+### プレクリーニング {.unnumbered}
 
-Traditional joins (non-probabilistic) are case-sensitive and require exact character matches between values in the two data frames. To demonstrate some of the cleaning steps you might need to do before initiating a join, we will clean and align the `linelist_mini` and `hosp_info` datasets now.
+従来の結合（非確率的）では大文字と小文字が区別され、2つのデータフレーム内の値間で文字の完全一致を必要とします。結合を開始する前に実行する必要のあるクリーニング手順のいくつかを示すために、 `linelist_mini` データセットと `hosp_info` データセットをクリーンアップして調整します。
 
-**Identify differences**
+**違いを特定する**
 
-We need the values of the `hosp_name` column in the `hosp_info` data frame to match the values of the `hospital` column in the `linelist_mini` data frame.
+データフレームの `hosp_name` 列の値は、`linelist_mini` データフレームの `hospital` 列の値と一致する必要があります。
 
-Here are the values in the `linelist_mini` data frame, printed with the **base** R function `unique()`:
+以下は、`linelist_mini` データフレームの値を、base R の基本関数 `unique()` で表示したものです。
 
 ```{r}
 unique(linelist_mini$hospital)
 ```
 
-and here are the values in the `hosp_info` data frame:
+hosp_infoデータフレームの値は次のとおりです。
 
 ```{r}
 unique(hosp_info$hosp_name)
 ```
 
-You can see that while some of the hospitals exist in both data frames, there are many differences in spelling.
+一部の病院は両方のデータフレームに存在しますが、スペルには多くの違いがあることがわかります。
 
-**Align values**
+**値を揃える**
 
-We begin by cleaning the values in the `hosp_info` data frame. As explained in the \[Cleaning data and core functions\] page, we can re-code values with logical criteria using **dplyr**'s `case_when()` function. For the four hospitals that exist in both data frames we change the values to align with the values in `linelist_mini`. The other hospitals we leave the values as they are (`TRUE ~ hosp_name`).
+まず、`hosp_info` データフレームの値をクリーンアップします。\[データクリーニングと主要関数\] のページで説明したように、**dplyr** の`case_when()` 関数を使って、論理的な基準で値を再コード化することができます。両方のデータフレームに存在する4つの病院については、`linelist_mini` の値と一致するように値を変更します。 他の病院は、値をそのままにします（`TRUE ~ hosp_name`）。
 
-[***CAUTION:*** Typically when cleaning one should create a new column (e.g. `hosp_name_clean`), but for ease of demonstration we show modification of the old column]{style="color: orange;"}
+[[**注:**]{.ul} 通常、クリーニングを行う場合は新しい列を作成する必要がありますが（例: `hosp_name_clean`）、今回の例では簡単にするために古い列を修正したものを示します。 ]{style="color: orange;"}
 
 ```{r}
 hosp_info <- hosp_info %>% 
   mutate(
     hosp_name = case_when(
-      # criteria                         # new value
+      # 基準　　                         # 新しい値
       hosp_name == "military"          ~ "Military Hospital",
       hosp_name == "port"              ~ "Port Hospital",
       hosp_name == "St. Mark's"        ~ "St. Mark's Maternity Hospital (SMMH)",
@@ -144,13 +144,13 @@ hosp_info <- hosp_info %>%
     )
 ```
 
-The hospital names that appear in both data frames are aligned. There are two hospitals in `hosp_info` that are not present in `linelist_mini` - we will deal with these later, in the join.
+両方のデータフレームに表示される病院名が揃えられました。`linelist_mini` にはない病院が`hosp_info` に2つありますが、これらは後の結合で扱います。
 
 ```{r}
 unique(hosp_info$hosp_name)
 ```
 
-Prior to a join, it is often easiest to convert a column to all lowercase or all uppercase. If you need to convert all values in a column to UPPER or lower case, use `mutate()` and wrap the column with one of these functions from **stringr**, as shown in the page on \[Characters and strings\].
+結合の前に、列名をすべて小文字または大文字に変換することで手間を省けます。列のすべての値を大文字または小文字に変換する必要がある場合は、\[文字列型データ\] のページに示すように、`mutate()` を使用して、さらに**stringr** の以下の関数のいずれかに目的の列を適用します。
 
 `str_to_upper()`\
 `str_to_upper()`\
@@ -158,87 +158,89 @@ Prior to a join, it is often easiest to convert a column to all lowercase or all
 
 <!-- ======================================================= -->
 
-## **dplyr** joins
+## **dplyr による結合**
 
-The **dplyr** package offers several different join functions. **dplyr** is included in the **tidyverse** package. These join functions are described below, with simple use cases.
+**dplyr** パッケージには、いくつかの異なる結合関数があります。**dplyr** は **tidyverse** パッケージに含まれます。 これらの結合関数について、簡単な使用例とともに以下に説明します。
 
-Many thanks to [https://github.com/gadenbuie](https://github.com/gadenbuie/tidyexplain/tree/master/images) for the informative gifs!
+有益な GIF を提供してくれた[https://github.com/gadenbuie](https://github.com/gadenbuieに感謝します。)に感謝申し上げます。
 
 <!-- ======================================================= -->
 
-### General syntax {.unnumbered}
+### 一般的な構文 {.unnumbered}
 
-The join commands can be run as standalone commands to join two data frames into a new object, or they can be used within a pipe chain (`%>%`) to merge one data frame into another as it is being cleaned or otherwise modified.
+合コマンドは、単一のコマンドとして実行して2つのデータフレームを新しいオブジェクトに結合することも、あるいは、パイプチェーン（`%>%`）内で使用して、クリーンアップまたはその他の方法で変更するときに1つのデータフレームを別のデータフレームにマージ（併合）することもできます。
 
-In the example below, the function `left_join()` is used as a standalone command to create the a new `joined_data` data frame. The inputs are data frames 1 and 2 (`df1` and `df2`). The first data frame listed is the baseline data frame, and the second one listed is joined *to* it.
+以下の例では、関数 `left_join()` を単一コマンドとして使用して、新しい `joined_data` データフレームを作成します。 結合に使用するデータはデータフレーム1と2（`df1` と `df2` ）です。 前者のデータフレームはベースラインデータフレームであり、後者のデータフレームは前者のデータフレーム[に]{.ul}結合されています。
 
-The third argument `by =` is where you specify the columns in each data frame that will be used to aligns the rows in the two data frames. If the names of these columns are different, provide them within a `c()` vector as shown below, where the rows are matched on the basis of common values between the column `ID` in `df1` and the column `identifier` in `df2`.
+3番目の引数 `y =` では、2つのデータフレームの行を揃えるために使用される各データフレームの列を指定することができます。 これらの列の名前が異なる場合は、以下に示すよう に`c()` ベクトル内に指定してください。ここで、行は `df1` の列 `ID`と `df2` の列 `identifier` の間の共通値に基づいて照合されます。
 
 ```{r, eval=F}
-# Join based on common values between column "ID" (first data frame) and column "identifier" (second data frame)
+# 列 "ID"（最初のデータフレーム）と列 "identifier"（2番目のデータフレーム）の間の共通の値に基づいて結合します。
 joined_data <- left_join(df1, df2, by = c("ID" = "identifier"))
 ```
 
-If the `by` columns in both data frames have the exact same name, you can just provide this one name, within quotes.
+`by` で指定する列名が両方のデータフレームで全く同じ名前である場合、この1つの名前を引用符で囲んで指定できます。
 
 ```{r, eval=F}
-# Joint based on common values in column "ID" in both data frames
+# 両方のデータフレームの列 "ID" の共通値に基づく結合
 joined_data <- left_join(df1, df2, by = "ID")
 ```
 
-If you are joining the data frames based on common values across multiple fields, list these fields within the `c()` vector. This example joins rows if the values in three columns in each dataset align exactly.
+複数のフィールドにまたがる共通の値に基づいてデータフレームを結合する場合は、これらのフィールドを `c()` ベクトル内で指定します。 この例では、各データセットの3つの列の値が正確に一致している場合に行が結合されます。
 
 ```{r, eval=F}
-# join based on same first name, last name, and age
+# 同じ名、姓、年齢に基づいて結合する
 joined_data <- left_join(df1, df2, by = c("name" = "firstname", "surname" = "lastname", "Age" = "age"))
 ```
 
-The join commands can also be run within a pipe chain. This will modify the data frame being piped.
+コマンドは、パイプチェーン内で実行することもできます。 これにより、パイプされるデータフレームが変更されます。
 
-In the example below, `df1` is is passed through the pipes, `df2` is joined to it, and `df` is thus modified and re-defined.
+以下の例では、`df1` がパイプを通過し、`df2` がパイプに結合されるため、`df` が変更され、再定義されます。
 
 ```{r eval=F}
 df1 <- df1 %>%
-  filter(date_onset < as.Date("2020-03-05")) %>% # miscellaneous cleaning 
-  left_join(df2, by = c("ID" = "identifier"))    # join df2 to df1
+  filter(date_onset < as.Date("2020-03-05")) %>% # その他のクリーニング 
+  left_join(df2, by = c("ID" = "identifier"))    # df2 を df1 に結合
 ```
 
-[***CAUTION:*** Joins are case-specific! Therefore it is useful to convert all values to lowercase or uppercase prior to joining. See the page on characters/strings.]{style="color: orange;"}
+[[**注:**]{.ul} 結合において大文字と小文字は区別されます。したがって、結合の前にすべての値を小文字または大文字に変換しておくと便利です。文字列型データのページを参照ください。　]{style="color: orange;"}
 
 <!-- ======================================================= -->
 
-### Left and right joins {.unnumbered}
+### 左結合（left join）と右結合（right join） {.unnumbered}
 
-**A left or right join is commonly used to add information to a data frame** - new information is added only to rows that already existed in the baseline data frame. These are common joins in epidemiological work as they are used to add information from one dataset into another.
+**左結合または右結合は、データフレームに情報を追加するためによく使用されます** - 新しい情報は、ベースラインデータフレームにすでに存在する行にのみ追加されます。 これらは疫学的研究において、あるデータセットから別のデータセットに情報を追加するために使われる一般的な結合です。
 
-In using these joins, the written order of the data frames in the command is important\*.
+これらの結合を使用する場合、コマンド内のデータフレームの記述順序が重要となります\*。
 
--   In a *left join*, the *first* data frame written is the baseline\
--   In a *right join*, the *second* data frame written is the baseline
+-   [左結合]{.ul}では、[最初に]{.ul}書き込まれるデータフレームがベースラインです。\
+-   [右結合]{.ul}では、[2番目に]{.ul}書き込まれるデータフレームがベースラインです。
 
-**All rows of the baseline data frame are kept.** Information in the other (secondary) data frame is joined to the baseline data frame *only if there is a match via the identifier column(s)*. In addition:
+**ベースラインデータフレームのすべての行が保持されます。** 他の（二次）データフレームの情報は、[識別子として指定される列を介して一致する場合にのみ]{.ul}、ベースラインデータフレームに結合されます。加えて、
 
--   Rows in the secondary data frame that do not match are dropped.\
--   If there are many baseline rows that match to one row in the secondary data frame (many-to-one), the secondary information is added to *each matching baseline row*.\
--   If a baseline row matches to multiple rows in the secondary data frame (one-to-many), all combinations are given, meaning *new rows may be added to your returned data frame!*
+-   一致しない二次データフレームの行は削除されます
 
-Animated examples of left and right joins ([image source](https://github.com/gadenbuie/tidyexplain/tree/master/images))
+-   二次データフレームの1行に一致するベースライン行が多数ある場合（多対一）、[一致する各ベースライン行に]{.ul}二次データフレームが追加されます\
+
+-   ベースライン行が二次リデータフレームの複数の行（1対多）と一致する場合、すべての組み合わせが指定されます。*つまり、*[返されたデータフレームに新しい行が追加される可能性があります]{.ul}
+
+左結合と右結合のアニメーション例（[画像提供元](https://github.com/gadenbuie/tidyexplain/tree/master/images)）
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "left-join.gif"))
 knitr::include_graphics(here::here("images", "right-join.gif"))
 ```
 
-**Example**
+**例**
 
-Below is the output of a `left_join()` of `hosp_info` (secondary data frame, [view here](#joins_hosp_info)) *into* `linelist_mini` (baseline data frame, [view here](#joins_llmini)). The original `linelist_mini` has `nrow(linelist_mini)` rows. The modified `linelist_mini` is displayed. Note the following:
+以下は、 `hosp_info` （二次データフレーム、ここに表示）の `left_join()` [を]{.ul}`linelist_mini` （ベースラインデータフレーム、[ここを参照](#joins_llmini)）[として]{.ul}アウトプットしたものです。元の `linelist_mini` の行数は `nrow(linelist_mini)` です。 変更された `linelist_mini` が表示されます。 次の点に注意してください。
 
--   Two new columns, `catchment_pop` and `level` have been added on the left side of `linelist_mini`\
--   All original rows of the baseline data frame `linelist_mini` are kept\
--   Any original rows of `linelist_mini` for "Military Hospital" are duplicated because it matched to *two* rows in the secondary data frame, so both combinations are returned\
--   The join identifier column of the secondary dataset (`hosp_name`) has disappeared because it is redundant with the identifier column in the primary dataset (`hospital`)\
--   When a baseline row did not match to any secondary row (e.g. when `hospital` is "Other" or "Missing"), `NA` (blank) fills in the columns from the secondary data frame\
--   Rows in the secondary data frame with no match to the baseline data frame ("sisters" and "ignace" hospitals) were dropped
+-    `linelist_mini` の左側に2つの新しい列、 `catchment_pop` と `level` が追加されました\
+-   ベースラインデータフレーム`linelist_mini` の元の行はすべて保持されます\
+-   "Military Hospital" の `linelist_mini` の元の行は、二次データフレームの[2つの行]{.ul}と一致したため複製され、両方の組み合わせが反映されます\
+-   二次リデータセットの結合識別子列（`hosp_name`）は、元のデータセットの識別子列（`hospital`）と重複しているため、削除されました\
+-   ベースライン行がどの二次データフレームの行とも一致しなかった場合（たとえば、 `hospital` が "Other" または "Missing" の場合）、`NA`（空白）が二次データフレームの列に入力されます\
+-   元のデータフレーム（"sisters" および "ignace" 病院）と一致しない二次データフレームの行が削除されました
 
 ```{r, eval=F}
 linelist_mini %>% 
@@ -251,59 +253,59 @@ linelist_mini %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 11))
 ```
 
-#### "Should I use a right join, or a left join?" {.unnumbered}
+#### "右結合を使用するべきか、それとも左結合を使用するべきか？" {.unnumbered}
 
-To answer the above question, ask yourself "which data frame should retain all of its rows?" - use this one as the baseline. A *left join* keep all the rows in the first data frame written in the command, whereas a *right join* keeps all the rows in the second data frame.
+上記の質問に答えるために、"どのデータフレームがすべての行を保持すべきか？"と自問自答してください。 - これをベースラインとして使用します。 [左結合]{.ul}では、コマンドで指定された最初のデータフレームのすべての行が保持されますが、[右結合]{.ul}では、2番目のデータフレームのすべての行が保持されます。
 
-The two commands below achieve the same output - 10 rows of `hosp_info` joined *into* a `linelist_mini` baseline, but they use different joins. The result is that the column order will differ based on whether `hosp_info` arrives from the right (in the left join) or arrives from the left (in the right join). The order of the rows may also shift accordingly. But both of these consequences can be subsequently addressed, using `select()` to re-order columns or `arrange()` to sort rows.
+以下の2つのコマンドは、10行の `hosp_info` [を]{.ul} `linelist_mini` ベースライン*に*結合するというアウトプットは同じですが、異なる結合方法によるものです。その結果、`hosp_info` が右から結合するか（左結合）、左から結合するか（右結合）によって、列の順序が異なります。それに伴い、行の順番もずれる可能性がありますが、`select()` による列の並べ替えや `arrange()` による行の並べ替えで対処することができます。
 
 ```{r, eval=F}
-# The two commands below achieve the same data, but with differently ordered rows and columns
+# 以下の2つのコマンドのアプトプットは同じデータですが、行と列の順序が異なります
 left_join(linelist_mini, hosp_info, by = c("hospital" = "hosp_name"))
 right_join(hosp_info, linelist_mini, by = c("hosp_name" = "hospital"))
 ```
 
-Here is the result of `hosp_info` into `linelist_mini` via a left join (new columns incoming from the right)
+こちらは、 `hosp_info` が左結合を介して `linelist_mini` に入力された結果です（新しい列は右から入力されます）。
 
 ```{r message=FALSE, echo=F}
 left_join(linelist_mini, hosp_info, by = c("hospital" = "hosp_name")) %>% 
   DT::datatable(rownames = FALSE, options = list(pageLength = 11))
 ```
 
-Here is the result of `hosp_info` into `linelist_mini` via a right join (new columns incoming from the left)
+これは、右結合（左から入ってくる新しい列）を介して `linelist_mini` に `hosp_info` を入れた結果です。
 
 ```{r message=FALSE, echo=F}
 right_join(hosp_info, linelist_mini, by = c("hosp_name" = "hospital")) %>% 
   DT::datatable(rownames = FALSE, options = list(pageLength = 11))
 ```
 
-Also consider whether your use-case is within a pipe chain (`%>%`). If the dataset in the pipes is the baseline, you will likely use a left join to add data to it.
+また、ユースケースがパイプチェーン内にあるかどうかも検討してください（`%>%`）。 パイプ内のデータセットがベースラインである場合は、左結合を使用してデータを追加する可能性があります。
 
 <!-- ======================================================= -->
 
-### Full join {.unnumbered}
+### 完全結合（full join） {.unnumbered}
 
-**A full join is the most *inclusive* of the joins** - it returns all rows from both data frames.
+**完全結合は、結合の中で最も[包括的な]{.ul}ものです** - 両方のデータフレームのすべての行が結合されます。
 
-If there are any rows present in one and not the other (where no match was found), the data frame will include them and become longer. `NA` missing values are used to fill-in any gaps created. As you join, watch the number of columns and rows carefully to troubleshoot case-sensitivity and exact character matches.
+一方のデータフレームにある行があり、もう一方にはない（一致が見つからなかった）場合でも、この行はアウトプットのデータフレームにも結合されるためデータフレームはその分長くなります。`NA` の欠損値は、生じたギャップを埋めるために使用されます。 結合の際には、列や行の数に注意を払い、大文字小文字の区別や文字の完全一致のトラブルシューティングを行います。
 
-The "baseline" data frame is the one written first in the command. Adjustment of this will not impact which records are returned by the join, but it can impact the resulting column order, row order, and which identifier columns are retained.
+"ベースライン" データフレームは、コマンドで最初に書き込まれるものです。これを調整しても、結合によって取得されるデータ自体には影響しませんが、結果の列の順序、行の順序、および保持される識別子の列に影響を与える可能性があります。
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "full-join.gif"))
 ```
 
-Animated example of a full join ([image source](https://github.com/gadenbuie/tidyexplain/tree/master/images))
+完全結合のアニメーション例（[画像提供元](https://github.com/gadenbuie/tidyexplain/tree/master/images)）
 
-**Example**
+**例**
 
-Below is the output of a `full_join()` of `hosp_info` (originally `nrow(hosp_info)`, [view here](#joins_hosp_info)) *into* `linelist_mini` (originally `nrow(linelist_mini)`, [view here](#joins_llmini)). Note the following:
+以下は、 `hosp_info` （元々は `nrow(hosp_info)`、[ここに表示](#joins_hosp_info)）の `full_join()` を`linelist_mini` （元々は `nrow(linelist_mini)`、[ここに表示](#joins_llmini)）にアウトプットしたものです。 次の点に注意してください。
 
--   All baseline rows are kept (`linelist_mini`)\
--   Rows in the secondary that do not match to the baseline are kept ("ignace" and "sisters"), with values in the corresponding baseline columns `case_id` and `onset` filled in with missing values\
--   Likewise, rows in the baseline data frame that do not match to the secondary ("Other" and "Missing") are kept, with secondary columns `catchment_pop` and `level` filled-in with missing values\
--   In the case of one-to-many or many-to-one matches (e.g. rows for "Military Hospital"), all possible combinations are returned (lengthening the final data frame)\
--   Only the identifier column from the baseline is kept (`hospital`)
+-   すべてのベースライン行が保持されます（`linelist_mini`）\
+-   ベースラインと一致しない二次データの行は保持され（"ignace" と "sisters" ）、対応するベースラインの列 `case_id` と `onset` の値は欠損値で埋められる\
+-   同様に、ベースラインデータフレームの行のうち、二次データ（"Other" と "Missing"）と一致しないものは保持され、二次データ列の `catchment_pop` と `level` が欠損値で埋められます\
+-   一対多または多対一の場合（例えば "Military Hospital "の行）、可能なすべての組み合わせが結合されます（最終的なデータフレームが長くなります）\
+-   ベースラインの識別子列のみが保持されます（`hospital`）
 
 ```{r, eval=F}
 linelist_mini %>% 
@@ -318,24 +320,24 @@ linelist_mini %>%
 
 <!-- ======================================================= -->
 
-### Inner join {.unnumbered}
+### 内部結合（inner join） {.unnumbered}
 
-**An inner join is the most *restrictive* of the joins** - it returns only rows with matches across both data frames.\
-This means that the number of rows in the baseline data frame may actually *reduce*. Adjustment of which data frame is the "baseline" (written first in the function) will not impact which rows are returned, but it will impact the column order, row order, and which identifier columns are retained.
+**内部結合はデータ結合の中で最も制限の多いものです** - 両方のデータフレームで一致する行のみが結合されます。\
+このため、ベースラインデータフレームの行数が実際に[減少する]{.ul}可能性があります。どのデータフレームを "ベースライン" するか（関数内で最初に指定されるデータフレーム）を調整しても、結合される行は変わりませんが、列の順番、行の順番、どの識別子列が保持されるかには影響します。
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "inner-join.gif"))
 ```
 
-Animated example of an inner join ([image source](https://github.com/gadenbuie/tidyexplain/tree/master/images))
+内部結合のアニメーション例（[画像提供元](https://github.com/gadenbuie/tidyexplain/tree/master/images)）
 
-**Example**
+**例**
 
-Below is the output of an `inner_join()` of `linelist_mini` (baseline) with `hosp_info` (secondary). Note the following:
+`linelist_mini` (ベースラインデータフレーム) と `hosp_info` (二次データフレーム) を `inner_join()` したときのアウトプットは以下の通りです。以下のことに注意してください。
 
--   Baseline rows with no match to the secondary data are removed (rows where `hospital` is "Missing" or "Other")\
--   Likewise, rows from the secondary data frame that had no match in the baseline are removed (rows where `hosp_name` is "sisters" or "ignace")\
--   Only the identifier column from the baseline is kept (`hospital`)
+-   二次データと一致しないベースラインの行が削除されます（ `hospital` が"Missing" または "Other" である行）\
+-   同様に、ベースラインで一致しなかった二次データフレームの行も削除されます（ `hosp_name` が "sisters "または "ignace "の行）\
+-   ベースラインの識別子列のみが保持されます（`hospital`）
 
 ```{r, eval=F}
 linelist_mini %>% 
@@ -350,19 +352,19 @@ linelist_mini %>%
 
 <!-- ======================================================= -->
 
-### Semi join {.unnumbered}
+### 準結合（semi join） {.unnumbered}
 
-A semi join is a "filtering join" which uses another dataset *not to add rows or columns, but to perform filtering*.
+準結合は、別のデータセットを使用して[行や列を追加するのではなく、フィルタリングを実行する]{.ul} "フィルタリング結合" です。
 
-A **semi-join keeps all observations in the baseline data frame that have a match in the secondary data frame** (but does not add new columns nor duplicate any rows for multiple matches). Read more about these "filtering" joins [here](https://towardsdatascience.com/level-up-with-semi-joins-in-r-a068426096e0).
+**準結合では、二次データフレームで一致するすべての値をベースラインデータフレームに保持します** (ただし、新しい列を追加したり、複数の一致に対して行を複製したりすることはありません）。"フィルタリング" 結合について詳しくは、[こちら](https://towardsdatascience.com/level-up-with-semi-joins-in-r-a068426096e0)をご覧ください。
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "semi-join.gif"))
 ```
 
-Animated example of a semi join ([image source](https://github.com/gadenbuie/tidyexplain/tree/master/images))
+準結合のアニメーション例 ([画像提供元](https://github.com/gadenbuie/tidyexplain/tree/master/images))
 
-As an example, the below code returns rows from the `hosp_info` data frame that have matches in `linelist_mini` based on hospital name.
+以下のコードでは、病院名に基づいて`linelist_mini` に一致する `hosp_info` データフレームからの行が取得されます。
 
 ```{r}
 hosp_info %>% 
@@ -371,25 +373,25 @@ hosp_info %>%
 
 <!-- ======================================================= -->
 
-### Anti join {.unnumbered}
+### アンチ結合（anti join） {.unnumbered}
 
-**The anti join is another "filtering join" that returns rows in the baseline data frame that *do not* have a match in the secondary data frame.**
+**アンチ結合では、ベースラインデータフレームのうち、セカンダリーデータフレームと[一致しない行が]{.ul}結合される、もう1つの "フィルタリング結合" です。**
 
-Read more about filtering joins [here](https://towardsdatascience.com/level-up-with-semi-joins-in-r-a068426096e0).
+フィルタリング結合について詳しくは、[こちら](https://towardsdatascience.com/level-up-with-semi-joins-in-r-a068426096e0)をご覧ください。
 
-Common scenarios for an anti-join include identifying records not present in another data frame, troubleshooting spelling in a join (reviewing records that *should have* matched), and examining records that were excluded after another join.
+アンチ結合は一般的に、別のデータフレームに存在しないデータの識別、結合のスペルのトラブルシューティング（一致するはずのデータの確認）、および別の結合後に除外されたデータの調査などに用いられます。
 
-**As with `right_join()` and `left_join()`, the *baseline* data frame (listed first) is important**. The returned rows are from the baseline data frame only. Notice in the gif below that row in the secondary data frame (purple row 4) is not returned even though it does not match with the baseline.
+**`right_join()` および `left_join()` と同様に、最初にリストされる[ベースライン]{.ul}データフレームが重要です。**結合される行は、ベースラインデータフレームのみからのものです。下の GIF では、二次データフレームの行（紫の行4）がベースラインと一致しないにもかかわらず、取得されないことに注意してください。
 
 ```{r out.width = c('50%'), fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "anti-join.gif"))
 ```
 
-Animated example of an anti join ([image source](https://github.com/gadenbuie/tidyexplain/tree/master/images))
+アンチ結合のアニメーション例 ([画像提供元](https://github.com/gadenbuie/tidyexplain/tree/master/images))
 
-#### Simple `anti_join()` example {.unnumbered}
+#### 簡単な `anti_join()` の例 {.unnumbered}
 
-For a simple example, let's find the `hosp_info` hospitals that do not have any cases present in `linelist_mini`. We list `hosp_info` first, as the baseline data frame. The hospitals which are not present in `linelist_mini` are returned.
+簡単な例として、`linelist_mini` に症例が存在しない `hosp_info` の病院を検索してみましょう。ベースラインデータフレームとして、`hosp_info` を最初にリストアップする。`linelist_mini` に存在しない病院が取得される。
 
 ```{r, eval=F}
 hosp_info %>% 
@@ -806,9 +808,9 @@ DT::datatable(contact_fu, rownames = FALSE, options = list(pageLength = nrow(10)
 
 Note that the hospitals are the same, but are in different orders in each data frame. The easiest solution would be to use a `left_join()` on the `hospital` column, but you could also use `bind_cols()` with one extra step.
 
-#### Use `match()` to align ordering {.unnumbered}
+####  `match()` を使用して順序を揃える {.unnumbered}
 
-Because the row orders are different, a simple `bind_cols()` command would result in a mis-match of data. To fix this we can use `match()` from **base** R to align the rows of a data frame in the same order as in another. We assume for this approach that there are no duplicate values in either data frame.
+Because the row orders are different, a simple `bind_cols()` command would result in a mis-match of data. 行の順序が異なるため、`bind_cols()` コマンドを実行すると、データが不一致になります。To fix this we can use `match()` from **base** R to align the rows of a data frame in the same order as in another. We assume for this approach that there are no duplicate values in either data frame.これを修正するには、ベースRのmatch（）を使用して、データフレームの行を別のフレームと同じ順序で整列させます。 このアプローチでは、どちらのデータフレームにも重複する値がないことを前提としています。
 
 When we use `match()`, the syntax is `match(TARGET ORDER VECTOR, DATA FRAME COLUMN TO CHANGE)`, where the first argument is the desired order (either a stand-alone vector, or in this case a column in a data frame), and the second argument is the data frame column in the data frame that will be re-ordered. The output of `match()` is a vector of numbers representing the correct position ordering. You can read more with `?match`.
 
@@ -816,7 +818,7 @@ When we use `match()`, the syntax is `match(TARGET ORDER VECTOR, DATA FRAME COLU
 match(case_info$hospital, contact_fu$hospital)
 ```
 
-You can use this numeric vector to re-order the data frame - place it within subset brackets `[ ]` *before the comma*. Read more about **base** R bracket subset syntax in the \[R basics\] page. The command below creates a new data frame, defined as the old one in which the rows are ordered in the numeric vector above.
+You can use this numeric vector to re-order the data frame - place it within subset brackets `[ ]` *before the comma*. この数値ベクトルを使用して、データフレームを並べ替えることができます。[コンマの前の]{.ul}サブセットブラケット\[\]内に配置します。Read more about **base** R bracket subset syntax in the \[R basics\] page. 基本Rブラケットサブセット構文の詳細については、\[Rの基礎\]ページを参照してください。The command below creates a new data frame, defined as the old one in which the rows are ordered in the numeric vector above.以下のコマンドは、行が上記の数値ベクトルで順序付けられている古いデータフレームとして定義された新しいデータフレームを作成します。
 
 ```{r}
 contact_fu_aligned <- contact_fu[match(case_info$hospital, contact_fu$hospital),]
@@ -826,13 +828,13 @@ contact_fu_aligned <- contact_fu[match(case_info$hospital, contact_fu$hospital),
 DT::datatable(contact_fu_aligned, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-Now we can bind the data frame columns together, with the correct row order. Note that some columns are duplicated and will require cleaning with `rename()`. Read more aboout `bind_rows()` [here](https://dplyr.tidyverse.org/reference/bind.html).
+Now we can bind the data frame columns together, with the correct row order. Note that some columns are duplicated and will require cleaning with `rename()`. これで、正しい行順序でデータフレーム列をバインドできます。 一部の列が重複しており、rename（）でクリーニングする必要があることに注意してください。Read more aboout `bind_rows()` [here](https://dplyr.tidyverse.org/reference/bind.html).bind_rows()について詳しくはこちらをご覧ください。
 
 ```{r}
 bind_cols(case_info, contact_fu)
 ```
 
-A **base** R alternative to `bind_cols` is `cbind()`, which performs the same operation.
+`bind_cols` の**ベース** R の代替関数は `cbind()` であり、これで同じ操作が実行できます。
 
 <!-- ======================================================= -->
 
