@@ -50,25 +50,25 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 linelist <- import("linelist_cleaned.rds")
 ```
 
-In this linelist:
+このラインリストでは：
 
--   There is one row per case, as identified by `case_id`\
--   There is a later column `infector` that contains the `case_id` of the *infector*, who is also a case in the linelist
+-   `case_id` が振られた1症例ごとに1行となっています。
+-   `infector` 列には、感染者の `case_id` が含まれており、その感染者もラインリストの症例です。
 
 ```{r message=FALSE, echo=F}
-# display the population as a table
+# ラインリストを表で表示
 DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### Data preparation {.unnumbered}
+### データ準備 {.unnumbered}
 
-**Objective**: We need to achieve a "long"-style data frame that contains one row per possible age-to-age transmission route, with a numeric column containing that row's proportion of all observed transmission events in the linelist.
+**目的：** 全ての年代の組み合わせの感染ペアの行ごとに、ラインリストで観測されたすべての感染ペアに占める割合を持つ、「long」型のデータフレームを作成する必要があります。
 
-This will take several data manuipulation steps to achieve:
+これを実現するには、いくつかのデータ操作のステップが必要です：
 
-#### Make cases data frame {.unnumbered}
+#### 感染先のデータフレームの作成 {.unnumbered}
 
-To begin, we create a data frame of the cases, their ages, and their infectors - we call the data frame `case_ages`. The first 50 rows are displayed below.
+まず症例ID、年代、感染源のIDを含むデータフレームを作成し、`case_ages` という変数名をつけます。最初の50行は以下のように表示されます。
 
 ```{r}
 case_ages <- linelist %>% 
@@ -77,13 +77,13 @@ case_ages <- linelist %>%
 ```
 
 ```{r message=FALSE, echo=F}
-# display the shapefile as a table
+# 表として表示
 DT::datatable(head(case_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Make infectors data frame {.unnumbered}
+#### 感染源のデータフレームの作成 {.unnumbered}
 
-Next, we create a data frame of the infectors - at the moment it consists of a single column. These are the infector IDs from the linelist. Not every case has a known infector, so we remove missing values. The first 50 rows are displayed below.
+次に、感染源のデータフレームを作成します。この時点では感染源ID のみの1列から構成されています。全ての症例の感染源が判明している訳ではないので、欠損値を削除しています。最初の50行は以下のように表示されます。
 
 ```{r}
 infectors <- linelist %>% 
@@ -92,51 +92,53 @@ infectors <- linelist %>%
 ```
 
 ```{r message=FALSE, echo=F}
-# display the shapefile as a table
+# 表として表示
 DT::datatable(head(infectors, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Next, we use joins to procure the ages of the infectors. This is not simple, because in the `linelist`, the infector's ages are not listed as such. We achieve this result by joining the case `linelist` to the infectors. We begin with the infectors, and `left_join()` (add) the case `linelist` such that the `infector` id column left-side "baseline" data frame joins to the `case_id` column in the right-side `linelist` data frame.
+次に、感染源の年代を取得します。これは簡単には出来ません。なぜなら、ラインリストには感染源の症例の年代がそのままは記載されていないからです。そのため、ラインリストと感染源IDを結合する必要があります。感染源のデータフレームから始めて、左側の「ベースライン」のデータフレームの感染者 ID 列と右側のラインリストの `case_id` 列を紐づけて、ラインリストを `left_join()` （追加）します。
 
-Thus, the data from the infector's case record in the linelist (including age) is added to the infector row. The 50 first rows are displayed below.
+このように、ラインリスト内の感染源の症例のデータ（年代）が、感染源の行に追加されます。最初の50行を以下に表示します。
 
 ```{r}
-infector_ages <- infectors %>%             # begin with infectors
-  left_join(                               # add the linelist data to each infector  
+infector_ages <- infectors %>%             # 感染源のデータフレームから始める
+  left_join(                               # それぞれの感染源の行にラインリストデータを追加する
     linelist,
-    by = c("infector" = "case_id")) %>%    # match infector to their information as a case
-  select(infector, age_cat) %>%            # keep only columns of interest
-  rename("infector_age_cat" = "age_cat")   # rename for clarity
+    by = c("infector" = "case_id")) %>%    # infector列とcase id 列で紐付ける
+  select(infector, age_cat) %>%            # 必要な列のみを抽出する
+  rename("infector_age_cat" = "age_cat")   # 分かりやすいように列名を変更
 ```
 
 ```{r message=FALSE, echo=F}
-# display the shapefile as a table
+# 表として表示
 DT::datatable(head(infector_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 Then, we combine the cases and their ages with the infectors and their ages. Each of these data frame has the column `infector`, so it is used for the join. The first rows are displayed below:
 
+次に、感染先症例とその年代を、感染源症例とその年代と結合します。これらのデータフレームはそれぞれ `infector` という列を持っているので、この列で紐付けます。最初の行は以下のように表示されます。
+
 ```{r}
 ages_complete <- case_ages %>%  
   left_join(
     infector_ages,
-    by = "infector") %>%        # each has the column infector
-  drop_na()                     # drop rows with any missing data
+    by = "infector") %>%        # infector 列で紐付け
+  drop_na()                     # 欠損値のある行を削除
 ```
 
 ```{r message=FALSE, echo=F}
-# display the shapefile as a table
+# 表として表示
 DT::datatable(head(ages_complete, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Below, a simple cross-tabulation of counts between the case and infector age groups. Labels added for clarity.
+以下は、感染先症例と感染源症例の年代階級別の症例数を単純にクロス集計したものです。分かりやすくするためにラベルをつけています。
 
 ```{r}
 table(cases = ages_complete$case_age_cat,
       infectors = ages_complete$infector_age_cat)
 ```
 
-We can convert this table to a data frame with `data.frame()` from **base** R, which also automatically converts it to "long" format, which is desired for the `ggplot()`. The first rows are shown below.
+この表をデータフレームに変換するには、base R の `data.frame()` を使います。これにより自動で「long」型のデータフレームとなり、`ggplot()` に適した形となります。最初の行は以下のようになります。
 
 ```{r}
 long_counts <- data.frame(table(
@@ -145,11 +147,11 @@ long_counts <- data.frame(table(
 ```
 
 ```{r message=FALSE, echo=F}
-# display the shapefile as a table
+# 表として表示
 DT::datatable(head(long_counts, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Now we do the same, but apply `prop.table()` from **base** R to the table so instead of counts we get proportions of the total. The first 50 rows are shown below.
+さらに、base R の `prop.table()` をテーブルに適用して、数の代わりに全体の割合を出します。最初の50行は以下のようになります。
 
 ```{r}
 long_prop <- data.frame(prop.table(table(
@@ -158,40 +160,40 @@ long_prop <- data.frame(prop.table(table(
 ```
 
 ```{r message=FALSE, echo=F}
-# display the shapefile as a table
+# 表として表示
 DT::datatable(head(long_prop, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### Create heat plot {.unnumbered}
+### ヒートマップの作成 {.unnumbered}
 
-Now finally we can create the heat plot with **ggplot2** package, using the `geom_tile()` function. See the \[ggplot tips\] page to learn more extensively about color/fill scales, especially the `scale_fill_gradient()` function.
+さて、いよいよ **ggplot2** パッケージで `geom_tile()` 関数を用いてヒートマップを作成します。色/塗りつぶしスケール、特に `scale_fill_gradient()` 関数についてより広範囲に学ぶには、 \[ggplotの基礎\] ページを参照して下さい。
 
--   In the aesthetics `aes()` of `geom_tile()` set the x and y as the case age and infector age\
+-   `geom_tile()` の `aes()` で、x と y を case age と infector age に設定します。\
 
--   Also in `aes()` set the argument `fill =` to the `Freq` column - this is the value that will be converted to a tile color\
+-   また、`aes()` では、引数 `fill =` を `Freq` 列に指定します - これはタイルの色に変換される値です\
 
--   Set a scale color with `scale_fill_gradient()` - you can specify the high/low colors
+-   `scale_fill_gradient()` でスケールカラーを設定します - ハイ/ローカラーを指定することが出来ます。
 
-    -   Note that `scale_color_gradient()` is different! In this case you want the fill\
+    -   `scale_color_gradient()` は違うことに注意してください! 今回は塗りつぶしが必要です。
 
--   Because the color is made via "fill", you can use the `fill =` argument in `labs()` to change the legend title
+-   色は 「fill」を介して作られるので、 `labs()` の `fill =` 引数を使えば、凡例のタイトルを変更することが出来ます。
 
 ```{r}
-ggplot(data = long_prop)+       # use long data, with proportions as Freq
-  geom_tile(                    # visualize it in tiles
+ggplot(data = long_prop)+       # 割合が Freq 列に格納された「long」データを使用
+  geom_tile(                    # タイルで可視化
     aes(
-      x = cases,         # x-axis is case age
-      y = infectors,     # y-axis is infector age
-      fill = Freq))+            # color of the tile is the Freq column in the data
-  scale_fill_gradient(          # adjust the fill color of the tiles
+      x = cases,         # x軸は感染先の年代
+      y = infectors,     # y軸は感染源の年代
+      fill = Freq))+            # タイルの色分けを Freq 列で決定する
+  scale_fill_gradient(          # タイルの色を調整する
     low = "blue",
     high = "orange")+
-  labs(                         # labels
+  labs(                         # ラベル
     x = "Case age",
     y = "Infector age",
     title = "Who infected whom",
     subtitle = "Frequency matrix of transmission events",
-    fill = "Proportion of all\ntranmsission events"     # legend title
+    fill = "Proportion of all\ntranmsission events"     # 凡例タイトル
   )
   
 ```
