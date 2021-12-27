@@ -168,7 +168,7 @@ unique(hosp_info$hosp_name)
 
 ### 一般的な構文 {.unnumbered}
 
-合コマンドは、単一のコマンドとして実行して2つのデータフレームを新しいオブジェクトに結合することも、あるいは、パイプチェーン（`%>%`）内で使用して、クリーンアップまたはその他の方法で変更するときに1つのデータフレームを別のデータフレームにマージ（併合）することもできます。
+結合コマンドは、単一のコマンドとして実行して2つのデータフレームを新しいオブジェクトに結合することも、あるいは、パイプチェーン（`%>%`）内で使用して、クリーンアップまたはその他の方法で変更するときに1つのデータフレームを別のデータフレームにマージ（併合）することもできます。
 
 以下の例では、関数 `left_join()` を単一コマンドとして使用して、新しい `joined_data` データフレームを作成します。 結合に使用するデータはデータフレーム1と2（`df1` と `df2` ）です。 前者のデータフレームはベースラインデータフレームであり、後者のデータフレームは前者のデータフレーム[に]{.ul}結合されています。
 
@@ -509,7 +509,7 @@ DT::datatable(results, rownames = FALSE, options = list(pageLength = nrow(result
 
 -   引数`dfA =` および`dfB =` を比較するために2つのデータフレームを定義します\
 -   `varnames =` で、マッチングに使用するすべての列名を指定します。ここで指定される列はすべて `dfA` と `dfB` の両方に存在する必要があります。\
--    `stringdist.match =` で、文字列 "distance "に対して評価する列を `varnames` にある列の中から指定する。\
+-   `stringdist.match =` で、文字列 "distance "に対して評価する列を `varnames` にある列の中から指定する。\
 -   `numeric.match =` で、`varnames` にある列の中から、数値距離で評価する列を指定する。\
 -   欠損値は無視されます\
 -   デフォルトでは、どちらかのデータフレームの各行が、もう一方のデータフレームの最大1行とマッチングされます。評価済みのマッチをすべて表示したい場合は、 `dedupe.matches = FALSE` と設定してください。Winkler の線形割り当てソリューションで重複排除が行われる。
@@ -563,7 +563,7 @@ my_matches
 結合を行う前に、3つのデータフレームをクリーンアップする必要があります。
 
 -   `dfA` と`dfB` の行番号（"rowname"）を列に変換する必要があります。\
--    `my_matches` の両方の列は文字型データに変換されるため、文字の行名に結合できます
+-   `my_matches` の両方の列は文字型データに変換されるため、文字の行名に結合できます
 
 ```{r}
 # 結合前のデータのクリーニング
@@ -673,7 +673,7 @@ dedupe_output <- fastLink(
 )
 ```
 
-`getMatches()` で重複の可能性があるものを確認することができます。データフレームを `dfA =` と `dfB =` の両方で提供し、`fastLink()` 関数のアウトプットを `fl.out =` とします。`fl.out` must be of class `fastLink.dedupe`, or in other words, the result of `fastLink()`.`fl.out` は `fastLink.dedupe` クラスでなければならず、言い換えれば`fastLink()` の結果である必要があります。
+`getMatches()` で重複の可能性があるものを確認することができます。データフレームを `dfA =` と `dfB =` の両方で指定し、`fastLink()` 関数のアウトプットを `fl.out =` とします。`fl.out` は `fastLink.dedupe` クラスでなければならず、言い換えれば`fastLink()` の結果である必要があります。
 
 ```{r}
 ## getMatches() を実行
@@ -683,13 +683,13 @@ cases_dedupe <- getMatches(
   fl.out = dedupe_output)
 ```
 
-一番右の列は重複するIDを表しており、最後の2行は2行目と3行目と重複している可能性が高いことが分かります。
+一番右の列は重複する ID を表しており、最後の2行は2行目と3行目と重複している可能性が高いことが分かります。
 
 ```{r message=FALSE, echo=F}
 DT::datatable(cases_dedupe, rownames = FALSE, options = list(pageLength = nrow(cases_dedupe)))
 ```
 
-To return the row numbers of rows which are likely duplicates, you can count the number of rows per unique value in the `dedupe.ids` column, and then filter to keep only those with more than one row. In this case this leaves rows 2 and 3.
+重複していると思われる行の行番号を把握するには、 `dedupe.ids` 列の重複のない値ごとに行数をカウントし、複数の行があるものだけを残すようにフィルタリングします。この場合、2行目と3行目が残ります。
 
 ```{r}
 cases_dedupe %>% 
@@ -704,82 +704,82 @@ cases_dedupe %>%
 cases_dedupe[cases_dedupe$dedupe.ids == 2,]   
 ```
 
-## Binding and aligning
+## データの結合と整列
 
-Another method of combining two data frames is "binding" them together. You can also think of this as "appending" or "adding" rows or columns.
+2つのデータフレームを結合するもう一つの方法は、それらを "bind（結合）" することです。これは、行や列を "追加" することだと捉えることもできます。
 
-This section will also discuss how to "align" the order of rows of one data frame to the order in another data frame. This topic is discussed below in the section on Binding columns.
+このセクションでは、データフレームの行の順番を別のデータフレームの順番に "揃える" 方法についても説明します。このトピックについては、列の結合のセクションで後述します。
 
-### Bind rows {.unnumbered}
+### 行を結合する {.unnumbered}
 
-To bind rows of one data frame to the bottom of another data frame, use `bind_rows()` from **dplyr**. It is very inclusive, so any column present in either data frame will be included in the output. A few notes:
+データフレームの行を別のデータフレームの下部にバインドするには、**dplyr**の `bind_rows()` を使用します。この方法は非常に包括的であるため、いずれかのデータフレームに存在するすべての列が結合されます。 以下のことに注意してください。
 
--   Unlike the **base** R version `row.bind()`, **dplyr**'s `bind_rows()` does not require that the order of columns be the same in both data frames. As long as the column names are spelled identically, it will align them correctly.\
--   You can optionally specify the argument `.id =`. Provide a character column name. This will produce a new column that serves to identify which data frame each row originally came from.\
--   You can use `bind_rows()` on a `list` of similarly-structured data frames to combine them into one data frame. See an example in the \[Iteration, loops, and lists\] page involving the import of multiple linelists with **purrr**.
+-   **ベース** R バージョンの `row.bind()` とは異なり、**dplyr** の `bind_rows()` では、両方のデータフレームで列の順序が同じである必要はありません。列名のスペルが同じである限り、データは正しく揃えられます。\
+-   `.id =`. オプションで、引数 `.id =` を指定できます。文字列名を指定してください。これにより、各行が元々どのデータフレームからのものであるかを識別するのに役立つ新しい列が生成されます。\
+-   同様の構造を持つデータフレームの `list` で `bind_rows()` を使用して、それらを1つのデータフレームに結合できます。\[ループと反復処理・リストの操作\] ページで、**purrr** を使用した複数のラインリストのインポートに関する例を参照してください。
 
-One common example of row binding is to bind a "total" row onto a descriptive table made with **dplyr**'s `summarise()` function. Below we create a table of case counts and median CT values by hospital with a total row.
+行による結合の一般的な例の1つは、"合計" の行数を **dplyr** の `summarise()` 関数で作成された要約表に結合する方法です。以下に、合計行を含む病院ごとの症例数と中央値 CT 値の表を作成します。
 
-The function `summarise()` is used on data grouped by hospital to return a summary data frame by hospital. But the function `summarise()` does not automatically produce a "totals" row, so we create it by summarising the data *again*, but with the data not grouped by hospital. This produces a second data frame of just one row. We can then bind these data frames together to achieve the final table.
+関数 `summarise()` は、病院ごとにグループ化されたデータに対して使用され、病院ごとに要約データフレームが得られます。ただし、関数 `summarise()` では "合計" 行は自動的に生成されないため、データを再度要約して作成しますが、データは病院ごとにグループ化されていません。これにより、1行だけの2番目のデータフレームが生成されます。これらのデータフレームを結合し、ファイナルテーブルを作成できます。
 
 See other worked examples like this in the \[Descriptive tables\] and \[Tables for presentation\] pages.
 
 ```{r}
-# Create core table
+# コアテーブルの作成
 ###################
 hosp_summary <- linelist %>% 
-  group_by(hospital) %>%                        # Group data by hospital
-  summarise(                                    # Create new summary columns of indicators of interest
-    cases = n(),                                  # Number of rows per hospital-outcome group     
-    ct_value_med = median(ct_blood, na.rm=T))     # median CT value per group
+  group_by(hospital) %>%                        # 病院別のグループデータ
+  summarise(                                    # 目的の指標の新しい要約列を作成する
+    cases = n(),                                  # 病院ごとの行数-結果グループ
+    ct_value_med = median(ct_blood, na.rm=T))     # グループあたりのCT値の中央値
 ```
 
-Here is the `hosp_summary` data frame:
+`hosp_summary` データフレームは次のとおりです。
 
 ```{r message=FALSE, echo=F}
 DT::datatable(hosp_summary, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-Create a data frame with the "total" statistics (*not grouped by hospital*). This will return just one row.
+"合計" 統計（[病院ごとにグループ化されていない]{.ul}）を使用しデータフレームを作成します。 これにより、1行だけが得られます。
 
 ```{r}
-# create totals
+# totals を作成
 ###############
 totals <- linelist %>% 
   summarise(
-    cases = n(),                               # Number of rows for whole dataset     
-    ct_value_med = median(ct_blood, na.rm=T))  # Median CT for whole dataset
+    cases = n(),                               # データセット全体の行数    
+    ct_value_med = median(ct_blood, na.rm=T))  # データセット全体のCT中央値
 ```
 
-And below is that `totals` data frame. Note how there are only two columns. These columns are also in `hosp_summary`, but there is one column in `hosp_summary` that is not in `totals` (`hospital`).
+以下はその `totals` データフレームです。列が2つしかないことに注意してください。これらの列は `hosp_summary` にありますが、 `hosp_summary` には `totals`（`hospital`）にない列が1つあります。
 
 ```{r message=FALSE, echo=F}
 DT::datatable(totals, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-Now we can bind the rows together with `bind_rows()`.
+これで、`bind_rows()` を使用して行を結合できます。
 
 ```{r}
-# Bind data frames together
+# データフレームを結合する
 combined <- bind_rows(hosp_summary, totals)
 ```
 
-Now we can view the result. See how in the final row, an empty `NA` value fills in for the column `hospital` that was not in `hosp_summary`. As explained in the \[Tables for presentation\] page, you could "fill-in" this cell with "Total" using `replace_na()`.
+これで結果が表示されます。 最後の行で、`hosp_summary` になかった列 `hospital` の空の `NA` 値がどのように入力されるかを確認してください。\[見やすい表の作り方\] ページで説明されているように、 `replace_na()` を使用し、このセルに "合計" を "入力" できます。
 
 ```{r message=FALSE, echo=F}
 DT::datatable(combined, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-### Bind columns {.unnumbered}
+### 列での結合 {.unnumbered}
 
-There is a similar **dplyr** function `bind_cols()` which you can use to combine two data frames sideways. Note that rows are matched to each other *by position* (not like a *join* above) - for example the 12th row in each data frame will be aligned.
+同様の **dplyr** 関数、 `bind_cols()` を使用して2つのデータフレームを横向きに組み合わせることができます。行は[位置をもとに]{.ul}互いにマッチングされることに注意してください（上記の[結合]{.ul} *join* とは異なります）- たとえば、各データフレームの12行目が整列されます。
 
-For an example, we bind several summary tables together. In order to do this, we also demonstrate how to re-arrange the order of rows in one data frame to match the order in another data frame, with `match()`.
+たとえば、いくつかのサマリーテーブルを結合します。これを行うために、 `match()` を使用して、データフレームの行の順序を別のデータフレームの順序と一致するように再配置する方法も示します。
 
-Here we define `case_info` as a summary data frame of linelist cases, by hospital, with the number of cases and the number of deaths.
+この例では、 `case_info` を、病院ごとのラインリスト症例の要約データフレームとして、症例数と死亡数とともに定義します。
 
 ```{r}
-# Case information
+# Case information を定義する
 case_info <- linelist %>% 
   group_by(hospital) %>% 
   summarise(
@@ -792,7 +792,7 @@ case_info <- linelist %>%
 DT::datatable(case_info, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-And let's say that here is a different data frame `contact_fu` containing information on the percent of exposed contacts investigated and "followed-up", again by hospital.
+また、ここでも病院ごとに調査および "フォローアップ" され、患者の連絡先の割合に関する情報を含む別のデータフレーム `contact_fu` があるとします。
 
 ```{r}
 contact_fu <- data.frame(
@@ -806,19 +806,19 @@ contact_fu <- data.frame(
 DT::datatable(contact_fu, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-Note that the hospitals are the same, but are in different orders in each data frame. The easiest solution would be to use a `left_join()` on the `hospital` column, but you could also use `bind_cols()` with one extra step.
+病院は同じですが、データフレームごとに順序が異なることに注意してください。最も簡単な解決策は、病院の列で `left_join()` を使用することですが、もうひとつステップを追加することにより `bind_cols()` を使用することもできます。
 
 #### `match()` を使用して順序を揃える {.unnumbered}
 
-Because the row orders are different, a simple `bind_cols()` command would result in a mis-match of data. 行の順序が異なるため、`bind_cols()` コマンドを実行すると、データが不一致になります。To fix this we can use `match()` from **base** R to align the rows of a data frame in the same order as in another. We assume for this approach that there are no duplicate values in either data frame.これを修正するには、ベースRのmatch（）を使用して、データフレームの行を別のフレームと同じ順序で整列させます。 このアプローチでは、どちらのデータフレームにも重複する値がないことを前提としています。
+行の順序が異なるため、`bind_cols()` コマンドを実行すると、データの不一致が生じなす。これを修正するには、**ベース** R の `match()` を使用し、データフレームの行を別のフレームと同じ順序で整列させます。 このアプローチでは、どちらのデータフレームにも重複する値がないことを前提としています。
 
-When we use `match()`, the syntax is `match(TARGET ORDER VECTOR, DATA FRAME COLUMN TO CHANGE)`, where the first argument is the desired order (either a stand-alone vector, or in this case a column in a data frame), and the second argument is the data frame column in the data frame that will be re-ordered. The output of `match()` is a vector of numbers representing the correct position ordering. You can read more with `?match`.
+`match()` を使用する場合、構文は `match(TARGET ORDER VECTOR, DATA FRAME COLUMN TO CHANGE)` です。ここで、最初の引数は目的の順序（単一ベクトル、またはこの例ではデータフレームの列）、および2番目の引数は、並べ替えられるデータフレームのデータフレーム列です。`match()` のアウトプットのはは、正しい位置の順序を表す数値のベクトルです。 `?match` で詳細を読むことができます。
 
 ```{r}
 match(case_info$hospital, contact_fu$hospital)
 ```
 
-You can use this numeric vector to re-order the data frame - place it within subset brackets `[ ]` *before the comma*. この数値ベクトルを使用して、データフレームを並べ替えることができます。[コンマの前の]{.ul}サブセットブラケット\[\]内に配置します。Read more about **base** R bracket subset syntax in the \[R basics\] page. 基本Rブラケットサブセット構文の詳細については、\[Rの基礎\]ページを参照してください。The command below creates a new data frame, defined as the old one in which the rows are ordered in the numeric vector above.以下のコマンドは、行が上記の数値ベクトルで順序付けられている古いデータフレームとして定義された新しいデータフレームを作成します。
+\\この数値ベクトルを使用して、データフレームを並べ替えることができます - [コンマの前の]{.ul}サブセットブラケット `[ ]` 内に配置します。**base** R のブラケット・サブセット構文は、\[R の基礎\] のページで詳しく説されています。以下のコマンドは、行が上記の数値ベクトルで順序付けられている古いデータフレームとして定義された新しいデータフレームを作成します。
 
 ```{r}
 contact_fu_aligned <- contact_fu[match(case_info$hospital, contact_fu$hospital),]
@@ -828,7 +828,7 @@ contact_fu_aligned <- contact_fu[match(case_info$hospital, contact_fu$hospital),
 DT::datatable(contact_fu_aligned, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-Now we can bind the data frame columns together, with the correct row order. これで、正しい行順序でデータフレーム列を結合できます。 Note that some columns are duplicated and will require cleaning with `rename()`. 一部の列が重複しており、rename（）でクリーニングする必要があることに注意してください。Read more aboout `bind_rows()` [here](https://dplyr.tidyverse.org/reference/bind.html).bind_rows()について詳しくはこちらをご覧ください。
+これで、正しい行順序でデータフレーム列を結合できます。 一部の列が重複しているため、`rename()` でクリーニングする必要があることに注意してください。`bind_rows()` について詳しくは[こちら](https://dplyr.tidyverse.org/reference/bind.html)をご覧ください。
 
 ```{r}
 bind_cols(case_info, contact_fu)
@@ -840,13 +840,13 @@ bind_cols(case_info, contact_fu)
 
 ## 資料
 
-The [tidyverse page on joins](https://dplyr.tidyverse.org/reference/join.html)
+[Join に関する Tidyverse のページ](https://dplyr.tidyverse.org/reference/join.html)
 
-The [R for Data Science page on relational data](https://r4ds.had.co.nz/relational-data.html)
+[相関性データに関する R for Data Science のページ](https://r4ds.had.co.nz/relational-data.html)
 
-Th [tidyverse page on dplyr](https://dplyr.tidyverse.org/reference/bind.html) on binding
+[dplyr bind に関する Tidyverse のページ](https://dplyr.tidyverse.org/reference/bind.html)
 
-A vignette on [fastLink](https://github.com/kosukeimai/fastLink) at the package's Github page
+パッケージのGit説明A vignette on [fastLink](https://github.com/kosukeimai/fastLink) at the package's Github page
 
 Publication describing methodology of [fastLink](https://imai.fas.harvard.edu/research/files/linkage.pdf)
 
