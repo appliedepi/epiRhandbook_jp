@@ -4,11 +4,11 @@
 knitr::include_graphics(here::here("images", "left-join.gif"))
 ```
 
-[上: left joinのアニメーション例（]{.ul}[画像提供元](https://github.com/gadenbuie/tidyexplain/tree/master/images)[）]{.ul}
+[上: left join のアニメーション例（]{.ul}[画像提供元](https://github.com/gadenbuie/tidyexplain/tree/master/images)[）]{.ul}
 
 このページでは、データフレームを "join"、"match"、"link"、"bind"、その他の方法で結合する方法について説明します。
 
-疫学分析またはワークフローには、複数のデータソースと複数のデータセットのリンクが含まれるのが一般的です。検査データと患者の臨床結果、Googleモビリティデータと感染症トレンド、あるいは分析のある段階にあるデータセットと変換されたデータセットとの接続が必要な場合があります。
+疫学分析またはワークフローには、複数のデータソースと複数のデータセットのリンクが含まれるのが一般的です。検査データと患者の臨床結果、Google モビリティデータと感染症トレンド、あるいは分析のある段階にあるデータセットと変換されたデータセットとの接続が必要な場合があります。
 
 このページでは、以下のコードを紹介します。
 
@@ -128,7 +128,7 @@ unique(hosp_info$hosp_name)
 
 まず、`hosp_info` データフレームの値をクリーンアップします。\[データクリーニングと主要関数\] のページで説明したように、**dplyr** の`case_when()` 関数を使って、論理的な基準で値を再コード化することができます。両方のデータフレームに存在する4つの病院については、`linelist_mini` の値と一致するように値を変更します。 他の病院は、値をそのままにします（`TRUE ~ hosp_name`）。
 
-[[**注:**]{.ul} 通常、クリーニングを行う場合は新しい列を作成する必要がありますが（例: `hosp_name_clean`）、今回の例では簡単にするために古い列を修正したものを示します。 ]{style="color: orange;"}
+[[**注:**]{.ul} 通常、クリーニングを行う場合は新しい列を作成する必要がありますが（例: `hosp_name_clean`）、今回の例では簡単にするために古い列を修正したものを示します。]{style="color: orange;"}
 
 ```{r}
 hosp_info <- hosp_info %>% 
@@ -235,7 +235,7 @@ knitr::include_graphics(here::here("images", "right-join.gif"))
 
 以下は、 `hosp_info` （二次データフレーム、ここに表示）の `left_join()` [を]{.ul}`linelist_mini` （ベースラインデータフレーム、[ここを参照](#joins_llmini)）[として]{.ul}アウトプットしたものです。元の `linelist_mini` の行数は `nrow(linelist_mini)` です。 変更された `linelist_mini` が表示されます。 次の点に注意してください。
 
--    `linelist_mini` の左側に2つの新しい列、 `catchment_pop` と `level` が追加されました\
+-   `linelist_mini` の左側に2つの新しい列、 `catchment_pop` と `level` が追加されました\
 -   ベースラインデータフレーム`linelist_mini` の元の行はすべて保持されます\
 -   "Military Hospital" の `linelist_mini` の元の行は、二次データフレームの[2つの行]{.ul}と一致したため複製され、両方の組み合わせが反映されます\
 -   二次リデータセットの結合識別子列（`hosp_name`）は、元のデータセットの識別子列（`hospital`）と重複しているため、削除されました\
@@ -404,9 +404,9 @@ hosp_info %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 12))
 ```
 
-#### Complex `anti_join()` example例 {.unnumbered}
+#### 複雑な `anti_join()` の例 {.unnumbered}
 
-For another example, let us say we ran an `inner_join()` between `linelist_mini` and `hosp_info`. This returns only a subset of the original `linelist_mini` records, as some are not present in `hosp_info`.
+別の例として、`linelist_mini` と `hosp_info` で `inner_join()` を実行したとします。これは、`hosp_info` に存在しないものもあるため、オリジナルの `linelist_mini`　のサブセットデータのみが得られます。
 
 ```{r, eval=F}
 linelist_mini %>% 
@@ -419,7 +419,7 @@ linelist_mini %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 8))
 ```
 
-To review the `linelist_mini` records that were excluded during the inner join, we can run an anti-join with the same settings (`linelist_mini` as the baseline).
+内部結合中に除外された `linelist_mini` データを確認するために、同じ設定でアンチジョインを実行します（ `linelist_mini` をベースラインとします）。
 
 ```{r, eval = F}
 linelist_mini %>% 
@@ -432,29 +432,29 @@ linelist_mini %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 8))
 ```
 
-To see the `hosp_info` records that were excluded in the inner join, we could also run an anti-join with `hosp_info` as the baseline data frame.
+内部結合で除外された `hosp_info` データを確認するために、ベースラインデータフレームとして `hosp_info` を使用してアンチ結合を実行することも可能です。
 
 <!-- ======================================================= -->
 
-## Probabalistic matching
+## 確率的マッチング
 
-If you do not have a unique identifier common across datasets to join on, consider using a probabilistic matching algorithm. This would find matches between records based on similarity (e.g. Jaro--Winkler string distance, or numeric distance). Below is a simple example using the package **fastLink** .
+データセット間で共通する識別子がない場合は、確率的なマッチングアルゴリズムを使用することを検討してください。これは、レコード間の類似性（例えば、Jaro-Winkler 文字列距離や数値距離）に基づいてマッチングを見つけるものです。以下は、**fastLink** パッケージを使用した簡単な例です。
 
-**Load packages**
+**パッケージを読み込む**
 
 ```{r}
 pacman::p_load(
-  tidyverse,      # data manipulation and visualization
-  fastLink        # record matching
+  tidyverse,      # データ整理と可視化
+  fastLink        # データ結合
   )
 ```
 
-Here are two small example datasets that we will use to demonstrate the probabilistic matching (`cases` and `test_results`):
+確率的マッチング（`cases` と `test_results`）を示すために使用する2つの小さなサンプルデータセットを次に示します。
 
-Here is the code used to make the datasets:
+以下は、データセットを作成するためのコードです。
 
 ```{r}
-# make datasets
+# データセットを作成する
 
 cases <- tribble(
   ~gender, ~first,      ~middle,     ~last,        ~yr,   ~mon, ~day, ~district,
@@ -489,36 +489,36 @@ results <- tribble(
 
 ```
 
-**The `cases` dataset has 9 records** of patients who are awaiting test results.
+**`cases` データセットには**、検査結果を待っている患者の記録が**9件ある。**
 
 ```{r message=FALSE, echo=F}
-# display the hospital data as a table
+# 病院データを表として表示する
 DT::datatable(cases, rownames = FALSE, options = list(pageLength = nrow(cases), scrollX=T), class = 'white-space: nowrap')
 ```
 
-**The `test_results` dataset** has 14 records and contains the column `result`, which we want to add to the records in `cases` based on probabilistic matching of records.
+**`test_results` データセット**には14件の記録があり、`result` という列があります。この列は、記録の確率的マッチングに基づいて `cases` 内の記録に追加したいものです。
 
 ```{r message=FALSE, echo=F}
-# display the hospital data as a table
+# 病院データを表として表示する
 DT::datatable(results, rownames = FALSE, options = list(pageLength = nrow(results), scrollX=T), class = 'white-space: nowrap')
 ```
 
-### Probabilistic matching {.unnumbered}
+### 確率的マッチング {.unnumbered}
 
-The `fastLink()` function from the **fastLink** package can be used to apply a matching algorithm. Here is the basic information. You can read more detail by entering `?fastLink` in your console.
+**fastLink** パッケージの `fastLink()` 関数を使用して、マッチングアルゴリズムを適用できます。以下が基本的な情報です。 コンソールに `?fastLink` と入力すると、詳細を読むことができます。
 
--   Define the two data frames for comparison to arguments `dfA =` and `dfB =`\
--   In `varnames =` give all column names to be used for matching. They must all exist in both `dfA` and `dfB`.\
--   In `stringdist.match =` give columns from those in `varnames` to be evaluated on string "distance".\
--   In `numeric.match =` give columns from those in `varnames` to be evaluated on numeric distance.\
--   Missing values are ignored\
--   By default, each row in either data frame is matched to at most one row in the other data frame. If you want to see all the evaluated matches, set `dedupe.matches = FALSE`. The deduplication is done using Winkler's linear assignment solution.
+-   引数`dfA =` および`dfB =` を比較するために2つのデータフレームを定義します\
+-   `varnames =` で、マッチングに使用するすべての列名を指定します。ここで指定される列はすべて `dfA` と `dfB` の両方に存在する必要があります。\
+-    `stringdist.match =` で、文字列 "distance "に対して評価する列を `varnames` にある列の中から指定する。\
+-   `numeric.match =` で、`varnames` にある列の中から、数値距離で評価する列を指定する。\
+-   欠損値は無視されます\
+-   デフォルトでは、どちらかのデータフレームの各行が、もう一方のデータフレームの最大1行とマッチングされます。評価済みのマッチをすべて表示したい場合は、 `dedupe.matches = FALSE` と設定してください。Winkler の線形割り当てソリューションで重複排除が行われる。
 
-*Tip: split one date column into three separate numeric columns using `day()`, `month()`, and `year()` from **lubridate** package*
+[ヒント: **lubridate** パッケージの `day()`、 `month()`、 `year()` を用いて、ひとつの日付カラムを 3 つの別々の数値カラムに分割します。]{.ul}
 
-The default threshold for matches is 0.94 (`threshold.match =`) but you can adjust it higher or lower. If you define the threshold, consider that higher thresholds could yield more false-negatives (rows that do not match which actually should match) and likewise a lower threshold could yield more false-positive matches.
+マッチングの閾値のデフォルトは0.94（`threshold.match =` ）ですが、この値は調整可能です。閾値を高くすると偽陰性（マッチするはずの行がマッチしない）が増える可能性があり、同様に閾値を低くすると偽陽性が増えうることを考慮して、閾値を設定してください。
 
-Below, the data are matched on string distance across the name and district columns, and on numeric distance for year, month, and day of birth. A match threshold of 95% probability is set.
+以下では、名前と地区の列については文字列の距離で、年、月、誕生日については数値の距離でデータをマッチングしている。マッチングの閾値は95%の確率で設定されている。
 
 ```{r, message=F, warning=F}
 fl_output <- fastLink::fastLink(
@@ -530,85 +530,85 @@ fl_output <- fastLink::fastLink(
   threshold.match = 0.95)
 ```
 
-**Review matches**
+**マッチを確認する**
 
-We defined the object returned from `fastLink()` as `fl_output`. It is of class `list`, and it actually contains several data frames within it, detailing the results of the matching. One of these data frames is `matches`, which contains the most likely matches across `cases` and `results`. You can access this "matches" data frame with `fl_output$matches`. Below, it is saved as `my_matches` for ease of accessing later.
+`fastLink()` から得られるオブジェクトを`fl_output` として定義しました。 このオブジェクトのクラス（型）は `list` であり、実際にはその中にいくつかのデータフレームが含まれており、マッチングの結果の詳細が示されています。データフレームには `fl_output$matches` でアクセスすることができます。以下では、後でアクセスしやすいように `my_matches` という名前で保存します。
 
-When `my_matches` is printed, you see two column vectors: the pairs of row numbers/indices (also called "rownames") in `cases` ("inds.a") and in `results` ("inds.b") representing the best matches. If a row number from a datafrane is missing, then no match was found in the other data frame at the specified match threshold.
+アウトプットの`my_matches` には、2つの列ベクトルが表示されます。`cases`（ "inds.a"）と `results`（ "inds.b"）の行番号/インデックスのペア（ "rownames"とも呼ばれます）がベストマッチを表します。データフレームの行番号が欠落している場合、もう一方のデータフレームに指定されたマッチングの閾値で対応する値が見つからなかったことを意味します。
 
 ```{r}
-# print matches
+# マッチングを表示
 my_matches <- fl_output$matches
 my_matches
 ```
 
-Things to note:
+注意すべき点は以下の通りです。
 
--   Matches occurred despite slight differences in name spelling and dates of birth:
+-   名前のスペルや生年月日が若干異なるにもかかわらず、マッチングが成立した。
 
-    -   "Tony B. Smith" matched to "Anthony B Smith"\
-    -   "Maria Rodriguez" matched to "Marialisa Rodrigues"\
-    -   "Betty Chase" matched to "Elizabeth Chase"\
-    -   "Olivier Laurent De Bordeaux" matched to "Oliver Laurent De Bordow" (missing date of birth ignored)\
+    -   "Tony B. Smith" が "Anthony B Smith" とマッチした\
+    -   "Maria Rodriguez" が "Marialisa Rodrigues" とマッチした\
+    -   "Betty Chase" が "Elizabeth Chase" とマッチした\
+    -   "Olivier Laurent De Bordeaux" が "Oliver Laurent De Bordow" とマッチした（生年月日の欠落は無視）\
 
--   One row from `cases` (for "Blessing Adebayo", row 9) had no good match in `results`, so it is not present in `my_matches`.
+-   `cases` から1行（"Blessing Adebayo" の9行目）は、結果的に良い一致がなかったため、 `my_matches` には存在しない。
 
-**Join based on the probabilistic matches**
+**確率的な一致に基づく結合**
 
-To use these matches to join `results` to `cases`, one strategy is:
+これらの一致を使用して `results` を `cases` に結合するための戦略は、次のとおりです。
 
-1)  Use `left_join()` to join `my_matches` to `cases` (matching rownames in `cases` to "inds.a" in `my_matches`)\
-2)  Then use another `left_join()` to join `results` to `cases` (matching the newly-acquired "inds.b" in `cases` to rownames in `results`)
+1)  `left_join()` を使用して、`my_matches` を `cases` に結合します（`cases` の行名を `my_matches` の "inds.a"に一致させます）\
+2)  次に、もう一度 `left_join()` を使用し、今度は `results` を `cases` に結合します（ `cases` から新しく取得された "inds.b" を結果の行名に一致させます）
 
-Before the joins, we should clean the three data frames:
+結合を行う前に、3つのデータフレームをクリーンアップする必要があります。
 
--   Both `dfA` and `dfB` should have their row numbers ("rowname") converted to a proper column.\
--   Both the columns in `my_matches` are converted to class character, so they can be joined to the character rownames
+-   `dfA` と`dfB` の行番号（"rowname"）を列に変換する必要があります。\
+-    `my_matches` の両方の列は文字型データに変換されるため、文字の行名に結合できます
 
 ```{r}
-# Clean data prior to joining
+# 結合前のデータのクリーニング
 #############################
 
-# convert cases rownames to a column 
+# casesの行番号（rowname）を列に変換する 
 cases_clean <- cases %>% rownames_to_column()
 
-# convert test_results rownames to a column
+# test_results の 行番号（rownames） を列に変換する
 results_clean <- results %>% rownames_to_column()  
 
-# convert all columns in matches dataset to character, so they can be joined to the rownames
+#  データセットの全ての列を文字列に変換し、行番号で 結合できるようにする。
 matches_clean <- my_matches %>%
   mutate(across(everything(), as.character))
 
 
 
-# Join matches to dfA, then add dfB
+# matches_clean を dfA に結合、その後 dfB も結合
 ###################################
-# column "inds.b" is added to dfA
+# 列 "inds.b" を dfA に追加する
 complete <- left_join(cases_clean, matches_clean, by = c("rowname" = "inds.a"))
 
-# column(s) from dfB are added 
+# dfB 由来の列を追加する 
 complete <- left_join(complete, results_clean, by = c("inds.b" = "rowname"))
 ```
 
-As performed using the code above, the resulting data frame `complete` will contain *all* columns from both `cases` and `results`. Many will be appended with suffixes ".x" and ".y", because the column names would otherwise be duplicated.
+上記のコードで実行すると、結果のデータフレーム `complete` は `cases` と `results` の両方のすべての列を含むことになります。多くの場合、列名が重複してしまうため、".x" や ".y" といった添え字が付加されます。
 
 ```{r message=FALSE, echo=F}
 DT::datatable(complete, rownames = FALSE, options = list(pageLength = nrow(complete), scrollX=T), class = 'white-space: nowrap')
 ```
 
-Alternatively, to achieve only the "original" 9 records in `cases` with the new column(s) from `results`, use `select()` on `results` before the joins, so that it contains only rownames and the columns that you want to add to `cases` (e.g. the column `result`).
+あるいは、 `cases` の9件の記録に `results` の新しい列を追加するには、結合の前に `select()` を使用し`results` を選択し、行番号の列と `cases` に追加する列（例えば、列 `result`）を含めるだけにしておくといいでしょう。
 
 ```{r}
 cases_clean <- cases %>% rownames_to_column()
 
 results_clean <- results %>%
   rownames_to_column() %>% 
-  select(rowname, result)    # select only certain columns 
+  select(rowname, result)    # 特定の列のみを選択する
 
 matches_clean <- my_matches %>%
   mutate(across(everything(), as.character))
 
-# joins
+# 結合
 complete <- left_join(cases_clean, matches_clean, by = c("rowname" = "inds.a"))
 complete <- left_join(complete, results_clean, by = c("inds.b" = "rowname"))
 ```
@@ -617,28 +617,28 @@ complete <- left_join(complete, results_clean, by = c("inds.b" = "rowname"))
 DT::datatable(complete, rownames = FALSE, options = list(pageLength = nrow(complete), scrollX=T), class = 'white-space: nowrap')
 ```
 
-If you want to subset either dataset to only the rows that matched, you can use the codes below:
+どちらかのデータセットをマッチした行だけにサブセットしたい場合は、以下のコードを使用することができます。
 
 ```{r}
-cases_matched <- cases[my_matches$inds.a,]  # Rows in cases that matched to a row in results
-results_matched <- results[my_matches$inds.b,]  # Rows in results that matched to a row in cases
+cases_matched <- cases[my_matches$inds.a,]  # results の行と一致した cases の行
+results_matched <- results[my_matches$inds.b,]  # cases の行と一致した results の行
 ```
 
-Or, to see only the rows that did **not** match:
+または、一致しなかった行**のみ**を表示する。
 
 ```{r}
-cases_not_matched <- cases[!rownames(cases) %in% my_matches$inds.a,]  # Rows in cases that did NOT match to a row in results
-results_not_matched <- results[!rownames(results) %in% my_matches$inds.b,]  # Rows in results that did NOT match to a row in cases
+cases_not_matched <- cases[!rownames(cases) %in% my_matches$inds.a,]  # results の行と一致しなかった cases の行
+results_not_matched <- results[!rownames(results) %in% my_matches$inds.b,]  # cases の行と一致しなかった results の行
 ```
 
-### Probabilistic deduplication {.unnumbered}
+### 確率的な重複排除 {.unnumbered}
 
-Probabilistic matching can be used to deduplicate a dataset as well. See the page on deduplication for other methods of deduplication.
+確率的マッチングは、データセットの重複排除にも使用できます。その他の重複排除の方法については、重複排除のページを参照してください。
 
-Here we began with the `cases` dataset, but are now calling it `cases_dup`, as it has 2 additional rows that could be duplicates of previous rows: See "Tony" with "Anthony", and "Marialisa Rodrigues" with "Maria Rodriguez".
+ここでは、 `cases` データセットから始めていますが、前の行と重複する可能性のある行が2つ追加されているため、 `cases_dup` としています。 "Tony" と "Anthony"、"Marialisa Rodrigues" と "Maria Rodriguez" を参照してください、
 
 ```{r, echo=F}
-## Add duplicates
+## 重複の追加
 #cases_dup <- rbind(cases, cases[sample(1:nrow(cases), 3, replace = FALSE),])
 
 cases_dup <- tribble(
@@ -662,10 +662,10 @@ cases_dup <- tribble(
 DT::datatable(cases_dup, rownames = FALSE, options = list(pageLength = nrow(cases_dup)))
 ```
 
-Run `fastLink()` like before, but compare the `cases_dup` data frame to itself. When the two data frames provided are identical, the function assumes you want to de-duplicate. Note we do not specify `stringdist.match =` or `numeric.match =` as we did previously.
+以前と同じように `fastLink()` を実行し、`cases_dup` データフレームと比較します。提供された2つのデータフレームが同一である場合、この関数は重複を解消することを想定しています。以前のように `stringdist.match =` や `numeric.match =` は指定しないことに注意してください。
 
 ```{r, message = F, warning = F}
-## Run fastLink on the same dataset
+## 同じデータセットにfastLinkを実行する
 dedupe_output <- fastLink(
   dfA = cases_dup,
   dfB = cases_dup,
@@ -673,17 +673,17 @@ dedupe_output <- fastLink(
 )
 ```
 
-Now, you can review the potential duplicates with `getMatches()`. Provide the data frame as both `dfA =` and `dfB =`, and provide the output of the `fastLink()` function as `fl.out =`. `fl.out` must be of class `fastLink.dedupe`, or in other words, the result of `fastLink()`.
+`getMatches()` で重複の可能性があるものを確認することができます。データフレームを `dfA =` と `dfB =` の両方で提供し、`fastLink()` 関数のアウトプットを `fl.out =` とします。`fl.out` must be of class `fastLink.dedupe`, or in other words, the result of `fastLink()`.`fl.out` は `fastLink.dedupe` クラスでなければならず、言い換えれば`fastLink()` の結果である必要があります。
 
 ```{r}
-## Run getMatches()
+## getMatches() を実行
 cases_dedupe <- getMatches(
   dfA = cases_dup,
   dfB = cases_dup,
   fl.out = dedupe_output)
 ```
 
-See the right-most column, which indicates the duplicate IDs - the final two rows are identified as being likely duplicates of rows 2 and 3.
+一番右の列は重複するIDを表しており、最後の2行は2行目と3行目と重複している可能性が高いことが分かります。
 
 ```{r message=FALSE, echo=F}
 DT::datatable(cases_dedupe, rownames = FALSE, options = list(pageLength = nrow(cases_dedupe)))
@@ -697,10 +697,10 @@ cases_dedupe %>%
   filter(n > 1)
 ```
 
-To inspect the whole rows of the likely duplicates, put the row number in this command:
+重複している可能性がある行全体を確認するために、このコマンドに行番号を入れます。
 
 ```{r}
-# displays row 2 and all likely duplicates of it
+# 2行目とその重複候補をすべて表示する
 cases_dedupe[cases_dedupe$dedupe.ids == 2,]   
 ```
 
@@ -808,7 +808,7 @@ DT::datatable(contact_fu, rownames = FALSE, options = list(pageLength = nrow(10)
 
 Note that the hospitals are the same, but are in different orders in each data frame. The easiest solution would be to use a `left_join()` on the `hospital` column, but you could also use `bind_cols()` with one extra step.
 
-####  `match()` を使用して順序を揃える {.unnumbered}
+#### `match()` を使用して順序を揃える {.unnumbered}
 
 Because the row orders are different, a simple `bind_cols()` command would result in a mis-match of data. 行の順序が異なるため、`bind_cols()` コマンドを実行すると、データが不一致になります。To fix this we can use `match()` from **base** R to align the rows of a data frame in the same order as in another. We assume for this approach that there are no duplicate values in either data frame.これを修正するには、ベースRのmatch（）を使用して、データフレームの行を別のフレームと同じ順序で整列させます。 このアプローチでは、どちらのデータフレームにも重複する値がないことを前提としています。
 
@@ -828,7 +828,7 @@ contact_fu_aligned <- contact_fu[match(case_info$hospital, contact_fu$hospital),
 DT::datatable(contact_fu_aligned, rownames = FALSE, options = list(pageLength = nrow(10)))
 ```
 
-Now we can bind the data frame columns together, with the correct row order. Note that some columns are duplicated and will require cleaning with `rename()`. これで、正しい行順序でデータフレーム列をバインドできます。 一部の列が重複しており、rename（）でクリーニングする必要があることに注意してください。Read more aboout `bind_rows()` [here](https://dplyr.tidyverse.org/reference/bind.html).bind_rows()について詳しくはこちらをご覧ください。
+Now we can bind the data frame columns together, with the correct row order. これで、正しい行順序でデータフレーム列を結合できます。 Note that some columns are duplicated and will require cleaning with `rename()`. 一部の列が重複しており、rename（）でクリーニングする必要があることに注意してください。Read more aboout `bind_rows()` [here](https://dplyr.tidyverse.org/reference/bind.html).bind_rows()について詳しくはこちらをご覧ください。
 
 ```{r}
 bind_cols(case_info, contact_fu)
