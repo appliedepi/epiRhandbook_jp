@@ -114,8 +114,6 @@ infector_ages <- infectors %>%             # 感染源のデータフレーム�
 DT::datatable(head(infector_ages, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Then, we combine the cases and their ages with the infectors and their ages. Each of these data frame has the column `infector`, so it is used for the join. The first rows are displayed below:
-
 次に、感染先症例とその年代を、感染源症例とその年代と結合します。これらのデータフレームはそれぞれ `infector` という列を持っているので、この列で紐付けます。最初の行は以下のように表示されます。
 
 ```{r}
@@ -200,13 +198,13 @@ ggplot(data = long_prop)+       # 割合が Freq 列に格納された「long」
 
 <!-- ======================================================= -->
 
-## Reporting metrics over time
+## 報告率の時系列
 
-Often in public health, one objective is to assess trends over time for many entities (facilities, jurisdictions, etc.). One way to visualize such trends over time is a heat plot where the x-axis is time and on the y-axis are the many entities.
+公衆衛生では、多くの施設、管轄区域などにおける経時的な傾向を評価することが目的の一つであることがよくあります。このような経時的な傾向を可視化する方法の1つが、横軸を時間、縦軸を各施設としたヒートマップです。
 
-### Data preparation {.unnumbered}
+### データ準備 {.unnumbered}
 
-We begin by importing a dataset of daily malaria reports from many facilities. The reports contain a date, province, district, and malaria counts. See the page on \[Download handbook and data\] for information on how to download these data. Below are the first 30 rows:
+まず、多施設におけるマラリアに関する日々の報告のデータセットをインポートします。データには、日付、州、地区、マラリアの症例数が含まれています。これらのデータをダウンロードする方法については、\[ハンドブックとデータのダウンロード\]のページを参照してください。以下は、最初の30行です。
 
 ```{r, echo=F}
 facility_count_data <- rio::import(here::here("data", "malaria_facility_count_data.rds")) %>% 
@@ -221,133 +219,133 @@ facility_count_data <- import("malaria_facility_count_data.rds")
 DT::datatable(head(facility_count_data,30), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
-#### Aggregate and summarize {.unnumbered}
+#### 集計とサマリー {.unnumbered}
 
-**The objective in this example** is to transform the daily facility *total* malaria case counts (seen in previous tab) into *weekly* summary statistics of facility reporting performance - in this case *the proportion of days per week that the facility reported any data*. For this example we will show data only for **Spring District**.
+**このセクションの目的**は、日別の施設ごとのマラリア患者数（前のタブで表示されています）を、週単位の施設ごとの報告率（この場合は、施設が何らかのデータを報告した日数の割合）に変換することです。以下の例では、**Spring 地区**のデータのみを表示します。
 
-To achieve this we will do the following data management steps:
+以下のステップを実行します：
 
-1)  Filter the data as appropriate (by place, date)\
+1)  データを適切にフィルタリング（場所、日付ごと）します。\
 
-2)  Create a week column using `floor_date()` from package **lubridate**
+2)  **lubridate** パッケージの `floor_date()` を使って week 列を作成します。
 
-    -   This function returns the start-date of a given date's week, using a specified start date of each week (e.g. "Mondays")\
+    -   この関数は、指定した日付の週の開始日を、指定した曜日（例："Mondays"）で返します。
 
-3)  The data are grouped by columns "location" and "week" to create analysis units of "facility-week"\
+3)  データは「場所」と「週」の列でグループ化され、"施設-週 "の分析単位が作成されます。\
 
-4)  The function `summarise()` creates new columns to reflecting summary statistics per facility-week group:
+4)  `summarise()` 関数は、施設-週グループごとの統計サマリーを反映させるための新しい列を作成します。
 
-    -   Number of days per week (7 - a static value)\
-    -   Number of reports received from the facility-week (could be more than 7!)\
-    -   Sum of malaria cases reported by the facility-week (just for interest)\
-    -   Number of *unique* days in the facility-week for which there is data reported\
-    -   **Percent of the 7 days per facility-week for which data was reported**\
+    -   1 週間の日数 (固定値7)\
+    -   施設-週からの報告回数（7件以上の可能性もあります！）\
+    -   施設-週で報告されたマラリア患者数の合計 (興味がある場合)\
+    -   データが報告された施設-週における日数\
+    -   **施設-週の7日間のうち、データが報告された日数の割合**
 
-5)  The data frame is joined with `right_join()` to a comprehensive list of all possible facility-week combinations, to make the dataset complete. The matrix of all possible combinations is created by applying `expand()` to those two columns of the data frame as it is at that moment in the pipe chain (represented by `.`). Because a `right_join()` is used, all rows in the `expand()` data frame are kept, and added to `agg_weeks` if necessary. These new rows appear with `NA` (missing) summarized values.
+5)  このデータフレームを `right_join()` で、全ての施設-週の組み合わせを包括的なリストとして結合し、データセットを完成させます。全ての組み合わせの行列は、データフレーム（.で表されます）の2列に対して `expand()` 関数を適用することで作成されます。`right_join()` が使用されているので、`expand()` されたデータフレームのすべての行は保持され、必要であれば `agg_weeks` に追加されます。これらの新しい行は、`NA`（欠損値）の要約された値で表示されます。
 
-Below we demonstrate step-by-step:
+以下順を追って説明します：
 
 ```{r, message=FALSE, warning=FALSE}
-# Create weekly summary dataset
+# 週別の集計を作成する
 agg_weeks <- facility_count_data %>% 
   
-  # filter the data as appropriate
+  # データのフィルタリング
   filter(
     District == "Spring",
     data_date < as.Date("2020-08-01")) 
 ```
 
-Now the dataset has `nrow(agg_weeks)` rows, when it previously had `nrow(facility_count_data)`.
+これでデータセットの行数が `nrow(agg_weeks)` となりました。
 
-Next we create a `week` column reflecting the start date of the week for each record. This is achieved with the **lubridate** package and the function `floor_date()`, which is set to "week" and for the weeks to begin on Mondays (day 1 of the week - Sundays would be 7). The top rows are shown below.
+次に、各行の週の開始日を示す `week` 列を作成します。これは、**lubridate** パッケージと `floor_date()` 関数を使って行います。この関数は「週」に設定され、週の始まりが月曜日（週の1日目、日曜日は7日目）になるように設定されています。
 
 ```{r}
 agg_weeks <- agg_weeks %>% 
-  # Create week column from data_date
+  # data_date 列から week 列を作成
   mutate(
-    week = lubridate::floor_date(                     # create new column of weeks
-      data_date,                                      # date column
-      unit = "week",                                  # give start of the week
-      week_start = 1))                                # weeks to start on Mondays 
+    week = lubridate::floor_date(                     # week 列を新たに作成
+      data_date,                                      # 日付列
+      unit = "week",                                  # 週の開始を指定
+      week_start = 1))                                # 月曜スタートに指定 
 ```
 
-The new week column can be seen on the far right of the data frame
+新しい week 列は、データフレームの一番右に表示されます。
 
 ```{r, echo=F}
 DT::datatable(head(agg_weeks,30), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
-Now we group the data into facility-weeks and summarise them to produce statistics per facility-week. See the page on \[Descriptive tables\] for tips. The grouping itself doesn't change the data frame, but it impacts how the subsequent summary statistics are calculated.
+ここで、データを施設-週にグループ分けし、施設-週ごとの統計データを作成するために集計を行います。詳細は\[記述統計表の作り方\]のページを参照してください。グループ化自体はデータフレームを変更しませんが、その後の要約統計の計算に影響を与えます。
 
-The top rows are shown below. Note how the columns have completely changed to reflect the desired summary statistics. Each row reflects one facility-week.
+最初の30行を以下に示します。目的の要約統計量を反映するために、列が完全に変更されたことに注意してください。各行は、1つの施設-週を反映しています。
 
 ```{r, warning=F, message=F}
 agg_weeks <- agg_weeks %>%   
 
-  # Group into facility-weeks
+  # 施設-週でグループ化
   group_by(location_name, week) %>%
   
-  # Create summary statistics columns on the grouped data
+  # グループ化されたデータに対して要約統計量の列を作成
   summarize(
-    n_days          = 7,                                          # 7 days per week           
-    n_reports       = dplyr::n(),                                 # number of reports received per week (could be >7)
-    malaria_tot     = sum(malaria_tot, na.rm = T),                # total malaria cases reported
-    n_days_reported = length(unique(data_date)),                  # number of unique days reporting per week
-    p_days_reported = round(100*(n_days_reported / n_days)))      # percent of days reporting
+    n_days          = 7,                                          # 1週間の日数（7日）
+    n_reports       = dplyr::n(),                                 # 施設-週からの報告回数（7件以上の可能性あり）
+    malaria_tot     = sum(malaria_tot, na.rm = T),                # 施設-週で報告されたマラリア患者数の合計
+    n_days_reported = length(unique(data_date)),                  # データが報告された施設-週における日数
+    p_days_reported = round(100*(n_days_reported / n_days)))      # 施設-週の7日間のうち、データが報告された日数の割合
 ```
 
 ```{r, echo=F}
 DT::datatable(head(agg_weeks,30), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
-Finally, we run the command below to ensure that ALL possible facility-weeks are present in the data, even if they were missing before.
+最後に、以下のコマンドを実行して、報告のなかった週も含めて、可能性のある全ての施設-週の組み合わせがデータ中に存在することを確認します。
 
-We are using a `right_join()` on itself (the dataset is represented by ".") but having been expanded to include all possible combinations of the columns `week` and `location_name`. See documentation on the `expand()` function in the page on \[Pivoting\]. Before running this code the dataset contains `nrow(agg_weeks)` rows.
+これは、`week` と `location_name` の列の全ての組み合わせを含むように拡張された、それ自身（データセットは「. 」で表されます）の `right_join()` を使用しています。詳細は\[データの縦横変換\]のページにある `expand()` 関数のドキュメントを参照してください。このコードを実行する前の段階ではデータセットには `nrow(agg_weeks)` 行が含まれています。
 
 ```{r, message=F, warning=F}
-# Create data frame of every possible facility-week
+# 可能な全ての施設-週の組み合わせを作成
 expanded_weeks <- agg_weeks %>% 
-  mutate(week = as.factor(week)) %>%         # convert date to a factor so expand() works correctly
-  tidyr::expand(., week, location_name) %>%  # expand data frame to include all possible facility-week combinations
-                                             # note: "." represents the dataset at that moment in the pipe chain
-  mutate(week = as.Date(week))               # re-convert week to class Date so the subsequent right_join works
+  mutate(week = as.factor(week)) %>%         # week 列をfactor型に変換
+  tidyr::expand(., week, location_name) %>%  # 可能な全ての施設-週の組み合わせを含むようにデータを拡張
+                                             # 注意: 「.」は%>%内のデータセットを意味します
+  mutate(week = as.Date(week))               # week 列をDate型に変換
 ```
 
-Here is `expanded_weeks`:
+`expanded_weeks` は以下のようなデータになっています：
 
 ```{r, echo=F}
 DT::datatable(expanded_weeks, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
-Before running this code, `agg_weeks` contains `nrow(agg_weeks)` rows.
+以下のコードを実行する前の段階では、`agg_weeks` は `nrow(agg_weeks)` 行でした。
 
 ```{r}
-# Use a right-join with the expanded facility-week list to fill-in the missing gaps in the data
+# 拡張された施設週間リストと right-join して、データの欠損を補填
 agg_weeks <- agg_weeks %>%      
-  right_join(expanded_weeks) %>%                            # Ensure every possible facility-week combination appears in the data
-  mutate(p_days_reported = replace_na(p_days_reported, 0))  # convert missing values to 0                           
+  right_join(expanded_weeks) %>%                            # 可能な全ての施設-週の組み合わせが含まれるようにする
+  mutate(p_days_reported = replace_na(p_days_reported, 0))  # 欠損値を0に変換
 ```
 
-After running this code, `agg_weeks` contains `nrow(agg_weeks)` rows.
+コードを実行した後は、`agg_weeks` は `nrow(agg_weeks)` 行に変わっています。
 
 <!-- ======================================================= -->
 
-### Create heat plot {.unnumbered}
+### ヒートマップの作成 {.unnumbered}
 
-The `ggplot()` is made using `geom_tile()` from the **ggplot2** package:
+`ggplot()` パッケージの `geom_tile()` を用いてグラフを作成します。
 
--   Weeks on the x-axis is transformed to dates, allowing use of `scale_x_date()`\
--   `location_name` on the y-axis will show all facility names\
--   The `fill` is `p_days_reported`, the performance for that facility-week (numeric)\
--   `scale_fill_gradient()` is used on the numeric fill, specifying colors for high, low, and `NA`\
--   `scale_x_date()` is used on the x-axis specifying labels every 2 weeks and their format\
--   Display themes and labels can be adjusted as necessary
+-   x軸の週はDate型に変換されているので、`scale_x_date()` が使用出来ます。\
+-   y軸の `location_name` は全ての施設名を表示します。\
+-   塗りつぶしは `p_days_reported` に対して行われ、その施設-週の報告率を示します。\
+-   `scale_fill_gradient()` は数値の塗りつぶしに使用され、high, low, `NA` の色を指定します。\
+-   x軸に `scale_x_date()` を使用し、2週間ごとのラベルとその形式を指定します。\
+-   テーマやラベルを必要に応じて調整することが出来ます。
 
 <!-- ======================================================= -->
 
-### Basic {.unnumbered}
+### 基本プロット {.unnumbered}
 
-A basic heat plot is produced below, using the default colors, scales, etc. As explained above, within the `aes()` for `geom_tile()` you must provide an x-axis column, y-axis column, **and** a column for the the `fill =`. The fill is the numeric value that presents as tile color.
+基本的なヒートマップは、デフォルトの色やスケールなどを使用して、以下のように作成されます。上で説明したように、`geom_tile()` の `aes()` 内では、x軸、y軸、および `fill =` の列を指定する必要があります。 fill は色として表示される数値です。
 
 ```{r}
 ggplot(data = agg_weeks)+
@@ -357,53 +355,53 @@ ggplot(data = agg_weeks)+
         fill = p_days_reported))
 ```
 
-### Cleaned plot {.unnumbered}
+### 応用プロット {.unnumbered}
 
-We can make this plot look better by adding additional **ggplot2** functions, as shown below. See the page on \[ggplot tips\] for details.
+以下のように、**ggplot2** の関数を追加することで、このプロットをより良く出来ます。詳細は\[ggplotの基礎\]のページを参照して下さい。
 
 ```{r, message=FALSE, warning=FALSE}
 ggplot(data = agg_weeks)+ 
   
-  # show data as tiles
+  # データをタイルで表示
   geom_tile(
     aes(x = week,
         y = location_name,
         fill = p_days_reported),      
-    color = "white")+                 # white gridlines
+    color = "white")+                 # 罫線を白に指定
   
   scale_fill_gradient(
     low = "orange",
     high = "darkgreen",
     na.value = "grey80")+
   
-  # date axis
+  # 日付軸
   scale_x_date(
-    expand = c(0,0),             # remove extra space on sides
-    date_breaks = "2 weeks",     # labels every 2 weeks
-    date_labels = "%d\n%b")+     # format is day over month (\n in newline)
+    expand = c(0,0),             # 両端の余分なスペースを削除remove extra space on sides
+    date_breaks = "2 weeks",     # 2週間ごとの日付ラベルを指定
+    date_labels = "%d\n%b")+     # 月の上に日付を表示 (\n は改行を示す)
   
-  # aesthetic themes
-  theme_minimal()+                                  # simplify background
+  # テーマ
+  theme_minimal()+                                  # 背景を簡潔にする
   
   theme(
     legend.title = element_text(size=12, face="bold"),
     legend.text  = element_text(size=10, face="bold"),
-    legend.key.height = grid::unit(1,"cm"),           # height of legend key
-    legend.key.width  = grid::unit(0.6,"cm"),         # width of legend key
+    legend.key.height = grid::unit(1,"cm"),           # 凡例の高さの指定
+    legend.key.width  = grid::unit(0.6,"cm"),         # 凡例の幅さの指定
     
-    axis.text.x = element_text(size=12),              # axis text size
-    axis.text.y = element_text(vjust=0.2),            # axis text alignment
+    axis.text.x = element_text(size=12),              # 軸のテキストサイズの指定
+    axis.text.y = element_text(vjust=0.2),            # 軸のテキストの場所の調整
     axis.ticks = element_line(size=0.4),               
-    axis.title = element_text(size=12, face="bold"),  # axis title size and bold
+    axis.title = element_text(size=12, face="bold"),  # 軸のタイトルのサイズの指定と太字フォントの指定
     
-    plot.title = element_text(hjust=0,size=14,face="bold"),  # title right-aligned, large, bold
-    plot.caption = element_text(hjust = 0, face = "italic")  # caption right-aligned and italic
+    plot.title = element_text(hjust=0,size=14,face="bold"),  # タイトルを右揃えにして、サイズを大きく、太字にする
+    plot.caption = element_text(hjust = 0, face = "italic")  # 脚注を右揃えにしてイタリック体にする
     )+
   
-  # plot labels
+  # 凡例
   labs(x = "Week",
        y = "Facility name",
-       fill = "Reporting\nperformance (%)",           # legend title, because legend shows fill
+       fill = "Reporting\nperformance (%)",           # 凡例のタイトルを指定
        title = "Percent of days per week that facility reported data",
        subtitle = "District health facilities, May-July 2020",
        caption = "7-day weeks beginning on Mondays.")
