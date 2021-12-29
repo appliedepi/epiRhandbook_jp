@@ -31,7 +31,7 @@ pacman::p_load(
   rio,          # ファイルインポート
   here,         # ファイルロケータ
   skimr,        # データの概要を把握
-  tidyverse,    # データ管理と ggplot2 描画
+  tidyverse,    # データ管理とggplot2描画
   gtsummary,    # 要約統計量と検定
   rstatix,      # 要約統計量と統計的検定
   janitor,      # 表に合計値とパーセンテージを追加
@@ -57,7 +57,7 @@ linelist <- import("linelist_cleaned.rds")
 linelist の最初の 50 行を以下に表示します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストのデータを表として表示
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
@@ -72,7 +72,7 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 以下では、関数 `skim()` を `linelist` データフレーム全体に適用しています。データフレームの概要とすべての列の概要が（クラス別に）生成されます。
 
 ```{r eval=F}
-## データセット内の各変数の情報を取得する 
+## データセット内の各変数の情報を取得
 skim(linelist)
 ```
 
@@ -84,7 +84,7 @@ skim_without_charts(linelist)
 データセット全体の情報を得るために、**ベース** R にある `summary()` 関数を使用することもできますが、この出力は **skimr** を使用した場合よりも読みづらくなる可能性があります。そのため、ページスペースを倹約するため下記の結果は表示していません。
 
 ```{r, eval=F}
-## データセットの各列の情報を取得します。 
+## データセットの各列の情報を取得 
 summary(linelist)
 ```
 
@@ -99,7 +99,7 @@ summary(linelist$age_years)
 インデックスブラケット \[ \]で特定の一部分にアクセスして保存することができます。:
 
 ```{r}
-summary(linelist$age_years)[[2]]            # 2 番目の要素のみを返す
+summary(linelist$age_years)[[2]]            # 2番目の要素のみを取得
 # 同様に、要素名による指定も可能
 # summary(linelist$age_years)[["1st Qu."]]  
 ```
@@ -149,7 +149,7 @@ linelist %>% tabyl(age_cat, gender)
 **janitor** の 「adorn」 関数を使用して、合計値を加算したり、割合やパーセントに変換したり、その他の方法で表示を調整します。多くの場合、これらの関数のいくつかに tabyl をパイプ演算子で渡します。
 
 +--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| 関数 \| 説明             |                                                                                                                                                                                                                                                        |
+| 関数 \|                  | 説明                                                                                                                                                                                                                                                   |
 +==========================+========================================================================================================================================================================================================================================================+
 | `adorn_totals()`         | 合計値を追加 （`where =` "row"、"col"、または "both"）。`name =` を "Total" と指定。                                                                                                                                                                   |
 +--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -226,8 +226,8 @@ linelist %>%
 
 ```{r}
 linelist %>% 
-  count(hospital) %>%   # dplyr 関数
-  adorn_totals()        # janitor 関数
+  count(hospital) %>%   # dplyr関数
+  adorn_totals()        # janitor関数
 ```
 
 ### tabyl の保存 {.unnumbered}
@@ -247,7 +247,7 @@ linelist %>%
     placement = "combined") %>% 
   flextable::flextable() %>%                     # 画像に変換
   flextable::autofit() %>%                       # 1行のみであることを確認
-  flextable::save_as_docx(path = "tabyl.docx")   # ファイルパスで Wrod ドキュメントとして保存
+  flextable::save_as_docx(path = "tabyl.docx")   # ファイルパスでWordドキュメントとして保存
 ```
 
 ```{r out.width = "50%", fig.align = "center", echo=F}
@@ -288,15 +288,15 @@ chisq.test(age_by_outcome)
 `summarise()` 内で適用する最もシンプルな関数は `n()`です。括弧を空にすると、行数がカウントされます。
 
 ```{r}
-linelist %>%                 # linelist で開始
-  summarise(n_rows = n())    # n_rows 列の新しい要約データフレームを取得
+linelist %>%                 # linelistで開始
+  summarise(n_rows = n())    # n_rows列の新しい要約データフレームを取得
 ```
 
 あらかじめデータをグループ化しておくと、さらに面白いことができます。
 
 ```{r}
 linelist %>% 
-  group_by(age_cat) %>%     # age_cat 列のユニークな値でデータをグループ化
+  group_by(age_cat) %>%     # age_cat列のユニークな値でデータをグループ化
   summarise(n_rows = n())   # *グループごと* に行数を返す
 ```
 
@@ -349,8 +349,8 @@ age_summary
 以下は、*グループ内*の割合を計算する方法です。異なるレベルのデータのグループ化を適用したり削除したりを順番に行っていきます。まず、データは `group_by()`で `outcome` を指定することでグループ化されます。次に、`count()` を適用します。この関数は、データを`age_cat` でさらにグループ化し、各結果と `outcome`-`age-cat` の組み合わせのカウント数を取得します。重要なことは、`count()` は処理を終えると同時に、`age_cat` によるグループ化を解除するので、残ったデータのグループ化は元の結果によるグループ化のみになるということです。つまり、割合を計算する最後のステップ（分母 `sum(n)`）では `outcome`によってグループ化されたままということになります。
 
 ```{r}
-age_by_outcome <- linelist %>%                  # linelist から開始
-  group_by(outcome) %>%                         # outcome でグループ化
+age_by_outcome <- linelist %>%                  # linelistから開始
+  group_by(outcome) %>%                         # outcomeでグループ化
   count(age_cat) %>%                            # age_catでグループ化してカウント後、age_catのグループ化を解除
   mutate(percent = scales::percent(n / sum(n))) # パーセントの算出 - 分母が結果グループごとであることに注意
 ```
@@ -364,14 +364,14 @@ DT::datatable(age_by_outcome, rownames = FALSE, options = list(pageLength = 12, 
 上記のような「縦」の表出力を `ggplot()` で表示するのは、比較的簡単です。データは当然 「縦」持ち形式であり、 `ggplot()`はそれを受け入れることができます。\[ggplot の基礎\] と \[ggplot の基礎\] の章でさらに例をご覧ください。
 
 ```{r, warning=F, message=F}
-linelist %>%                      # linelist から開始
+linelist %>%                      # linelistから開始
   count(age_cat, outcome) %>%     # グループ化して2列で集計
-  ggplot()+                       # ggplot に新しいデータフレームを渡す
+  ggplot()+                       # ggplotに新しいデータフレームを渡す
     geom_col(                     # 棒グラフの作成
       mapping = aes(   
-        x = outcome,              # X軸に outcome をマッピング
-        fill = age_cat,           # fill に age_cat をマッピング（age_cat で色分け）
-        y = n))                   # カウント列 `n` を高さにマッピング
+        x = outcome,              # X軸にoutcomeをマッピング
+        fill = age_cat,           # fill に age_catをマッピング（age_catで色分け）
+        y = n))                   # カウント列「n」を高さにマッピング
 ```
 
 ### 要約統計量 {.unnumbered}
@@ -447,7 +447,7 @@ linelist %>%
 ```{r}
 summary_table %>% 
   mutate(delay = str_glue("{delay_mean} ({delay_sd})")) %>%  # 他の値を組み合わせてフォーマット
-  select(-c(delay_mean, delay_sd)) %>%                       # 古い 2 列を削除   
+  select(-c(delay_mean, delay_sd)) %>%                       # 古い2列を削除   
   adorn_totals(where = "row") %>%                            # 合計列を追加
   select(                                                    # 列の順番と名称を指定
     "Hospital Name"   = hospital,
@@ -591,10 +591,10 @@ linelist %>%
 以下の例では [割合のセクション](#tbl_dplyr_prop)から「縦」持ち表 `age_by_outcome` から始めます。わかりやすいように、もう一度作成して出力しましょう。:
 
 ```{r}
-age_by_outcome <- linelist %>%                  # linelist から開始
-  group_by(outcome) %>%                         # outcome でグループ化 
+age_by_outcome <- linelist %>%                  # linelistから開始
+  group_by(outcome) %>%                         # outcomeでグループ化 
   count(age_cat) %>%                            # age_catでグループ化してカウント後、age_catのグループ化を解除
-  mutate(percent = scales::percent(n / sum(n))) # パーセントを計算 - 分母が outcome グループ別であることに注意
+  mutate(percent = scales::percent(n / sum(n))) # パーセントを計算 - 分母がoutcomeグループ別であることに注意
 ```
 
 ```{r, echo=F}
@@ -624,8 +624,8 @@ linelist %>%
   group_by(gender) %>%
   summarise(
     known_outcome = sum(!is.na(outcome)),           # グループ内で結果の欠測がない行数
-    n_death  = sum(outcome == "Death", na.rm=T),    # グループ内でoutocome が "Death" の行数
-    n_recover = sum(outcome == "Recover", na.rm=T), # グループ内でoutocome が "Recovered" の行数
+    n_death  = sum(outcome == "Death", na.rm=T),    # グループ内でoutocomeが「Death」の行数
+    n_recover = sum(outcome == "Recover", na.rm=T), # グループ内でoutocomeが「Recovered」の行数
   ) %>% 
   adorn_totals() %>%                                # 合計行を加工 (各数値列の合計)
   adorn_percentages("col") %>%                      # 列で割合を取得
@@ -641,13 +641,13 @@ linelist %>%
 
 ```{r, warning=F, message=F}
 by_hospital <- linelist %>% 
-  filter(!is.na(outcome) & hospital != "Missing") %>%  # outcome や hospital が欠測している症例（case）を削除
+  filter(!is.na(outcome) & hospital != "Missing") %>%  # outcomeやhospitalが欠測している症例（case）を削除
   group_by(hospital, outcome) %>%                      # データのグループ化
   summarise(                                           # 関心のある指標の新しい要約列を作成
-    N = n(),                                            # hospital / outcome グループごとの行数      
-    ct_value = median(ct_blood, na.rm=T))               # グループごとの CT 値の中央値
+    N = n(),                                            # hospital/outcome グループごとの行数      
+    ct_value = median(ct_blood, na.rm=T))               # グループごとのCT 値の中央値
   
-by_hospital # print table
+by_hospital # テーブルを出力
 ```
 
 合計を得るには、同じ `summarise()` コマンドを実行しますが、下記のように、データを hospital ではなく outcome でグループ化します。:
@@ -655,9 +655,9 @@ by_hospital # print table
 ```{r}
 totals <- linelist %>% 
       filter(!is.na(outcome) & hospital != "Missing") %>%
-      group_by(outcome) %>%                            # hospital ではなくoutcome でグループ化    
+      group_by(outcome) %>%                            # hospitalではなくoutcome でグループ化    
       summarise(
-        N = n(),                                       # 統計量 outcome のみに     
+        N = n(),                                       # 統計量outcomeのみに     
         ct_value = median(ct_blood, na.rm=T))
 
 totals # 表を出力
@@ -685,10 +685,10 @@ table_long %>%
   ########################
   mutate(hospital = replace_na(hospital, "Total")) %>% 
   pivot_wider(                                         # 縦から横へ変換
-    values_from = c(ct_value, N),                       # ct_value と N (カウント）列から新規の値
-    names_from = outcome) %>%                           # outcome から新しい列名を
+    values_from = c(ct_value, N),                       # ct_valueとN(カウント）列から新規の値
+    names_from = outcome) %>%                           # outcomeから新しい列名を
   mutate(                                              # 新規列を追加
-    N_Known = N_Death + N_Recover,                               # known outcome 数
+    N_Known = N_Death + N_Recover,                               # 既知のoutcome数
     Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # 死亡症例のパーセント（小数点第一位）
     Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # 回復症例のパーセント（小数点第一位）
   select(                                              # 列の並べ替え
@@ -723,7 +723,7 @@ table <- linelist %>%
   ###############################################
   group_by(hospital, outcome) %>%                      # データをグループ化
   summarise(                                           # 関心のある指標の新しい要約列を作成
-    N = n(),                                            # hospital / outcome グループごとの行数     
+    N = n(),                                            # hospital/outcome グループごとの行数     
     ct_value = median(ct_blood, na.rm=T)) %>%           # グループごとの CT 値の中央値
   
   # 合計を追加
@@ -740,10 +740,10 @@ table <- linelist %>%
   ########################
   mutate(hospital = replace_na(hospital, "Total")) %>% 
   pivot_wider(                                         # 縦から横へ変換
-    values_from = c(ct_value, N),                       # ct_value と N (カウント）列から新規の値
+    values_from = c(ct_value, N),                       # ct_valueとN (カウント）列から新規の値
     names_from = outcome) %>%                           # outcome から新しい列名を
   mutate(                                              # 新規列を追加
-    N_Known = N_Death + N_Recover,                               # known outcome 数
+    N_Known = N_Death + N_Recover,                               # 既知のoutcome数
     Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # 死亡症例のパーセント（小数点第一位）
     Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # 回復症例のパーセント（小数点第一位）
   select(                                              # 列の並べ替え
@@ -867,7 +867,7 @@ linelist %>%
 linelist %>% 
   select(age_years, gender, outcome, fever, temp, hospital) %>% # 興味のある列だけを残す
   tbl_summary(     
-    by = outcome,                                               # outcome でテーブル全体を層別化
+    by = outcome,                                               # outcomeでテーブル全体を層別化
     statistic = list(all_continuous() ~ "{mean} ({sd})",        # 連続列に対して統計量を算出してフォーマット
                      all_categorical() ~ "{n} / {N} ({p}%)"),   # カテゴリ列に対して統計量を算出してフォーマット
     digits = all_continuous() ~ 1,                              # 連続列に対して丸めの指定
