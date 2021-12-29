@@ -1,70 +1,65 @@
-# Factors {}
-
+# 因子（ファクタ）型データ
 
 ```{r, out.width=c('100%'), echo=F, message=F}
 knitr::include_graphics(here::here("images", "Factors_1500x500.png"))
 ```
 
-In R, *factors* are a class of data that allow for ordered categories with a fixed set of acceptable values.  
+R では、[因子]{.ul}は、許容値の固定セットで順序付けされたカテゴリを可能にするデータのクラス（分類）です。
 
-Typically, you would convert a column from character or numeric class to a factor if you want to set an intrinsic order to the values ("*levels*") so they can be displayed non-alphabetically in plots and tables. Another common use of factors is to standardise the legends of plots so they do not fluctuate if certain values are temporarily absent from the data.   
+一般的に、列を文字または数値クラスから係数に変換し、値（"[レベル]{.ul}"）に固有の順序を設定すると、プロットやテーブルにアルファベット以外の形式で表示できるようなります。因子のもう1つの一般的な使用法としては、プロットの凡例を標準化し、特定の値がデータに一時的に存在しない場合にも変動しないようにすることができます。
 
-This page demonstrates use of functions from the package **forcats** (a short name for "**For** **cat**egorical variables") and some **base** R functions. We also touch upon the use of **lubridate** and **aweek** for special factor cases related to epidemiological weeks.  
+このページでは、**forcats**（"**For c**ategorical variables" の略）パッケージの関数と、**base** R 関数の使い方を説明します。また、疫学週に関する特殊要因の場合の **lubridate** や **aweek** の使用についても触れています。
 
-A complete list of **forcats** functions can be found online [here](https://forcats.tidyverse.org/reference/index.html). Below we demonstrate some of the most common ones.  
-
+**forcats** の関数一覧は、[こちら](https://forcats.tidyverse.org/reference/index.html)からオンラインでご覧ください。以下に、代表的なものをいくつか紹介します。
 
 <!-- ======================================================= -->
-## Preparation  
 
-### Load packages {.unnumbered}  
+## 準備
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+### パッケージを読み込む {.unnumbered}
+
+以下のコードは、分析に必要なパッケージの読み込みを示しています。 このハンドブックでは、**pacman** の `p_load()` を推奨しています。このパッケージを使うことにより、必要なパッケージが自動的にインストールされ・読み込まれます。また、インストールされたパッケージは、**base** R から `library()` で読み込むことができます。R のパッケージについては、\[R の基礎\] のページを参照してください。
 
 ```{r}
 pacman::p_load(
-  rio,           # import/export
-  here,          # filepaths
-  lubridate,     # working with dates
-  forcats,       # factors
-  aweek,         # create epiweeks with automatic factor levels
-  janitor,       # tables
-  tidyverse      # data mgmt and viz
+  rio,           # インポート・エクスポート
+  here,          # ファイルパス
+  lubridate,     # 日付
+  forcats,       # 因子型データ
+  aweek,         # 自動的な因子レベルを持つエピウィークの作成
+  janitor,       # 表
+  tidyverse      # データ管理・可視化
   )
 ```
 
+### データのインポート {.unnumbered}
 
-
-### Import data {.unnumbered}  
-
-We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import your data with the `import()` function from the **rio** package (it accepts many file types like .xlsx, .rds, .csv - see the [Import and export] page for details).  
+エボラ出血熱の流行をシミュレーションした症例データセットをインポートします。フォローしたい場合は、<a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリックして "clean" ラインリストをダウンロード</a>（.rdsファイルとして）。 `import()` 関数を使用して **rio** パッケージからデータをインポートします（.xlsx、.rds、.csv など多くのファイルタイプのインポート可能です。詳細については、\[データのインポート・エクスポート\] ページを参照してください）。
 
 ```{r, echo=F}
-# import the linelist into R
+# ラインリストを R にインポートする
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
-
 ```{r, eval=F}
-# import your dataset
+# データセットをインポートする
 linelist <- import("linelist_cleaned.rds")
 ```
 
+### 新しいカテゴリー変数 {#fct_newcat .unnumbered}
 
-### New categorical variable {#fct_newcat .unnumbered}  
+このページでは、一般的なシナリオである新しいカテゴリカル変数の作成を例に説明します。
 
-For demonstration in this page we will use a common scenario - the creation of a new categorical variable.
+数値列を因子型データに変換した場合、その列の数値計算はできなくなることに注意してください。
 
-Note that if you convert a numeric column to class factor, you will not be able to calculate numeric statistics on it.  
+#### 列の作成 {.unnumbered}
 
-#### Create column {.unnumbered}  
-
-We use the existing column `days_onset_hosp` (days from symptom onset to hospital admission) and create a new column `delay_cat` by classifying each row into one of several categories. We do this with the **dplyr** function `case_when()`, which sequentially applies logical criteria (right-side) to each row and returns the corresponding left-side value for the new column `delay_cat`. Read more about `case_when()` in [Cleaning data and core functions].  
+既存の `days_onset_hosp` （症状発現から入院までの日数）列を用いて、各行をカテゴリーのいずれかに分類し、新しい `delay_cat` 列を作成します。**dplyr** の関数 `case_when()` を使い、各行に論理基準（右側）をに順次適用し、新しい列 `delay_cat` に対応する左側の値が得られます。`case_when()` については、\[データクリーニングと主要関数\] で詳しく説明しています。
 
 ```{r}
 linelist <- linelist %>% 
   mutate(delay_cat = case_when(
-    # criteria                                   # new value if TRUE
+    # 基準                                   # 基準が TRUE の場合 delay_cat に指定される値
     days_onset_hosp < 2                        ~ "<2 days",
     days_onset_hosp >= 2 & days_onset_hosp < 5 ~ "2-5 days",
     days_onset_hosp >= 5                       ~ ">5 days",
@@ -72,82 +67,77 @@ linelist <- linelist %>%
     TRUE                                       ~ "Check me"))  
 ```
 
+#### 初期値の順序 {.unnumbered}
 
-#### Default value order {.unnumbered}  
-
-As created with `case_when()`, the new column `delay_cat` is a categorical column of class Character - *not* yet a factor. Thus, in a frequency table, we see that the unique values appear in a default alpha-numeric order - an order that does not make much intuitive sense:  
+`case_when()` で作成されたように、新しい列 `delay_cat` のは、文字型クラスであり、まだ因子では[ありません]{.ul}。したがって、度数分布表では、デフォルトの英数字の順序で値が表示されます - 直感的にはあまり意味のない順序です。
 
 ```{r}
 table(linelist$delay_cat, useNA = "always")
 ```
 
-Likewise, if we make a bar plot, the values also appear in this order on the x-axis (see the [ggplot basics] page for more on **ggplot2** - the most common visualization package in R).  
+同様に、棒グラフを作成すると、値も x 軸にこの順序で表示されます（ R で最も一般的な視覚化パッケージである **ggplot2** の詳細については、\[ggplot の基礎\] ページを参照してください）。
 
 ```{r, warning=F, message=F}
 ggplot(data = linelist)+
   geom_bar(mapping = aes(x = delay_cat))
 ```
 
+## 因子型データへの変換
 
+文字や数字の列を[因子]{.ul}に変換するには、**forcats** パッケージの任意の関数を使用することができます（多くの関数は[以下](#fct_adjust)で詳しく説明します）。このパッケージをを使い因子型データに変換でき、因子レベルの特定の順序を指定することができます。たとえば、 `fct_relevel()` を使用すると、レベルの順序を手動で指定できます。関数 `as_factor()` は、それ以上の機能はなく、単に因子型データへの変換に使用されます。
 
-## Convert to factor  
+**base** R の関数である `factor()` は、列を因子に変換し、`levels =` 因数で指定された文字ベクトルにより、因子レベルの順序を手動で指定することができます。
 
-To convert a character or numeric column to class *factor*, you can use any function from the **forcats** package (many are detailed [below](#fct_adjust)). They will convert to class factor and then also perform or allow certain ordering of the levels - for example using `fct_relevel()` lets you manually specify the level order. The function `as_factor()` simply converts the class without any further capabilities.  
-
-The **base** R function `factor()` converts a column to factor and allows you to manually specify the order of the levels, as a character vector to its `levels = ` argument.  
-
-Below we use `mutate()` and `fct_relevel()` to convert the column `delay_cat` from class character to class factor. The column `delay_cat` is created in the [Preparation](#fct_newcat) section above. 
+以下では、`mutate()` と `fct_relevel()` を使用して、列 `delay_cat` を文字型データから因子型データに変換します。列 `delay_cat` は、上記の[準備](#fct_newcat)セクションで作成されされたものです。
 
 ```{r}
 linelist <- linelist %>%
   mutate(delay_cat = fct_relevel(delay_cat))
 ```
 
-*The unique "values" in this column are now considered "levels" of the factor.*  The levels have an *order*, which can be printed with the **base** R function `levels()`, or alternatively viewed in a count table via `table()` from **base** R or `tabyl()` from **janitor**. By default, the order of the levels will be alpha-numeric, as before. Note that `NA` is not a factor level.  
+[ここで、この列の "値"（重複のない形で取り出された値）は、因子の "レベル" と見なされます。]{.ul}レベルには順序があり、これは**base** R 関数 `levels()` で確認するか、**base** R の `table()` または **janitor** の `tabyl()` でカウントテーブルでとして表示することもできます。デフォルトでは、レベルの順序は以前と同様に英数字になります。 `NA` は因子レベルではないことに注意してください。
 
 ```{r}
 levels(linelist$delay_cat)
 ```
 
-The function `fct_relevel()` has the additional utility of allowing you to manually specify the level order. Simply write the level values in order, in quotation marks, separated by commas, as shown below. Note that the spelling must exactly match the values. If you want to create levels that do not exist in the data, use [`fct_expand()` instead](#fct_add)).  
+`fct_relevel()` 関数を使ってレベルの順序を手動で指定することもできます。以下のように、レベルの値を引用符で囲み、カンマで区切って順番に記述するだけです。スペルは値と正確に一致する必要があることに注意してください。データに存在しないレベルを作成する場合は、代わりに [代わりに fct_expand()](#fct_add) を使用してください。
 
 ```{r}
 linelist <- linelist %>%
   mutate(delay_cat = fct_relevel(delay_cat, "<2 days", "2-5 days", ">5 days"))
 ```
 
-We can now see that the levels are ordered, as specified in the previous command, in a sensible order.  
+これで、前のコマンドで指定したように、レベルが感覚的に並べられることが確認できます。
 
 ```{r}
 levels(linelist$delay_cat)
 ```
 
-Now the plot order makes more intuitive sense as well.  
+これで、プロットの順序もより直感的に理解できるようになりました。
 
 ```{r, warning=F, message=F}
 ggplot(data = linelist)+
   geom_bar(mapping = aes(x = delay_cat))
 ```
 
+## レベルの追加または削除
 
-## Add or drop levels  
+### レベルの追加 {#fct_add .unnumbered}
 
-### Add {#fct_add .unnumbered}
-If you need to add levels to a factor, you can do this with `fct_expand()`. Just write the column name followed by the new levels (separated by commas). By tabulating the values, we can see the new levels and the zero counts. You can use `table()` from **base** R, or `tabyl()` from **janitor**:  
+因子にレベルを追加する必要がある場合、 `fct_expand()` で実行することができます。列名の後に新しいレベル（コンマで区切る）を入力するだけです。値を表にすることで、新しく指定されたレベルとそのレベルのゼロカウントが確認できます。**base** Rの `table()` や、**janitor** の `tabyl()` で表を表示できます。
 
 ```{r}
 linelist %>% 
   mutate(delay_cat = fct_expand(delay_cat, "Not admitted to hospital", "Transfer to other jurisdiction")) %>% 
-  tabyl(delay_cat)   # print table
+  tabyl(delay_cat)   # 表の表示
 ```
 
+注: 欠損値（`NA`）を簡単にレベルとして追加するための特別な **forcats** 関数があります。以下の[欠損値](#fct_missing)に関するセクションを参照してください。
 
-Note: there is a special **forcats** function to easily add missing values (`NA`) as a level. See the section on [Missing values](#fct_missing) below.  
+### レベルの削除 {.unnumbered}
 
-
-### Drop {.unnumbered}  
-
-If you use `fct_drop()`, the "unused" levels with zero counts will be dropped from the set of levels. The levels we added above ("Not admitted to a hospital") exists as a level but no rows actually have those values. So they will be dropped by applying `fct_drop()` to our factor column:  
+`fct_drop()` を使用すると、カウントがゼロの "未使用" レベルがレベルのセットから削除されます。上記で追加したレベル（"入院していない"）はレベルとして存在しますが、実際にその値を持つ行はありません。したがって、因子列に `fct_drop()` を適用すると、こういった値は削除されます。
 
 ```{r}
 linelist %>% 
@@ -155,54 +145,46 @@ linelist %>%
   tabyl(delay_cat)
 ```
 
+## レベルの順序の調整 {#fct_adjust}
 
+パッケージ **forcats** には、因子のレベルの順序を簡単に調整するための便利な関数があります（列が因子型データとして定義された後）。
 
+これらの関数は、次の2つの文脈で因子列に適用できます。
 
-## Adjust level order {#fct_adjust} 
+1)  通常通り、データフレームの列に対しての適用（その後のデータ利用時に利用できるようにします）\
+2)  [プロット内で]{.ul}*、*変更がプロット内でのみ適用されるようにします
 
-The package **forcats** offers useful functions to easily adjust the order of a factor's levels (after a column been defined as class factor): 
+### 手動での調整 {.unnumbered}
 
-These functions can be applied to a factor column in two contexts:  
+この関数は、因子レベルを手動で順序付けるために使用されます。非因子列で使用された場合、その列は最初に因子型データに変換される。
 
-1) To the column in the data frame, as usual, so the transformation is available for any subsequent use of the data  
-2) *Inside of a plot*, so that the change is applied only within the plot  
+括弧の中にまず因子列名を記入し、次に以下のどちらかを記入します。
 
+-   希望する順序のすべてのレベル（文字ベクトル `c()` として）、または\
+-   1つのレベルで - `after =` 引数を使用し配置が指定されます
 
-
-### Manually {.unnumbered} 
-
-This function is used to manually order the factor levels. If used on a non-factor column, the column will first be converted to class factor.  
-
-Within the parentheses first provide the factor column name, then provide either:  
-
-* All the levels in the desired order (as a character vector `c()`), or  
-* One level and it's corrected placement using the `after = ` argument  
-
-Here is an example of redefining the column `delay_cat` (which is already class Factor) and specifying all the desired order of levels.  
+ここで、列 `delay_cat`（これはすでに因子型データである）を再定義し、希望するレベルの順序をすべて指定する例を示します。
 
 ```{r}
-# re-define level order
+# レベルの順序を再定義する
 linelist <- linelist %>% 
   mutate(delay_cat = fct_relevel(delay_cat, c("<2 days", "2-5 days", ">5 days")))
 ```
 
-If you only want to move one level, you can specify it to `fct_relevel()` alone and give a number to the `after = ` argument to indicate where in the order it should be. For example, the command below shifts "<2 days" to the second position: 
+1つのレベルのみを移動する場合は、それを `fct_relevel()` にて単独で指定し、`after =` 引数に番号を指定し、順序のどこに配置するかを指定することが可能です。例えば、以下のコマンドでは、"\<2 days" を2番目の位置に移動させます。
 
 ```{r, eval=F}
-# re-define level order
+# レベルの順序を再定義する
 linelist %>% 
   mutate(delay_cat = fct_relevel(delay_cat, "<2 days", after = 1)) %>% 
   tabyl(delay_cat)
 ```
 
+### プロット内で {.unnumbered}
 
+**forcats** コマンドを使用して、データフレーム内、またはプロット内でのみレベルの順序を設定できます。`ggplot()` プロットコマンド[内で]{.ul}列名を "指定" するコマンドを使用することにより、反転/レベル変換/等をそのプロット内でのみ適用させることができます。
 
-
-### Within a plot {.unnumbered}  
-
-The **forcats** commands can be used to set the level order in the data frame, or only within a plot. By using the command to "wrap around" the column name *within* the `ggplot()` plotting command, you can reverse/relevel/etc. the transformation will only apply within that plot.  
-
-Below, two plots are created with `ggplot()` (see the [ggplot basics] page). In the first, the `delay_cat` column is mapped to the x-axis of the plot, with it's default level order as in the data `linelist`. In the second example it is wrapped within `fct_relevel()` and the order is changed in the plot.  
+以下に、 `ggplot()` を使用して2つのプロットを作成します（\[ggplotの基礎\] ページを参照）。最初の例では、 `delay_cat` の列がプロットの x 軸にプロットされ、データ `linelist` のようにデフォルトのレベルオーダーで表示されます。2番目の例では、`fct_relevel()` の内で `delay_cat` の列が指定され、プロットの中で順序が変更されています。
 
 ```{r, echo =F}
 linelist <- linelist %>% 
@@ -210,70 +192,58 @@ linelist <- linelist %>%
 
 ```
 
-
-
 ```{r, warning=F, message=F, out.width = c('50%', '50%'), fig.show='hold'}
-# Alpha-numeric default order - no adjustment within ggplot
+# 英数字のデフォルトの順序- ggplot 内での調整なし
 ggplot(data = linelist)+
     geom_bar(mapping = aes(x = delay_cat))
 
-# Factor level order adjusted within ggplot
+# ggplot 内で調整された因子レベルの順序
 ggplot(data = linelist)+
   geom_bar(mapping = aes(x = fct_relevel(delay_cat, c("<2 days", "2-5 days", ">5 days"))))
 ```
 
-Note that default x-axis title is now quite complicated - you can overwrite this title with the **ggplot2** `labs()` argument.  
+デフォルトの x 軸のタイトルが非常に複雑になっていることに注意してください。このタイトルは **ggplot2** の `labs()` 引数で上書きすることができます。
 
+### 反転 {.unnumbered}
 
+レベルの順番を逆にしたい場合は、因子を `fct_rev()` で囲むだけです。
 
+プロットの凡例[のみ]{.ul}を反転し、実際の因子レベルは反転させたくない場合は、`guides()` を使用して反転できることに注意してください（\[ggplot の基礎\] を参照）。
 
-### Reverse {.unnumbered}  
+### 頻度別 {.unnumbered}
 
-It is rather common that you want to reverse the level order. Simply wrap the factor with `fct_rev()`.  
+値がデータに表示される頻度で並べ替えるには、`fct_infreq()` を使用します。欠損値(`NA`)は、明示的なレベルに変換されない限り、自動的に最後に含まれます（[このセクション](#fct_missing)を参照）。さらに `fct_rev()` で囲むと、順序を反転することができます。
 
-Note that if you want to reverse *only* a plot legend but not the actual factor levels, you can do that with `guides()` (see [ggplot tips]).  
-
-
-
-
-### By frequency {.unnumbered}  
-
-To order by frequency that the value appears in the data, use `fct_infreq()`. Any missing values (`NA`) will automatically be included at the end, unless they are converted to an explicit level (see [this section](#fct_missing)). You can reverse the order by further wrapping with `fct_rev()`.  
-
-This function can be used within a `ggplot()`, as shown below.  
+この関数は、以下に示すように、`ggplot()` 内で使用できます。
 
 ```{r, out.width = c('50%', '50%', '50%'), fig.show='hold', warning=F, message=F}
-# ordered by frequency
+# 頻度順に並べる
 ggplot(data = linelist, aes(x = fct_infreq(delay_cat)))+
   geom_bar()+
   labs(x = "Delay onset to admission (days)",
        title = "Ordered by frequency")
 
-# reversed frequency
+# 頻度順を反転させる
 ggplot(data = linelist, aes(x = fct_rev(fct_infreq(delay_cat))))+
   geom_bar()+
   labs(x = "Delay onset to admission (days)",
        title = "Reverse of order by frequency")
 ```
 
+### 出現順序別 {.unnumbered}
 
-### By appearance {.unnumbered}  
+`fct_inorder()` を使用して、最初の行から開始して、データ内の出現順序と一致するようにレベルの順序を設定します。この関数は、データフレーム内のデータを配列し（`arrange()` を用いて）、因子の順序を設定する場合に有効です。
 
-Use `fct_inorder()` to set the level order to match the order of appearance in the data, starting from the first row. This can be useful if you first carefully `arrange()` the data in the data frame, and then use this to set the factor order.  
+### 別の列の要約統計別 {.unnumbered}
 
+`fct_reorder()` を使用して、列のレベルを[別の列の要約統計量で]{.ul}並べ替えることができます。視覚的にも、プロット上でバーやポイントが安定して上昇または下降するような美しいプロットになります。
 
+以下の例では、x 軸は `delay_cat`、y 軸は数値列 `ct_blood`（サイクル閾値）です。ボックスプロットでは、 `delay_cat` グループごとの CT 値の分布を示しています。グループの中央値CT値の昇順でボックスプロットを並べ替えます。
 
-
-### By summary statistic of another column {.unnumbered}  
-
-You can use `fct_reorder()` to order the levels of one column *by a summary statistic of another column*. Visually, this can result in pleasing plots where the bars/points ascend or descend steadily across the plot.  
-
-In the examples below, the x-axis is `delay_cat`, and the y-axis is numeric column `ct_blood` (cycle-threshold value). Box plots show the CT value distribution by `delay_cat` group. We want to order the box plots in ascending order by the group median CT value. 
-
-In the first example below, the default order alpha-numeric level order is used. You can see the box plot heights are jumbled and not in any particular order. In the second example, the `delay_cat` column (mapped to the x-axis) has been wrapped in `fct_reorder()`, the column `ct_blood` is given as the second argument, and "median" is given as the third argument (you could also use "max", "mean", "min", etc). Thus, the order of the levels of `delay_cat` will now reflect ascending median CT values of each `delay_cat` group's median CT value. This is reflected in the second plot - the box plots have been re-arranged to ascend. Note how `NA` (missing) will appear at the end, unless converted to an explicit level.  
+以下の最初の例では、デフォルトの順序の英数字レベルの順序が使用されています。ボックスプロットの高さが乱雑で、特定の順序ではないことがわかります。2番目の例では、 `delay_cat` 列（x 軸にプロットされている）が `fct_reorder()`で指定され、列 `ct_blood` が2番目の引数として指定され、"median" が3番目の引数として指定されています（"max"、"mean"、"min"など）。したがって、 `delay_cat` のレベルの順序は、各 `delay_cat` グループの中央値 CT 値の昇順の中央値 CT 値を反映するようになります。これは2番目のプロットに反映されています - ボックスプロットは上昇するように再配置されています。明示的なレベルに変換されない限り、最後に `NA` （欠損値）が表示されることに注意。
 
 ```{r, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
-# boxplots ordered by original factor levels
+# 元の因子レベル順で並べられたボックスプロット
 ggplot(data = linelist)+
   geom_boxplot(
     aes(x = delay_cat,
@@ -285,7 +255,7 @@ ggplot(data = linelist)+
   theme(legend.position = "none")
 
 
-# boxplots ordered by median CT value
+# CT 値の中央値順に並べられた箱ひげ図
 ggplot(data = linelist)+
   geom_boxplot(
     aes(x = fct_reorder(delay_cat, ct_blood, "median"),
@@ -297,41 +267,37 @@ ggplot(data = linelist)+
   theme(legend.position = "none")
 ```
 
-Note in this example above there are no steps required prior to the `ggplot()` call - the grouping and calculations are all done internally to the ggplot command.  
+この例では、 `ggplot()` 呼び出しの前に必要なステップがないことに注意してください - グループ化と計算は、すべて ggplot コマンドの内部で行われています。
 
+### "終了" 値別 {.unnumbered}
 
-### By "end" value {.unnumbered}  
+グループ化された折れ線グラフには、`fct_reorder2()` を使用してください。プロットの "終わり" にある線の縦方向の順序と一致するようにレベル（したがって凡例）を順序付けます。"最大の x 値に関連付けられた y 値で並べ替え" ます。
 
-Use `fct_reorder2()` for grouped line plots. It orders the levels (and therefore the *legend*) to align with the vertical ordering of the lines at the "end" of the plot. Technically speaking, it "orders by the y-values associated with the largest x values."  
-
-For example, if you have lines showing case counts by hospital over time, you can apply `fct_reorder2()` to the `color = ` argument within `aes()`, such that the vertical order of hospitals appearing in the legend aligns with the order of lines at the terminal end of the plot. Read more in the [online documentation](https://forcats.tidyverse.org/reference/fct_reorder.html).  
+たとえば、時間の経過に伴う病院ごとの症例数を示す線がある場合、 `aes()` の`color =` 引数に`fct_reorder2()` を適用して、凡例に現れる病院の縦の順序がプロットの終端の線の順序と一致するようにすることができます。 詳しくは、[オンラインドキュメント](https://forcats.tidyverse.org/reference/fct_reorder.html)をご覧ください。
 
 ```{r, warning=F, message=F}
-epidemic_data <- linelist %>%         # begin with the linelist   
-    filter(date_onset < as.Date("2014-09-21")) %>%    # cut-off date, for visual clarity
-    count(                                            # get case counts per week and by hospital
+epidemic_data <- linelist %>%         # linelistから始める   
+    filter(date_onset < as.Date("2014-09-21")) %>%    # 見やすくするためのカットオフ日を指定
+    count(                                            # 週ごとおよび病院ごとの症例数を取得する
       epiweek = lubridate::floor_date(date_onset, "week"),  
       hospital                                            
     ) 
   
-ggplot(data = epidemic_data)+                       # start plot
-  geom_line(                                        # make lines
+ggplot(data = epidemic_data)+                       # プロットを開始
+  geom_line(                                        # 折れ線グラフを作る
     aes(
-      x = epiweek,                                  # x-axis epiweek
-      y = n,                                        # height is number of cases per week
-      color = fct_reorder2(hospital, epiweek, n)))+ # data grouped and colored by hospital, with factor order by height at end of plot
+      x = epiweek,                                  # x-軸 エピウィーク
+      y = n,                                        # y-軸は1週間あたりの症例数
+      color = fct_reorder2(hospital, epiweek, n)))+ # 病院ごとにグループ化および色付けされたデータ、プロット終了時の高さによる因子順
   labs(title = "Factor levels (and legend display) by line height at end of plot",
-       color = "Hospital")                          # change legend title
+       color = "Hospital")                          # 凡例のタイトルを変更する
 ```
 
+## 欠損値 {#fct_missing}
 
+因子の列に `NA` 値がある場合は、`fct_explicit_na()` を使用して "Missing" などの名前付きレベルに簡単に変換できます。NA 値は、デフォルトで因子のレベルオーダーの最後に "(Missing)" に変換されます。引数 `na_level =` でレベル名を調整することができます。
 
-
-## Missing values {#fct_missing}  
-
-If you have `NA` values in your factor column, you can easily convert them to a named level such as "Missing" with `fct_explicit_na()`. The `NA` values are converted to "(Missing)" at the end of the level order by default. You can adjust the level name with the argument `na_level = `.  
-
-Below, this opertation is performed on the column `delay_cat` and a table is printed with `tabyl()` with `NA` converted to "Missing delay".  
+以下では、この操作を `delay_cat` 列に対して行い、`NA` を "Missing delay "に変換した表を `tabyl()` で表示する。
 
 ```{r}
 linelist %>% 
@@ -339,33 +305,28 @@ linelist %>%
   tabyl(delay_cat)
 ```
 
+## レベルを組み合わせる
 
+### 手動で {.unnumbered}
 
+`fct_recode()` を使い、レベルの表示を手動で調整することができます。これは、**dplyr** 関数 `recode()`（\[データクリーニングと主要関数\] を参照）に似ていますが、この関数は新しい因子レベルを作成できます。因子に `recode()` を使用する場合、新しく因子として指定された値は以前に許容レベルとして設定されていない限り、拒否されます。
 
+このツールは、複数のレベルに同じく新たに因子として指定された値を割り当てることにより、レベルを "結合" するためにも使用できます。ここでは、情報が失われないように注意してください。この組み合わせのステップを新しい列で行うことを検討してください（既存の列を上書きしないでください）。
 
-## Combine levels  
+`fct_recode()` の構文は `recode()` とは異なります。`recode()` は`OLD = NEW` を使用しますが、`fct_recode()` は `NEW = OLD` を使用します。
 
+`delay_cat` の現在のレベルは次のとおりです。
 
-### Manually {.unnumbered}  
-
-You can adjust the level displays manually manually with `fct_recode()`. This is like the **dplyr** function `recode()` (see [Cleaning data and core functions]), but it allows the creation of new factor levels. If you use the simple `recode()` on a factor, new re-coded values will be rejected unless they have already been set as permissible levels. 
-
-This tool can also be used to "combine" levels, by assigning multiple levels the same re-coded value. Just be careful to not lose information! Consider doing these combining steps in a new column (not over-writing the existing column).  
-
-`fct_recode()` has a different syntax than `recode()`. `recode()` uses `OLD = NEW`, whereas `fct_recode()` uses `NEW = OLD`.     
-
-The current levels of `delay_cat` are:  
 ```{r, echo=F}
 linelist <- linelist %>% 
   mutate(delay_cat = fct_relevel(delay_cat, "<2 days", after = 0))
 ```
 
-
 ```{r}
 levels(linelist$delay_cat)
 ```
 
-The new levels are created using syntax `fct_recode(column, "new" = "old", "new" = "old", "new" = "old")` and printed:  
+新しいレベルは、構文 `fct_recode(column, "new" = "old", "new" = "old", "new" = "old")` を使用して作成されます。
 
 ```{r}
 linelist %>% 
@@ -377,8 +338,7 @@ linelist %>%
   tabyl(delay_cat)
 ```
 
-Here they are manually combined with `fct_recode()`. Note there is no error raised at the creation of a new level "Less than 5 days".  
-
+ここでは、それらを手動で `fct_recode()` と組み合わせています。新しいレベル "Less than 5 days" の作成時にエラーが発生しないことに注意してください。
 
 ```{r, warning=F, message=F}
 linelist %>% 
@@ -390,124 +350,111 @@ linelist %>%
   tabyl(delay_cat)
 ```
 
+### "その他" として縮小 {.unnumbered}
 
-
-
-
-### Reduce into "Other" {.unnumbered}  
-
-You can use `fct_other()` to manually assign factor levels to an "Other" level. Below, all levels in the column `hospital`, aside from "Port Hospital" and "Central Hospital", are combined into "Other". You can provide a vector to either `keep = `, or `drop = `. You can change the display of the "Other" level with `other_level = `.  
+`fct_other()` を使用して、因子レベルを "その他" レベルに手動で割り当てることができます。以下では、"Port Hospital" と "Central Hospital" を除く、`hospital` 列のすべてのレベルが "その他" にまとめられています。（`keep =`）または（`drop =`）のいずれかを使用してベクトルで指定できます。`other_level =` で "その他" レベルの表示を変更できます。
 
 ```{r}
 linelist %>%    
-  mutate(hospital = fct_other(                      # adjust levels
+  mutate(hospital = fct_other(                      # レベルの
     hospital,
-    keep = c("Port Hospital", "Central Hospital"),  # keep these separate
-    other_level = "Other Hospital")) %>%            # All others as "Other Hospital"
-  tabyl(hospital)                                   # print table
+    keep = c("Port Hospital", "Central Hospital"),  # これらを別々にキープする
+    other_level = "Other Hospital")) %>%            # 他のすべては "Other Hospital" として 
+  tabyl(hospital)                                   # 表を表示
 
 ```
 
+### 頻度が少ないレベルを組み合わせる {.unnumbered}
 
+`fct_lump()` を用いて、最も頻度の低い因子レベルを自動的に結合することができます。
 
+多くの低頻度のレベルを "その他" グループに "ひとまとめ" にするには、以下のいずれかを行います。
 
-### Reduce by frequency {.unnumbered}
+-   保持したいグループの数として `n =` を設定します。 最も頻度の高い n 個のレベルが保持され、他のすべてのレベルは "その他" に結合されます。\
+-   維持したいレベル以上の閾値頻度の割合として、 `prop =` を設定します。それ以外の値は "その他" に結合されます。
 
-You can combine the least-frequent factor levels automatically using `fct_lump()`.  
-
-To "lump" together many low-frequency levels into an "Other" group, do one of the following:  
-
-* Set `n = ` as the number of groups you want to keep. The n most-frequent levels will be kept, and all others will combine into "Other".  
-* Set `prop = ` as the threshold frequency proportion for levels above which you want to keep. All other values will combine into "Other".  
-
-You can change the display of the "Other" level with `other_level = `. Below, all but the two most-frequent hospitals are combined into "Other Hospital".  
+`other_level =` で "その他" レベルの表示を変更できます。 以下では、最も頻度の高い2つの病院を除くすべての病院が "Other Hospital" に統合されています。
 
 ```{r, warning=F, message=F}
 linelist %>%    
-  mutate(hospital = fct_lump(                      # adjust levels
+  mutate(hospital = fct_lump(                      # レベルの調整
     hospital,
-    n = 2,                                          # keep top 2 levels
-    other_level = "Other Hospital")) %>%            # all others as "Other Hospital"
-  tabyl(hospital)                                   # print table
+    n = 2,                                          # 上位2レベルをキープ
+    other_level = "Other Hospital")) %>%            # 他のすべては "Other Hospital" として
+  tabyl(hospital)                                   # 表を表示
 
 ```
 
+, warn ## Show all levels
 
+因子を使用する利点の1つは、データセットに実際に存在する値に関係なく、プロットの凡例や表の外観を標準化することです。
 
+多くの図表を作成する場合（複数の法域に対応するためなど）、データの完成度や構成が異なっていても、凡例や表が同じように表示されるようにしたいものです。
 
-, warn
-## Show all levels  
+### プロット内で {.unnumbered}
 
-One benefit of using factors is to standardise the appearance of plot legends and tables, regardless of which values are actually present in a dataset. 
+`ggplot()` の図では、該当する`scale_xxxx()` 関数に `drop = FALSE` の引数を追加するだけです。データ中に存在するかどうかにかかわらず、すべての因子レベルが表示されます。因子列のレベルが `fill =` で表示される場合、scale_fill_discrete() で `drop = FALSE` を指定すると、以下のようになります。レベルが `x =` （x 軸に対して） `color =` または `size =` で表示される場合は、それに応じて `scale_color_discrete()` または `scale_size_discrete()` で指定します。
 
-If you are preparing many figures (e.g. for multiple jurisdictions) you will want the legends and tables to appear identically even with varying levels of data completion or data composition.  
-
-### In plots {.unnumbered}  
-
-In a `ggplot()` figure, simply add the argument `drop = FALSE` in the relevant `scale_xxxx()` function. All factor levels will be displayed, regardless of whether they are present in the data. If your factor column levels are displayed using `fill = `, then in scale_fill_discrete() you include `drop = FALSE`, as shown below. If your levels are displayed with `x = ` (to the x-axis) `color = ` or `size = ` you would provide this to `scale_color_discrete()` or `scale_size_discrete()` accordingly.  
-
-This example is a stacked bar plot of age category, by hospital. Adding `scale_fill_discrete(drop = FALSE)` ensures that all age groups appear in the legend, even if not present in the data. 
+この例は、病院ごとの年齢カテゴリの積み上げ棒グラフです。`scale_fill_discrete(drop = FALSE)`を追加すると、データに存在しない場合でも、すべての年齢グループが凡例に表示されるようになります。
 
 ```{r}
 ggplot(data = linelist)+
   geom_bar(mapping = aes(x = hospital, fill = age_cat)) +
-  scale_fill_discrete(drop = FALSE)+                        # show all age groups in the legend, even those not present
+  scale_fill_discrete(drop = FALSE)+                        # すべての年齢層を凡例に表示する
   labs(
     title = "All age groups will appear in legend, even if not present in data")
 ```
 
-### In tables {.unnumbered}  
+### 表で {.unnumbered}
 
-Both the **base** R `table()` and `tabyl()` from **janitor** will show all factor levels (even unused levels).  
+**janitor** の `tabyl()` と **base** R の `table()` の両方では、すべての因子レベル（未使用レベルも）が表示されます
 
-If you use `count()` or `summarise()` from **dplyr** to make a table, add the argument `.drop = FALSE` to include counts for all factor levels even those unused.  
+**dplyr** の `count()` や `summarise()` を使って表を作成する場合は、引数 `.drop = FALSE` を追加して、使われていないものも含めてすべての因子レベルのカウントを含めるようにします。
 
-Read more in the [Descriptive tables] page, or at the [scale_discrete documentation](https://ggplot2.tidyverse.org/reference/scale_discrete.html), or the [count() documentation](https://dplyr.tidyverse.org/reference/count.html). You can see another example in the [Contact tracing] page.  
+詳細については、\[記述統計表の作り方\] のページ、[scale_discrete についての説明](https://ggplot2.tidyverse.org/reference/scale_discrete.html)、または [count() についての説明](https://dplyr.tidyverse.org/reference/count.html)を参照してください。\[接触者の追跡\] のページで別の例を見ることができます。
 
+## エピウィーク
 
-## Epiweeks  
+エピウィークの作成方法については、\[データのグループ化\] のページで詳しく説明していますので、そちらをご覧ください。\
+また、\[日付型データ\] のページでは、エピウィークの作成方法と書式を紹介していますので、あわせてご覧ください。
 
-Please see the extensive discussion of how to create epidemiological weeks in the [Grouping data] page.  
-Please also see the [Working with dates] page for tips on how to create and format epidemiological weeks.  
+### プロット内でのエピウィーク {.unnumbered}
 
+エピウィークを作成してプロットに表示することが目的である場合は、\[データのグループ化\] のページで説明したように、**lubridate** の `floor_date()` で簡単に行うことができます。これにより得られる値は、YYYY-MM-DD 形式の日付クラスになります。この列をプロットで使用する場合、日付は正しく順序付けられ、レベルや因子への変換を気にする必要はありません。以下の発症日の `ggplot()` ヒストグラムを参照してください。
 
-### Epiweeks in a plot {.unnumbered}  
+このアプローチでは、 `scale_x_date()` を使用して軸上の日付の[表示]{.ul}を調整できます。詳細については、\[流行曲線（エピカーブ）\] のページを参照してください。
 
-If your goal is to create epiweeks to display in a plot, you can do this simply with **lubridate**'s `floor_date()`, as explained in the [Grouping data] page. The values returned will be of class Date with format YYYY-MM-DD. If you use this column in a plot, the dates will naturally order correctly, and you do not need to worry about levels or converting to class Factor. See the `ggplot()` histogram of onset dates below.  
-
-In this approach, you can adjust the *display* of the dates on an axis with `scale_x_date()`. See the page on [Epidemic curves] for more information. You can specify a "strptime" display format to the `date_labels = ` argument of `scale_x_date()`. These formats use "%" placeholders and are covered in the [Working with dates] page. Use "%Y" to represent a 4-digit year, and either "%W" or "%U" to represent the week number (Monday or Sunday weeks respectively).  
+`scale_x_date()` の `date_labels =` 引数に "strptime" 表示形式を指定できます。これらのフォーマットは "%" プレースホルダーを使用し、\[日付型データ\]のページで説明されています。"％Y" を使用して4桁の年を表し、"％W" または "％U" を使用して週番号（それぞれ月曜日または日曜日の週）を表します。
 
 ```{r, warning=F, message=F}
 linelist %>% 
-  mutate(epiweek_date = floor_date(date_onset, "week")) %>%  # create week column
-  ggplot()+                                                  # begin ggplot
-  geom_histogram(mapping = aes(x = epiweek_date))+           # histogram of date of onset
-  scale_x_date(date_labels = "%Y-W%W")                       # adjust disply of dates to be YYYY-WWw
+  mutate(epiweek_date = floor_date(date_onset, "week")) %>%  # 週の列を作成
+  ggplot()+                                                  # ggplotを開始
+  geom_histogram(mapping = aes(x = epiweek_date))+           # 発症日のヒストグラム
+  scale_x_date(date_labels = "%Y-W%W")                       # 日付の表示をYYYY-WWwに調整
 ```
 
+### データ内のエピウィーク {.unnumbered}
 
-### Epiweeks in the data {.unnumbered}  
+ただし、ファクタリングの目的がプロット[ではない]{.ul}場合は、次の2つの方法のいずれかを使うことができます。
 
-However, if your purpose in factoring is *not* to plot, you can approach this one of two ways:  
+1)  [表示を細かく制御するには]{.ul}、[データフレーム自体の中で]{.ul} **lubridate** エピウィークの列（YYYY-MM-DD）を目的の表示形式（YYYY-WWw）に変換してから、因子型データに変換します。
 
-1) *For fine control over the display*, convert the **lubridate** epiweek column (YYYY-MM-DD) to the desired display format (YYYY-WWw) *within the data frame itself*, and then convert it to class Factor.  
-
-First, use `format()` from **base** R to convert the date display from YYYY-MM-DD to YYYY-Www display (see the [Working with dates] page). In this process the class will be converted to character. Then, convert from character to class Factor with `factor()`.  
-
+まず、**base** R の `format()` を使用して、日付表示を YYYY-MM-DD から YYYY-Www 表示に変換します（\[日付型データ\] のページを参照）。このプロセスでは、クラスは文字型データに変換されます。 次に、`factor()`を使用し文字型データから因子型データに変換します。
 
 ```{r}
 linelist <- linelist %>% 
-  mutate(epiweek_date = floor_date(date_onset, "week"),       # create epiweeks (YYYY-MM-DD)
-         epiweek_formatted = format(epiweek_date, "%Y-W%W"),  # Convert to display (YYYY-WWw)
-         epiweek_formatted = factor(epiweek_formatted))       # Convert to factor
+  mutate(epiweek_date = floor_date(date_onset, "week"),       # エピウィークを作成する（YYYY-MM-DD）
+         epiweek_formatted = format(epiweek_date, "%Y-W%W"),  # （YYYY-WWw）表示に変換
+         epiweek_formatted = factor(epiweek_formatted))       # 因子に変換
 
-# Display levels
+# レベルの表示
 levels(linelist$epiweek_formatted)
 ```
 
-<span style="color: red;">**_DANGER:_** If you place the weeks ahead of the years ("Www-YYYY") ("%W-%Y"), the default alpha-numeric level ordering will be incorrect (e.g. 01-2015 will be before 35-2014). You could need to manually adjust the order, which would be a long painful process.</span>  
+[[危険:]{.ul} 週を年（"Www-YYYY"）より前に配置すると（"%W-%Y"）、デフォルトの英数字レベルの順序がおかしくなります（例：01-2015は35-2014より前になる）。順序を手動で調整する必要がある場合がありますが、これは非常に面倒なプロセスになります。]{style="color: red;"}
 
-2) *For fast default display*, use the **aweek** package and it's function `date2week()`. You can set the `week_start = ` day, and if you set `factor = TRUE` then the output column is an ordered factor. As a bonus, the factor includes levels for *all* possible weeks in the span - even if there are no cases that week.  
+2)  [デフォルトの表示を高速化するには]{.ul}、**aweek** パッケージとその関数 `date2week()` を使用します。`week_start =` を設定でき、`factor = TRUE` を設定すると、アウトプットされる列は順序付けられた因子になります。また、その週に症例がない場合でも、因子には期間内の[すべての]{.ul}可能な週が含まれます。
 
 ```{r, eval=F}
 df <- linelist %>% 
@@ -516,12 +463,11 @@ df <- linelist %>%
 levels(df$epiweek)
 ```
 
-See the [Working with dates] page for more information about **aweek**. It also offers the reverse function `week2date()`.  
-
-
+**aweek** については、\[日付型データ\] のページを参照してください。また、逆関数の `week2date()` についても触れられています。
 
 <!-- ======================================================= -->
-## Resources {} 
 
-R for Data Science page on [factors](https://r4ds.had.co.nz/factors.html)  
-[aweek package vignette](https://cran.r-project.org/web/packages/aweek/vignettes/introduction.html)
+## 資料
+
+[R for Data Science のページ - 因子型データについて](https://r4ds.had.co.nz/factors.html)\
+[aweek パッケージについて](https://cran.r-project.org/web/packages/aweek/vignettes/introduction.html)
