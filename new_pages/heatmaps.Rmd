@@ -376,7 +376,7 @@ ggplot(data = agg_weeks)+
   
   # 日付軸
   scale_x_date(
-    expand = c(0,0),             # 両端の余分なスペースを削除remove extra space on sides
+    expand = c(0,0),             # 両端の余分なスペースを削除
     date_breaks = "2 weeks",     # 2週間ごとの日付ラベルを指定
     date_labels = "%d\n%b")+     # 月の上に日付を表示 (\n は改行を示す)
   
@@ -387,7 +387,7 @@ ggplot(data = agg_weeks)+
     legend.title = element_text(size=12, face="bold"),
     legend.text  = element_text(size=10, face="bold"),
     legend.key.height = grid::unit(1,"cm"),           # 凡例の高さの指定
-    legend.key.width  = grid::unit(0.6,"cm"),         # 凡例の幅さの指定
+    legend.key.width  = grid::unit(0.6,"cm"),         # 凡例の幅の指定
     
     axis.text.x = element_text(size=12),              # 軸のテキストサイズの指定
     axis.text.y = element_text(vjust=0.2),            # 軸のテキストの場所の調整
@@ -409,85 +409,85 @@ ggplot(data = agg_weeks)+
 
 <!-- ======================================================= -->
 
-### Ordered y-axis {.unnumbered}
+### y軸の順番の調整 {.unnumbered}
 
-Currently, the facilities are ordered "alpha-numerically" from the bottom to the top. If you want to adjust the order the y-axis facilities, convert them to class factor and provide the order. See the page on \[Factors\] for tips.
+現在、施設は下から上へ「アルファベット順」に並んでいます。y軸の施設の順番を調整したい場合は、因子型に変換して順番を指定してください。詳細は\[因子\]のページを参照して下さい。
 
-Since there are many facilities and we don't want to write them all out, we will try another approach - ordering the facilities in a data frame and using the resulting column of names as the factor level order. Below, the column `location_name` is converted to a factor, and the order of its levels is set based on the total number of reporting days filed by the facility across the whole time-span.
+施設数が多く、全てを書き出すのは大変なので、別の方法として、データフレームに施設を並べ、その結果得られる名前の列を因子レベルの順序とすることを試みます。以下では、`location_name` 列を因子に変換し、そのレベルの順序を、全期間における施設ごとの報告日の合計数に基づいて設定します。
 
-To do this, we create a data frame which represents the total number of reports per facility, arranged in ascending order. We can use this vector to order the factor levels in the plot.
+そのために、まず施設ごとの総報告数を昇順に並べたデータフレームを作成します。このベクトルを使って、プロットにおける因子レベルの順序を決めることが出来ます。
 
 ```{r}
 facility_order <- agg_weeks %>% 
   group_by(location_name) %>% 
   summarize(tot_reports = sum(n_days_reported, na.rm=T)) %>% 
-  arrange(tot_reports) # ascending order
+  arrange(tot_reports) # 昇順
 ```
 
-See the data frame below:
+データフレームは以下のようになります：
 
 ```{r, echo=F}
 DT::datatable(facility_order, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
 ```
 
-Now use a column from the above data frame (`facility_order$location_name`) to be the order of the factor levels of `location_name` in the data frame `agg_weeks`:
+ここで、上記のデータフレームの列（`facility_order$location_name`）を使用して、データフレーム `agg_weeks` における `location_name` の因子レベルの順序とします。
 
 ```{r, warning=F, message=F}
-# load package 
+# パッケージのロード
 pacman::p_load(forcats)
 
-# create factor and define levels manually
+# 因子を作成して、レベルを決める
 agg_weeks <- agg_weeks %>% 
   mutate(location_name = fct_relevel(
     location_name, facility_order$location_name)
     )
 ```
 
-And now the data are re-plotted, with location_name being an ordered factor:
+そして、今度は location_name が順序付きの因子となるように、データを再プロットします。
 
 ```{r, message=FALSE, warning=FALSE}
 ggplot(data = agg_weeks)+ 
   
-  # show data as tiles
+  # データをタイルで表示
   geom_tile(
     aes(x = week,
         y = location_name,
         fill = p_days_reported),      
-    color = "white")+                 # white gridlines
+    color = "white")+                 # 罫線を白に指定
   
   scale_fill_gradient(
     low = "orange",
     high = "darkgreen",
     na.value = "grey80")+
   
-  # date axis
+  # 日付軸
   scale_x_date(
-    expand = c(0,0),             # remove extra space on sides
-    date_breaks = "2 weeks",     # labels every 2 weeks
-    date_labels = "%d\n%b")+     # format is day over month (\n in newline)
+    expand = c(0,0),             # 両端の余分なスペースを削除
+    date_breaks = "2 weeks",     # 2週間ごとの日付ラベルを指定
+    date_labels = "%d\n%b")+     # 月の上に日付を表示 (\n は改行を示す)
   
-  # aesthetic themes
-  theme_minimal()+                                  # simplify background
+  # テーマ
+  theme_minimal()+                                  # 背景を簡潔にする
   
   theme(
     legend.title = element_text(size=12, face="bold"),
     legend.text  = element_text(size=10, face="bold"),
-    legend.key.height = grid::unit(1,"cm"),           # height of legend key
-    legend.key.width  = grid::unit(0.6,"cm"),         # width of legend key
+    legend.key.height = grid::unit(1,"cm"),           # 凡例の高さの指定
+    legend.key.width  = grid::unit(0.6,"cm"),         # 凡例の幅の指定
     
-    axis.text.x = element_text(size=12),              # axis text size
-    axis.text.y = element_text(vjust=0.2),            # axis text alignment
+    axis.text.x = element_text(size=12),              # 軸のテキストサイズの指定
+    axis.text.y = element_text(vjust=0.2),            # 軸のテキストの場所の調整
     axis.ticks = element_line(size=0.4),               
-    axis.title = element_text(size=12, face="bold"),  # axis title size and bold
+    axis.title = element_text(size=12, face="bold"),  # 軸のタイトルのサイズの指定と太字フォントの指定
     
-    plot.title = element_text(hjust=0,size=14,face="bold"),  # title right-aligned, large, bold
-    plot.caption = element_text(hjust = 0, face = "italic")  # caption right-aligned and italic
+    plot.title = element_text(hjust=0,size=14,face="bold"),  # タイトルを右揃えにして、サイズを大きく、太字にする
+    plot.caption = element_text(hjust = 0, face = "italic")  # 脚注を右揃えにしてイタリック体にする
     )+
   
-  # plot labels
+  # 凡例
   labs(x = "Week",
        y = "Facility name",
-       fill = "Reporting\nperformance (%)",           # legend title, because legend shows fill
+       fill = "Reporting\nperformance (%)",           # 凡例のタイトルを指定
        title = "Percent of days per week that facility reported data",
        subtitle = "District health facilities, May-July 2020",
        caption = "7-day weeks beginning on Mondays.")
@@ -495,63 +495,63 @@ ggplot(data = agg_weeks)+
 
 <!-- ======================================================= -->
 
-### Display values {.unnumbered}
+### 値の表示 {.unnumbered}
 
-You can add a `geom_text()` layer on top of the tiles, to display the actual numbers of each tile. Be aware this may not look pretty if you have many small tiles!
+タイルの上に `geom_text()`レイヤーを追加して、各タイルの数値を表示することが出来ます。小さなタイルがたくさんある場合、小さくてはっきり見えないかも知れないので注意して下さい!
 
-The following code has been added: `geom_text(aes(label = p_days_reported))`. This adds text onto every tile. The text displayed is the value assigned to the argument `label =`, which in this case has been set to the same numeric column `p_days_reported` that is also used to create the color gradient.
+以下のコードを追加しています： `geom_text(aes(label = p_days_reported))` これは、各タイルにテキストで数値を追加します。表示される数字は、引数 `label =` に割り当てられた値で、以下の例では色のグラデーションを作成するためにも使用されているのと同じ数値列 `p_days_reported` を指定しています。
 
 ```{r, message=FALSE, warning=FALSE}
 ggplot(data = agg_weeks)+ 
   
-  # show data as tiles
+  # データをタイルで表示
   geom_tile(
     aes(x = week,
         y = location_name,
         fill = p_days_reported),      
-    color = "white")+                 # white gridlines
+    color = "white")+                 # 罫線を白に指定
   
-  # text
+  # テキスト
   geom_text(
     aes(
       x = week,
       y = location_name,
-      label = p_days_reported))+      # add text on top of tile
+      label = p_days_reported))+      # タイルの上に数値を表示
   
-  # fill scale
+  # タイルの塗りつぶし
   scale_fill_gradient(
     low = "orange",
     high = "darkgreen",
     na.value = "grey80")+
   
-  # date axis
+  # 日付軸
   scale_x_date(
-    expand = c(0,0),             # remove extra space on sides
-    date_breaks = "2 weeks",     # labels every 2 weeks
-    date_labels = "%d\n%b")+     # format is day over month (\n in newline)
+    expand = c(0,0),             # 両端の余分なスペースを削除
+    date_breaks = "2 weeks",     # 2週間ごとの日付ラベルを指定
+    date_labels = "%d\n%b")+     # 月の上に日付を表示 (\n は改行を示す)
   
-  # aesthetic themes
-  theme_minimal()+                                    # simplify background
+  # テーマ
+  theme_minimal()+                                    # 背景を簡潔にする
   
   theme(
     legend.title = element_text(size=12, face="bold"),
     legend.text  = element_text(size=10, face="bold"),
-    legend.key.height = grid::unit(1,"cm"),           # height of legend key
-    legend.key.width  = grid::unit(0.6,"cm"),         # width of legend key
+    legend.key.height = grid::unit(1,"cm"),           # 凡例の高さの指定
+    legend.key.width  = grid::unit(0.6,"cm"),         # 凡例の幅の指定
     
-    axis.text.x = element_text(size=12),              # axis text size
-    axis.text.y = element_text(vjust=0.2),            # axis text alignment
+    axis.text.x = element_text(size=12),              # 軸のテキストサイズの指定
+    axis.text.y = element_text(vjust=0.2),            # 軸のテキストの場所の調整
     axis.ticks = element_line(size=0.4),               
-    axis.title = element_text(size=12, face="bold"),  # axis title size and bold
+    axis.title = element_text(size=12, face="bold"),  # 軸のタイトルのサイズの指定と太字フォントの指定
     
-    plot.title = element_text(hjust=0,size=14,face="bold"),  # title right-aligned, large, bold
-    plot.caption = element_text(hjust = 0, face = "italic")  # caption right-aligned and italic
+    plot.title = element_text(hjust=0,size=14,face="bold"),  # タイトルを右揃えにして
+    plot.caption = element_text(hjust = 0, face = "italic")  # 脚注を右揃えにしてイタリック体にする
     )+
   
-  # plot labels
+  # 凡例
   labs(x = "Week",
        y = "Facility name",
-       fill = "Reporting\nperformance (%)",           # legend title, because legend shows fill
+       fill = "Reporting\nperformance (%)",           # 凡例のタイトルを指定
        title = "Percent of days per week that facility reported data",
        subtitle = "District health facilities, May-July 2020",
        caption = "7-day weeks beginning on Mondays.")
@@ -559,7 +559,7 @@ ggplot(data = agg_weeks)+
 
 <!-- ======================================================= -->
 
-## Resources
+## リソース
 
 [scale_fill_gradient()](https://ggplot2.tidyverse.org/reference/scale_gradient.html)
 
