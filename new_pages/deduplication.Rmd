@@ -1,11 +1,11 @@
 
-# 重複排除 {}  
+# 重複データの排除 {}  
 
 ```{r, out.width=c("50%"), echo=F}
 knitr::include_graphics(here::here("images", "deduplication.png"))
 ```
 
-このページでは、重複排除に関する以下のテクニックを扱います：  
+このページでは、重複データの排除に関する以下のテクニックを扱います：  
 
 1. 重複する行の特定と削除  
 2. 各行のグループから特定の行（最小値や最大値など）のみを残す「行のスライス」  
@@ -18,7 +18,7 @@ knitr::include_graphics(here::here("images", "deduplication.png"))
 
 ### パッケージの読み込み {.unnumbered}
 
-このコードチャンクは、このページに必要なパッケージのロードを示しています。このハンドブックでは **pacman** の `p_load()` を利用しています。これは必要に応じてパッケージをインストールする <u>と同時に</u>、パッケージをロードします。また、インストールされているパッケージを **base** R の `library()` でロードすることもできます。R のパッケージについては、[R の基礎知識](#basics)のページを参照してください。  
+このコードチャンクは、このページに必要なパッケージのロードを示しています。このハンドブックでは **pacman** の `p_load()` を利用しています。これは必要に応じてパッケージのインストールとロードを<u>と同時に</u>行います。また、インストールされているパッケージを **base** R の `library()` でロードすることもできます。R のパッケージについては、[R の基礎](#basics)のページを参照してください。  
 
 ```{r}
 pacman::p_load(
@@ -55,7 +55,7 @@ obs <- data.frame(
 ```
 
 
-#### これがデータフレームです {#dedup_data .unnumbered}  
+#### これが元のデータセットです {#dedup_data .unnumbered}  
 
 上部のフィルターボックスを使って、各人の記録を確認します。  
 
@@ -67,12 +67,12 @@ DT::datatable(obs, rownames = FALSE, filter = "top", options = list(pageLength =
 データを確認する際に注意すべき点がいくつかあります：  
 
 * 最初の 2 つのレコードは100%完全な重複で、`recordID` も重複している（コンピュータの不具合でしょう！）  
-* 2 番目の 2 行は、<u>`recordID`を除く</u>すべての列で重複している  
+* 2 番目の 2 行は、<u>`recordID` を除く</u>すべての列で重複している  
 * 何人かの人が、様々な日時に、接触者や感染者として、複数の電話での調査があったこと  
 * それぞれの調査で、その人が**今まで**症状があったかどうかを尋ねられ、この情報の一部が欠損している  
 
 
-**janitor**の`tabyl()`を使って、名前と目的を簡単にまとめました：  
+**janitor** の `tabyl()` を使って、名前と目的を簡単にまとめました：  
 
 ```{r}
 obs %>% 
@@ -105,7 +105,7 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = nrow(obs), scrollX = T), class = 'white-space: nowrap')
 ```
 
-[オリジナルデータ](#dedup_data)をご覧ください。  
+[元のデータセット](#dedup_data)をご覧ください。  
 
 しかし，`recordID`を無視して考えると，3行目と4行目の行も重複していることになります。つまり，`recordID`を<u>除く</u>すべての列で同じ値を持つことになります。関数の中で無視する列を指定するには、マイナス記号`-`を使います。  
 
@@ -137,7 +137,7 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 7, scrollX = T), class = 'white-space: nowrap')
 ```
 
-[オリジナルデータ](#dedup_data)をご覧ください。  
+[元のデータセット](#dedup_data)をご覧ください。  
 
 詳細は `?get_dupes` をご覧ください。また、こちらの[オンラインリファレンス](https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#explore-records-with-duplicated-values-for-specific-combinations-of-variables-with-get_dupes) もご参照ください。  
 
@@ -150,7 +150,7 @@ obs %>%
 ### ユニークな行のみを保持する  {.unnumbered}
 
 
-データフレームのユニークな行のみを保持するには、**dplyr** の `distinct()` を使います（[データクリーニングとコア関数]のページで説明しています）。重複している行は削除され、そのような行の最初の行だけが保持されます。デフォルトでは、"最初"とは最も上位の `rownumber` （行の上から下への順序）を意味します。その結果、ユニークな行だけが残ります。  
+データフレームのユニークな行のみを保持するには、**dplyr** の `distinct()` を使います（[データクリーニングと主要関数]のページで説明しています）。重複している行は削除され、そのような行の最初の行だけが保持されます。デフォルトでは、"最初"とは最も上位の `rownumber` （行の上から下への順序）を意味します。その結果、ユニークな行だけが残ります。  
 
 以下の例では、`recordID` という列を考慮せず`distinct()` を実行して、**2つの重複した行を削除**しています。最初の行（"adam" の行）は100%重複しており、削除されます。また、3行目（"amrish" の行）は、`recordID` を*除く*すべての列で重複しており、削除されます。その結果、`obs` データセットの n は `nrow(obs)` ではなく、`nrow(obs) - 2` になります。  
 
@@ -199,7 +199,7 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 6, scrollX = T), class = 'white-space: nowrap')
 ```
 
-[オリジナルデータ](#dedup_data)をご覧ください。  
+[元のデータセット](#dedup_data)をご覧ください。  
 
 <!-- ======================================================= -->
 ### ベクトル内の要素の重複排除 {.unnumbered}  
@@ -231,7 +231,7 @@ unique(na.omit(x))  # NAを削除
 
 **重複する行を返す**  
 
-**base** R では、データフレーム `df` の中でどの行が100%重複しているかを、`duplicated(df)` というコマンドで確認できます（行の論理ベクトルを返します）。  
+**base** R では、データフレーム `df` の中でどの行が 100% 重複しているかを、`duplicated(df)` というコマンドで確認できます（行の論理ベクトルを返します）。  
 
 したがって、サブセット `[ ]` をデータフレームに使用して、`df[duplicated(df),]` (すべての列を見るという意味のコンマを忘れないでください！)で<u>重複</u>した行を見ることもできます。 
 
@@ -274,7 +274,7 @@ obs %>% slice(c(2,4))  # 2、4 番目の行を返す
 ```
 
 
-[オリジナルデータ](#dedup_data)をご覧ください。 
+[元のデータセット](#dedup_data)をご覧ください。 
 
 いくつかのバリエーションがあります。 これらは，返す列の数と行の数を `n = ` に入れる必要があります。  
 
@@ -338,7 +338,7 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 8, scrollX = T), class = 'white-space: nowrap')
 ```
 
-上の例では、Amrish では 1 月 5 日の行だけ、また Brian では 1 月 7 日の行だけが保持されています。[オリジナルデータ](#dedup_data)をご覧ください。  
+上の例では、Amrish では 1 月 5 日の行だけ、また Brian では 1 月 7 日の行だけが保持されています。[元のデータセット](#dedup_data)をご覧ください。  
 
 
 **"タイ"を破る**  
@@ -376,7 +376,7 @@ obs %>%
 
 <span style="color: darkgreen;">**_ヒント：_** `slice_max()` や `slice_min()` を "character" の列に使用するには、それを <u>ordered</u> factor クラスに変換します！</span>
 
-[オリジナルデータ](#dedup_data)をご覧ください。  
+[元のデータセット](#dedup_data)をご覧ください。  
 
 
 <!-- ======================================================= -->
@@ -416,7 +416,7 @@ obs_marked
 DT::datatable(obs_marked, rownames = FALSE, options = list(pageLength = 8, scrollX = T), class = 'white-space: nowrap')
 ```
 
-[オリジナルデータ](#dedup_data)をご覧ください。  
+[元のデータセット](#dedup_data)をご覧ください。  
 
 <!-- ======================================================= -->
 ### 行の完全性の計算 {.unnumbered} 
@@ -449,7 +449,7 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-[オリジナルデータ](#dedup_data)をご覧ください。  
+[元のデータセット](#dedup_data)をご覧ください。  
 
 
 
@@ -514,7 +514,7 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-[オリジナルデータ](#dedup_data)をご覧ください。  
+[元のデータセット](#dedup_data)をご覧ください。  
 
 
 **ここでは、ユニークな値のみを表示します。**  
@@ -599,7 +599,7 @@ DT::datatable(cases_clean, rownames = FALSE, options = list(pageLength = 10, scr
 ```
 
 
-[オリジナルデータ](#dedup_data)をご覧ください。  
+[元のデータセット](#dedup_data)をご覧ください。  
 
 
 ## 確率的重複排除  
