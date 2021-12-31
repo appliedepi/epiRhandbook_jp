@@ -16,16 +16,16 @@ Go.Data の詳細については、Go.Data [公式ドキュメント](https://wo
 
 ```{r, message = F}
 pacman::p_load(
-  rio,          # importing data  
-  here,         # relative file pathways  
-  janitor,      # data cleaning and tables
-  lubridate,    # working with dates
-  epikit,       # age_categories() function
-  apyramid,     # age pyramids
-  tidyverse,    # data manipulation and visualization
-  RColorBrewer, # color palettes
-  formattable,  # fancy tables
-  kableExtra    # table formatting
+  rio,          # データのインポート  
+  here,         # 相対パス  
+  janitor,      # データクリーニング
+  lubridate,    # 日付型データ
+  epikit,       # age_categories() 関数
+  apyramid,     # 人口ピラミッド
+  tidyverse,    # データの処理と可視化
+  RColorBrewer, # 配色デザイン
+  formattable,  # 見やすい表の作成
+  kableExtra    #表のフォーマット整備
 )
 ```
 
@@ -49,13 +49,13 @@ pacman::p_load(
 
 <!-- ``` -->
 
-In their original form in the downloadable files, the data reflect data as provided by the Go.Data API (learn about [APIs here](#import_api)). For example purposes here, we will clean the data to make it easier to read on this page. If you are using a Go.Data instance, you can view complete instructions on how to retrieve your data [here](https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting).
+上のリンクからダウンロードしたファイルは、Go.Data API（APIの詳細については[こちら](#import_api)）が提供するデータであり、加工されていません。下のコードでは、データをインポートした後、この章で使いやすいようにデータの前処理を行います。Go.Data データの取得について、詳細が知りたい方は、[こちら](https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting) をご覧ください。
 
-Below, the datasets are imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data. We use `here()` to specify the file path - you should provide the file path specific to your computer. We then use `select()` to select only certain columns of the data, to simplify for purposes of demonstration.
+以下のコードでは、**rio** パッケージの `import()` 関数を使用し、サンプルのデータセットをインポートしています。データをインポートする方法は他にもたくさんあり、詳細を知りたい方は、 [インポートとエクスポート] (\#importing) のページを参照してください。下のコードでは、`here()` 関数を使用してファイルパスを指定していますが、コードを実行する際は、あなたのコンピュータ固有のファイルパスに変更してください。データをインポートした後、`select()` 関数を使用して特定の列のみを選択し、必要のないデータを除外します。
 
-#### Case data {.unnumbered}
+#### 感染者のデータ {.unnumbered}
 
-These data are a table of the cases, and information about them.
+このサンプルデータセットには、感染者の情報が含まれています。
 
 ```{r}
 cases <- import(here("data", "godata", "cases_clean.rds")) %>% 
@@ -63,19 +63,19 @@ cases <- import(here("data", "godata", "cases_clean.rds")) %>%
          occupation, classification, was_contact, hospitalization_typeid)
 ```
 
-Here are the `nrow(cases)` cases:
+以下は、このデータセットに含まれている `56` 人の感染者データの一覧です。
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(cases, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Contacts data {.unnumbered}
+#### 接触者のデータ {.unnumbered}
 
-These data are a table of all the contacts and information about them. Again, provide your own file path. After importing we perform a few preliminary data cleaning steps including:
+このサンプルデータセットには、接触者の連絡先と、多くの接触者追跡で必要となる情報が含まれています。下のコードを実行する際も、ファイルパスを指定してください。データをインポート後、以下の順で、データクリーニングを行います。
 
--   Set age_class as a factor and reverse the level order so that younger ages are first\
--   Select only certain column, while re-naming a one of them\
--   Artificially assign rows with missing admin level 2 to "Djembe", to improve clarity of some example visualisations
+-   `age_class` 変数を因子（ファクタ）型に設定し、若い年齢が最初に来るように並び替える\
+-   特定の列のみを選択し、選択した列のうち1つの列の名前を変更する\
+-   `admin_2_name` 変数で空欄があった場合、「Djembe」を割り当て、後ほど作成するデータ可視化の例をわかりやすくする
 
 ```{r}
 contacts <- import(here("data", "godata", "contacts_clean.rds")) %>% 
@@ -87,17 +87,17 @@ contacts <- import(here("data", "godata", "contacts_clean.rds")) %>%
   mutate(admin_2_name = replace_na(admin_2_name, "Djembe"))
 ```
 
-Here are the `nrow(contacts)` rows of the `contacts` dataset:
+以下は、このデータセットに含まれている `66` 人の接触者データの一覧です。
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(contacts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Follow-up data {.unnumbered}
+#### 接触者追跡記録のデータ {.unnumbered}
 
-These data are records of the "follow-up" interactions with the contacts. Each contact is supposed to have an encounter each day for 14 days after their exposure.
+このサンプルデータセットには、接触者調査（フォローアップ）の記録が含まれています。各接触者は、感染者との接触後 14 日間、毎日 1 回、調査担当者と連絡をとることになっています。
 
-We import and perform a few cleaning steps. We select certain columns, and also convert a character column to all lowercase values.
+このサンプルデータセットには、接触者調査（フォローアップ）の記録が含まれています。各接触者は、感染者との接触後 14 日間、毎日 1 回、調査担当者と連絡をとることになっています。データをインポートした後、特定の列を選択し、文字列変数 `followup_status` をすべて小文字に変換します。
 
 ```{r}
 followups <- rio::import(here::here("data", "godata", "followups_clean.rds")) %>% 
@@ -106,15 +106,15 @@ followups <- rio::import(here::here("data", "godata", "followups_clean.rds")) %>
   mutate(followup_status = str_to_lower(followup_status))
 ```
 
-Here are the first 50 rows of the `nrow(followups)`-row `followups` dataset (each row is a follow-up interaction, with outcome status in the `followup_status` column):
+以下では、接触者データの最初の `50` 人を表示しています。 （各行は 1 回の追跡調査の記録を表し、追跡調査の結果は `followup_status` 列に記録されています。）
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(head(followups, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Relationships data {.unnumbered}
+#### 感染者と接触者の関連データ {.unnumbered}
 
-Here we import data showing the relationship between cases and contacts. We select certain column to show.
+最後に、感染者と接触者の関連についてのデータをインポートし、特定の列のみを残します。
 
 ```{r}
 relationships <- rio::import(here::here("data", "godata", "relationships_clean.rds")) %>% 
@@ -123,33 +123,33 @@ relationships <- rio::import(here::here("data", "godata", "relationships_clean.r
          target_age, exposure_type)
 ```
 
-Below are the first 50 rows of the `relationships` dataset, which records all relationships between cases and contacts.
+以下では、インポートしたデータの最初の `50` 人を表示しています。感染者と接触者の関連についてのあらゆる情報が含まれています。
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(head(relationships, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-## Descriptive analyses
+## 記述統計
 
-You can use the techniques covered in other pages of this handbook to conduct descriptive analyses of your cases, contacts, and their relationships. Below are some examples.
+このハンドブックの他の章で説明されている分析手法やコードを使用し、感染者、接触者、そして感染者と接触者の関係について記述的な分析を行うことができます。以下に、いくつか例を示します。
 
-### Demographics {.unnumbered}
+### 人口統計 {.unnumbered}
 
-As demonstrated in the page covering [Demographic pyramids][Demographic pyramids and Likert-scales], you can visualise the age and gender distribution (here we use the **apyramid** package).
+[人口ピラミッドとリッカート尺度] (\#age-pyramid) の章で紹介したように、年齢や性別の分布を可視化することができます。（ここでは、**apyramid** パッケージを使用しています。）
 
-#### Age and Gender of contacts {.unnumbered}
+#### 接触者の年齢と性別 {.unnumbered}
 
-The pyramid below compares the age distribution of contacts, by gender. Note that contacts missing age are included in their own bar at the top. You can change this default behavior, but then consider listing the number missing in a caption.
+下の人口ピラミッドは、接触者の年齢分布を男女別に比較したものです。年齢が不明の接触者は、一番上の unknown に含まれていることに注意してください。年齢が不明の接触者を人口ピラミッドから除外することもできますが、その場合は、何人除外されたのかを、プロット下部に注意書きとして記すことをおすすめします。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(
-  data = contacts,                                   # use contacts dataset
-  age_group = "age_class",                           # categorical age column
-  split_by = "gender") +                             # gender for halfs of pyramid
+  data = contacts,                                   # 接触者サンプルデータを使用
+  age_group = "age_class",                           # 年齢変数（因子型）を指定
+  split_by = "gender") +                             # 性別による比較
   labs(
-    fill = "Gender",                                 # title of legend
-    title = "Age/Sex Pyramid of COVID-19 contacts")+ # title of the plot
-  theme_minimal()                                    # simple background
+    fill = "Gender",                                 # 凡例のタイトル
+    title = "Age/Sex Pyramid of COVID-19 contacts")+ # 図のタイトル
+  theme_minimal()                                    # 背景テーマの設定
 ```
 
 With the Go.Data data structure, the `relationships` dataset contains the ages of both cases and contacts, so you could use that dataset and create an age pyramid showing the differences between these two groups of people. The `relationships` data frame will be mutated to transform the numberic age columns into categories (see the [Cleaning data and core functions] page). We also pivot the dataframe longer to facilitate easy plotting with **ggplot2** (see [Pivoting data]).
