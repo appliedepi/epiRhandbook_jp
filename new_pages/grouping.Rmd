@@ -26,19 +26,19 @@ knitr::include_graphics(here::here("images", "Grouping_1500x500.png"))
 
 ### パッケージの読み込み {.unnumbered}
 
-以下のコードは分析に必要なパッケージの読み込みを示しています。このハンドブックでは、pacman パッケージの`p_load()`を強調しています。これは、必要があればパッケージをインストールし、使用するためにロードします。 インストールされたパッケージを**base** Rから`library()`でロードすることもできます。 Rパッケージの詳細については、 [R basics] を参照してください。
+以下のコードは分析に必要なパッケージの読み込みを示しています。このハンドブックでは、pacman パッケージの`p_load()`を強調しています。これは、必要があればパッケージをインストールし、使用するためにロードします。 インストールされたパッケージを **base** R から `library()`でロードすることもできます。 R パッケージの詳細については、 [R basics] を参照してください。
 
 ```{r}
 pacman::p_load(
   rio,       # データ読み込み
   here,      # to locate files ファイルを見つける
-  tidyverse, # データを綺麗にして、処理して、プロットする (dplyr を含む)
+  tidyverse, # データをクリーニングして、処理して、プロットする (dplyr を含む)
   janitor)   # 列と行の合計を追加する
 ```
 
 ### データのインポート {.unnumbered}
 
-エボラ出血熱の流行をシミュレートした症例のデータセットをインポートします。 もし同じようにやってみたければ、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>こちらをクリックして「綺麗な」ラインリストをダウンロードしてくださいclick </a> (.rds ファイルです)。 このデータセットは **rio** パッケージの `import()` 関数を使用してインポートされています。データをインポートするさまざまな方法については、 [Import and export] のページを参照してください。
+エボラ出血熱の流行をシミュレートした症例のデータセットをインポートします。 もし同じようにやってみたければ、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>こちらをクリックしてクリーニングされたラインリストをダウンロードしてくださいclick </a> （.rds ファイルです）。 このデータセットは **rio** パッケージの `import()` 関数を使用してインポートされています。データをインポートするさまざまな方法については、 [Import and export] のページを参照してください。
 
 ```{r, echo=F}
 linelist <- rio::import(here("data", "case_linelists", "linelist_cleaned.rds"))
@@ -48,7 +48,7 @@ linelist <- rio::import(here("data", "case_linelists", "linelist_cleaned.rds"))
 linelist <- import("linelist_cleaned.rds")
 ```
 
-`linelist` の最初の50行：
+`linelist` の最初の50 行：
 
 ```{r message=FALSE, echo=F}
 DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
@@ -58,9 +58,9 @@ DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(
 
 ## グループ化
 
-**dplyr**の関数 `group_by()` は、指定された列の値によって、行をグループ化します。複数の列が指定されている場合は、列の値の組み合わせによって、行がグループ化されます。それぞれの一意の値（または値の組み合わせ）でグループが構成されます。その後のデータセットまたは計算への変更は、各グループ内で実行されます。
+**dplyr** の関数 `group_by()` は、指定された列の値によって、行をグループ化します。複数の列が指定されている場合は、列の値の組み合わせによって、行がグループ化されます。それぞれの一意の値（または値の組み合わせ）でグループが構成されます。その後のデータセットまたは計算への変更は、各グループ内で実行されます。
 
-たとえば、次のコマンドは`linelist` を取得し、 `outcome`列の値で行をグループ化し、出力を新しいデータフレーム `ll_by_outcome` として保存します。グループ化する列は `group_by()` 関数の括弧内に書きます。
+たとえば、次のコマンドは `linelist` を取得し、 `outcome`列の値で行をグループ化し、出力を新しいデータフレーム `ll_by_outcome` として保存します。グループ化する列は `group_by()` 関数の括弧内に書きます。
 
 ```{r}
 ll_by_outcome <- linelist %>% 
@@ -82,7 +82,7 @@ ll_by_outcome
 
 グループと各グループの行数を確認するには、グループ化されたデータを `tally()` に渡します。カウントなしで一意のグループだけを表示するには `group_keys()` に渡します。
 
-下の例ではグループ化列 `outcome` の結果には、「Death」、「Recover」、`NA` の3つの一意の値があります。 `nrow(linelist %>% filter(outcome == "Death"))` の deaths, `nrow(linelist %>% filter(outcome == "Recover"))` の recover, `nrow(linelist %>% filter(is.na(outcome)))` のoutcomeの記録なしがあります。
+下の例ではグループ化列 `outcome` の結果には、「Death」、「Recover」、`NA` の 3 つの一意の値があります。 `nrow(linelist %>% filter(outcome == "Death"))` の deaths, `nrow(linelist %>% filter(outcome == "Recover"))` の recover, `nrow(linelist %>% filter(is.na(outcome)))` の outcome の記録なしがあります。
 
 ```{r}
 linelist %>% 
@@ -100,7 +100,7 @@ linelist %>%
 
 ### 新しい列 {.unnumbered}
 
-`group_by()` ステートメント内に新しいグループ化された列を作成することもできます。これは、 `group_by()` の前に `mutate()` を呼び出すのと同じです。簡単に集計するには、このスタイルが便利ですが、コードをわかりやすくするために、 `mutate()` ステップでこの列を作成してから、`group_by()`にパイプしてください。
+`group_by()` ステートメント内に新しいグループ化された列を作成することもできます。これは、 `group_by()` の前に `mutate()` を呼び出すのと同じです。簡単に集計するには、このスタイルが便利ですが、コードをわかりやすくするために、 `mutate()` ステップでこの列を作成してから、`group_by()` にパイプしてください。
 
 ```{r}
 #  group_by() コマンド内で作成された2列にもとづくｃグループデータ
@@ -110,7 +110,7 @@ linelist %>%
   tally(sort = T)
 ```
 
-### グループ化した列の追加/削除 {.unnumbered}
+### グループ化した列の追加／削除 {.unnumbered}
 
 デフォルトでは、すでにグループ化されているデータに対して `group_by()` を実行すると、古いグループが削除され、新しいグループが適用されます。既存のグループに新しいグループを追加する場合は、引数に `.add = TRUE` を含めます。
 
@@ -126,7 +126,7 @@ by_outcome_gender <- by_outcome %>%
 
 \*\* すべてのグループをキープする \*\*
 
-クラス因子の列でグループ化すると、現在データに存在しない因子のレベルが存在する可能性があります。この列でグループ化すると、デフォルトでは、存在しないレベルは削除され、グループとして含まれません。すべてのレベルが（データに存在しない場合でも）グループとして表示されるようにこれを変更するには、`group_by()`コマンドで `.drop = FALSE` を設定します。
+クラス因子の列でグループ化すると、現在データに存在しない因子のレベルが存在する可能性があります。この列でグループ化すると、デフォルトでは、存在しないレベルは削除され、グループとして含まれません。すべてのレベルが（データに存在しない場合でも）グループとして表示されるようにこれを変更するには、`group_by()` コマンドで `.drop = FALSE` を設定します。
 
 ## グループ化の解除 {.unnumbered}
 
@@ -155,9 +155,9 @@ linelist %>%
 
 `summarise()` を使用してサマリーテーブルを作成する方法の詳細については、 [Descriptive tables] ページの **dplyr** セクションを参照してください。ここではグループ化されたデータに適用したときに、その動作がどのように変化するかについて簡単に説明します。
 
-**dplyr** 関数`summarise()` (または `summarize()`) はデータフレームを受け取り、あなたの定義したサマリー統計量を含む、新しい要約データフレームに変換します。グループ化されていないデータフレームでは、サマリー統計量はすべての行から計算されます。グループ化されたデータに `summarise()` を適用すると、各グループのサマリー統計量が生成されます。
+**dplyr** 関数 `summarise()` （または `summarize()`）はデータフレームを受け取り、あなたの定義したサマリー統計量を含む、新しい要約データフレームに変換します。グループ化されていないデータフレームでは、サマリー統計量はすべての行から計算されます。グループ化されたデータに `summarise()` を適用すると、各グループのサマリー統計量が生成されます。
 
-`summarise()` の構文は、以下に示すように、新しい要約列の名前、等号、およびデータに適用する統計関数を指定します。例えば `min()`、 `max()`、 `median()`、 `sd()` などです。統計関数の中に、操作する列と関連する引数を書きます（例：na.rm = TRUE）。 `sum()` を使用して、論理条件を満たす行の数を数えることもできます（== を使用します）。You can use to count the number of rows that meet a logical criteria (with double equals `==`).
+`summarise()` の構文は、以下に示すように、新しい要約列の名前、等号、およびデータに適用する統計関数を指定します。例えば `min()`、 `max()`、 `median()`、 `sd()` などです。統計関数の中に、操作する列と関連する引数を書きます（例：na.rm = TRUE）。 `sum()` を使用して、論理条件を満たす行の数を数えることもできます（== を使用します）。
 
 以下は、グループ化されたデータなしで適用された `summarise()` の例です。返される統計は、データセット全体から生成されます。
 
@@ -186,9 +186,9 @@ linelist %>%
     n_males    = sum(gender == "m", na.rm=T))
 ```
 
-[**ヒント**： summary関数は、英国と米国の両方のスペルで機能します。summarise`()`とsummary`()`は同じ関数を呼び出します。]{style="color: darkgreen;"}
+[**ヒント**： summary 関数は、英国と米国の両方のスペルで機能します。summarise`()`と summary`()`は同じ関数を呼び出します。]{style="color: darkgreen;"}
 
-## カウントと集計 (Counts and tallies)
+## カウントと集計 （Counts and tallies）
 
 `count()` と `tally()` は同じような機能を提供しますが、異なるものです。 　`count()` と `tally()` の違いについて詳しくは、[こちら](https://dplyr.tidyverse.org/reference/tally.html) をご覧ください。
 
@@ -239,7 +239,7 @@ linelist %>%
 
 ### 総数を追加する {.unnumbered}
 
-`count()` と `summarise()`とは対照的に、`add_count()` を使用すると、[データフレームの他のすべての列を保持しつつ]{.ul}、グループごとの行数を含む新しい列 `n` を[追加]{.ul}できます。
+`count()` と `summarise()` とは対照的に、`add_count()` を使用すると、[データフレームの他のすべての列を保持しつつ]{.ul}、グループごとの行数を含む新しい列 `n` を[追加]{.ul}できます。
 
 新しい列 `n` のグループのカウント番号が、グループの各行に出力されます。デモンストレーションのために、この列を追加してから、見やすくなるように列を並べ替えています。他の例については、[filter on group size](#group_filter_grp_size)のセクションを参照してください。
 
@@ -256,7 +256,7 @@ linelist %>%
 
 ```{r}
 linelist %>%                                  # 症例のラインリスト
-  tabyl(age_cat, gender) %>%                  # 2つの列の数をクロス集計
+  tabyl(age_cat, gender) %>%                  # 2 つの列の数をクロス集計
   adorn_totals(where = "row") %>%             # 合計行を追加
   adorn_percentages(denominator = "col") %>%  # 列の分母を使用して比率に変換
   adorn_pct_formatting() %>%                  # 比率をパーセントに変換
@@ -272,9 +272,9 @@ linelist %>%                                  # 症例のラインリスト
 
 データを日付でグループ化する場合は、対象の日付単位（たとえば「日」、「疫学週」、「月」など）の列が必要です。（なければ作成する）。この列は、「日付の操作」 [Working with dates] ページの [Epidemiological weeks section](#dates_epi_wks) セクションで説明されているように、**lubridate**の `floor_date()` を使用して作成することもできます。 この列があれば **dplyr**の `count()` を使用して、これらの一意の日付で行をグループ化し、カウントすることができます。
 
-日付の処理に共通して、よく必要となる追加手順は、データに存在しない日付を追加して埋めることです。tidyrの `complete()` を使用すると、集計された日付系列の、範囲内のすべての日付単位に関して、日付が完全にそろいます。この手順がないと、ケースが報告されていない1週間はデータに表示されないかもしれません！
+日付の処理に共通して、よく必要となる追加手順は、データに存在しない日付を追加して埋めることです。tidyr の `complete()` を使用すると、集計された日付系列の、範囲内のすべての日付単位に関して、日付が完全にそろいます。この手順がないと、ケースが報告されていない 一週間はデータに表示されないかもしれません！
 
-complete（）内で、日付列を最小から最大までの一連の日付seq.Date（）として再定義します。したがって、日付が拡張されます。デフォルトでは、新しい「展開された」行のケースカウント値はNAになります。 `complete()` の引数 `fill =` と名前のリストを使用して、NA を0に設定できます。（counts列の名前がnであれば `fill = list(n = 0)` と書きます）\
+`complete（）` 内で、日付列を最小から最大までの一連の日付 `seq.Date（）`として再定義します。したがって、日付が拡張されます。デフォルトでは、新しい「展開された」行のケースカウント値はNAになります。 `complete()` の引数 `fill =` と名前のリストを使用して、NA を 0 に設定できます。（counts列の名前が n であれば `fill = list(n = 0)` と書きます）\
 詳細については `?complete` を、例については「日付の操作」 [Working with dates](#dates_epi_wks) ページを参照してください。
 
 ### ラインリストの症例を日でグループ化 {.unnumbered}
@@ -283,7 +283,7 @@ complete（）内で、日付列を最小から最大までの一連の日付seq
 
 ```{r}
 daily_counts <- linelist %>% 
-  drop_na(date_onset) %>%        # date_onsetの値がないものを削除します
+  drop_na(date_onset) %>%        # date_onset の値がないものを削除します
   count(date_onset)              # 一意な日付ごとの行数をカウントします
 ```
 
@@ -295,14 +295,14 @@ DT::datatable(daily_counts, rownames = FALSE, options = list(pageLength = 5, scr
 
 ```{r, eval=F}
 daily_counts <- linelist %>% 
-  drop_na(date_onset) %>%                 # date_onset列の値がないものを削除します
+  drop_na(date_onset) %>%                 # date_onset 列の値がないものを削除します
   count(date_onset) %>%                   # 一意な日付ごとの行数をカウントします
   complete(                               # 症例がない日もすべて表示されるようにします
     date_onset = seq.Date(                # 列を日付シーケンスとして再定義します
       from = min(date_onset, na.rm=T), 
       to = max(date_onset, na.rm=T),
       by = "day"),
-    fill = list(n = 0))                   # 新しく行を追加して列nに（デフォルトのNAの代わりに）0を表示します
+    fill = list(n = 0))  # 新しく行を追加して列 n に（デフォルトの NAの代わりに）0 を表示します
 ```
 
 ```{r message=FALSE, echo=F}
@@ -316,7 +316,7 @@ DT::datatable(daily_counts, rownames = FALSE, options = list(pageLength = 5, scr
 ```{r}
 # 週毎の症例数のデータセットを作る
 weekly_counts <- linelist %>% 
-  drop_na(date_onset) %>%                 # date_onset列の値がないものを削除します
+  drop_na(date_onset) %>%                 # date_onset 列の値がないものを削除します
   mutate(week = lubridate::floor_date(date_onset, unit = "week")) %>%  # 発症した週という新しい列
   count(week) %>%                         # データを週毎にグループ化し、グループごとに行をカウントします。
   complete(                               # ケースがない場合でも、すべての日が表示されるようにします
@@ -324,10 +324,10 @@ weekly_counts <- linelist %>%
       from = min(week, na.rm=T), 
       to = max(week, na.rm=T),
       by = "week"),
-    fill = list(n = 0))                   # 新しく行を追加して列nに（デフォルトのNAの代わりに）0を表示します
+    fill = list(n = 0))                   # 新しく行を追加して列 n に（デフォルトの NA の代わりに）0 を表示します
 ```
 
-データフレームの最初の50行は次のとおりです：
+データフレームの最初の 50 行は次のとおりです：
 
 ```{r message=FALSE, echo=F}
 DT::datatable(weekly_counts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
@@ -335,13 +335,13 @@ DT::datatable(weekly_counts, rownames = FALSE, options = list(pageLength = 5, sc
 
 ### ラインリストの症例を月でグループ化 {.unnumbered}
 
-症例を月毎に集約するには、**lubridate**パッケージの `floor_date()` をまた使用しますが、引数は `unit = "months"` です。 これにより、各日付はその月の1日に切り捨てられます。出力はDateクラスになります。 `complete()` ステップでも `by = "months"` を使用することに注意してください。
+症例を月毎に集約するには、**lubridate** パッケージの `floor_date()` をまた使用しますが、引数は `unit = "months"` です。 これにより、各日付はその月の 1 日に切り捨てられます。出力はDateクラスになります。 `complete()` ステップでも `by = "months"` を使用することに注意してください。
 
 ```{r}
 # 月毎の症例数のデータセットを作る
 monthly_counts <- linelist %>% 
   drop_na(date_onset) %>% 
-  mutate(month = lubridate::floor_date(date_onset, unit = "months")) %>%  # 新しい列、発症月の1日
+  mutate(month = lubridate::floor_date(date_onset, unit = "months")) %>%  # 新しい列、発症月の 1 日
   count(month) %>%                          # 月ごとの症例数をカウント
   complete(
     month = seq.Date(
@@ -377,7 +377,7 @@ DT::datatable(monthly_counts, rownames = FALSE, options = list(pageLength = 5, s
 
 データ内の位置に基づいて行をフィルタリングする [filters rows based on their position](https://dplyr.tidyverse.org/reference/slice.html) dplyr関数 `slice()` も、グループごとに適用できます。良い「スライス」を取得するためには、各グループ内のデータを並べ替えることを忘れないでください。
 
-たとえば、各病院から最新の5つの入院のみを取得するには、次のようにします：
+たとえば、各病院から最新の 5 つの入院のみを取得するには、次のようにします：
 
 1)  `hospital` 列ごとにラインリストをグループ化\
 2)  [各病院グループ内で]{.ul} `date_hospitalisation` を最新から古いものへ並べ替え\
@@ -413,7 +413,7 @@ linelist %>%
   select(hospital, n, everything())
 ```
 
-こうすれば「小さな」病院、たとえば500人未満の患者が入院した病院、に入院した症例列を簡単にフィルタリングできるようになります。
+こうすれば「小さな」病院、たとえば 500 人未満の患者が入院した病院、に入院した症例列を簡単にフィルタリングできるようになります。
 
 ```{r, eval=F}
 linelist %>% 
@@ -421,7 +421,7 @@ linelist %>%
   filter(n < 500)
 ```
 
-## グループ化したデータをミューテート(mutate)する
+## グループ化したデータをミューテート（mutate）する
 
 すべての列と（要約ではない）行を保持したまま、グループ統計を含む新しい列を追加するには `summarise()` ではなく、 `group_by()` の後に `mutate()` を使用します。
 
@@ -431,7 +431,7 @@ linelist %>%
 
 1)  データを病院ごとにグループ化する\
 2)  `days_onset_hosp`（入院までの遅れ）列を使って、病院全体の遅れの平均を含む新しい列を作成します\
-3)  2つの列の差を計算します
+3)  2 つの列の差を計算します
 
 デモの目的で、表示する列のみを選択 `select()` しています。
 
