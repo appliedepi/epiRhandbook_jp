@@ -152,47 +152,47 @@ apyramid::age_pyramid(
   theme_minimal()                                    # 背景テーマの設定
 ```
 
-With the Go.Data data structure, the `relationships` dataset contains the ages of both cases and contacts, so you could use that dataset and create an age pyramid showing the differences between these two groups of people. The `relationships` data frame will be mutated to transform the numberic age columns into categories (see the [Cleaning data and core functions] page). We also pivot the dataframe longer to facilitate easy plotting with **ggplot2** (see [Pivoting data]).
+他にも、感染者と接触者両方の年齢が含まれているGo.Data の感染者と接触者の関連データ（`relationships` データセット）を使用すると、感染者と接触者の年齢層の違いを表す人口ピラミッドを作成することもできます。感染者と接触者の関連データ人口ピラミッドを作成する場合は、年齢変数をカテゴリ化し、数値型から因子（ファクタ型）にする必要があります（詳しくは、 [データクリーニングと主要関数] (\#cleaning) の章を参照ください）。また、**ggplot2** で図をプロットしやすくするために、データを縦型（long型）に変換する必要があります（詳細は、 [データの縦横変換] (\#pivoting) をご覧ください）。
 
 ```{r}
 relation_age <- relationships %>% 
   select(source_age, target_age) %>% 
-  transmute(                              # transmute is like mutate() but removes all other columns not mentioned
+  transmute(                              # transmute() 関数は mutate() 関数と基本は同じだが、言及されていないすべての列を排除する機能を含む
     source_age_class = epikit::age_categories(source_age, breakers = seq(0, 80, 5)),
     target_age_class = epikit::age_categories(target_age, breakers = seq(0, 80, 5)),
     ) %>% 
-  pivot_longer(cols = contains("class"), names_to = "category", values_to = "age_class")  # pivot longer
+  pivot_longer(cols = contains("class"), names_to = "category", values_to = "age_class")  # データを縦型（long型）に変換する
 
 
 relation_age
 ```
 
-Now we can plot this transformed dataset with `age_pyramid()` as before, but replacing `gender` with `category` (contact, or case).
+変換した感染者と接触者の関連データを、先ほどと同じように `age_pyramid()` をプロットしてみましょう。ただし、 `gender` 変数を使用するのではなく、 `category` 変数（感染者か接触者のどちらであるかを示す変数）を使用する必要があります。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(
-  data = relation_age,                               # use modified relationship dataset
-  age_group = "age_class",                           # categorical age column
-  split_by = "category") +                           # by cases and contacts
+  data = relation_age,                               # 上のコードで作成したデータセットを使用
+  age_group = "age_class",                           # 年齢変数（因子型）を指定
+  split_by = "category") +                           # 感染者と接触者でグループ分け
   scale_fill_manual(
-    values = c("orange", "purple"),                  # to specify colors AND labels
+    values = c("orange", "purple"),                  # 各グループの色と名前を指定
     labels = c("Case", "Contact"))+
   labs(
-    fill = "Legend",                                           # title of legend
-    title = "Age/Sex Pyramid of COVID-19 contacts and cases")+ # title of the plot
-  theme_minimal()                                              # simple background
+    fill = "Legend",                                           # 凡例のタイトル
+    title = "Age/Sex Pyramid of COVID-19 contacts and cases")+ # 図のタイトル
+  theme_minimal()                                              # 背景テーマの設定
 ```
 
-We can also view other characteristics such as occupational breakdown (e.g. in form of a pie chart).
+また、感染者の職業の内訳など、その他の特徴も可視化することができます。（ここでは、円グラフを作成します。）
 
 ```{r, warning=F, message=F}
-# Clean dataset and get counts by occupation
+# データを前処理し、職業ごとの感染者数を産出する
 occ_plot_data <- cases %>% 
-  mutate(occupation = forcats::fct_explicit_na(occupation),  # make NA missing values a category
-         occupation = forcats::fct_infreq(occupation)) %>%   # order factor levels in order of frequency
-  count(occupation)                                          # get counts by occupation
+  mutate(occupation = forcats::fct_explicit_na(occupation),  # 欠損値を可視化する（NA を (Missing) と表示させる）
+         occupation = forcats::fct_infreq(occupation)) %>%   # 職業変数を、職業ごとの感染者数で多い方から順に並び替える
+  count(occupation)                                          # 職業ごとの感染者数を算出する
   
-# Make pie chart
+# 円グラフを作成する
 ggplot(data = occ_plot_data, mapping = aes(x = "", y = n, fill = occupation))+
   geom_bar(width = 1, stat = "identity") +
   coord_polar("y", start = 0) +
@@ -205,13 +205,13 @@ ggplot(data = occ_plot_data, mapping = aes(x = "", y = n, fill = occupation))+
         axis.text = element_blank())
 ```
 
-### Contacts per case {.unnumbered}
+### 感染者（症例）あたりの接触者数 {.unnumbered}
 
-The number of contacts per case can be an important metric to assess quality of contact enumeration and the compliance of the population toward public health response.
+感染者（症例）あたりの接触者数は、接触者を見つけるための疫学調査の質や、住民がどの程度公衆衛生施策を順守しているかを評価するための重要な指標となります。
 
-Depending on your data structure, this can be assessed with a dataset that contains all cases and contacts. In the Go.Data datasets, the links between cases ("sources") and contacts ("targets") is stored in the `relationships` dataset.
+データ構造にもよりますが、すべての感染者と接触者を含むデータセットがあれば、感染者あたりの接触者数を算出し、評価を行うことができます。Go.Dataのデータセットでは、感染者（「sources」）と接触者（「targets」）の関連は、感染者と接触者の関連データ（`relationships` データセット）に含まれています。
 
-In this dataset, each row is a contact, and the source case is listed in the row. There are no contacts who have relationships with multiple cases, but if this exists you may need to account for those before plotting (and explore them too!).
+感染者と接触者の関連データ（`relationships` データセット）では、各行が接触者の記録を示し、感染元となった感染者についての情報が記載されています。このデータセットには、複数の感染者と関連している接触者はありませんが、もし複数の感染者と関連している接触者がいる場合には、そのような接触者データを精査し、何らかの処理を行う必要があります。
 
 We begin by counting the number of rows (contacts) per source case. This is saved as a data frame.
 
