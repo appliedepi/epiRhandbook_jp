@@ -161,7 +161,7 @@ relation_age <- relationships %>%
     source_age_class = epikit::age_categories(source_age, breakers = seq(0, 80, 5)),
     target_age_class = epikit::age_categories(target_age, breakers = seq(0, 80, 5)),
     ) %>% 
-  pivot_longer(cols = contains("class"), names_to = "category", values_to = "age_class")  # データを縦型（long型）に変換する
+  pivot_longer(cols = contains("class"), names_to = "category", values_to = "age_class")  # データを縦型（long 型）に変換する
 
 
 relation_age
@@ -205,15 +205,15 @@ ggplot(data = occ_plot_data, mapping = aes(x = "", y = n, fill = occupation))+
         axis.text = element_blank())
 ```
 
-### 感染者（症例）あたりの接触者数 {.unnumbered}
+### 感染者一人当たりの接触者数 {.unnumbered}
 
-感染者（症例）あたりの接触者数は、接触者を見つけるための疫学調査の質や、住民がどの程度公衆衛生施策を順守しているかを評価するための重要な指標となります。
+感染者一人当たりの接触者数は、接触者を見つけるための疫学調査の質や、住民がどの程度公衆衛生施策を順守しているかを評価するための重要な指標となります。
 
-データ構造にもよりますが、すべての感染者と接触者を含むデータセットがあれば、感染者あたりの接触者数を算出し、評価を行うことができます。Go.Dataのデータセットでは、感染者（「sources」）と接触者（「targets」）の関連は、感染者と接触者の関連データ（`relationships` データセット）に含まれています。
+データ構造にもよりますが、すべての感染者と接触者を含むデータセットがあれば、感染者一人当たりの接触者数を算出し、評価を行うことができます。Go.Dataのデータセットでは、感染者（「sources」）と接触者（「targets」）の関連は、感染者と接触者の関連データ（`relationships` データセット）に含まれています。
 
-感染者と接触者の関連データ（`relationships` データセット）では、各行が接触者の記録を示し、感染元となった感染者についての情報が記載されています。このデータセットには、複数の感染者と関連している接触者はありませんが、もし複数の感染者と関連している接触者がいる場合には、そのような接触者データを精査し、何らかの処理を行う必要があります。
+感染者と接触者の関連データ（`relationships` データセット）では、各行が接触者の記録を示し、感染元となった感染者についての情報が記載されています。このデータセットには、複数の感染者と関連している接触者はありませんが、もし複数の感染者と関連している接触者がいる場合には、そのような接触者データを精査し、処理を行う必要があります。
 
-We begin by counting the number of rows (contacts) per source case. This is saved as a data frame.
+まず、感染者一人当たりの接触者数を算出し、データフレーム（data frame）として保存します。
 
 ```{r}
 contacts_per_case <- relationships %>% 
@@ -222,13 +222,13 @@ contacts_per_case <- relationships %>%
 contacts_per_case
 ```
 
-We use `geom_histogram()` to plot these data as a histogram.
+ここでは、 `geom_histogram()` を使用し、ヒストグラムを作成します。
 
 ```{r, warning=F, message=F}
-ggplot(data = contacts_per_case)+        # begin with count data frame created above
-  geom_histogram(mapping = aes(x = n))+  # print histogram of number of contacts per case
-  scale_y_continuous(expand = c(0,0))+   # remove excess space below 0 on y-axis
-  theme_light()+                         # simplify background
+ggplot(data = contacts_per_case)+        # 上のコードで作成したデータセットを使用
+  geom_histogram(mapping = aes(x = n))+  # 感染者一人当たりの接触者数のヒストグラムを作成
+  scale_y_continuous(expand = c(0,0))+   # y軸の0より下の余分なスペースを削除
+  theme_light()+                         # 図の背景テーマの設定
   labs(
     title = "Number of contacts per case",
     y = "Cases",
@@ -238,29 +238,31 @@ ggplot(data = contacts_per_case)+        # begin with count data frame created a
 
 ```
 
-## Contact Follow Up
+## 接触者調査（フォローアップ）
 
-Contact tracing data often contain "follow-up" data, which record outcomes of daily symptom checks of persons in quarantine. Analysis of this data can inform response strategy, identify contacts at-risk of loss-to-follow-up or at-risk of developing disease.
+ほとんどの接触者追跡データには、隔離された人の毎日の症状チェックの結果を記録した接触者調査（フォローアップ）のデータが含まれています。接触者調査の記録を分析することで、今後の公衆衛生施策の策定に役立ち、追跡できなくなる危険性のある接触者や、疾患を発症する危険性のある接触者を特定することができます。
 
-### Data cleaning {.unnumbered}
+### データの前処理 {.unnumbered}
 
-These data can exist in a variety of formats. They may exist as a "wide" format Excel sheet with one row per contact, and one column per follow-up "day". See [Pivoting data] for descriptions of "long" and "wide" data and how to pivot data wider or longer.
+接触者調査に関する情報は、様々なフォーマットで記録されています。例えば、エクセルシートに各接触者を 1 行ごとに記録し、フォローアップの結果を1日ごとに列に記録した、横型（wide 型）データなどです。縦型（long 型）データと横型（wide 型）の詳細や、データの縦横変換の方法については、 [データの縦横変換] (\#pivoting) の章を参照してください。
 
-In our Go.Data example, these data are stored in the `followups` data frame, which is in a "long" format with one row per follow-up interaction. The first 50 rows look like this:
+Go.Data からダウンロードしたデータは、接触者追跡記録のデータ（`followups` データセット）に含まれており、フォローアップの記録が各行に記載されている縦型データとなっています。
+
+以下では、接触者追跡記録データの最初の50行を表示しています。
 
 ```{r, message=FALSE, echo=FALSE}
-# display the first 50 rows of contact linelist data as a table
+# 接触者追跡記録のデータの最初の50行を表として表示する
 DT::datatable(head(followups, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-[***CAUTION:*** Beware of duplicates when dealing with followup data; as there could be several erroneous followups on the same day for a given contact. Perhaps it seems to be an error but reflects reality - e.g. a contact tracer could submit a follow-up form early in the day when they could not reach the contact, and submit a second form when they were later reached. It will depend on the operational context for how you want to handle duplicates - just make sure to document your approach clearly.]{style="color: orange;"}
+[[**注意点**]{.ul}***:*** 接触者調査（フォローアップ）に関するデータを扱う際は、重複した調査記録に注意してください。ある接触者に対し、同じ日に複数のフォローアップが誤って行われる可能性があります。例えば、調査員が接触者と連絡がとれなかった際にその記録を午前中に提出し、後に連絡できた際に 2 つ目の記録を提出することが起こりえます。重複した記録をどのように処理するかについては、調査の運用状況によりますが、重複記録を含んだデータを提示する際は、重複記録をどのように処理したかを明確に記載してください。]{style="color: orange;"}
 
-Let's *see* how many instances of "duplicate" rows we have:
+接触者追跡記録のデータ（`followups` データセット）に、重複している記録がいくつあるのか、チェックしてみましょう。
 
 ```{r}
 followups %>% 
-  count(contact_id, date_of_followup) %>%   # get unique contact_days
-  filter(n > 1)                             # view records where count is more than 1  
+  count(contact_id, date_of_followup) %>%   # contact_id 毎に、フォローアップ日の分布を算出
+  filter(n > 1)                             # 1日2回以上フォローアップが行われた日を表示
 ```
 
 In our example data, the only records that this applies to are ones missing an ID! We can remove those. But, for purposes of demonstration we will go show the steps for de-duplication so there is only one follow-up encoutner per person per day. See the page on [De-duplication] for more detail. We will assume that the most recent encounter record is the correct one. We also take the opportunity to clean the `followup_number` column (the "day" of follow-up which should range 1 - 14).
