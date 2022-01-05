@@ -261,89 +261,89 @@ DT::datatable(head(followups, 50), rownames = FALSE, options = list(pageLength =
 
 ```{r}
 followups %>% 
-  count(contact_id, date_of_followup) %>%   # contact_id 毎に、フォローアップ日の分布を算出
+  count(contact_id, date_of_followup) %>%   # 接触者ID毎に、フォローアップ日の頻度を算出
   filter(n > 1)                             # 1日2回以上フォローアップが行われた日を表示
 ```
 
-In our example data, the only records that this applies to are ones missing an ID! We can remove those. But, for purposes of demonstration we will go show the steps for de-duplication so there is only one follow-up encoutner per person per day. See the page on [De-duplication] for more detail. We will assume that the most recent encounter record is the correct one. We also take the opportunity to clean the `followup_number` column (the "day" of follow-up which should range 1 - 14).
+ここで扱っているサンプルデータでは、IDのない記録だけが該当しています。下のコードで、重複した記録を排除していきます。重複記録を排除することで、1 日に 1 人につき 1 つのフォローアップ記録のみ残るようになります。 詳細は、[重複データの排除] (\#deduplication) の章をご覧ください。ここでは、最新のフォローアップ記録が正しいものであると仮定します。また、下のコードでは、一緒に `followup_number` 列（フォローアップの「日」ごとに作成され、1 ～ 14 日まである。）をクリーニングします。
 
 ```{r, warning=F, message=F}
 followups_clean <- followups %>%
   
-  # De-duplicate
-  group_by(contact_id, date_of_followup) %>%        # group rows per contact-day
-  arrange(contact_id, desc(date_of_followup)) %>%   # arrange rows, per contact-day, by date of follow-up (most recent at top)
-  slice_head() %>%                                  # keep only the first row per unique contact id  
+  # 重複記録の排除
+  group_by(contact_id, date_of_followup) %>%        #接触者ID、フォローアップ日ごとに記録をグループ化する
+  arrange(contact_id, desc(date_of_followup)) %>%   # 接触者ID毎に、フォローアップ日の降順で記録を並び替える（日付の新しい順）
+  slice_head() %>%                                  # 接触者ID毎に、最新のフォローアップ日の記録のみ残す  
   ungroup() %>% 
   
-  # Other cleaning
-  mutate(followup_number = replace(followup_number, followup_number > 14, NA)) %>% # clean erroneous data
-  drop_na(contact_id)                               # remove rows with missing contact_id
+  # 他の前処理
+  mutate(followup_number = replace(followup_number, followup_number > 14, NA)) %>% # フォローアップ日のエラーの処理
+  drop_na(contact_id)                               # 接触者IDが欠損してる記録を排除する
 ```
 
-For each follow-up encounter, we have a follow-up status (such as whether the encounter occurred and if so, did the contact have symptoms or not). To see all the values we can run a quick `tabyl()` (from **janitor**) or `table()` (from **base** R) (see [Descriptive tables]) by `followup_status` to see the frequency of each of the outcomes.
+それぞれのフォローアップについて、フォローアップの結果（接触者と連絡が取れたか、また、連絡が取れた場合は接触者に症状があったか、等）が記録されています。**janitor** パッケージの `tabyl()` 関数、または **base** R の `table()` 関数に `followup_status` 変数を指定して実行すると、フォローアップの結果の分布が確認できます。（詳細は、[記述統計表の作り方] (\#tables-descriptive) の章をご覧ください。）
 
-In this dataset, "seen_not_ok" means "seen with symptoms", and "seen_ok" means "seen without symptoms".
+このサンプルデータセットでは、"seen_not_ok "は「いくつか症状がある」、"seen_ok "は「症状がない」という意味です。
 
 ```{r}
 followups_clean %>% 
   tabyl(followup_status)
 ```
 
-### Plot over time {.unnumbered}
+### フォローアップ状況を時系列でプロットする {.unnumbered}
 
-As the dates data are continuous, we will use a histogram to plot them with `date_of_followup` assigned to the x-axis. We can achieve a "stacked" histogram by specifying a `fill =` argument within `aes()`, which we assign to the column `followup_status`. Consequently, you can set the legend title using the `fill =` argument of `labs()`.
+日付データは連続しているので、`date_of_followup` を x 軸に指定したヒストグラムを使用し、接触者追跡記録のデータを時系列でプロットできます。`aes()` 関数内の `fill =` 引数に `followup_status` 変数を指定することで、「積み上げ型」のヒストグラムになります。`labs()` 関数内の `fill =` 引数を使用して、凡例のタイトルを作成することができます。
 
-We can see that the contacts were identified in waves (presumably corresponding with epidemic waves of cases), and that follow-up completion did not seemingly improve over the course of the epidemic.
+このサンプルデータセットを使用して作成したヒストグラムでは、接触者の分布が波状に確認され（おそらく感染者の流行の波と連動している）、フォローアップが行われていない場合が多く、流行の過程でフォローアップの達成状況が改善されていないことがわかります。
 
 ```{r, warning=F, message=F}
 ggplot(data = followups_clean)+
   geom_histogram(mapping = aes(x = date_of_followup, fill = followup_status)) +
-  scale_fill_discrete(drop = FALSE)+   # show all factor levels (followup_status) in the legend, even those not used
+  scale_fill_discrete(drop = FALSE)+   # followup_status 変数のすべての値を凡例に表示する（図に表示されていないものも含めて）
   theme_classic() +
   labs(
     x = "",
     y = "Number of contacts",
     title = "Daily Contact Followup Status",
     fill = "Followup Status",
-    subtitle = str_glue("Data as of {max(followups$date_of_followup, na.rm=T)}"))   # dynamic subtitle
+    subtitle = str_glue("Data as of {max(followups$date_of_followup, na.rm=T)}"))   # 動的なサブタイトルをつける
   
 ```
 
-[***CAUTION:*** If you are preparing many plots (e.g. for multiple jurisdictions) you will want the legends to appear identically even with varying levels of data completion or data composition. There may be plots for which not all follow-up statuses are present in the data, but you still want those categories to appear the legends. In ggplots (like above), you can specify the `drop = FALSE` argument of the `scale_fill_discrete()`. In tables, use `tabyl()` which shows counts for all factor levels, or if using `count()` from **dplyr** add the argument `.drop = FALSE` to include counts for all factor levels.]{style="color: orange;"}
+[[**注意点**]{.ul}***:*** 同一コードで複数のプロットを作成する場合（複数の管轄区域に同じプロットを提示する場合など）、データの完成度やデータの構成が異なっていても、凡例は同じように表示されるようにする必要があります。例えば、フォローアップの結果のすべてのカテゴリーがデータに含まれていない図があるかもしれませんが、含まれていない結果のカテゴリーについても凡例に表示したい場合です。上のような ggplot を使用した図では、`scale_fill_discrete()` 関数内で `drop = FALSE` に指定すると、図に表示されていないカテゴリーを含むすべてのカテゴリーを凡例に表示することができます。表の場合は、すべての因子（ファクター）レベルのカウントを表示する `tabyl()` 関数を使用するか、または、**dplyr** パッケージの `count()` 関数を使用する場合は、`.drop = FALSE` を追加し、すべての因子レベルのカウントを含めることができます。]{style="color: orange;"}
 
-### Daily individual tracking {.unnumbered}
+### フォローアップ状況を接触者ごとにプロットする {.unnumbered}
 
-If your outbreak is small enough, you may want to look at each contact individually and see their status over the course of their follow-up. Fortunately, this `followups` dataset already contains a column with the day "number" of follow-up (1-14). If this does not exist in your data, you could create it by calculating the difference between the encounter date and the date follow-up was intended to begin for the contact.
+調査対象のアウトブレイクの規模が小さい場合は、各接触者のフォローアップ状況を個別に確認したい場合があります。この接触者追跡記録のデータ（`followups` データセット）には、フォローアップの日にち「番号」を示す列がすでに含まれています（1 ～ 14 日まで一日ごとに列が作成してあります)。フォローアップ日ごとの列がデータにない場合は、曝露日（調査対象の接触者が感染者と接触した日）とその接触者に対してフォローアップを開始した日の差を計算し、1 ～ 14 日まで一日ごとに列を作成する必要があります。
 
-A convenient visualisation mechanism (if the number of cases is not too large) can be a heat plot, made with `geom_tile()`. See more details in the [heat plot] page.
+データのわかりやすい視覚化の例として（アウトブレイクの規模が大きくなければ）、`geom_tile()` 関数を用いたヒートマップがあります。詳細は、[ヒートマップ] (\#heatmaps) の章をご覧ください。
 
 ```{r, warning=F, message=F}
 ggplot(data = followups_clean)+
   geom_tile(mapping = aes(x = followup_number, y = contact_id, fill = followup_status),
-            color = "grey")+       # grey gridlines
+            color = "grey")+       # 灰色のグリッド線をひく
   scale_fill_manual( values = c("yellow", "grey", "orange", "darkred", "darkgreen"))+
   theme_minimal()+
   scale_x_continuous(breaks = seq(from = 1, to = 14, by = 1))
 ```
 
-### Analyse by group {.unnumbered}
+### フォローアップ状況をクループ別にプロットする {.unnumbered}
 
-Perhaps these follow-up data are being viewed on a daily or weekly basis for operational decision-making. You may want more meaningful disaggregations by geographic area or by contact-tracing team. We can do this by adjusting the columns provided to `group_by()`.
+このような接触者追跡に関するデータは、疫学調査上の意思決定のために日ごとまたは週ごとに閲覧されていることが多いと思います。`group_by()` 関数で指定する列を調整することにより、地域別や調査チーム別など、より意味のある集計結果をプロットすることができます。
 
 ```{r, warning=F, message=F}
 
-plot_by_region <- followups_clean %>%                                        # begin with follow-up dataset
-  count(admin_1_name, admin_2_name, followup_status) %>%   # get counts by unique region-status (creates column 'n' with counts)
+plot_by_region <- followups_clean %>%                                        # 前処理した followups のデータセットを使用する
+  count(admin_1_name, admin_2_name, followup_status) %>%   # 地域別、調査チーム別のカウントを算出する (新たに 'n' 列を作成する)
   
-  # begin ggplot()
-  ggplot(                                         # begin ggplot
-    mapping = aes(x = reorder(admin_2_name, n),     # reorder admin factor levels by the numeric values in column 'n'
-                  y = n,                            # heights of bar from column 'n'
-                  fill = followup_status,           # color stacked bars by their status
-                  label = n))+                      # to pass to geom_label()              
-  geom_col()+                                     # stacked bars, mapping inherited from above 
-  geom_text(                                      # add text, mapping inherited from above
+  # ggplot() を使用して図を作成する
+  ggplot(                                         # ggplot
+    mapping = aes(x = reorder(admin_2_name, n),     # admin_2_name の因子（ファクタ）レベルを 'n' 列のカウントをもとに並び替える
+                  y = n,                            # 'n' 列のカウントをy軸に指定する
+                  fill = followup_status,           # フォローアップの結果カテゴリーごとに色付けする
+                  label = n))+                      # geom_label() 関数用              
+  geom_col()+                                     # 積み上げ型棒グラフ
+  geom_text(                                      # テキストを追加する
     size = 3,                                         
     position = position_stack(vjust = 0.5), 
     color = "white",           
@@ -356,8 +356,8 @@ plot_by_region <- followups_clean %>%                                        # b
     title = "Contact Followup Status, by Region",
     fill = "Followup Status",
     subtitle = str_glue("Data as of {max(followups_clean$date_of_followup, na.rm=T)}")) +
-  theme_classic()+                                                                      # Simplify background
-  facet_wrap(~admin_1_name, strip.position = "right", scales = "free_y", ncol = 1)      # introduce facets 
+  theme_classic()+                                                                      # 図の背景のテーマの設定
+  facet_wrap(~admin_1_name, strip.position = "right", scales = "free_y", ncol = 1)      # facet_wrap で図の右側に admin_1_name を表示する 
 
 plot_by_region
 ```
