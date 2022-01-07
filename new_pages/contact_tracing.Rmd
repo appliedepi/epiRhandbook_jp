@@ -374,50 +374,52 @@ plot_by_region
 
 ## KPI Tables
 
-There are a number of different Key Performance Indicators (KPIs) that can be calculated and tracked at varying levels of disaggregations and across different time periods to monitor contact tracing performance. Once you have the calculations down and the basic table format; it is fairly easy to swap in and out different KPIs.
+接触者調査の成果を評価するために、進捗や目標達成状況を様々なレベルで細分化された期間で算出し、モニターすることができる主要業績評価指標（KPI）があります。KPIには多くの種類がありますが、計算方法と基本的な表のフォーマットを理解すると、様々な異なるKPIを入れたり外したりすることは非常に簡単です。
 
-There are numerous sources of contact tracing KPIs, such as this one from [ResolveToSaveLives.org](https://contacttracingplaybook.resolvetosavelives.org/checklists/metrics). The majority of the work will be walking through your data structure and thinking through all of the inclusion/exclusion criteria. We show a few examples below; using Go.Data metadata structure:
+接触者調査のKPIについては、[ResolveToSaveLives.org](https://contacttracingplaybook.resolvetosavelives.org/checklists/metrics) など、参考となる資料がたくさんあります。KPI作成の大部分は、データ構造を確認し、すべての選択/除外基準を考えることです。以下に、Go.Data のメタデータ構造を使用した例を示します。
 
-+----------------------------------------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
-| Category                                     | Indicator                                                                          | Go.Data Numerator                                                                                                                          | Go.Data Denominator   |
-+==============================================+====================================================================================+============================================================================================================================================+=======================+
-| Process Indicator - Speed of Contact Tracing | \% cases interviewed and isolated within 24h of case report                        | COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_data_entry`) \< 1 day AND (`isolation_startdate` - `date_of_data_entry`) \< 1 day | COUNT OF `case_id`    |
-+----------------------------------------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
-| Process Indicator - Speed of Contact Tracing | \% contacts notified and quarantined within 24h of elicitation                     | COUNT OF `contact_id` WHERE `followup_status` == "SEEN_NOT_OK" OR "SEEN_OK" AND `date_of_followup` - `date_of_reporting` \< 1 day          | COUNT OF `contact_id` |
-+----------------------------------------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
-| Process Indicator - Completeness of Testing  | \% new symptomatic cases tested and interviewed within 3 days of onset of symptoms | COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_onset`) \< =3 days                                                                | COUNT OF `case_id`    |
-+----------------------------------------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
-| Outcome Indicator - Overall                  | \% new cases among existing contact list                                           | COUNT OF `case_id` WHERE `was_contact` == "TRUE"                                                                                           | COUNT OF `case_id`    |
-+----------------------------------------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
++-----------------------------------------+------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
+| 視点                                    | KPI                                                                          | Go.Data 分子                                                                                                                               | Go.Data 分母          |
++=========================================+==============================================================================+============================================================================================================================================+=======================+
+| プロセスの評価 - 接触者追跡調査の迅速さ | 全感染者のうち、感染報告から24時間以内に疫学調査が行われ、隔離された者の割合 | COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_data_entry`) \< 1 day AND (`isolation_startdate` - `date_of_data_entry`) \< 1 day | COUNT OF `case_id`    |
++-----------------------------------------+------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
+| プロセスの評価 - 接触者追跡調査の迅速さ | 全接触者のうち、接触報告から24時間以内に通知され、隔離された者の割合         | COUNT OF `contact_id` WHERE `followup_status` == "SEEN_NOT_OK" OR "SEEN_OK" AND `date_of_followup` - `date_of_reporting` \< 1 day          | COUNT OF `contact_id` |
++-----------------------------------------+------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
+| プロセスの評価 - 感染症検査の完了率     | 全感染者のうち、症状発現から3日以内に検査され、疫学調査が行われた者の割合    | COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_onset`) \< =3 days                                                                | COUNT OF `case_id`    |
++-----------------------------------------+------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
+| アウトカムの評価 - 全体評価             | 全感染者のうち、感染報告前に接触者として報告されていた者の割合               | COUNT OF `case_id` WHERE `was_contact` == "TRUE"                                                                                           | COUNT OF `case_id`    |
++-----------------------------------------+------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+
 
-Below we will walk through a sample exercise of creating a nice table visual to show contact follow-up across admin areas. At the end, we will make it fit for presentation with the **formattable** package (but you could use other packages like **flextable** - see [Tables for presentation]).
+このセクションでは、接触者追跡調査状況を複数の管轄区域にわたって表示する表を作成していきます。表を作成した後、**formattable** パッケージを使用し、更に見やすく表を編集していきます。（**flextable** などの他のパッケージを使用することもできます。詳細は、[見やすい表の作り方] (\#tables-presentation) の章を参照してください。）
 
-How you create a table like this will depend on the structure of your contact tracing data. Use the [Descriptive tables] page to learn how to summarise data using **dplyr** functions.
+このような表の作成手順は、接触者の追跡記録データの構造によりって変わります。 **dplyr** パッケージを使用してデータを要約する方法についての詳細は、[記述統計表の作り方] (\#tables-descriptive) の章をご覧ください。
 
-We will create a table that will be dynamic and change as the data change. To make the results interesting, we will set a `report_date` to allow us to simulate running the table on a certain day (we pick 10th June 2020). The data are filtered to that date.
+ここでは、データの変化に合わせて連動する表を作成します。結果を面白くするために、特定の日に `report_date` （この表を提示し、疫学調査の進捗を報告する日）を設定し、表を作成します（この例では、2020年6月10日を選びます）。データは `report_date` でフィルタリングされ、`report_date` の日、または、`report_date` より以前に報告された記録のみ残ります。
 
 ```{r, warning=F, message=F}
-# Set "Report date" to simulate running the report with data "as of" this date
+# report_date (報告日)を設定する
 report_date <- as.Date("2020-06-10")
 
-# Create follow-up data to reflect the report date.
+# report_date (報告日)でデータセットをフィルタリングする
 table_data <- followups_clean %>% 
   filter(date_of_followup <= report_date)
 ```
 
-Now, based on our data structure, we will do the following:
+`report_date` でフィルタリング後、以下の手順でデータを整理し、表を作成していきます。
 
-1)  Begin with the `followups` data and summarise it to contain, for each unique contact:\
+1)  接触者追跡記録のデータ（`followups` データセット）を選択し、各接触者について、以下 3 つの関心のある指標を算出します。\
 
--   The date of latest record (no matter the status of the encounter)\
--   The date of latest encounter where the contact was "seen"\
--   The encounter status at that final "seen" encounter (e.g. with symptoms, without symptoms)\
+-   一番最近行ったフォローアップの日付（フォローアップの状況は問わない）\
+-   接触者と連絡が取れたフォローアップのうち、最も新しい日付\
+-   接触者と連絡が取れた最新のフォローアップでの、接触者の状況（例：症状あり又は症状なし）\
 
-2)  Join these data to the contacts data, which contains other information such as the overall contact status, date of last exposure to a case, etc. Also we will calculate metrics of interest for each contact such as days since last exposure\
-3)  We group the enhanced contact data by geographic region (`admin_2_name`) and calculate summary statistics per region\
-4)  Finally, we format the table nicely for presentation
+2)  ステップ 1 で作成したデータを、曝露日（感染者と接触した日）などの接触者に関する他の情報を含む接触者のデータ（`contacts` データセット）に結合します。次に、各接触者について、曝露日からの日数など、関心のある指標を算出します。\
+3)  結合したデータを、管轄区域別（`admin_2_name`）にグループ化し、管轄区域別の要約統計量を算出します。\
+4)  最後に、作成した表の形式を整えます。
 
-First we summarise the follow-up data to get the information of interest:
+では、以上の手順を実際に R で実行していきましょう。
+
+ステップ 1：接触者追跡記録のデータ（`followups` データセット）を整備し、必要な指標を算出する。
 
 ```{r, warning=F, message=F}
 followup_info <- table_data %>% 
@@ -429,13 +431,13 @@ followup_info <- table_data %>%
   ungroup()
 ```
 
-Here is how these data look:
+作成したデータセットを以下に表示します。
 
 ```{r, echo=F}
 DT::datatable(followup_info, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Now we will add this information to the `contacts` dataset, and calculate some additional columns.
+ステップ 2：次に、作成したデータセットを接触者のデータ（`contacts` データセット）に結合し、他に必要な指標を算出します。
 
 ```{r}
 contacts_info <- followup_info %>% 
@@ -447,13 +449,13 @@ contacts_info <- followup_info %>%
     )
 ```
 
-Here is how these data look. Note `contacts` column to the right, and new calculated column at the far right.
+2 つのデータセットを結合すると、データは以下のようになります。接触者のデータ（`contacts` データセット）に含まれていた列は右側に、算出した関心のある指標は一番右に表示されます。
 
 ```{r, echo=F}
 DT::datatable(contacts_info, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Next we summarise the contacts data by region, to achieve a concise data frame of summary statistic columns.
+ステップ 3：結合したデータを、管轄区域別にグループ化し、区域別に要約統計量を算出します。
 
 ```{r}
 contacts_table <- contacts_info %>% 
@@ -482,7 +484,7 @@ contacts_table <- contacts_info %>%
 DT::datatable(contacts_table, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-And now we apply styling from the **formattable** and **knitr** packages, including a footnote that shows the "as of" date.
+ステップ 4：**formattable** と **knitr** パッケージを使用し、見やすいように表を整えていきます。また、`report_date` （報告日）に関する脚注を追記します。
 
 ```{r}
 contacts_table %>%
