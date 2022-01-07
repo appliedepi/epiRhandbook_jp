@@ -372,9 +372,9 @@ plot_by_region
 
 <!-- ``` -->
 
-## KPI Tables
+## 重要業績評価指標（KPI）
 
-接触者調査の成果を評価するために、進捗や目標達成状況を様々なレベルで細分化された期間で算出し、モニターすることができる主要業績評価指標（KPI）があります。KPIには多くの種類がありますが、計算方法と基本的な表のフォーマットを理解すると、様々な異なるKPIを入れたり外したりすることは非常に簡単です。
+接触者調査の成果を評価するために、進捗や目標達成状況を様々なレベルで細分化された期間で算出し、モニターすることができる重要業績評価指標（Key Performance Indicator: KPI）があります。KPIには多くの種類がありますが、計算方法と基本的な表のフォーマットを理解すると、様々な異なるKPIを入れたり外したりすることは非常に簡単です。
 
 接触者調査のKPIについては、[ResolveToSaveLives.org](https://contacttracingplaybook.resolvetosavelives.org/checklists/metrics) など、参考となる資料がたくさんあります。KPI作成の大部分は、データ構造を確認し、すべての選択/除外基準を考えることです。以下に、Go.Data のメタデータ構造を使用した例を示します。
 
@@ -510,26 +510,26 @@ contacts_table %>%
 
 ## Transmission Matrices
 
-As discussed in the [Heat plots] page, you can create a matrix of "who infected whom" using `geom_tile()`.
+[ヒートマップ] (\#heatmaps) の章で解説したように、`geom_tile()` 関数を使用し、「誰が誰から感染したか」を可視化するヒートマップを作成することができます。
 
-When new contacts are created, Go.Data stores this relationship information in the `relationships` API endpoint; and we can see the first 50 rows of this dataset below. This means that we can create a heat plot with relatively few steps given each contact is already joined to it's source case.
+Go.Data では、接触者のデータ（`contacts` データセット）に新しい接触者が追加されると、API によって、感染者と接触者の関連データ（`relationships` データセット）に、その接触者と接触した感染者との関係情報が追加されます。`relationships` データセットには、各接触者と接触した感染者の情報が含まれているので、このデータセットを使用すると比較的簡単にヒートマップを作成することができます。以下に、`relationships` データセットの最初の 50 行を表示しています。
 
 ```{r, warning=F, message=F, echo=F}
-# display the first 50 rows of relationships data as a table
+# 最初の50行を表として表示する
 DT::datatable(head(relationships, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-As done above for the age pyramid comparing cases and contacts, we can select the few variables we need and create columns with categorical age groupings for both sources (cases) and targets (contacts).
+接触者と感染者の年齢を比較した人口ピラミッドを 25.2 記述統計のセクションで作成したように、必要な変数以外を除外し、接触者と感染者の両方について、年齢をカテゴリー化する必要があります。
 
 ```{r}
 heatmap_ages <- relationships %>% 
   select(source_age, target_age) %>% 
-  mutate(                              # transmute is like mutate() but removes all other columns
+  mutate(
     source_age_class = epikit::age_categories(source_age, breakers = seq(0, 80, 5)),
     target_age_class = epikit::age_categories(target_age, breakers = seq(0, 80, 5))) 
 ```
 
-As described previously, we create cross-tabulation;
+まず、[ヒートマップ] (\#heatmaps) の章で解説したように、クロス集計表を作成します。
 
 ```{r, warning=F, message=FALSE}
 
@@ -540,7 +540,7 @@ cross_tab <- table(
 cross_tab
 ```
 
-convert into long format with proportions;
+次に、クロス集計表を縦型（long 型）データに変換します。
 
 ```{r, warning=FALSE, message=FALSE}
 
@@ -548,31 +548,31 @@ long_prop <- data.frame(prop.table(cross_tab))
 
 ```
 
-and create a heat-map for age.
+最後に、接触者がどの年代の感染者から感染したかを表すヒートマップを作成します。
 
 ```{r, warning=F, message=F}
 
-ggplot(data = long_prop)+       # use long data, with proportions as Freq
-  geom_tile(                    # visualize it in tiles
+ggplot(data = long_prop)+       # long型データを使用（Freq変数を割合として使用）
+  geom_tile(                    # タイル型ヒートマップの作成
     aes(
-      x = target_cases,         # x-axis is case age
-      y = source_cases,     # y-axis is infector age
-      fill = Freq))+            # color of the tile is the Freq column in the data
-  scale_fill_gradient(          # adjust the fill color of the tiles
+      x = target_cases,         # x軸を接触者の年齢層に指定
+      y = source_cases,     # y軸を感染者の年齢層に指定
+      fill = Freq))+            # Freq変数でタイルを色付け
+  scale_fill_gradient(          # タイルの色の調整
     low = "blue",
     high = "orange")+
   theme(axis.text.x = element_text(angle = 90))+
-  labs(                         # labels
+  labs(                         # プロット、軸、凡例のタイトルを指定
     x = "Target case age",
     y = "Source case age",
     title = "Who infected whom",
     subtitle = "Frequency matrix of transmission events",
-    fill = "Proportion of all\ntranmsission events"     # legend title
+    fill = "Proportion of all\ntranmsission events"     # 凡例のタイトル
   )
 
 ```
 
-## Resources
+## 参考文献
 
 <https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting>
 
