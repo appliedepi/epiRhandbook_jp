@@ -1,174 +1,174 @@
 
-# R on network drives { }  
+# ネットワークドライブで R を使用する場合 {#network-drives}
 
  
 
 
 <!-- ======================================================= -->
-## Overview {  }
+## はじめに {  }
 
-Using R on network or "company" shared drives can present additional challenges. This page contains approaches, common errors, and suggestions on troubleshooting gained from our experience working through these issues. These include tips for the particularly delicate situations involving R Markdown.  
-
-
-**Using R on Network Drives: Overarching principles**  
-
-1) You must get administrator access for your computer. Setup RStudio specifically to run as administrator.  
-2) Save packages to a library on a lettered drive (e.g. "C:") when possible. Use a package library whose path begins with "\\\" as little as possible.  
-3) the **rmarkdown** package must **not** be in a "\\\" package library, as then it can't connect to TinyTex or Pandoc.  
+ネットワークドライブや会社の共有ドライブで R を使用する場合、様々な問題が発生することがあります。この章では、ネットワークドライブで R を使用した場合によくあるエラーについて解説し、筆者の経験から得たアプローチ並びに対処法を提案します。また、R Markdown に関するヒントも紹介します。
 
 
+**R をネットワークドライブで使用する場合の原則**
 
-
-## RStudio as administrator  
-
-When you click the RStudio icon to open RStudio, do so with a right-click. Depending on your machine, you may see an option to "Run as Administrator". Otherwise, you may see an option to select Properties (then there should appear a window with the option "Compatibility", and you can select a checkbox "Run as Administrator").  
+1)  お使いのコンピュータの管理者権限が必要です。RStudio を管理者として実行するように設定してください。
+2)  パッケージはできるだけ文字のあるドライブ（C: ドライブなど）のライブラリに保存してください。パスが 「\\」（バックスラッシュ）で始まるライブラリは、できるだけ使用しないでください。
+3)  **rmarkdown** パッケージは、「\\」で始まるライブラリに保存<u>しないでください</u>。「\\」で始まるライブラリに保存した場合、TinyTex や Pandoc に接続できなくなります。
 
 
 
 
-## Useful commands 
+## 管理者として RStudio を使用する
 
-Below are some useful commands when trying to troubleshoot issues using R on network drives.  
+RStudio のアイコンを右クリックし、RStudio を開くと、「管理者として実行」のオプションが表示されます。お使いのコンピュータによっては、表示されない場合があります。その場合は、プロパティ（Properties）を開いてください。プロパティを開くと、「互換性（Compatibility）」オプションのあるウィンドウが表示されるので、「管理者として実行（Run as Administrator）」のチェックボックスにチェックを入れてください。
 
-You can return the path(s) to package libraries that R is using. They will be listed in the order that R is using to install/load/search for packages. Thus, if you want R to use a different default library, you can switch the order of these paths (see below).  
 
-```{r, eval=F}
-# Find libraries
-.libPaths()                   # Your library paths, listed in order that R installs/searches. 
-                              # Note: all libraries will be listed, but to install to some (e.g. C:) you 
-                              # may need to be running RStudio as an administrator (it won't appear in the 
-                              # install packages library drop-down menu) 
-```
 
-You may want to switch the order of the package libraries used by R. For example if R is picking up a library location that begins with "\\\" and one that begins with a letter e.g. "D:". You can adjust the order of `.libPaths()` with the following code.  
 
-````{r, eval=F}
-# Switch order of libraries
-# this can effect the priority of R finding a package. E.g. you may want your C: library to be listed first
-myPaths <- .libPaths() # get the paths
-myPaths <- c(myPaths[2], myPaths[1]) # switch them
-.libPaths(myPaths) # reassign them
-```
+## 便利なコマンド
 
-If you are having difficulties with R Markdown connecting to Pandoc, begin with this code to find out where RStudio thinks your Pandoc installation is.  
+ネットワークドライブ上で R を使用している際に直面した問題のトラブルシューティングに役立つコマンドをいくつか以下に紹介します。
+
+まず、R にインストール済みのパッケージが保存されている場所（ライブラリ）を知りたい場合は、以下のコードを実行するとライブラリのパスを確認できます。パスは、R がパッケージのインストール・読み込み・検索に使用している順序で表示されます。デフォルトライブラリを変更したい場合は、パスの順序を変更することでできます。（2 つ下のコードを参照ください。）
 
 ```{r, eval=F}
-# Find Pandoc
-Sys.getenv("RSTUDIO_PANDOC")  # Find where RStudio thinks your Pandoc installation is
+# ライブラリの場所を表示する
+.libPaths()                   # ライブラリパスを表示
+                              # 注意: 表示されたパスには全てのパッケージが含まれているが、C: 等いくつかのドライブに保存されたパッケージを表示するためには、
+                              # 管理者として RStudio を実行する必要がある場合もある
+                              # （管理者として実行しない場合は、install packages libraryのドロップダウンには表示されない）
 ```
 
-If you want to see which library a package is loading from, try the below code:  
+R がパッケージを検索する際に、「\\\\」で始まるライブラリや「D:」等の文字で始まる場所に保存されたライブラリを先に検索している場合は、R が検索するライブラリの順番を入れ替える必要があります。その場合は、以下のコードで `.libPaths()` の順序を変更することができます。
 
 ```{r, eval=F}
-# Find a package
-# gives first location of package (note order of your libraries)
+# ライブラリの順序を変更する
+# 順序を変更することで、R がパッケージを検索する際の優先順位度が変更される。例えば、C: ドライブのライブラリを先に表示したい場合
+myPaths <- .libPaths() # パッケージライブラリのパスをオブジェクトにアサインする
+myPaths <- c(myPaths[2], myPaths[1]) # パスの順序を変更する
+.libPaths(myPaths) # 変更した順序のパスを再度アサインする
+```
+
+R Markdown が Pandoc に接続する際にエラーが発生した場合は、以下のコードを使用して Pandoc が RStudio のどこにインストールされているかを確認できます。
+
+```{r, eval=F}
+# Pandoc を探す
+Sys.getenv("RSTUDIO_PANDOC")  # Pandoc がどこにインストールされているか確認する
+```
+
+どのライブラリからパッケージを読み込んでいるかを知りたい場合は、以下のコードを実行してください。
+
+```{r, eval=F}
+# パッケージを探す
+# ライブラリの場所が表示される（複数のライブラリに保存されている場合は、最初のライブラリが表示される）
 find.package("rmarkdown", lib.loc = NULL, quiet = FALSE, verbose = getOption("verbose")) 
 ```
 
 
 
 <!-- ======================================================= -->
-## Troubleshooting common errors {  }
+## よくあるエラー {  }
 
 
-**"Failed to compile...tex in rmarkdown"**  
+**"Failed to compile...tex in rmarkdown" のエラーメッセージ**
 
-* Check the installation of TinyTex, or install TinyTex to C: location. See the [R basics] page on how to install TinyTex.  
+* TinyTex がインストールされているか確認してください。インストールされていない場合は、C: ドライブに TinyTex をインストールしてください。TinyTex のインストール方法については、[R の基礎](#basics) の章をご覧ください。
 
 ```{r, eval=F}
-# check/install tinytex, to C: location
+# tinytex がインストールされているか確認し、C: ドライブにインストールする
 tinytex::install_tinytex()
-tinytex:::is_tinytex() # should return TRUE (note three colons)
+tinytex:::is_tinytex() # TRUE と表示されるはず (コロンが3つ必要なことに注意)
 ```
 
 
-**Internet routines cannot be loaded**  
+**"Internet routines cannot be loaded" のエラーメッセージ**
 
-For example, `Error in tools::startDynamicHelp() : internet routines cannot be loaded`  
+例）`Error in tools::startDynamicHelp() : internet routines cannot be loaded`
 
-* Try selecting 32-bit version from RStudio via Tools/Global Options.  
-  * note: if 32-bit version does not appear in menu, make sure you are not using RStudio v1.2.  
-* Alternatively, try uninstalling R and re-installing with different bit version (32 instead of 64)
+* 32-bit 版の RStudio を試してみてください。RStudio の Tools/Global Options から 32-bit 版の R Studioに切り替えることができます。
+  * 注意：32-bit 版の RStudio が Tools/Global Options の R Sessions/R version に表示されない場合は、お使いの RStudio のバージョンが古い（v1.2）場合があります。
+* または、R をアンインストールし、32-bit 版の R をインストールしてください。
 
 
-**C: library does not appear as an option when I try to install packages manually**
+**パッケージをインストールする時に、C: ライブラリが選択できない**
 
-* Run RStudio as an administrator, then this option will appear.  
-* To set-up RStudio to always run as administrator (advantageous when using an Rproject where you don't click RStudio icon to open)... right-click the Rstudio icon 
+* 管理者として RStudio を実行してください。管理者として実行すると、C: ライブラリが表示されます。
+* RStudio を常に管理者として実行するように設定するには、RStudio アイコンを右クリックしてください。プロジェクトの RStudio アイコンをクリックして開かない R プロジェクトを開く場合に便利です。
 
-The image below shows how you can manually select the library to install a package to. This window appears when you open the Packages RStudio pane and click "Install".  
+以下の画像は、パッケージのインストール先のライブラリを手動で選択する方法を示しています。RStudio の「パッケージ （Packages）」パネルを開き、「インストール（Install）」をクリックすると表示されます。
 
 ```{r, warning=F, message=F, echo=F}
 knitr::include_graphics(here::here("images", "network_install.png"))
 ```
 
-**Pandoc 1 error**  
+**Pandoc Error 1 が表示された**  
 
-If you are getting "pandoc error 1" when knitting R Markdowns scripts on network drives:  
+R Markdown ファイルをニット（knit）する際、「pandoc error 1」が表示された場合は、以下の方法で対処してください。
 
-* Of multiple library locations, have the one with a lettered drive listed first (see codes above)  
-* The above solution worked when knitting on local drive but while on a networked internet connection  
-* See more tips here: https://ciser.cornell.edu/rmarkdown-knit-to-html-word-pdf/  
+* 複数のライブラリがある場合は、文字で始まるドライブ（C: ドライブ等）がライブラリの先頭になるように、ライブラリを並べ替えてください。（前述の「便利なコマンド」セクションを参照してください。）
+* 上記の対処法は、インターネットが繋がっている時に筆者がローカルドライブで試し、成功した対処法です。
+* 詳細については、こちら（ https://ciser.cornell.edu/rmarkdown-knit-to-html-word-pdf/ ）をご覧ください。
 
-**Pandoc Error 83**  
+**Pandoc Error 83 が表示された**  
 
-The error will look something like this: `can't find file...rmarkdown...lua...`. This means that it was unable to find this file.  
+対象のファイルが見つからなかった時に表示されるエラーです。 例）`can't find file...rmarkdown...lua...`
 
-See https://stackoverflow.com/questions/58830927/rmarkdown-unable-to-locate-lua-filter-when-knitting-to-word  
+解決法については、こちら（ https://stackoverflow.com/questions/58830927/rmarkdown-unable-to-locate-lua-filter-when-knitting-to-word ）をご覧ください。
 
-Possibilities:  
+原因としては、以下の 3 つが考えられます。
 
-1) Rmarkdown package is not installed  
-2) Rmarkdown package is not findable  
-3) An admin rights issue.  
+1) Rmarkdown パッケージがインストールされていない
+2) Rmarkdown パッケージが見つからない
+3) 管理者権限に何かしら問題がある
 
-It is possible that R is not able to find the **rmarkdown** package file, so check which library the **rmarkdown** package lives (see code above). If the package is installed to a library that in inaccessible (e.g. starts with "\\\") consider manually moving it to C: or other named drive library. Be aware that the **rmarkdown** package has to be able to connect to TinyTex installation, so can not live in a library on a network drive.
-
-
-**Pandoc Error 61**  
-
-For example: `Error: pandoc document conversion failed with error 61`  or `Could not fetch...`  
-
-* Try running RStudio as administrator (right click icon, select run as admin, see above instructions)  
-* Also see if the specific package that was unable to be reached can be moved to C: library.
-
-**LaTex error (see below)**
-
-An error like: `! Package pdftex.def Error: File 'cict_qm2_2020-06-29_files/figure-latex/unnamed-chunk-5-1.png' not found: using draft setting.` or `Error: LaTeX failed to compile file_name.tex.`  
-
-* See https://yihui.org/tinytex/r/#debugging for debugging tips.  
-* See file_name.log for more info.
+R が **rmarkdown** パッケージファイルを見つけられないことが原因でエラーが発生している可能性があるので、**rmarkdown** パッケージがどのライブラリにインストールされているか確認してください。（前述の「便利なコマンド」セクションのコードを参照ください。）アクセスできないライブラリにパッケージがインストールされている場合（例：「\\\\」で始まるライブラリ）は、パッケージを手動で C: ドライブまたは他の名前付きドライブのライブラリに移すことをおすすめします。**rmarkdown** パッケージは TinyTex インストールに接続する必要があるため、ネットワークドライブ上のライブラリには置かないでください。
 
 
-**Pandoc Error 127**  
+**Pandoc Error 61 が表示された**
 
-This could be a RAM (space) issue. Re-start your R session and try again. 
+例）`Error: pandoc document conversion failed with error 61` または `Could not fetch...`
 
+* RStudio を管理者として実行してください。（RStudio アイコンを右クリックし、「管理者として実行」を選択してください。詳細は、前述の「管理者として RStudio を実行する」セクションをご覧ください。)
+* アクセスできないライブラリにインストールされたパッケージは、C: ドライブ内のライブラリに移動してください。
 
-**Mapping network drives**
+**LaTex に関するエラー**
 
-Mapping a network drive can be risky. Consult with your IT department before attempting this.  
+例）`! Package pdftex.def Error: File 'cict_qm2_2020-06-29_files/figure-latex/unnamed-chunk-5-1.png' not found: using draft setting.` または `Error: LaTeX failed to compile file_name.tex.`
 
-A tip borrowed from this [forum discussion](https://stackoverflow.com/questions/48161177/r-markdown-openbinaryfile-does-not-exist-no-such-file-or-directory/55616529?noredirect=1#comment97966859_55616529): 
-
-How does one open a file "through a mapped network drive"?  
-
-* First, you'll need to know the network location you're trying to access.  
-* Next, in the Windows file manager, you will need to right click on "This PC" on the right hand pane, and select "Map a network drive".  
-* Go through the dialogue to define the network location from earlier as a lettered drive.  
-* Now you have two ways to get to the file you're opening. Using the drive-letter path should work.  
+* 対処法については、こちら（ <https://yihui.org/tinytex/r/#debugging> ）をご覧ください。\
+* file_name.log ファイルを確認してください。
 
 
-**Error in install.packages()**  
+**Pandoc Error 127 が表示された**
 
-If you get an error that includes mention of a "lock" directory, for example: `Error in install.packages : ERROR: failed to lock directory...`
+RAM（パソコンのメインメモリ）に関するエラーの可能性があります。実行中の R セッションをリスタート（re-start）してください。
 
-Look in your package library and you will see a folder whose name begins with "00LOCK". Try the following tips:  
 
-* Manually delete the "00LOCK" folder directory from your package library. Try installing the package again.  
-* You can also try the command `pacman::p_unlock()` (you can also put this command in the Rprofile so it runs every time project opens.). Then try installing the package again. It may take several tries.  
-* Try running RStudio in Administrator mode, and try installing the packages one-by-one.  
-* If all else fails, install the package to another library or folder (e.g. Temp) and then manually copy the package's folder over to the desired library.  
+**ネットワークドライブの割り当てに関するエラー**
+
+ネットワークドライブの割り当て（マッピング）は、重大な問題を引き起こす場合があります。割り当てが必要な場合は、割り当てる前に情報システムを担当する部署に相談してください。
+
+割り当て済のネットワークドライブにあるファイルを開く際にヒントになり得る Stack Overflow [フォーラムのコメント](https://stackoverflow.com/questions/48161177/r-markdown-openbinaryfile-does-not-exist-no-such-file-or-directory/55616529?noredirect=1#comment97966859_55616529) を下記に引用します。
+
+質問「割当済みのネットワークドライブにあるファイルを開く方法をおしえてください」に対する回答
+
+* まず、アクセスしようとしているネットワークドライブのロケーション（ネットワークアドレス）を確認します。
+* 次に、Windows のエクスプローラーを開き、左パネルにある「PC」を右クリックし、「ネットワークドライブの割当」を選択します。
+* 表示されたダイアログボックスで、先程確認したロケーション（ネットワークアドレス）をドライブレター付きのドライブとして設定します。
+* ロケーション（ネットワークアドレス）を直接指定し、ファイルを開く方法と、ドライブレター付きのネットワークドライブからファイルを開く方法の 2 通りの方法が準備できました。ドライブレター付きのネットワークドライブが機能します。
+
+
+**install.packages() に関するエラー**
+
+例）`Error in install.packages : ERROR: failed to lock directory...`
+
+エラーメッセージに「lock directory」が含まれている場合、パッケージが保存されたライブラリを開き、ライブラリに「00LOCK」と名付けられたフォルダーがあるか確認してください。「00LOCK」フォルダーがあった場合の対処法は、以下の通りです。
+
+* 「00LOCK」フォルダーをライブラリから削除し、インストールに失敗したパッケージを再度インストールする。
+* `pacman::p_unlock()` を実行し、再度パッケージをインストールする。複数回の実行を必要とするかもしれない。（`pacman::p_unlock()` を Rprofile に追加すると、R プロジェクトを開くたびに実行される。）
+* 管理者として RStudio を開き、1 つずつパッケージをインストールする。
+* 上記の 3 つの対処法のいづれも成功しなかった場合、インストールしたいパッケージを別のライブラリやフォルダー（Temp など）にインストールし、インストール後にパッケージが保存されたフォルダーを R がアクセスするライブラリに移す。
 
 
 
