@@ -13,10 +13,11 @@ knitr::include_graphics(here::here("images", "survival_analysis.png"))
 ## 概要 {}
 
 
-*生存時間解析*（survival analysis）は、個々人において観測される**_イベント時間_** (コホート研究や集団ベースの研究では**_追跡期間_**) と呼ばれる期間の後に発生する**_イベント_** (疾病の発生、疾病からの治癒、死亡、治療に反応した後の再発など) を個人または集団について記述する事に着目した方法です。イベント時間を決定するためには、起点 (組入日や診断日などを用いることができます) の時間を定義する必要があります。 
+<ul>生存時間解析</ul>（survival analysis）は、個々人において観測される**<ul>イベント時間</ul>** (コホート研究や集団ベースの研究では**<ul>追跡期間</ul>**) と呼ばれる期間の後に発生する**<ul>イベント</ul>** (疾病の発生、疾病からの治癒、死亡、治療に反応した後の再発など) を個人または集団について記述する事に着目した方法です。イベント時間を決定するためには、起点 (組入日や診断日などを用いることができます) の時間を定義する必要があります。 
 
 つまり、生存時間解析の推測対象は、起点とイベントの間の時間となります。
 近年の医学研究では、例えば治療効果を評価する臨床研究や、多種多様ながんの生存指標を評価する疫学研究などにおいて生存時間解析がよく用いられています。
+
 
 通常、その記述結果は**_生存確率_**を通じて提示されます。また、生存確率とは、興味のあるイベントが期間$t$を経過した時点で発生していない確率です。
 
@@ -25,9 +26,11 @@ knitr::include_graphics(here::here("images", "survival_analysis.png"))
 
 
 ```{r echo=F, eval=F, out.width = "80%", out.height="80%", fig.align = "center"}
+
 # Add a figure from the following chunks for the last version of the page
 # do not forget to save the output figure in "images"
 # knitr::include_graphics(here::here("images", "survanalysis.png"))
+
 ```  
 
 <!-- ======================================================= -->
@@ -40,6 +43,7 @@ R において生存時間解析を行うために最もよく用いられるパ
 このハンドブックでは、**pacman** の `p_load()` を重視しています。この関数は必要な場合はパッケージをインストールして<u>かつ</u>読み込みも行ってくれます。パッケージのインストールは R **base** の `library()` でも行うことができます。R パッケージに関する詳細な情報については、[R の基礎](#basics) のページを参照してください。 
 
 ```{r, message=FALSE, warning=FALSE}
+
 # このページで必要なパッケージのインストールと読込
 pacman::p_load(
      survival,      # 生存時間解析
@@ -53,6 +57,8 @@ pacman::p_load(
      survival,      # 生存時間解析
      survminer      # 生存時間解析：発展的な Kaplan-Meier 曲線
 )
+
+
 ```
 
 
@@ -98,6 +104,7 @@ linelist_case_data <- rio::import("linelist_cleaned.rds")
 
 ```{r }
 # linelist_case_data から新しいデータ linelist_surv を作成
+
 linelist_surv <- linelist_case_data %>% 
      
      dplyr::filter(
@@ -129,6 +136,7 @@ linelist_surv <- linelist_case_data %>%
 <span style="color: darkgreen;">**_お役立ち情報：_** 作成された変数 `futime` と `event` および `outcome` のクロス集計を行うことで、新しい列を検証することができます。生存時間解析の結果を解釈する時には、この集計に加えて追跡期間中央値を示すことは良い習慣です。</span>
 
 ```{r }
+
 summary(linelist_surv$futime)
 
 # 作成された新しいイベント変数とアウトカム変数のクロス集計
@@ -158,12 +166,14 @@ linelist_surv %>%
 <!-- For this we use the `stat.table()` function of the **Epi** package. -->
 
 ```{r}
+
 linelist_surv %>% 
      tabyl(gender, age_cat_small, show_na = F) %>% 
      adorn_totals(where = "both") %>% 
      adorn_percentages() %>% 
      adorn_pct_formatting() %>% 
      adorn_ns(position = "front")
+
 ```
 
 <!-- Epi::stat.table(  -->
@@ -242,7 +252,6 @@ head(survobj, 10)
 * イベント発生のリスクに晒された (イベントも打切りも経験していない人の) 人数 (`n.risk`)
 * イベントが発生した人数 (`n.event`)
 * 上記から求めたイベントを発生して<u>いない</u>確率 (死亡していない確率、または特定の時間まで生存する確率)
-
 * 最後に、その確率の標準誤差と信頼区間が求められ表示されます
 
 以下では、上で作成した Surv 型のオブジェクト "survobj" を反応変数とした formula を用いて KM 推定値を求めます。"~ 1" は全体の生存に対するモデルを実行することを意味します。
@@ -254,14 +263,17 @@ linelistsurv_fit <-  survival::survfit(survobj ~ 1)
 
 # 詳細をみるための要約を表示
 summary(linelistsurv_fit)
+
 ```
 
 
 関数 `summary()` を用いる際には `times` オプションを追加することができ、求めたい特定の時点における生存確率などの情報を確認することができます。
 
 ```{r print_spec_times}
+
 # 特定の時点における要約を表示
 summary(linelistsurv_fit, times = c(5, 10, 20, 30, 60))
+
 ```
 
 
@@ -273,6 +285,7 @@ summary(linelistsurv_fit, times = c(5, 10, 20, 30, 60))
 ```{r, mean_survtime}
 # linelistsurv_fit オブジェクトを平均生存時間とその標準誤差とともに表示します
 print(linelistsurv_fit, print.rmean = TRUE)
+
 ```
 
 
@@ -286,7 +299,9 @@ print(linelistsurv_fit, print.rmean = TRUE)
 これらの要素の中には重要な要素 (`cumhaz` という実数型のベクトル) があります。これは**_累積ハザード_**の図示に用いることができます。**_ハザード_**は**_瞬間イベント発生率_**です (文献を確認してください)。
 
 ```{r fit_struct}
+
 str(linelistsurv_fit)
+
 ```
 
 <!-- ======================================================= -->
@@ -299,11 +314,13 @@ KM 推定値が計算されていれば、"Kaplan--Meier 曲線"を描画でき�
 簡単な解釈を説明すると、時点0においては全ての人が生存しており生存確率は100%です。この確率は死亡が発生するにつれて時間とともに減少していきます。追跡時間が60日が経過した後の生存割合は約40%です。
 
 ```{r }
+
 plot(linelistsurv_fit, 
      xlab = "Days of follow-up",     # x 軸のラベル
      ylab = "Survival Probability",  # y 軸のラベル
      main = "Overall survival curve" # 図のタイトル
 )
+
 ```
 
 KM 推定値の信頼区間もデフォルトで描画されますが、`plot()` コマンドの `conf.int = FALSE` オプションを追加することで信頼区間を非表示にできます。
@@ -312,6 +329,7 @@ KM 推定値の信頼区間もデフォルトで描画されますが、`plot()`
 
 
 ```{r}
+
 # オリジナルのプロット
 plot(
      linelistsurv_fit,
@@ -339,7 +357,9 @@ legend(
      cex = .85,                                # 凡例テキストのサイズを定義するパラメータ
      bty = "n"                                 # 凡例にボックスを非表示
 )
+
 ```
+
 
 <!-- ======================================================= -->
 ## 生存曲線の比較
@@ -391,6 +411,7 @@ survival::survdiff(
      Surv(futime, event) ~ gender, 
      data = linelist_surv
 )
+
 ```
 
 女性と男性の生存曲線が重なっているのが分かり、ログランク検定の結果も生存状況の性差を示唆していませんでした。
@@ -400,6 +421,7 @@ survival::survdiff(
 <span style="color: orange;">**_注意：_** **ggsurvplot** 関数では survfit オブジェクト <u>に加えて</u> そのオブジェクトを作成するのに用いたデータを再度指定する必要があります。エラーメッセージが表示されてしまうので、忘れずに指定してください。</span>
 
 ```{r, warning=F, message=F}
+
 survminer::ggsurvplot(
      linelistsurv_fit_sex, 
      data = linelist_surv,          # linelistsurv_fit_sex を作成するのに用いたデータを再度指定
@@ -418,6 +440,7 @@ survminer::ggsurvplot(
      surv.median.line = "hv",       # 生存時間中央値の位置に縦と横の補助線を描画
      ggtheme = theme_light()        # シンプルなテーマを使用
 )
+
 ```
 
 
@@ -426,6 +449,7 @@ survminer::ggsurvplot(
 このケースについては、`alpha = 0.05` でのログランク検定により十分な生存確率の差があると考えることにします。葬儀により感染した患者の生存確率は他の場所で感染した患者の生存確率よりも高く、生存に対するベネフィットがあるのかもしれません。
 
 ```{r}
+
 linelistsurv_fit_source <-  survfit(
      Surv(futime, event) ~ source,
      data = linelist_surv
@@ -451,6 +475,7 @@ ggsurvplot(
      surv.median.line = "hv", 
      ggtheme = theme_light()
 )
+
 ```
 
 <!-- ======================================================= -->
@@ -484,6 +509,7 @@ Cox 回帰モデルのオブジェクトに `summary()` 関数を適用すると
 同様に、年齢群についても差があるとは言えないです。
 
 ```{r coxmodel_agesex}
+
 # Cox 回帰モデルの当てはめ
 linelistsurv_cox_sexage <-  survival::coxph(
      Surv(futime, event) ~ gender + age_cat_small, 
@@ -493,16 +519,20 @@ linelistsurv_cox_sexage <-  survival::coxph(
 # モデルの当てはめ結果の表示
 linelistsurv_cox_sexage
 
+
 # モデルの要約
 summary(linelistsurv_cox_sexage)
+
 ```
 
 
 モデルの当てはめを行い結果を見るのは面白いですが、最初に比例ハザード性の仮定が成り立つかどうかを検討しておくと、時間の節約になります。
 
 ```{r test_assumption}
+
 test_ph_sexage <- survival::cox.zph(linelistsurv_cox_sexage)
 test_ph_sexage
+
 ```
 
 
@@ -513,11 +543,13 @@ test_ph_sexage
 このモデルには連続値の説明変数 (`days_onset_hosp`) が含まれています。このような場合、パラメータ推定値の解釈は、説明変数が1単位増加したときに増加する対数相対ハザードの期待値、となります。まずは、比例ハザード性の仮定の評価を行います。
 
 ```{r coxmodel_fit_ph,  message=FALSE}
+
 # モデルの当てはめ
 linelistsurv_cox <-  coxph(
      Surv(futime, event) ~ gender + age_years + source + days_onset_hosp,
      data = linelist_surv
 )
+
 
 # 比例ハザード性の仮説検定
 linelistsurv_ph_test <- cox.zph(linelistsurv_cox)
@@ -528,6 +560,7 @@ linelistsurv_ph_test
 
 ```{r}
 survminer::ggcoxzph(linelistsurv_ph_test)
+
 ```
 
 
@@ -537,8 +570,10 @@ survminer::ggcoxzph(linelistsurv_ph_test)
 
 
 ```{r coxmodel_summary, message=FALSE}
+
 # モデルの要約を表示
 summary(linelistsurv_cox)
+
 ```
 
 
@@ -564,7 +599,9 @@ linelist_case_data %>%
 Cox 回帰モデルの結果について、**survminer package** の `ggforest()` を用いて、フォレストプロットによる可視化を行うことができます。
 
 ```{r forestp}
+
 ggforest(linelistsurv_cox, data = linelist_surv)
+
 ```
 
 <!-- ======================================================= -->
@@ -666,7 +703,9 @@ summary(bmt_td_model)
 また、**survminer パッケージ** の `ggforest()` 関数を用いて Cox 回帰モデルの結果を可視化してみます：
 
 ```{r}
+
 ggforest(bmt_td_model, data = td_dat)
+
 ```
 
 フォレストプロット、信頼区間、および p 値から分かるように、この単純なモデルにおいては死亡と急性移植片対宿主病の間に強い関連があるとは言えませんでした。
