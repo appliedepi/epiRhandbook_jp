@@ -771,9 +771,9 @@ t.test_results %>% {
   }
 ```
 
-今回は、さらにそれぞれのグループ（男性と女性）の平均値の列を追加したいと思います。
+今回は、さらにそれぞれのグループ（男性と女性）の平均値の列を追加していきます。
 
-`estimate` の要素を抽出したいのですが、問題はその中に [2 つの]{.ul}要素 （`mean in group f` と `mean in group m`）が含まれているということです。なので、`map_chr()` や `map_dbl()` を用いてベクターに変換することはできません。その代わりに、`tibble()` 内で `map()` を用いることで [tibble 内にリスト要素の列]{.ul}を作成することが出来ます！
+この場合、`estimate` という要素を抽出したいのですが、問題はその中に [2 つの]{.ul}要素 （`mean in group f` と `mean in group m`）が含まれていることです。そのため、`map_chr()` や `map_dbl()` を用いてベクターに変換することはできません。その代わり、`tibble()` 内で `map()` を用いることで [tibble 内にリスト要素の列]{.ul}を作成することができます！
 
 ```{r}
 t.test_results %>% 
@@ -783,13 +783,13 @@ t.test_results %>%
     means = map(., "estimate"))}
 ```
 
-一旦リスト要素の列が出来てしまえば、こうした "入れ子構造内のリスト要素の列" を "外に取り出す" のに役立つ **tidyr** 関数（**tidyverse** の関数の一つ）がいくつかあります。[here]() を参照するか、`vignette("rectangle")` と打ち込んでみてください。簡単に述べると：
+リスト要素の列が一度できると、このような「入れ子構造内のリスト要素の列」を「外に取り出す（"rectangle" または "un-nest"）」のに役立つ **tidyr** パッケージの関数がいくつかあります（**tidyr** パッケージは **tidyverse** パッケージに含まれている）。詳しくは、[このページ]() を参照するか、`vignette("rectangle")` を実行してください。簡単に述べると、
 
--   `unnest_wider()` ー リスト要素の列のそれぞれの要素を、列として外に出します
--   `unnest_longer()` ー リスト要素の列のそれぞれの要素を、行として外に出します
--   `hoist()` ー `unnest_wider()` と似ていますが、どの要素を入れ子構造の外に出すか指定する必要があります
+-   `unnest_wider()`：リスト要素の列のそれぞれの要素を、列として外に出します
+-   `unnest_longer()`：リスト要素の列のそれぞれの要素を、行として外に出します
+-   `hoist()`：`unnest_wider()` と似ていますが、どの要素を入れ子構造の外に出すか指定する必要があります
 
-以下では、`unnest_wider()` に tibble を渡し、tibble 内の入れ子になっているリスト要素である `means` 列を指定しています。この結果、`means` はもともとそれぞれの `means` のセル内の値であった要素からなる 2 つの列に変換されました。
+以下では、`unnest_wider()` に `t.test_results` という tibble を渡し、tibble 内の入れ子になっているリスト要素である `means` 列を指定しています。その結果、`means` はもともとそれぞれの `means` のセル内の値であった要素からなる 2 つの列に変換されました。
 
 ```{r}
 t.test_results %>% 
@@ -803,31 +803,31 @@ t.test_results %>%
 
 ### リストを捨てたり、キープしたり、コンパクトにしたりする {.unnumbered}
 
-**purrr** を用いる際にはリストを扱うことが多いので、簡単にリストを変換するのに用いられる **purrr** 関数をいくつか見てみたいと思います。より **purrr** 関数の詳細を知りたい方は Resources セクションを参照してください。
+**purrr** パッケージの関数を用いる際にはリストを扱うことが多いため、リストを変換するのに用いられる **purrr** 関数をいくつか簡単に説明します。**purrr** パッケージに含まれる関数のより詳しい内容を知りたい方は、本章の最後に記載されている参考資料をご覧ください。
 
--   `list_modify()` にはいくつかの機能がありますが、例えばリストの要素を取り除く、という機能があります\
--   `keep()` は、`.p =` によって指定された要素、もしくは `.p =` に与えられた関数が TRUE となる要素をキープします\
--   `discard()` は、`.p =` によって指定された要素、もしくは `.p =` に与えられた関数が TRUE となる要素を取り除きます\
+-   `list_modify()` にはいくつか用途がありますが、例えばリストの要素を取り除く、といった場合に使用されます\
+-   `keep()` は、引数 `.p =` で指定された要素、もしくは `.p =` に与えられた関数が TRUE となる要素をキープします\
+-   `discard()` は、引数 `.p =` で指定された要素、もしくは `.p =` に与えられた関数が TRUE となる要素を取り除きます\
 -   `compact()` は、全ての空の要素を取り除きます
 
-それでは、[using map() to import and combine multiple files](#iter_combined) のセクションで作成したリスト `combined` （6つのデータフレームを含むリストです）を用いて例を示します：
+それでは、`map()` を使用して複数のファイルをインポートし結合した [16.3 purrrr and lists - map()](#iter_combined) で作成したリストである `combined`（6 つのデータフレームを含むリスト）を用いて例を示します。
 
-要素は、`list_modify()` を用いてリスト名を `NULL` に指定することで取り除くことが出来ます。
+リスト内の要素を要素名の名前で取り除きたい場合は、`list_modify()` で取り除きたい要素名を `NULL` に指定することで取り除くことができます。
 
 ```{r, eval=F}
 combined %>% 
-  list_modify("Central Hospital" = NULL)   # リスト要素を名前を指定して取り除く
+  list_modify("Central Hospital" = NULL)   # リスト要素を名前で取り除く
 ```
 
-また、何かの基準を指定して要素を取り除くこともできます。その場合は、"述語" 関数（TRUE か FALSE を判定する関数）を `.p =` に渡します。チルダ `~` を関数の前に用い、リスト要素を表す `.x` を用います。TRUE と判定されたリスト要素をキープするのに `keep()` を用います。逆に、TRUE と判定されたリスト要素を取り除くには `discard()` を用います。
+また、何かの基準を指定して要素を取り除くこともできます。その場合は、「述語」関数（TRUE か FALSE を判定する関数）を `.p =` に渡します。チルダ（`~`）を関数の前に用い、リスト要素を表す `.x` を用います。`keep()` を使用し、TRUE と判定されたリスト要素をキープします。逆に、TRUE と判定されたリスト要素を取り除きたい場合は、`discard()` を使用してください。以下に例を示します。
 
 ```{r, eval=F}
-# 500 行以上を含むリスト要素のみをキープする
+# 500行以上を含むリスト要素のみをキープする
 combined %>% 
   keep(.p = ~nrow(.x) > 500)  
 ```
 
-以下の例では、データフレームでない要素を取り除いています。
+もう一つの例として、データフレームではない要素を取り除くコードを以下に紹介します。
 
 ```{r, eval=F}
 # データフレームではないリスト要素を取り除く
@@ -835,7 +835,7 @@ combined %>%
   discard(.p = ~class(.x) != "data.frame")
 ```
 
-述語関数にそれぞれのリスト内の要素や列を用いることもできます。例えば、以下では、`ct_blood` 列の平均値が 25 よりも大きいリスト要素を取り除いています。
+また、述語関数にそれぞれのリスト内の要素や列を用いることもできます。例えば、以下では、`ct_blood` 列の平均値が 25 よりも大きいリスト要素を取り除いています。
 
 ```{r, eval=F}
 # ct_blood 列の平均値が 25 以上のリスト要素を取り除く
@@ -843,7 +843,7 @@ combined %>%
   discard(.p = ~mean(.x$ct_blood) > 25)  
 ```
 
-以下のコマンドでは全ての空の列を取り除いています：
+すべての空の列を取り除きたい場合は、以下のコードを実行してください。
 
 ```{r, eval=F}
 # 全ての空の列を取り除く
@@ -853,30 +853,30 @@ combined %>%
 
 ### `pmap()` {.unnumbered}
 
-THIS SECTION IS UNDER CONSTRUCTION
+このセクションは、作成中です。
 
 ## Apply 関数
 
-反復処理の際に **purrr** の代わりに R の **base** 関数である "apply" の仲間を用いることもできます。詳しくはこちらを読んでみてください。[here](https://www.datacamp.com/community/tutorials/r-tutorial-apply-family)
+**purrr** の代わりに、R の **base** パッケージに含まれている種々の "apply" 関数を使用して反復処理を行うこともできます。詳しくは、[こちら](https://www.datacamp.com/community/tutorials/r-tutorial-apply-family) をご覧ください。
 
 <!-- ======================================================= -->
 
-## 参考文献
+## 参考資料
 
-[for loops with Data Carpentry](https://datacarpentry.org/semester-biology/materials/for-loops-R/)
+[Data Carpentry の for loops に関するページ](https://datacarpentry.org/semester-biology/materials/for-loops-R/)
 
-The [R for Data Science page on iteration](https://r4ds.had.co.nz/iteration.html#iteration)
+[The R for Data Science の iteration に関するページ](https://r4ds.had.co.nz/iteration.html#iteration)
 
-[Vignette on write/read Excel files](https://martinctc.github.io/blog/vignette-write-and-read-multiple-excel-files-with-purrr/)
+[Excel ファイルのインポート・エクスポートについて](https://martinctc.github.io/blog/vignette-write-and-read-multiple-excel-files-with-purrr/)
 
-A purrr [tutorial](https://jennybc.github.io/purrr-tutorial/index.html) by jennybc
+jennybc による purrr の [チュートリアル](https://jennybc.github.io/purrr-tutorial/index.html)
 
-Another purrr [tutorial](http://www.rebeccabarter.com/blog/2019-08-19_purrr/) by Rebecca Barter
+Rebecca Barter による purrr の [チュートリアル](http://www.rebeccabarter.com/blog/2019-08-19_purrr/)
 
-A purrr [tutorial](http://zevross.com/blog/2019/06/11/the-power-of-three-purrr-poseful-iteration-in-r-with-map-pmap-and-imap/) on map, pmap, and imap
+map, pmap, and imap についての purrr の [チュートリアル](http://zevross.com/blog/2019/06/11/the-power-of-three-purrr-poseful-iteration-in-r-with-map-pmap-and-imap/)
 
-[purrr cheatsheet](https://raw.githubusercontent.com/rstudio/cheatsheets/master/pngs/thumbnails/purrr-cheatsheet-thumbs.png)
+[purrr のチートシート](https://raw.githubusercontent.com/rstudio/cheatsheets/master/pngs/thumbnails/purrr-cheatsheet-thumbs.png)
 
-[purrr tips and tricks](https://www.hvitfeldt.me/blog/purrr-tips-and-tricks/)
+[purrr の役立つヒント](https://www.hvitfeldt.me/blog/purrr-tips-and-tricks/)
 
-[keep and discard](https://hookedondata.org/going-off-the-map/#keep-and-discard)
+[keep と discard 関数について](https://hookedondata.org/going-off-the-map/#keep-and-discard)
