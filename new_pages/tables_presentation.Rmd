@@ -24,7 +24,7 @@ table <- linelist %>%
   ###############################################
   group_by(hospital, outcome) %>%                      # データのグループ化
   summarise(                                           # 関心のある指標の要約する列を新規作成
-    N = n(),                                            # 病院と転帰のグループごとの行数     
+    N = n(),                                            # 病院-転帰グループごとの行数     
     ct_value = median(ct_blood, na.rm=T)) %>%           # グループごとのCTの中央値
   
   # 合計行を追加
@@ -32,7 +32,7 @@ table <- linelist %>%
   bind_rows(                                           # 前の表とこのミニ表の合計を結合する
     linelist %>% 
       filter(!is.na(outcome) & hospital != "Missing") %>%
-      group_by(outcome) %>%                            # 病院ではなく、転帰のみでグループ化     
+      group_by(outcome) %>%                            # 病院をなくして転帰のみでグループ化     
       summarise(
         N = n(),                                       # データセット全体の行数     
         ct_value = median(ct_blood, na.rm=T))) %>%     # データセット全体のCTの中央値
@@ -64,7 +64,7 @@ table <- linelist %>%
                "",
                "",
                "Died",         # この列と次の2つの列のトップレベルのヘッダ
-               "",             # "Died" と統合させるので空欄のまま
+               "",             # 「死亡」と統合させるので空欄のまま
                "")) %>% 
     set_header_labels(         # 元のヘッダ行の列名を変更
       hospital = "", 
@@ -75,7 +75,7 @@ table <- linelist %>%
       N_Death = "Total",
       Pct_Death = "% of cases",
       ct_value_Death = "Median CT values")  %>% 
-  merge_at(i = 1, j = 3:5, part = "header") %>% # Horizontally merge columns 3 to 5 in new header row
+  merge_at(i = 1, j = 3:5, part = "header") %>% # 3列目から5列目までを新しいヘッダ行に水平に結合
   merge_at(i = 1, j = 6:8, part = "header") %>%  
   border_remove() %>%  
   theme_booktabs() %>% 
@@ -98,7 +98,11 @@ table
 ```
 
 
+<<<<<<< Updated upstream
 このページでは **flextable**パッケージを使って、要約データフレームを見やすい表に変換する方法を紹介します。これらの表は、パワーポイントのスライド、HTML ページ、PDF や Word 文書などに挿入することができます。
+=======
+このページでは **flextable**パッケージを使って、要約したデータフレームを見やすい表に変換する方法を紹介します。これらの表は、パワーポイントのスライド、HTML ページ、PDF や Word 文書などに挿入することができます。
+>>>>>>> Stashed changes
 
 **flextable**を使用する <u>前</u> に、要約表をデータフレームとして作成する必要があります。[記述統計表の作り方]()および[データの縦横変換]()の章に紹介されている方法を使い、表計算、クロス集計などを作成してください作成されたデータフレームを **flextable** に渡して、見やすいように書式設定を行うことができます。
 
@@ -130,7 +134,7 @@ pacman::p_load(
 
 
 ```{r, echo=F}
-# import the linelist into R
+# ラインリストをRにインポート
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
@@ -142,13 +146,17 @@ linelist <- import("linelist_cleaned.rds")
 ラインリスト の最初の 50 行を以下に表示します。
 
 ```{r, message=FALSE, echo=F}
-# linelist データの最初の 50 行を以下に表示します。
+# linelistデータの最初の50行を以下に表示します。
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 ### テーブルの準備 {.unnumbered}
 
+<<<<<<< Updated upstream
 **flextable** を使い始める *前* に、テーブルをデータフレームとして <u>作成する</u> 必要があります。 [記述統計表の作り方]()および[データの縦横変換]()の章をご覧ください。その後、データフレームを **flextable** に渡して、色、ヘッダ、フォントなどを設定していきます。
+=======
+**flextable** を使い始める *前* に、テーブルをデータフレームとして <u>作成する</u> 必要があります。**janitor** や **dplyr** などのパッケージを利用してデータフレームを作成する方法を学ぶには [記述統計表の作り方]()および[データの縦横変換]()の章をご覧ください。表を表示したい内容に行と列を整えることが必要です。その後、データフレームを **flextable** に渡して、色、ヘッダ、フォントなどを設定していきます。
+>>>>>>> Stashed changes
 
 以下は、 [記述統計表の作り方]() の章の例で、症例 `linelist` を病院ごとに患者の転帰と CT 値をまとめたデータフレームに変換し、下部に合計（Total）行を設定したものです。出力結果を `table`として保存します。
 
@@ -159,7 +167,7 @@ table <- linelist %>%
   ###############################################
   group_by(hospital, outcome) %>%                      # データのグループ化
   summarise(                                           # 関心のある指標の要約する列を新規作成
-    N = n(),                                            # 病院と転帰のグループごとの行数     
+    N = n(),                                            # 病院-転帰グループごとの行数     
     ct_value = median(ct_blood, na.rm=T)) %>%           # グループごとのCTの中央値
   
   # 合計行を追加
@@ -175,9 +183,9 @@ table <- linelist %>%
   # 横にピボット変換してフォーマット
   ########################
   mutate(hospital = replace_na(hospital, "Total")) %>% 
-  pivot_wider(                                         # 縦から横へのピボット変換
+  pivot_wider(                                         # 縦から横への縦横変換
     values_from = c(ct_value, N),                       # CT値とカウント列からの新規の値
-    names_from = outcome) %>%                           # outcomeから新規の列名
+    names_from = outcome) %>%                           # 転帰を新しい列名に
   mutate(                                              # 新しい列の追加
     N_Known = N_Death + N_Recover,                               # 転帰がわかっている症例数
     Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # 死亡症例のパーセント（小数点1桁）
@@ -209,7 +217,11 @@ my_table
 
 ```
 
+<<<<<<< Updated upstream
 このようにして、 `my_table` オブジェクトを、より多くの **flextable**のフォーマット関数に次々とパイプ演算子で渡していくことができます。
+=======
+このようにした後、 `my_table` オブジェクトをさらに **flextable** に含まれる表をフォーマットするための関数に次々とパイプ演算子で渡していくことができます。
+>>>>>>> Stashed changes
 
 このページでは、わかりやすくするために、途中の段階でテーブルを `my_table`として保存し、段階的に **flextable** の機能を追加していきます。最初から最後までの <u>すべて</u> のコードをまとめて見たい場合は、下記の[すべてのコードをまとめる](#tbl_pres_all)セクションをご覧ください。
 
@@ -221,12 +233,22 @@ my_table
   * `part =` 関数がテーブルのどの部分に適用されるかを示します。例："header"、"body"、"all"。
   * `i =` 関数を適用する <u>行</u> を、'X' に行番号を入力して指定します。複数の行、例えば 1 行目から 3 行目までを指定する場合は、 `i = c(1:3)` とします。なお、 'body' を選択した場合、最初の行はヘッダセクションの下から始まります。
   * `j =` は、関数を適用する <u>列</u> を、'x' に列番号または列名を入力して指定します。複数の列、例えば 5列目と6列目を指定する場合は、 `j = c(5,6)` とします。
+<<<<<<< Updated upstream
+
+**flextable** フォーマット関数の全リストは [ここ](https://davidgohel.github.io/flextable/reference/index.html) でご覧いただけます。また、 `?flextable`と入力してドキュメントを確認することもできます。
+=======
+>>>>>>> Stashed changes
 
 **flextable** フォーマット関数の全リストは [ここ](https://davidgohel.github.io/flextable/reference/index.html) でご覧いただけます。また、 `?flextable`と入力してドキュメントを確認することもできます。
 
+<<<<<<< Updated upstream
+### 列の幅 {.unnumbered}
+
+=======
 
 ### 列の幅 {.unnumbered}
 
+>>>>>>> Stashed changes
 `autofit()` 関数を使うと、各セルに 1 行分のテキストしか入らないように表をうまい具合に引き伸ばすことができます。関数`qflextable()` は、 `flextable()` および `autofit()`を簡潔にした便利なものです。
 
 ```{r}
@@ -271,7 +293,7 @@ my_table <- my_table %>%
                "",
                "",
                "Died",         # この列と次の2つの列のトップレベルのヘッダ
-               "",             # "Died"と統合させるので空欄のまま
+               "",             # 「死亡」と統合させるので空欄のまま
                "")) %>% 
     
   set_header_labels(         # 元のヘッダ行の列名を変更
@@ -338,7 +360,7 @@ my_table
 my_table <-  my_table %>%  
   fontsize(i = 1, size = 12, part = "header") %>%   # ヘッダのフォントサイズを調整
   bold(i = 1, bold = TRUE, part = "header") %>%     # ヘッダの太字を調整
-  bold(i = 7, bold = TRUE, part = "body")           # Total行の太字を調整する（本文7行目）
+  bold(i = 7, bold = TRUE, part = "body")           # 合計行の太字を調整する（本文7行目）
 
 my_table
 
@@ -422,7 +444,7 @@ table <- linelist %>%
   ###############################################
   group_by(hospital, outcome) %>%                      # データのグループ化
   summarise(                                           # 関心のある指標の要約する列を新規作成
-    N = n(),                                            # 病院と転帰のグループごとの行数     
+    N = n(),                                            # 病院-転帰グループごとの行数     
     ct_value = median(ct_blood, na.rm=T)) %>%           # グループごとのCTの中央値
   
   # 合計行を追加
@@ -430,7 +452,7 @@ table <- linelist %>%
   bind_rows(                                           # 前の表とこのミニ表の合計を結合する
     linelist %>% 
       filter(!is.na(outcome) & hospital != "Missing") %>%
-      group_by(outcome) %>%                            # 病院ではなく、転帰のみでグループ化     
+      group_by(outcome) %>%                            # 病院をなくして転帰のみでグループ化     
       summarise(
         N = n(),                                       # データセット全体の行数     
         ct_value = median(ct_blood, na.rm=T))) %>%     # データセット全体のCTの中央値
@@ -438,9 +460,9 @@ table <- linelist %>%
   # ピボットの幅とフォーマット
   ########################
   mutate(hospital = replace_na(hospital, "Total")) %>% 
-  pivot_wider(                                         # 縦持ちから横持ちへのピボット変換
+  pivot_wider(                                         # 縦持ちから横持ちへの縦横変換
     values_from = c(ct_value, N),                       # CT値とカウント列からの新規の値
-    names_from = outcome) %>%                           # 転帰から新規の列名
+    names_from = outcome) %>%                           # 転帰を新しい列名に
   mutate(                                              # 新しい列の追加
     N_Known = N_Death + N_Recover,                               # 転帰がわかっている症例数
     Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # 死亡症例のパーセント（小数点1桁）
@@ -462,7 +484,7 @@ table <- linelist %>%
                "",
                "",
                "Died",         # この列と次の2つの列のトップレベルのヘッダ
-               "",             # "Died" と統合させるので空欄のまま
+               "",             # 「死亡」と統合させるので空欄のまま
                "")) %>% 
     set_header_labels(         # 元のヘッダ行の列名を変更
       hospital = "", 
@@ -473,7 +495,7 @@ table <- linelist %>%
       N_Death = "Total",
       Pct_Death = "% of cases",
       ct_value_Death = "Median CT values")  %>% 
-  merge_at(i = 1, j = 3:5, part = "header") %>% # 3 列目から 5 列目までを新しいヘッダ行に水平に結合
+  merge_at(i = 1, j = 3:5, part = "header") %>% # 3列目から5列目までを新しいヘッダ行に水平に結合
   merge_at(i = 1, j = 6:8, part = "header") %>%  
   border_remove() %>%  
   theme_booktabs() %>% 
