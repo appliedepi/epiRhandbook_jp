@@ -38,7 +38,7 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 
 これらの関数を Stata や SAS のコマンドと比較したい場合は、[Excel・Stata・SASとの比較](#transition-to-R) の章を参照してください。
 
-また、R パッケージの **data.table** では、`:=` のような演算子やブラケット `[ ]` が頻繁に使用されており、別の形のデータ管理フレームワークを目にすることがあるかもしれません。この手法と構文については、[データテーブル](\#data-table) の章で簡単に説明しています。
+また、R パッケージの **data.table** では、`:=` のような演算子やブラケット `[ ]` が頻繁に使用されており、別の形のデータ管理フレームワークを目にすることがあるかもしれません。この手法と構文については、[データテーブル](#data-table) の章で簡単に説明しています。
 
 ### 用語体系 {.unnumbered}
 
@@ -46,7 +46,7 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 
 「変数」は、同じ基本属性について測定された値（年齢層、アウトカム、発症日など）を示しています。「観測値」は、同じ単位（人、場所、ラボのサンプルなど）で測定されたすべての値を示します。そのため、これら値を明確に定義することは困難です。
 
-"tidy" データセット（綺麗に整理されたデータセット）では、各列が変数、各行が観測値、そして各セルが 1 つの値となっています。しかし、この型に当てはまらないデータセットもあります。"wide" 型（横型）のデータセットでは、1 つの変数が複数の列に分かれていることがあります（詳細は、[データの縦横変換](\#pivoting) の章で紹介する例を参照ください）。同様に、観測値が複数の行に分かれていることもあります。
+"tidy" データセット（綺麗に整理されたデータセット）では、各列が変数、各行が観測値、そして各セルが 1 つの値となっています。しかし、この型に当てはまらないデータセットもあります。"wide" 型（横型）のデータセットでは、1 つの変数が複数の列に分かれていることがあります（詳細は、[データの縦横変換](#pivoting) の章で紹介する例を参照ください）。同様に、観測値が複数の行に分かれていることもあります。
 
 このハンドブックでは、データの管理と変換について主に取り扱うため、抽象的な観測値や変数よりも、行や列といった具体的なデータ構造を示す呼び方を使用する方が適切です。例外として、データ分析のページでは、変数や観測値を取り上げることがあります。
 
@@ -84,16 +84,16 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 
 ## パッケージの読み込み
 
-　このコード群は、分析に必要なパッケージの読み込みを示しています。このハンドブックでは **pacman** の `p_load()` を重視しています。p_load() は必要に応じてパッケージをインストールし、ロードします。インストールされたパッケージは**base** Rの`library()` で読み込むことができます。Rのパッケージに関する詳細は [R basics](https://epirhandbook.com/r-basics.html#r-basics) のページをご覧ください。
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの `p_load()` を主に使用しています。`p_load()` は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、既にインストールされたパッケージは、R の基本パッケージである **base** の `library()` を使用して読み込むこともできます。R パッケージに関する詳細は、[R の基礎](#basics) の章をご覧ください。
 
 ```{r, message = F}
 pacman::p_load(
-  rio,        # データの読み込みのパッケージ  
-  here,       # 相対ファイルパスウェイ のパッケージ  
-  janitor,    # データクリーニングとテーブルのパッケージ  
-  lubridate,  # 日付の操作のパッケージ  
-  epikit,     # age_categories() 関数のパッケージ  
-  tidyverse   # データ管理と可視化のパッケージ  
+  rio,        # データを読み込むためのパッケージ  
+  here,       # 相対ファイルパスを設定するためのパッケージ  
+  janitor,    # データ前処理と表の作成のためのパッケージ  
+  lubridate,  # 日付操作のためのパッケージ  
+  epikit,     # age_categories()を含むパッケージ  
+  tidyverse   # データ管理と可視化のためのパッケージ  
   )
 ```
 
@@ -103,19 +103,19 @@ pacman::p_load(
 
 <!-- ======================================================= -->
 
-## インポートデータ
+## データのインポート
 
-### インポート {.unnumbered}
+### データをインポートする {.unnumbered}
 
-　ここでは、**rio** パッケージの `import()`関数を使って、未加工の症例リストExcelファイルをインポートします。**rio** パッケージは、さまざまな種類のファイル（.xlsx、.csv、.tsv、.rdsなど）を柔軟に扱うことができます。詳しい情報や、通常とは異なる状況（行のスキップ、欠損値の設定、Googleシートのインポートなど）でのヒントについては、[Import and export](https://epirhandbook.com/import-and-export.html#import-and-export) のページをご覧ください。
+ここでは、**rio** パッケージの `import()` を使って、未加工の症例リスト（Excel ファイル）をインポートします。**rio** パッケージは、様々な形式のファイル（.xlsx、.csv、.tsv、.rds など）に対応できます。**rio** パッケージの詳細や、通常とは異なる状況（行のスキップ、欠損値の設定、Googleシートのインポートなど）での対処方法を知りたい方は、[インポートとエクスポート](#importing) の章をご覧ください。
 
-　ご覧になりたい方は、クリックして ["未加工 "のラインリスト](https://github.com/appliedepi/epirhandbook_eng/raw/master/data/case_linelists/linelist_raw.xlsx)をダウンロードしてください（.xlsxファイルとして出力）。
+お手元の環境でこの章の内容を実行したい方は、[こちら](https://github.com/appliedepi/epirhandbook_eng/raw/master/data/case_linelists/linelist_raw.xlsx) から「未加工の」ラインリストをダウンロードしてください（.xlsx ファイルとしてダウンロードされます）。
 
-　データセットが大きく、インポートに時間がかかる場合は、インポートコマンドをパイプチェーンとは別に用意し、未加工データを別のファイルとして保存すると便利です。これにより、未加工データと前処理したデータの比較が容易になります。
+データサイズが大きいためにインポートに時間がかかる場合は、インポートするためのコードを、インポート後のデータ前処理を行うパイプチェーンとは別の場所に書き、未加工データを元データとして保存すると便利です。コードを分けて書くことで、未加工データと前処理済みのデータの比較が容易になります。
 
 ```{r, echo=F, message=F}
-# HIDDEN FROM READER
-# 実際にデータをロードするには here() を使用する。
+# HIDDEN FROM READER（このコードチャンクは、ウェブ版には表示されない）
+# 実際にデータをロードするには here() を使用する
 linelist_raw <- rio::import(here::here("data", "case_linelists", "linelist_raw.xlsx"))
 ```
 
@@ -123,18 +123,20 @@ linelist_raw <- rio::import(here::here("data", "case_linelists", "linelist_raw.x
 linelist_raw <- import("linelist_raw.xlsx")
 ```
 
-以下に、データフレームの最初の50行を見ることができます。
+データフレームの最初の 50 行を確認してみましょう。
 
-注：Rの基本関数である `head(n)` を使うと，Rコンソールで最初の`n`行だけを表示することができます．
+注釈：R の基本パッケージ **base** に含まれている関数 `head(n)` を使うと、R コンソールに最初の `n` 行が表示されます。
 
 ```{r message=FALSE, echo=F}
-# ラインリストのデータを表形式で表示する。
+# ラインリストのデータを表で表示する
 DT::datatable(head(linelist_raw,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### レビュー {.unnumbered}
+### インポートしたデータを確認する {.unnumbered}
 
-**skimr** パッケージの関数`skim()` を使うと、データフレーム全体の概要を把握することができます（詳しくは [Descriptive tables](https://epirhandbook.com/descriptive-tables.html#descriptive-tables) のページを参照）。カラムは、character, numeric などのクラス/タイプ別にまとめられています。注："POSIXct "は未加工の日付クラスの一種です（ [Working with dates](https://epirhandbook.com/working-with-dates.html#working-with-dates-1) を参照してください。
+**skimr** パッケージの `skim()` を使うと、データフレーム全体の概要を把握することができます（詳しくは、[記述統計表の作り方](#tables-descriptive) を参照ください）。 [Descriptive tables](https://epirhandbook.com/descriptive-tables.html#descriptive-tables) のページを参照）。列は、文字値や数値など、データ型別にまとめられています。
+
+注釈："POSIXct" は未加工の日付データ型の一つです（詳細は、[Working with dates](https://epirhandbook.com/working-with-dates.html#working-with-dates-1) を参照してください。
 
 ```{r, eval=F}
 skimr::skim(linelist_raw)
