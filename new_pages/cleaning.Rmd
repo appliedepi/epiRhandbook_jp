@@ -8,13 +8,13 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 
 　データクリーニングを実演するために、このページでは未加工の症例ラインリスト データセットのインポートから開始し、クリーニングを段階的に進めていきます。Rコードでは上図の処理は"pipe"チェーンとして明示されます。"パイプ"　演算子 `%>%`を参照し、データセットをある操作から次の操作に渡すことが出来ます。
 
-### **主要関数** {.unnumbered}
+### 主要関数 {.unnumbered}
 
 　このハンドブックでは、Rパッケージの [tidyverse](https://www.tidyverse.org/)ファミリーの関数を使用することに重点を置いています。このページで紹介されている基本のR関数を以下に示します。
 
 　関数の多くは、データ操作の課題を解決するための"動詞" 関数を提供するRパッケージ [dplyr](https://dplyr.tidyverse.org/) に属しています（名前は"data frame-[plier](https://www.thefreedictionary.com/plier#:~:text=also%20ply%C2%B7er%20(pl%C4%AB%E2%80%B2,holding%2C%20bending%2C%20or%20cutting.)%22)." にちなんでいます。 **dplyr** は、Rパッケージの**tidyverse**ファミリー（**ggplot2**、**tidyr**、**stringr**、**tibble**、**purrr**、**magrittr**、**forcats**なども含まれています）の一部です。)
 
-| **関数**                                            | 効用                                           | パッケージ                |
+| **関数**                                            | **効用**                                       | **パッケージ**            |
 |-----------------------------------------------------|------------------------------------------------|---------------------------|
 | `%>%`                                               | ある関数から次の関数へデータを"パイプ"（渡す） | **magrittr**              |
 | `mutate()`                                          | 列の作成、変換、再定義                         | **dplyr**                 |
@@ -40,7 +40,7 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 
 　Rパッケージの **data.table** では、`:=`のような演算子や括弧`[ ]`が頻繁に使用されており、別のデータ管理フレームワークを目にすることがあるかもしれません。この手法と構文については、[[Data Table]](https://epirhandbook.com/data-table.html#data-table) のページで簡単に説明しています。
 
-\#\#**用語体系**
+### 用語体系 {.unnumbered}
 
 　このハンドブックでは、一般的に "変数" や"観測値" の代わりに"列" や"行"を使用します。["tidy data"](https://tidyr.tidyverse.org/articles/tidy-data.html) の入門で説明したように、ほとんどの疫学統計データセットは、行、列、値の構造で構成されています。
 
@@ -56,7 +56,7 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 
 <!-- ======================================================= -->
 
-**パイプラインのデータクリーニング**
+## パイプラインのデータクリーニング
 
 **このページでは、代表的なデータクリーニングの手順を実行し、パイプに処理を順次追加しながら進めていきます。**
 
@@ -82,7 +82,7 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 
 <!-- ======================================================= -->
 
-**パッケージの読み込み**
+## パッケージの読み込み
 
 　このコード群は、分析に必要なパッケージの読み込みを示しています。このハンドブックでは **pacman** の `p_load()` を重視しています。p_load() は必要に応じてパッケージをインストールし、ロードします。インストールされたパッケージは**base** Rの`library()` で読み込むことができます。Rのパッケージに関する詳細は [R basics](https://epirhandbook.com/r-basics.html#r-basics) のページをご覧ください。
 
@@ -103,9 +103,9 @@ pacman::p_load(
 
 <!-- ======================================================= -->
 
-**インポートデータ**
+## インポートデータ
 
-インポート
+### インポート {.unnumbered}
 
 　ここでは、**rio** パッケージの `import()`関数を使って、未加工の症例リストExcelファイルをインポートします。**rio** パッケージは、さまざまな種類のファイル（.xlsx、.csv、.tsv、.rdsなど）を柔軟に扱うことができます。詳しい情報や、通常とは異なる状況（行のスキップ、欠損値の設定、Googleシートのインポートなど）でのヒントについては、[Import and export](https://epirhandbook.com/import-and-export.html#import-and-export) のページをご覧ください。
 
@@ -132,7 +132,7 @@ linelist_raw <- import("linelist_raw.xlsx")
 DT::datatable(head(linelist_raw,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-**レビュー**
+### レビュー {.unnumbered}
 
 **skimr** パッケージの関数`skim()` を使うと、データフレーム全体の概要を把握することができます（詳しくは [Descriptive tables](https://epirhandbook.com/descriptive-tables.html#descriptive-tables) のページを参照）。カラムは、character, numeric などのクラス/タイプ別にまとめられています。注："POSIXct "は未加工の日付クラスの一種です（ [Working with dates](https://epirhandbook.com/working-with-dates.html#working-with-dates-1) を参照してください。
 
@@ -150,7 +150,7 @@ skimr::skim_without_charts(linelist_raw)
 
 <!-- ======================================================= -->
 
-## **列名**
+## 列名
 
 　Rでは、列名は列の"ヘッダー"または"一番上"の値です。コード内では列を参照するために使用され、図ではデフォルトのラベルとして使用されます。
 
@@ -201,12 +201,11 @@ names(linelist_raw)
 　以下では、前処理のパイプラインは、未加工のラインリストに対して`clean_names()`を使用することから開始します。
 
 ```{r clean_names}
-# 未加工のデータセットを関数にパイプする
-clean_names(), assign result as "linelist"  
+# 未加工のデータセットを clean_names() にパイプし、出力結果を linelist として保存する
 linelist <- linelist_raw %>% 
   janitor::clean_names()
 
-# see the new column names
+# 新しく作成された linelist の列名を確認する
 names(linelist)
 ```
 
@@ -241,7 +240,7 @@ linelist <- linelist_raw %>%
 names(linelist)
 ```
 
-列の位置による名前の変更
+### 列の位置による名前の変更 {.unnumbered}
 
 列名ではなく、列の位置で名前を変更することもできます。
 
@@ -261,15 +260,15 @@ linelist_raw %>%
          date_hospitalisation = `hosp date`)
 ```
 
-### **その他の課題** {.unnumbered}
+### その他の課題 {.unnumbered}
 
-#### 空白のExcelカラム名 {.unnumbered}
+#### 空白の Excel 列名 {.unnumbered}
 
 　Rは、列名（ヘッダー）のないデータセット列を持つことはできません。したがって、データはあるが列のヘッダーがないExcelデータセットをインポートした場合、Rは"...1"や"...2"といった名前でヘッダーを埋めることになります。数字は列番号を表します（例：データセットの4列目にヘッダーがない場合、Rはその列を"...4"と命名します）。
 
 　付与された名前は、ポジション番号（上記の例を参照）または割り当てられた名前(`linelist_raw$...1`)を参照することで、手動でクリーニングすることができます。
 
-#### **Excelの列名とセルの結合** {.unnumbered}
+#### Excelの列名とセルの結合 {.unnumbered}
 
 　Excelファイル中のマージセルは、データを受け取る際によく見られます。[Transition to R](https://epirhandbook.com/transition-to-r.html#transition-to-r) で説明したように、マージされたセルは、人間がデータを読むときには良いのですが、 "整頓されたデータ" ではない場合、機械がデータを読むときに多くの問題が発生します。Rはマージされたセルに対応できないからです。
 
@@ -307,7 +306,7 @@ dplyrの`select()`を使って、残したい列を選択し、データフレ�
 names(linelist)
 ```
 
-### **列を保持** {.unnumbered}
+### 列を保持 {.unnumbered}
 
 残しておきたい列のみを選択します。
 
@@ -320,7 +319,7 @@ linelist %>%
   names()  # display the column names
 ```
 
-### **"tidyselect" ヘルパー関数** {#clean_tidyselect .unnumbered}
+### "tidyselect" ヘルパー関数 {#clean_tidyselect .unnumbered}
 
 　**tidyselect"** ヘルパー関数は、保持、破棄、または変換する列を簡単に指定するためにあります。これらは、**tidyverse** に含まれる **tidyselect** パッケージのもので、**dplyr** 関数で列を選択する方法の基礎となっています。
 
@@ -392,7 +391,7 @@ linelist %>%
   names()
 ```
 
-[た列名がデータに存在しない場合、エラーを返してコードを停止させることがあります。存在するかどうかわからない列を引用するために、`any_of()`を使用することを検討してください。これは、特に否定的な（削除）選択において有用です。]{style="color: orange;"}
+[注意：列名がデータに存在しない場合、エラーを返してコードを停止させることがあります。存在するかどうかわからない列を引用するために、`any_of()`を使用することを検討してください。これは、特に否定的な（削除）選択において有用です。]{style="color: orange;"}
 
 　列のうち1つだけが存在しますが、エラーは発生せず、コードは前処理を停止させることなく実行されます。
 
@@ -402,7 +401,7 @@ linelist %>%
   names()
 ```
 
-### **列の削除** {.unnumbered}
+### 列の削除 {.unnumbered}
 
 　削除する列を示すには、列名の前にマイナス記号 "-" を付けるか（例：`select(-outcome)`）、列名のベクトルを付けます（以下のように）。その他の列は全て維持されます。
 
@@ -419,7 +418,7 @@ linelist %>%
 linelist$date_onset <- NULL   # Rの基本的な構文で列を削除する。
 ```
 
-### **独立型** {.unnumbered}
+### 独立型 {.unnumbered}
 
 `select()`は、独立したコマンドとして使用することもできます（パイプ中ではなく）。この場合、最初の引数は操作対象となる元のデータフレームです。
 
@@ -469,9 +468,9 @@ linelist <- linelist_raw %>%
 
 <!-- ======================================================= -->
 
-## **重複削除**
+## 重複データの削除
 
-　重複削除の方法については、ハンドブックの [De-duplication](https://epirhandbook.com/en/de-duplication.html#de-duplication) のページを参照してください。ここでは、非常に簡単な行の重複削除の例のみを紹介します。
+　重複データを削除する方法の詳細については、ハンドブックの [De-duplication](https://epirhandbook.com/en/de-duplication.html#de-duplication) のページを参照してください。ここでは、非常に簡単な行の重複削除の例のみを紹介します。
 
 **dplyr**パッケージには、`distinct()`関数があります。この関数は、すべての行を調べ、データフレームをユニークな行のみに削減します。つまり、100%重複している行を削除します。
 
@@ -524,7 +523,7 @@ linelist <- linelist_raw %>%
 
 <!-- ======================================================= -->
 
-## **列の作成と変換**
+## 列の作成と変換
 
 　新しい列を追加したり、既存の列を修正したりするには、**dplyr**の関数 `mutate()`を使うことをお勧めします。
 
@@ -532,7 +531,7 @@ linelist <- linelist_raw %>%
 
 　Stataでは、これは`generate`コマンドに似ていますが、Rの`mutate()`は既存の列を修正するためにも使用できます。
 
-**新しいカラム**
+### 新しい列の作成 {.unnumbered}
 
 　新しい列を作成する最も基本的な`mutate()`コマンドは次のようになります。以下では、すべての行の値が10である新しい列`new_col`を作成します。
 
@@ -580,7 +579,7 @@ DT::datatable(head(new_col_demo,50), rownames = FALSE, options = list(pageLength
 #   select(-contains("new_var"))
 ```
 
-**列クラスの変換**
+### 列クラスの変換 {.unnumbered}
 
 　日付、数字、理論値（TRUE/FALSE）を含む列は、正しく分類されれば期待通の動きをします。文字クラスの"2"と数字クラスの2は異なります。
 
@@ -611,7 +610,7 @@ linelist <- linelist %>%
 
 Date型 への変換には注意が必要です。いくつかの方法は [Working with dates](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1) のページで説明されています。通常、変換が正しく行われるためには、未加工の日付値がすべて同じ形式である必要があります (例: "MM/DD/YYYY"、または "DD MM YYYY")。クラスの日付に変換した後、データをチェックして、各値が正しく変換されたことを確認してください。
 
-### **グループ化されたデータ** {.unnumbered}
+### グループ化されたデータ {.unnumbered}
 
 　 データフレームがすでにグループ化されている場合（[Grouping data](https://epirhandbook.com/en/grouping-data.html#grouping-data)のページを参照）、`mutate()`の動作はグループ化されていない場合とは異なるかもしれません。`mean()`、`median()`、`max()`などの要約関数は、すべての行ではなく、グループごとに計算されます。
 
@@ -628,13 +627,13 @@ linelist %>%
 
 　グループ化されたデータフレームでの `mutate ()`の使用については、この [tidyverse mutate documentation](https://dplyr.tidyverse.org/reference/mutate.html) ドキュメントで詳しく説明しています。
 
-### **複数のカラムの変換** {#clean_across .unnumbered}
+### 複数のカラムの変換 {#clean_across .unnumbered}
 
 　簡潔なコードを書くために、同じ変換を複数の列に一度に適用したいことがあります。**dplyr**パッケージ（ **Tidyverse** パッケージにも含まれています）の `across()` 関数を使用して、変換を複数の列に一度に適用することができます。 `across()`はどの **dplyr** 関数で使用することができますが、一般的には`select()`、`mutate()`、`filter()`、`summarise()`内で使用されます。`summarise()`にどのように適用されるかは、[Descriptive tables](https://epirhandbook.com/en/descriptive-tables.html#descriptive-tables) のページを参照してください。
 
 　引数`.cols =`には列を指定し、`.fns =`には適用する関数を指定します。`.fns`関数に与える追加の引数は、カンマの後に含めることができます。
 
-#### `cross()`列選択 {.unnumbered}
+#### `across()`列選択 {.unnumbered}
 
 　引数`.cols =` に列を指定します。 個別に名前を付けることもできますし、"tidyselect" ヘルパー関数を使用することもできます。関数を`.fns =`に指定します。 以下に示す関数機能を使用すると、関数はその括弧（ ）なしで記述することに注意してください。
 
@@ -674,7 +673,7 @@ linelist <- linelist %>%
 
 -   `is.POSIXct()`は **lubridate** パッケージのものであることに注意してください。`is.character()`、`is.numeric()`、`is.logical()`のような他の類似した"is"関数は **base R** のものです。
 
-#### **`across()`関数** {.unnumbered}
+#### `across()`関数 {.unnumbered}
 
 `across()`に関数を提供する方法の詳細については、`?across`のドキュメントをお読みください。要約すると、列に対して実行する関数を指定する方法はいくつかあり、独自の関数を定義することもできます。
 
@@ -709,7 +708,7 @@ linelist <- linelist %>%
 
 　これは "row-wise "演算の一例です。より複雑な行単位の計算については、下記の "行単位の計算" の項をご覧ください。
 
-### **累積計算** {.unnumbered}
+### 累積計算 {.unnumbered}
 
 　データフレーム行を計算し、その時点までの累積和/平均/最小/最大などを列に反映させたい場合は、以下の関数を使用します。
 
@@ -738,7 +737,7 @@ head(cumulative_case_counts, 10)
 
 関連項目： `cumsum()`, `cummean()`,`cummin()`, `cummax()`, `cumany()`, `cumall()`
 
-### **base** R**の使い方** {.unnumbered}
+### R の基本パッケージ **base** の使い方 {.unnumbered}
 
 **base** Rを使って新しい列を定義する（または列を再定義する）。新しい列（または修正する列）にデータフレームの名前を\$でつないで書きます。代入演算子`<-`を使って新しい値を定義します。**base** R を使用する際には、毎回、列名の前にデータフレーム名を指定しなければならないことを覚えておいてください（例：dataframe\$column ）。ここでは、**base** R を使って`bmi`カラムを作成する例を示します。
 
@@ -746,7 +745,7 @@ head(cumulative_case_counts, 10)
 linelist$bmi = linelist$wt_kg / (linelist$ht_cm / 100) ^ 2)
 ```
 
-### **パイプチェーンへの追加** {.unnumbered}
+### パイプチェーンへの追加 {.unnumbered}
 
 **以下では、パイプチェーンに新しい列を追加し、いくつかの型を変換しています。**
 
@@ -787,7 +786,7 @@ linelist <- linelist_raw %>%
            age        = as.numeric(age)) 
 ```
 
-## **値の再定義**
+## 値の再定義
 
 値を再定義（変更）する必要があるいくつかの方法があります。
 
@@ -799,7 +798,7 @@ linelist <- linelist_raw %>%
 
 -   数値カテゴリーの新しい列を作成する（例：年齢カテゴリー）。
 
-### **特定の値** {.unnumbered}
+### 特定の値 {.unnumbered}
 
 　値を手動で変更するには、`mutate()`関数の中の`recode()`関数を使用します。
 
@@ -848,7 +847,7 @@ table(linelist$hospital, useNA = "always")
 
 [**ヒント**：データセットの中に空白文字の値が存在することがあります（R の missing の値である NA として認識されません）。この値を参照するには、スペースを空けずに2つのクォーテーションマーク（""）を使用します。]{style="color: darkgreen;"}
 
-### **論理条件** {.unnumbered}
+### 論理条件 {.unnumbered}
 
 以下では、論理条件と条件を使って列の値を再定義する方法を示します。
 
@@ -856,7 +855,7 @@ table(linelist$hospital, useNA = "always")
 
 -   より複雑な論理条件には`case_when()`を使う
 
-### **シンプルな論理条件** {.unnumbered}
+### シンプルな論理条件 {.unnumbered}
 
 #### `replace()` {.unnumbered}
 
@@ -878,7 +877,7 @@ linelist <- linelist %>%
 linelist$gender[linelist$case_id == "2195"] <- "Female"
 ```
 
-#### `ifelse()` and `if_else()` {.unnumbered}
+#### `ifelse()` と `if_else()` {.unnumbered}
 
 　 簡潔な論理条件のためのツールとして、`ifelse()`とそのパートナーである`if_else()`があります。しかし、ほとんどの場合、再定義のためには`case_when()`（以下に詳述）を使ったほうがわかりやすいでしょう。これらの"if else"コマンドは、`if`と`else`のプログラミング文を簡略化したものです。一般的な構文は次のとおりです： `ifelse(condition, value to return if condition evaluates to TRUE, value to return if condition evaluates to FALSE)`
 
@@ -905,7 +904,7 @@ knitr::include_graphics(here::here("images", "ifelse bad.png"))
 
 　データフレーム以外で、コード内で使用するオブジェクトの値を切り替えたい場合は、**base** R の`switch()`の使用を検討してください。
 
-### **複雑な論理条件** {#clean_case_when .unnumbered}
+### 複雑な論理条件 {#clean_case_when .unnumbered}
 
 　多数の新しいグループに再定義する場合や、複雑な論理条件文を使って値を再定義する必要がある場合は、**dplyr** の `case_when()`を使用します。この関数は、データフレーム内のすべての行を計算し、その行が指定された基準を満たしているかどうかを評価して、正しい新しい値を割り当てます。
 
@@ -928,7 +927,7 @@ linelist <- linelist %>%
 
 [要注意：右辺のVvalues はすべて同じクラスでなければなりません。欠落（NA）を割り当てるには、`NA_character_`、`NA_real_`（数値やPOSIXの場合）、`as.Date(NA)`など、NAの特別なバリエーションを使用する必要があるかもしれません。詳しくは[Working with dates](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1)をご覧ください]{style="color: red;"}
 
-### **欠損値** {.unnumbered}
+### 欠損値 {.unnumbered}
 
 　以下は、データクリーニングの観点から欠損値を処理するための特別な関数です。
 
@@ -979,7 +978,7 @@ linelist <- linelist %>%
   mutate(date_onset = replace(date_onset, date_onset > as.Date("2000-01-01"), NA))
 ```
 
-### **クリーニング辞書** {.unnumbered}
+### クリーニング辞書 {.unnumbered}
 
 　Rパッケージ **linelist** とその関数 `clean_variable_spelling()`を使って、データフレームをクリーニング辞書でクリーニングします。 **linelis**t は[RECON](https://github.com/reconhub/linelist) - the R Epidemics Consortiumによって開発されたパッケージです。
 
@@ -1099,7 +1098,7 @@ linelist <- linelist_raw %>%
 
 <!-- ======================================================= -->
 
-## **数値カテゴリー** {#num_cats}
+## 数値カテゴリー {#num_cats}
 
 　ここでは、数値列からカテゴリを作成するための特別なアプローチを説明します。一般的な例としては、年齢のカテゴリー、検査値のグループなどがあります。ここでは、以下について説明します。
 
@@ -1111,7 +1110,7 @@ linelist <- linelist_raw %>%
 
 -   `quantile()`と`ntile()`を使った分位値分割
 
-**レビュー分布**
+### レビュー分布 {.unnumbered}
 
 この例では、`age_years`列を使って`age_cat`列を作成します。
 
@@ -1259,17 +1258,16 @@ linelist <- linelist %>%
 table(linelist$age_cat, useNA = "always")
 ```
 
-　**作業を確認してください!!!** 数値列とカテゴリー列をクロス集計して、各年齢値が正しいカテゴリーに割り当てられていることを確認します。境界値の割り当てを検証します（例：隣接するカテゴリーが 10-15 と 16-20 の場合、15の値）。
+**作業を確認してください!!!** 数値列とカテゴリー列をクロス集計して、各年齢値が正しいカテゴリーに割り当てられていることを確認します。境界値の割り当てを検証します（例：隣接するカテゴリーが 10-15 と 16-20 の場合、15の値）。
 
 ```{r}
-# 数値列とカテゴリー列のクロス集計。
-table("Numeric Values" = linelist$age_years,   clarity.　　　　　　　
-      # 分かりやすくするために、表の中に名前を入れる。
+# 数値列とカテゴリー列のクロス集計
+table("Numeric Values" = linelist$age_years,   # 分かりやすくするために、表の中に名前を入れる
       "Categories"     = linelist$age_cat,
-      useNA = "always")                       # NA値の検証を忘れずに
+      useNA = "always")                        # NA値の検証を忘れずに
 ```
 
-`NA`値の再ラベル付け
+**`NA`値の再ラベル付け**
 
 `NA`値に "Missing "などのラベルを付けたい場合があります。新しい列はFactor型(制限付き値)なので、この値は拒否されるので、単純に`replace_na()`で変異させることはできません。代わりに、[Factors](https://epirhandbook.com/en/factors.html#factors) ページで説明されているように、`forcats`の `fct_explicit_na()`を使用してください。
 
@@ -1313,7 +1311,7 @@ length(age_seq) == length(age_labels)
 
 `cut()`の詳細については、Rコンソールで`?cut`と入力して、ヘルプページを参照してください。
 
-**分位値ブレーク**
+### 分位値ブレーク {.unnumbered}
 
 　一般的な理解では、"クォンタイル"または"パーセンタイル"は、通常、値の割合が下になる値を指します。例えば、`linelist`の年齢の95パーセンタイルは、年齢の95%が該当する年齢になります。
 
@@ -1344,7 +1342,7 @@ linelist %>%                              #linelistから開始。
   janitor::tabyl(deciles)                # 表示するテーブルへのパイプ。
 ```
 
-### **均等な大きさのグループ** {.unnumbered}
+### 均等な大きさのグループ {.unnumbered}
 
 　数値グループを作成するもう1つのツールは、**dplyr** の関数 `ntile()`で、データをn個の均等な大きさのグループに分けようとします。数値ベクトルとグループの数を指定します。作成される新しい列の値は、グループの"番号"（例：1から10）だけで、`cut()`を使ったときのように値の範囲そのものではありません。
 
@@ -1377,7 +1375,7 @@ left_join(ntile_table, ntile_ranges, by = "even_groups")
 
 `case_when()`を使用する場合は、このページの"値の再定義"で前述した適切な使用方法を確認してください。また、すべての右辺の値は同じクラスでなければならないことに注意してください。したがって、右辺の値を`NA`にしたい場合は、"Missing "と書くか、特別な`NA`値`NA_character_`を使用する必要があります。
 
-**パイプチェーンへの追加**
+### パイプチェーンへの追加 {.unnumbered}
 
 以下では、2つのカテゴリー化された年齢列を作成するコードを、クリーニング・パイプ・チェーンに追加しています。
 
@@ -1452,9 +1450,9 @@ linelist <- linelist_raw %>%
 
 <!-- ======================================================= -->
 
-## **列の追加**
+## 列の追加
 
-**一行ずつ**
+### 一行ずつ {.unnumbered}
 
 　手作業で一行ずつ追加するのは面倒ですが、**dplyr** の `add_row()`を使えば可能です。各列は1つの型（factor型、numeric型、logic型など）の値のみを含む必要があることを覚えておいてください。そのため、行の追加にはこれを維持するための微妙な差異が必要です。
 
@@ -1469,7 +1467,7 @@ linelist <- linelist %>%
 
 `.before`と`.after.`を使って、追加したい行の配置を指定します。`.before = 3`は、新しい行を現在の3行目の前に配置します。デフォルトの動作では、行を最後に追加します。指定されていない列は空欄（NA）になります。
 
-　新しい行番号は奇妙に見えるかもしれませんが（"...23"）、既存の行の行番号は変更されています。そのため、このコマンドを2回使用する場合は、挿入を慎重に検討/テストしてください。
+　新しい**行番号**は奇妙に見えるかもしれませんが（"...23"）、既存の行の行番号は**変更されています**。そのため、このコマンドを2回使用する場合は、挿入を慎重に検討/テストしてください。
 
 用意したクラスが外れている場合は、以下のようなエラーが表示されます。
 
@@ -1477,7 +1475,7 @@ linelist <- linelist %>%
 
 (日付の値を持つ行を挿入する際には、as.Date("2020-10-10")のようにas.Date()という関数で日付を囲うことを忘れないでください)。
 
-**行の結合**
+### 行の結合 {.unnumbered}
 
 あるデータフレームの行を別のデータフレームの下部に結合してデータセットを結合するには、**dplyr**の `bind_rows()`を使用します。これについては、[Joining data](https://epirhandbook.com/en/joining-data.html#joining-data) のページで詳しく説明しています。
 
@@ -1487,7 +1485,7 @@ linelist <- linelist %>%
 
 <!-- ======================================================= -->
 
-## **行のフィルタリング**
+## 行のフィルタリング
 
 　列を整理し、値を再定義した後の典型的なクリーニングステップは、**dplyr**の動詞 `filter()`を使ってデータフレームの特定の行をフィルタリングすることです。
 
@@ -1495,7 +1493,7 @@ linelist <- linelist %>%
 
 <!-- ======================================================= -->
 
-### **単純なフィルタ** {.unnumbered}
+### 単純なフィルタ {.unnumbered}
 
 　この単純な例では、論理的な条件を満たすように行をフィルタリングした上で、データフレームのラインリストを自分自身として再定義します。括弧内の論理条件が評価されて`TRUE`となる行のみが保持されます。
 
@@ -1510,7 +1508,7 @@ linelist <- linelist %>%
 
 フィルタを適用した後の `linelist`の行数は`linelist %>% filter(gender == "f") %>% nrow()` となります。
 
-### **欠損値のフィルタリング** {.unnumbered}
+### 欠損値のフィルタリング {.unnumbered}
 
 　欠損値のある行をフィルタリングしたいというのはよくあることです。`filter(!is.na(column) & !is.na(column))`と書きたい気持ちを抑えて、代わりにこの目的のためにカスタマイズされた **tidyr** の関数、`drop_na()`を使いましょう。空の括弧をつけて実行すると、欠損値のある行を削除します。あるいは、欠落を評価する特定の列の名前を指定したり、[上述の](https://epirhandbook.com/en/cleaning-data-and-core-functions.html#clean_tidyselect)"tidyselect "ヘルパー関数を使用することもできます。
 
@@ -1522,7 +1520,7 @@ linelist %>%
 
 　データの欠落を分析・管理するための多くのテクニックについては、[Missing data](https://epirhandbook.com/en/missing-data.html#missing-data) のページをご覧ください。
 
-### **行番号によるフィルタリング** {.unnumbered}
+### 行番号によるフィルタリング {.unnumbered}
 
 　データフレームや Tibble では、各行には通常"行番号"があり、R Viewerで見ると最初の列の左側に表示されます。これは、それ自体はデータの真の列ではありませんが、`filter()`のステートメントで使用することができます。
 
@@ -1540,17 +1538,17 @@ linelist %>% filter(row_number() == 5)
 linelist %>% filter(row_number() %in% 2:20) %>% select(date_onset, outcome, age)
 ```
 
-また、データフレームを tibble関数 `rownames_to_column()`にパイプすることで、行番号を真の列に変換することができます（括弧の中には何も入れないでください）。
+また、データフレームを **tibble** 関数 `rownames_to_column()`にパイプすることで、行番号を真の列に変換することができます（括弧の中には何も入れないでください）。
 
 <!-- ======================================================= -->
 
-### **複雑なフィルタ** {.unnumbered}
+### 複雑なフィルタ {.unnumbered}
 
 　括弧（`）`、OR`｜`、ネゲート`！`、`％in％`、AND`＆`の各演算子を使って、より複雑な論理条件を作ることができます。その例を以下に示します。
 
 注： 論理的条件の前に`!` 演算子を使うと、それを否定することができます。例えば、`！is.na(column)`は、列の値が欠損していない場合に真と評価されます。同様に、`！column %in% c("a", "b", "c")`は、列の値がベクトルに含まれていない場合に真と評価されます。
 
-#### **データを調べる** {.unnumbered}
+#### データを調べる {.unnumbered}
 
 　以下は、発症日のヒストグラムを作成するためのシンプルな1のコマンドです。2012～2013年に発生した2つ目の小規模なアウトブレイクもこの未加工データセットに含まれていることがわかります。今回の分析では、この初期アウトブレイクを削除したいと思います。
 
@@ -1558,13 +1556,13 @@ linelist %>% filter(row_number() %in% 2:20) %>% select(date_onset, outcome, age)
 hist(linelist$date_onset, breaks = 50)
 ```
 
-**数値や日付の欠損をフィルターで処理する方法**
+#### 数値や日付の欠損をフィルターで処理する方法 {.unnumbered}
 
 　date_onsetで2013年6月以降の行をフィルタリングすることはできるでしょうか。注意してください。`filter(date_onset > as.Date("2013-06-01")))`というコードを適用すると、発症日が欠落している後期流行の行がすべて削除されてしまいます!
 
 [要注意：日付や数値の"大"（\>）または"小"（\<）にフィルタリングすると、欠損値（NA）のある行が削除されてしまいます。これは、NAが無限に大きい、または小さいものとして扱われるためです。]{style="color: red;"}
 
-(日付とパッケージ**lubridate**を使った作業については、[*Working with dates*](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1)のページを参照してください）。
+[(日付とパッケージ**lubridate**を使った作業については、[Working with dates](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1)のページを参照してください）。]{.ul}
 
 #### フィルターの設計 {.unnumbered}
 
@@ -1632,7 +1630,7 @@ linelist <- filter(linelist, !is.na(case_id))
 linelist <- linelist[!is.na(case_id), ]
 ```
 
-### **レコードを素早く確認** {.unnumbered}
+### レコードを素早く確認 {.unnumbered}
 
 　数列だけのレコードを素早く確認したいことがよくあります。R の基本関数である `View()`は、RStudio で表示できるようにデータフレームを表示します。
 
@@ -1644,7 +1642,7 @@ View(linelist)
 
 特定のセル（特定の行、特定の列）を表示する2つの例を紹介します。
 
-**dplyrの関数**`filter()`と`select()`を使用します。
+**dplyrの関数 `filter()`と`select()`を使用します。**
 
 `View()`の中で、データセットを　`filter()`にパイプして特定の行を残し、`select()`にパイプして特定の列を残します。例えば、3つの特定のケースの発症日と入院日を確認する場合です。
 
@@ -1660,7 +1658,7 @@ Rの基本的な構文でも同じことができ、見たいサブセットに�
 View(linelist[linelist$case_id %in% c("11f8ea", "76b97a", "47a5f5"), c("date_onset", "date_hospitalisation")])
 ```
 
-パイプチェーンに追加
+#### パイプチェーンに追加 {.unnumbered}
 
 ```{r}
 # パイプチェーン処理 (未加工データから始まり、クリーニングステップを経てパイプに送られる)
@@ -1743,7 +1741,7 @@ linelist <- linelist_raw %>%
 
 <!-- ======================================================= -->
 
-## **行単位の計算**
+## 行単位の計算
 
 　行内で計算を行いたい場合は、**dplyr** の`rowwise()`を利用することができます。例えば、このコードでは `rowwise()`を適用し、行リストの各行について、値が"はい"である指定された症状の列の数を合計する新しい列を作成しています。`rowwise()`は本質的に特別な種類の `group_by()`であるため、終わったら `ungroup()を`使うのがベストです（ [Grouping data](https://epirhandbook.com/en/grouping-data.html#grouping-data) ページを参照）。
 
@@ -1783,7 +1781,7 @@ linelist %>%
   select(latest_date, contains("date"))  # for display
 ```
 
-## **アレンジとソート**
+## アレンジとソート（並び替え）
 
 **dplyr**の関数 `arrange()`を使って、列の値で行を並べ替えたり、順番に並べたりします。
 
