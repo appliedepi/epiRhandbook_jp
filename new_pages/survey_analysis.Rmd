@@ -1,164 +1,140 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
 
-# Survey analysis { }  
-
-<!-- ======================================================= -->
-## Overview {  }
-
-This page demonstrates the use of several packages for survey analysis. 
-
-
-Most survey R packages rely on the [**survey** package](https://cran.r-project.org/web/packages/survey/index.html) 
-for doing weighted analysis. 
-We will use **survey** as well as [**srvyr**](https://cran.r-project.org/web/packages/srvyr/index.html) 
-(a wrapper for **survey** allowing for tidyverse-style coding) and
-[**gtsummary**](https://cran.r-project.org/web/packages/gtsummary/index.html) 
-(a wrapper for **survey** allowing for publication ready tables). 
-While the original **survey** package does not allow for tidyverse-style coding, 
-it does have the added benefit of allowing for survey-weighted generalised linear 
-models (which will be added to this page at a later date). 
-We will also demonstrate using a function from the [**sitrep**](https://github.com/R4EPI/sitrep)
-package to create sampling weights (*n.b* this package is currently not yet on CRAN, 
-but can be installed from github).
-
-Most of this page is based off work done for the ["R4Epis" project](https://r4epis.netlify.app/); 
-for detailed code and R-markdown templates see the ["R4Epis" github page](https://github.com/R4EPI/sitrep). 
-Some of the **survey** package based code is based off early versions of 
-[EPIET case studies](https://github.com/EPIET/RapidAssessmentSurveys).
-
-At current this page does not address sample size calculations or sampling. 
-For a simple to use sample size calculator see [OpenEpi](https://www.openepi.com/Menu/OE_Menu.htm). 
-The [GIS basics](https://epirhandbook.com/gis-basics.html) page of the handbook 
-will eventually have a section on spatial random sampling, and this page will 
-eventually have a section on sampling frames as well as sample size calculations. 
-
-
-
-1.  Survey data 
-2.  Observation time 
-3.  Weighting 
-4.  Survey design objects
-5.  Descriptive analysis 
-6.  Weighted proportions
-7.  Weighted rates 
-
+# 調査データ分析
 
 <!-- ======================================================= -->
-## Preparation {  }
 
-### Packages {.unnumbered}
+## 概要
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
-Here we also demonstrate using the `p_load_gh()` function from **pacman** to install a load a package from github which has not yet been published on CRAN. 
+このページでは、調査データ分析のためのいくつかのパッケージの使用方法を説明します。
+
+ほとんどの調査用Rパッケージは、重み付け分析を行うために[**survey**パッケージ](https://cran.r-project.org/web/packages/survey/index.html)に依存しています。ここでは、[**srvyr**](https://cran.r-project.org/web/packages/srvyr/index.html)（Tidyverseスタイルのコーディングを可能にする**survey**のラッパー）および[**gtsummary**](https://cran.r-project.org/web/packages/gtsummary/index.html)（出版準備の整った表を可能にする**survey**のラッパー）と同様に**survey**を使用します。オリジナルの**survey**パッケージでは、Tidyverseスタイルのコーディングはできませんが、survey-weighted
+generalised linear
+modelを使用できるという利点があります（これは後日このページに追加されます）。また、[**sitrep**](https://github.com/R4EPI/sitrep)パッケージの関数を使用して、サンプリングウェイトを作成するデモを行います（注：このパッケージは現在CRANにはまだありませんが、githubからインストールできます）。
+
+このページのほとんどは、[「R4Epis」プロジェクト](https://r4epis.netlify.app/)で行われた作業に基づいています。詳細なコードとR-markdownテンプレートについては、[「R4Epis」のgithubページ](https://github.com/R4EPI/sitrep)を参照してください。**Survey**パッケージベースのコードの一部は、[EPIETケーススタディ](https://github.com/EPIET/RapidAssessmentSurveys)の初期バージョンに基づいています。
+
+現在、このページではサンプルサイズの計算やサンプリングについては触れていません。簡単に利用できるサンプルサイズ計算機については、[OpenEpi](https://www.openepi.com/Menu/OE_Menu.htm)を参照してください。ハンドブックの[GIS
+basics](https://epirhandbook.com/gis-basics.html)ページには、いずれ空間的ランダムサンプリングのセクションが設けられ、このページには、サンプルサイズの計算だけでなく、サンプリングフレームのセクションが設けられる予定です。
+
+1.  調査データ
+2.  観察期間
+3.  重み付け
+4.  調査デザイン対象
+5.  記述的分析
+6.  重み付けされた割合
+7.  重み付けされた比率
+
+<!-- ======================================================= -->
+
+## 準備
+
+### パッケージ {.unnumbered}
+
+このコードチャンクは、分析に必要なパッケージのロードを示しています。このハンドブックでは
+**pacman** の
+`p_load()`を強調しています。`p_load()`は必要に応じてパッケージをインストールし、使用するためにパッケージを読み込みます。また、**base**
+Rから`library()`でパッケージを読み込むこともできます。Rのパッケージについては[R
+basics]のページを参照してください。\
+ここでは、**pacman**の`p_load_gh()`関数を使って、まだCRANで公開されていないgithubのパッケージをインストールしてロードするデモも行っています。
 
 ```{r}
 
-## load packages from CRAN
-pacman::p_load(rio,          # File import
-               here,         # File locator
-               tidyverse,    # data management + ggplot2 graphics
-               tsibble,      # handle time series datasets
-               survey,       # for survey functions
-               srvyr,        # dplyr wrapper for survey package
-               gtsummary,    # wrapper for survey package to produce tables
-               apyramid,     # a package dedicated to creating age pyramids
-               patchwork,    # for combining ggplots
-               ggforce       # for alluvial/sankey plots
+## CRANからパッケージを読み込む
+pacman::p_load(rio,          # ファイルのインポート
+               here,         # ファイルの場所
+               tidyverse,    # データ管理 + ggplot2のグラフ
+               tsibble,      # 時系列データセットを扱う
+               survey,       # 調査関数
+               srvyr,        # Surveyパッケージのdplyrラッパー
+               gtsummary,    # 表作成のためのsurveyパッケージ
+               apyramid,     # 年齢ピラミッド作成のためのパッケージ
+               patchwork,    # ggplotを組み合わせるためのパッケージ
+               ggforce       # 沖積図・サンキーダイアグラム
                ) 
 
 ## load packages from github
 pacman::p_load_gh(
-     "R4EPI/sitrep"          # for observation time / weighting functions
+     "R4EPI/sitrep"          # 観察期間 / 重み付け関数
 )
 
-``` 
+```
 
-### Load data {.unnumbered}
+### データの読み込み {.unnumbered}
 
-The example dataset used in this section:
+本節で使用する例のデータセットです。
 
--   fictional mortality survey data.
--   fictional population counts for the survey area. 
--   data dictionary for the fictional mortality survey data. 
+-   架空の死亡率調査データ
+-   調査対象地域の架空の人口数
+-   架空の死亡率調査データのデータ辞書
 
-This is based off the MSF OCA ethical review board pre-approved survey. The 
-fictional dataset was produced as part of the ["R4Epis" project](https://r4epis.netlify.app/). 
-This is all based off data collected using [KoboToolbox](https://www.kobotoolbox.org/), 
-which is a data collection software based off [Open Data Kit](https://opendatakit.org/).
+これらは、MSF
+OCA倫理審査委員会が事前に承認した調査に基づいています。架空のデータセットは、[「R4Epis」プロジェクト](https://r4epis.netlify.app/)の一環として作成されました。これはすべて、[Open
+Data
+Kit](https://opendatakit.org/)をベースにしたデータ収集ソフトウェアである[KoboToolbox](https://www.kobotoolbox.org/)を使って収集したデータに基づいています。
 
-Kobo allows you to export both the collected data, as well as the data dictionary 
-for that dataset. We strongly recommend doing this as it simplifies data cleaning 
-and is useful for looking up variables/questions. 
+Koboでは、収集したデータだけでなく、そのデータセットのデータ辞書もエクスポートすることができます。データのクリーニングが容易になり，変数や疑問を調べるのに便利なので，この方法を強くお勧めします。
 
+[**ヒント：**Koboのデータ辞書では、調査票の"name"欄に変数名が記載されています。各変数の可能な値は、選択肢シートで指定されます。Choicesタブでは、"name"には短縮された値が、"label::english"および
+"label::french"列には適切な長さの値が表示されます。**Epidict**パッケージの`msf_dict_survey()`関数を使って、Kobo辞書のExcelファイルをインポートすると、これが再フォーマットされるので、再コーディングに簡単に使えるようになります。
+]{style="color: darkgreen;"}
 
-<span style="color: darkgreen;">**_TIP:_** The Kobo data dictionary has variable
-names in the "name" column of the survey sheet. 
-Possible values for each variable are specified in choices sheet. 
-In the choices tab, "name" has the shortened value and the "label::english" and 
-"label::french" columns have the appropriate long versions. 
-Using the **epidict** package `msf_dict_survey()` function to import a Kobo 
-dictionary excel file will re-format this for you so it can be used easily to recode.  </span>
+[**注意：**サンプルデータセットは、単なるエクスポートとは異なります（Koboでは、異なる調査レベルを個別にエクスポートします）
+-
+異なるレベルをマージするには、以下の調査データのセクションを参照してください。]{style="color: orange;"}
 
-<span style="color: orange;">**_CAUTION:_** The example dataset is not the same 
-as an export (as in Kobo you export different questionnaire levels individually) 
-- see the survey data section below to merge the different levels.</span>
-
-
-The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export](https://epirhandbook.com/import-and-export.html) for various ways to import data.
+データセットは **rio**パッケージの
+`import()`関数を使ってインポートされます。データをインポートするさまざまな方法については、[インポートおよびエクスポート](https://epirhandbook.com/import-and-export.html)のページを参照してください。
 
 ```{r echo = FALSE}
-# import the survey into R
+# 調査データをRにインポートする
 survey_data <- rio::import(here::here("data", "surveys", "survey_data.xlsx"))
 
-# import the dictionary into R
+# 辞書をRにインポートする
 survey_dict <- rio::import(here::here("data", "surveys", "survey_dict.xlsx")) 
 
-# import the population in to R 
+# 母集団をRにインポートする
 population <- rio::import(here::here("data", "surveys", "population.xlsx"))
 ```
 
 ```{r eval = FALSE}
-# import the survey data
+# 調査データをインポートする
 survey_data <- rio::import("survey_data.xlsx")
 
-# import the dictionary into R
+# 辞書をRにインポートする
 survey_dict <- rio::import("survey_dict.xlsx") 
 ```
 
-The first 10 rows of the survey are displayed below.
+調査の最初の10行を以下に示します。
 
 ```{r, message = FALSE, echo = FALSE}
-# display the survey data as a table
+# 表として調査データを表示する
 DT::datatable(head(survey_data, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-We also want to import the data on sampling population so that we can produce 
-appropriate weights. This data can be in different formats, however we would 
-suggest to have it as seen below (this can just be typed in to an excel). 
-
+また、適切な重みを作成するために、サンプリング集団のデータをインポートしたいと考えます。このデータはさまざまな形式で作成できますが、以下のようにすることをお勧めします（エクセルに入力するだけでもよいです）。
 
 ```{r read_data_pop_show, eval = FALSE}
-# import the population data
+# 母集団データをインポートする
 population <- rio::import("population.xlsx")
 ```
 
-The first 10 rows of the survey are displayed below.
+調査の最初の10行を以下に示します。
 
 ```{r message=FALSE, echo=F}
-# display the survey data as a table
+# 表として調査データを表示する
 DT::datatable(head(population, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-For cluster surveys you may want to add survey weights at the cluster level. 
-You could read this data in as above. 
-Alternatively if there are only a few counts, these could be entered as below
-in to a tibble. 
-In any case you will need to have one column with a cluster identifier which 
-matches your survey data, and another column with the number of households in 
-each cluster. 
+クラスター調査の場合は、クラスターレベルで調査の重みを加えることができます。このデータを上記のように入力することができます。また、カウント数が少ない場合は、以下のように入力して2つの列を作ることもできます。いずれにしても、調査データと一致するクラスター識別子の列と、各クラスターの世帯数の列が必要になります。
 
 ```{r cluster_counts}
 
-## define the number of households in each cluster
+## 各クラスタの世帯数を定義する
 cluster_counts <- tibble(cluster = c("village_1", "village_2", "village_3", "village_4", 
                                      "village_5", "village_6", "village_7", "village_8",
                                      "village_9", "village_10"), 
@@ -167,49 +143,42 @@ cluster_counts <- tibble(cluster = c("village_1", "village_2", "village_3", "vil
 
 ```
 
-### Clean data {.unnumbered}
+### データクリーニング {.unnumbered}
 
-The below makes sure that the date column is in the appropriate format. 
-There are several other ways of doing this (see the [Working with dates](https://epirhandbook.com/working-with-dates.html)
-page for details), however using the dictionary to define dates is quick and easy. 
+日付列が適切な形式であることを以下で確認しています。他にもいくつかの方法がありますが（詳しくは[「日付の扱い方」](https://epirhandbook.com/working-with-dates.html)のページをご覧ください）、辞書を使って日付を定義するのが手っ取り早くて簡単です。
 
-We also create an age group variable using the `age_categories()` function from 
-**epikit** - see [cleaning data](https://epirhandbook.com/cleaning-data-and-core-functions.html#num_cats)
-handbook section for details. 
-In addition, we create a character variable defining which district the various clusters
-are in. 
+また、**epikit**の`age_categories()`関数を使って、年齢グループの変数を作成します（詳細は[データクリーニング](https://epirhandbook.com/cleaning-data-and-core-functions.html#num_cats)のハンドブックセクションを参照）。さらに、各クラスターがどの地区にあるかを定義する文字変数を作成します。
 
-Finally, we recode all of the yes/no variables to TRUE/FALSE variables - otherwise
-these cant be used by the **survey** proportion functions. 
+最後に、YES/NO変数をすべてTRUE/FALSE変数に再コード化します。このようにしなければ、これらの変数は**調査**比率関数で使用できません。
 
 ```{r cleaning}
 
-## select the date variable names from the dictionary 
+## 辞書から日付変数名を選択する 
 DATEVARS <- survey_dict %>% 
   filter(type == "date") %>% 
   filter(name %in% names(survey_data)) %>% 
   ## filter to match the column names of your data
   pull(name) # select date vars
   
-## change to dates 
+## 日付を変更する 
 survey_data <- survey_data %>%
   mutate(across(all_of(DATEVARS), as.Date))
 
 
-## add those with only age in months to the year variable (divide by twelve)
+## 年齢が月単位のものを年の変数に加える（12で割る）
 survey_data <- survey_data %>% 
   mutate(age_years = if_else(is.na(age_years), 
                              age_months / 12, 
                              age_years))
 
-## define age group variable
+## 年齢層変数の定義する
 survey_data <- survey_data %>% 
      mutate(age_group = age_categories(age_years, 
                                     breakers = c(0, 3, 15, 30, 45)
                                     ))
 
 
-## create a character variable based off groups of a different variable 
+## 別の変数のグループを基にした文字列変数の作成する
 survey_data <- survey_data %>% 
   mutate(health_district = case_when(
     cluster_number %in% c(1:5) ~ "district_a", 
@@ -217,14 +186,14 @@ survey_data <- survey_data %>%
   ))
 
 
-## select the yes/no variable names from the dictionary 
+## 辞書からyes/noの変数名を選択する 
 YNVARS <- survey_dict %>% 
   filter(type == "yn") %>% 
   filter(name %in% names(survey_data)) %>% 
   ## filter to match the column names of your data
   pull(name) # select yn vars
   
-## change to dates 
+## 日付を変更する
 survey_data <- survey_data %>%
   mutate(across(all_of(YNVARS), 
                 str_detect, 
@@ -232,70 +201,52 @@ survey_data <- survey_data %>%
 
 ```
 
-
-
 <!-- ======================================================= -->
-## Survey data {  }
 
-There numerous different sampling designs that can be used for surveys. Here 
-we will demonstrate code for: 
-- Stratified 
-- Cluster 
-- Stratified and cluster 
+## 調査データ
 
-As described above (depending on how you design your questionnaire) the data for 
-each level would be exported as a separate dataset from Kobo. In our example there
-is one level for households and one level for individuals within those households. 
+アンケート調査には、さまざまなサンプリングデザインがあります。ここでは、
+層化、クラスター、層化とクラスターのコードを紹介します。
 
-These two levels are linked by a unique identifier. 
-For a Kobo dataset this variable is "_index" at the household level, which 
-matches the "_parent_index" at the individual level.
-This will create new rows for household with each matching individual, 
-see the handbook section on [joining](https://epirhandbook.com/joining-data.html)
-for details. 
+上記のように、（調査の作成方法にもよりますが）各レベルのデータは、Koboから別のデータセットとしてエクスポートされます。この例では、世帯が1つのレベルで、その世帯内の個人が1つのレベルです。
+
+この2つのレベルは、一意の識別子で結ばれています。Koboのデータセットの場合、この変数は世帯レベルでは"\_index"であり、個人レベルでは"\_parent_index"と一致します。これにより、一致する個人ごとに世帯の新しい行が作成されます。詳細はハンドブックの[結合](https://epirhandbook.com/joining-data.html)の項を参照してください。
 
 ```{r merge_data_levels, eval = FALSE}
 
-## join the individual and household data to form a complete data set
+## 個人データと世帯データを結合し、完全なデータセットを作成する
 survey_data <- left_join(survey_data_hh, 
                          survey_data_indiv,
                          by = c("_index" = "_parent_index"))
 
 
-## create a unique identifier by combining indeces of the two levels 
+## 2つのレベルの内訳を組み合わせて、特有の識別子を作成する
 survey_data <- survey_data %>% 
      mutate(uid = str_glue("{index}_{index_y}"))
 
 ```
 
 <!-- ======================================================= -->
-## Observation time {  }
 
-For mortality surveys we want to now how long each individual was present for in 
-the location to be able to calculate an appropriate mortality rate for our period 
-of interest. This is not relevant to all surveys, but particularly for mortality
-surveys this is important as they are conducted frequently among mobile or displaced
-populations. 
+## 観察期間
 
-To do this we first define our time period of interest, also known as a recall 
-period (i.e. the time that participants are asked to report on when answering 
-questions). 
-We can then use this period to set inappropriate dates to missing, i.e. if deaths
-are reported from outside the period of interest. 
+死亡率調査では、対象期間の適切な死亡率を算出するために、各個人がその場所にどのくらいの期間いたのかを知りたいです。これはすべての調査に当てはまるわけではありませんが、特に死亡率調査の場合、移動する人々や避難している人々の間で頻繁に行われるため、重要です。
+
+これは、リコール期間（質問に答える際に参加者に報告を求める期間）としても知られています。この期間を利用して、対象期間外の死亡が報告された場合など、不適切な日付を欠損に設定することができます。
 
 ```{r recall_period}
 
-## set the start/end of recall period
-## can be changed to date variables from dataset 
-## (e.g. arrival date & date questionnaire)
+## リコール期間の開始／終了の設定する
+## データセットの日付変数に変更可能 
+## (例：到着日＆質問日)
 survey_data <- survey_data %>% 
   mutate(recall_start = as.Date("2018-01-01"), 
          recall_end   = as.Date("2018-05-01")
   )
 
 
-# set inappropriate dates to NA based on rules 
-## e.g. arrivals before start, departures departures after end
+# ルールに基づいて不適切な日付をNAに設定する 
+## 例：開始前の到着、終了後の出発
 survey_data <- survey_data %>%
       mutate(
            arrived_date = if_else(arrived_date < recall_start, 
@@ -314,27 +265,18 @@ survey_data <- survey_data %>%
 
 ```
 
+次に、日付変数を使って、各個人の開始日と終了日を定義します。**sitrep**の`find_start_date()`関数を使って、日付の原因を調べ、それを使って日数（person-time）を計算します。
 
-We can then use our date variables to define start and end dates for each individual. 
-We can use the `find_start_date()` function from **sitrep** to fine the causes for 
-the dates and then use that to calculate the difference between days (person-time). 
+開始日：リコール期間内の最も早い到着イベント、リコール期間の開始日（事前に定義する）、または該当する場合はリコール開始後の日付（到着や出産など）
 
-start date: 
-Earliest appropriate arrival event within your recall period
-Either the beginning of your recall period (which you define in advance), or a 
-date after the start of recall if applicable (e.g. arrivals or births)
-
-end date: 
-Earliest appropriate departure event within your recall period
-Either the end of your recall period, or a date before the end of recall 
-if applicable (e.g. departures, deaths)
+終了日：リコール期間内の最も早い適切な出発イベント、リコール期間の終了日のいずれか、または該当する場合はリコール終了前の日付（出発、死亡など）
 
 ```{r observation_time}
 
-## create new variables for start and end dates/causes
+## 開始日、終了日、原因のための新しい変数を作成する
 survey_data <- survey_data %>% 
-     ## choose earliest date entered in survey
-     ## from births, household arrivals, and camp arrivals 
+     ## 調査で入力された最も古い日付を選択する
+     ## 出生、世帯の到着、キャンプの到着から 
      find_start_date("birthday_date",
                   "arrived_date",
                   period_start = "recall_start",
@@ -342,8 +284,8 @@ survey_data <- survey_data %>%
                   datecol      = "startdate",
                   datereason   = "startcause" 
                  ) %>%
-     ## choose earliest date entered in survey
-     ## from camp departures, death and end of the study
+     ## 調査で入力された最も古い日付を選択する
+     ## キャンプでの出発、死亡、調査の終了から
      find_end_date("left_date",
                 "death_date",
                 period_start = "recall_start",
@@ -353,87 +295,73 @@ survey_data <- survey_data %>%
                )
 
 
-## label those that were present at the start/end (except births/deaths)
+## 開始／終了時に存在していたものを表示（出生／死亡を除く）
 survey_data <- survey_data %>% 
      mutate(
-       ## fill in start date to be the beginning of recall period (for those empty) 
+       ## リコール期間の開始日を記入する（空欄の場合） 
        startdate = if_else(is.na(startdate), recall_start, startdate), 
-       ## set the start cause to present at start if equal to recall period 
-       ## unless it is equal to the birth date 
+       ## リコール期間と等しい場合、開始原因を"Present at start"に設定する 
+       ## 出生日と同じでなければ 
        startcause = if_else(startdate == recall_start & startcause != "birthday_date",
                               "Present at start", startcause), 
-       ## fill in end date to be end of recall period (for those empty) 
+       ## リコール期間の終了日を記入する（空欄の場合） 
        enddate = if_else(is.na(enddate), recall_end, enddate), 
-       ## set the end cause to present at end if equall to recall end 
-       ## unless it is equal to the death date
+       ## リコールに等しい場合は、最終原因を"Present at end"に設定する
+       ## 死亡日と同じでなければ
        endcause = if_else(enddate == recall_end & endcause != "death_date", 
                             "Present at end", endcause))
 
 
-## Define observation time in days
+## 観察期間を日単位で設定する
 survey_data <- survey_data %>% 
   mutate(obstime = as.numeric(enddate - startdate))
 
 ```
 
-
 <!-- ======================================================= -->
-## Weighting {  }
 
-It is important that you drop erroneous observations before adding survey weights. 
-For example if you have observations with negative observation time, you will need
-to check those (you can do this with the `assert_positive_timespan()` function 
-from **sitrep**. 
-Another thing is if you want to drop empty rows (e.g. with `drop_na(uid)`)
-or remove duplicates (see handbook section on [De-duplication] 
-for details). 
-Those without consent need to be dropped too. 
+## 重み付け
 
-In this example we filter for the cases we want to drop and store them in a separate
-data frame - this way we can describe those that were excluded from the survey. 
-We then use the `anti_join()` function from **dplyr** to remove these dropped cases
-from our survey data. 
+調査の重み付けをする前に、誤った観測値を削除することが重要です。例えば、負の観察期間を持つ観察値がある場合、それらをチェックする必要があります（**sitrep**の`assert_positive_timespan()`関数でこれを行うことができます）。もう1つは、空の行を削除するか（例えば`drop_na(uid)`で）、重複した行を削除するかです（詳細はハンドブックの[De-duplication]のセクションを参照してください）。同意のないものもドロップする必要があります。
 
-<span style="color: red;">**_DANGER:_** You cant have missing values in your weight variable, or any of the variables relevant to your survey design (e.g. age, sex, strata or cluster variables).</span>  
+この例では、除外したいケースをフィルタリングして、別のデータフレームに保存します。これにより、調査から除外されたケースを説明することができます。次に、**dplyr**の`anti_join()`関数を使用して、調査データからこれらの除外されたケースを削除します。
+
+[**危険：**体重の変数や、調査計画に関連する変数（年齢、性別、層やクラスターの変数など）に欠損値があってはいけません。]{style="color: red;"}
 
 ```{r remove_unused_data}
 
-## store the cases that you drop so you can describe them (e.g. non-consenting 
-## or wrong village/cluster)
+## ドロップしたケースを保存しておけば、それを説明することができる（例：非同意
+## もしくは、誤った村／クラスター)
 dropped <- survey_data %>% 
   filter(!consent | is.na(startdate) | is.na(enddate) | village_name == "other")
 
-## use the dropped cases to remove the unused rows from the survey data set  
+## ドロップされたケースを使用して、調査データセットから未使用の行を削除する
 survey_data <- anti_join(survey_data, dropped, by = names(dropped))
 
 ```
 
-As mentioned above we demonstrate how to add weights for three different study 
-designs (stratified, cluster and stratified cluster). These require information 
-on the source population and/or the clusters surveyed. 
-We will use the stratified cluster code for this example, but use whichever is
-most appropriate for your study design. 
+前述のように、3つの異なる調査デザイン（層化、クラスター、層化クラスター）について、重みを追加する方法を示します。これらの研究デザインには、原住民および/または調査対象のクラスタに関する情報が必要です。この例では、層化クラスターコードを使用しますが、研究デザインに最も適したものを使用してください。
 
 ```{r survey_weights}
 
-# stratified ------------------------------------------------------------------
-# create a variable called "surv_weight_strata"
-# contains weights for each individual - by age group, sex and health district
+# 層化 ------------------------------------------------------------------------
+# "surv_weight_strata"という変数を作成する
+# 年齢層別、性別、健康地区の各個人の重みを含んでいる
 survey_data <- add_weights_strata(x = survey_data,
                                          p = population,
                                          surv_weight = "surv_weight_strata",
                                          surv_weight_ID = "surv_weight_ID_strata",
                                          age_group, sex, health_district)
 
-## cluster ---------------------------------------------------------------------
+## クラスター------------------------------------------------------------------
 
-# get the number of people of individuals interviewed per household
-# adds a variable with counts of the household (parent) index variable
+# 1世帯あたりのインタビュー対象者の人数を得る
+# 世帯（親）インデックス変数のカウントを持つ変数を追加する
 survey_data <- survey_data %>%
   add_count(index, name = "interviewed")
 
 
-## create cluster weights
+## クラスターの重みを作成する
 survey_data <- add_weights_cluster(x = survey_data,
                                           cl = cluster_counts,
                                           eligible = member_number,
@@ -448,70 +376,58 @@ survey_data <- add_weights_cluster(x = survey_data,
                                           ignore_household = FALSE)
 
 
-# stratified and cluster ------------------------------------------------------
-# create a survey weight for cluster and strata
+# 層化クラスター --------------------------------------------------------------
+# クラスターと層の調査の重みを作成する
 survey_data <- survey_data %>%
   mutate(surv_weight_cluster_strata = surv_weight_strata * surv_weight_cluster)
 
 ```
 
-
 <!-- ======================================================= -->
-## Survey design objects {  }
 
-Create survey object according to your study design. 
-Used the same way as data frames to calculate weight proportions etc. 
-Make sure that all necessary variables are created before this. 
+## 調査デザイン対象
 
-There are four options, comment out those you do not use: 
-- Simple random 
-- Stratified 
-- Cluster 
-- Stratified cluster
+調査デザインに合わせて調査対象を作成します。データフレームと同様に、重量比率などの計算に使用します。必要な変数がすべて作成されていることを確認してから行います。
 
-For this template - we will pretend that we cluster surveys in two separate 
-strata (health districts A and B). 
-So to get overall estimates we need have combined cluster and strata weights. 
+単純無作為、層化、クラスター、層化クラスターの4つのオプションがありますが、使用しないものはコメントアウトしてください。
 
-As mentioned previously, there are two packages available for doing this. The 
-classic one is **survey** and then there is a wrapper package called **srvyr** 
-that makes tidyverse-friendly objects and functions. We will demonstrate both, 
-but note that most of the code in this chapter will use **srvyr** based objects. 
-The one exception is that the **gtsummary** package only accepts **survey** objects. 
+このテンプレートでは、2つの異なる層（健康地区AとB）に調査をクラスター化したと仮定します。したがって、全体の推定値を得るためには、クラスターと層の重みを組み合わせる必要があります。
 
-### **Survey** package  
+前述したように、これを行うために2つのパッケージが用意されています。古典的なものは**survey**で、それからtidyverseに適したオブジェクトや関数を作る**srvyr**というラッパーパッケージがあります。両方ともデモを行いますが、本章のコードのほとんどは**srvyr**ベースのオブジェクトを使用することに注意してください。1つの例外は、**gtsummary**パッケージが**survey**オブジェクトしか受け付けないことです。
 
-The **survey** package effectively uses **base** *R* coding, and so it is not 
-possible to use pipes (`%>%`) or other **dplyr** syntax. 
-With the **survey** package we use the `svydesign()` function to define a survey
-object with appropriate clusters, weights and strata. 
+### Surveyパッケージ
 
-<span style="color: black;">**_NOTE:_** we need to use the tilde (`~`) in front of variables, this is because the package uses the **base** *R* syntax of assigning variables based on formulae. </span>
+**Survey**パッケージでは、**base**
+Rコーディングを効果的に使用するため、パイプ (`%>%)` やその他の
+**dplyr**構文を使用することはできません。**Survey**パッケージでは、`svydesign()`関数を使用して、適切なクラスタ、重み、層を持つ調査オブジェクトを定義します。
+
+[**注意：**変数の前にチルダ（\~）を使う必要があります。これは、パッケージが数式に基づいて変数を割り当てる**base**
+Rの構文を使用しているためです。 ]{style="color: black;"}
 
 ```{r survey_design}
 
-# simple random ---------------------------------------------------------------
+# 単純無作為 ------------------------------------------------------------------
 base_survey_design_simple <- svydesign(ids = ~1, # 1 for no cluster ids
                    weights = NULL,               # No weight added
                    strata = NULL,                # sampling was simple (no strata)
                    data = survey_data            # have to specify the dataset
                   )
 
-## stratified ------------------------------------------------------------------
+## 層化 -----------------------------------------------------------------------
 base_survey_design_strata <- svydesign(ids = ~1,  # 1 for no cluster ids
                    weights = ~surv_weight_strata, # weight variable created above
                    strata = ~health_district,     # sampling was stratified by district
                    data = survey_data             # have to specify the dataset
                   )
 
-# cluster ---------------------------------------------------------------------
+# クラスター ------------------------------------------------------------------
 base_survey_design_cluster <- svydesign(ids = ~village_name, # cluster ids
                    weights = ~surv_weight_cluster, # weight variable created above
                    strata = NULL,                 # sampling was simple (no strata)
                    data = survey_data              # have to specify the dataset
                   )
 
-# stratified cluster ----------------------------------------------------------
+# 層化クラスター --------------------------------------------------------------
 base_survey_design <- svydesign(ids = ~village_name,      # cluster ids
                    weights = ~surv_weight_cluster_strata, # weight variable created above
                    strata = ~health_district,             # sampling was stratified by district
@@ -519,35 +435,31 @@ base_survey_design <- svydesign(ids = ~village_name,      # cluster ids
                   )
 ```
 
+### **Srvyr**パッケージ
 
-
-### **Srvyr** package  
-
-With the **srvyr** package we can use the `as_survey_design()` function, which 
-has all the same arguments as above but allows pipes (`%>%`), and so we do not 
-need to use the tilde (`~`). 
+**Srvyr**パッケージでは、`as_survey_design()`関数を使うことができます。`as_survey_design()`関数は、上記と同じ引数を持ちますが、パイプ(`%>%`)を使うことができるので、チルダ(`~`)を使う必要はありません。
 
 ```{r survey_design_srvyr}
-## simple random ---------------------------------------------------------------
+## 単純無作為 ------------------------------------------------------------------
 survey_design_simple <- survey_data %>% 
   as_survey_design(ids = 1, # 1 for no cluster ids 
                    weights = NULL, # No weight added
                    strata = NULL # sampling was simple (no strata)
                   )
-## stratified ------------------------------------------------------------------
+## 層化 ------------------------------------------------------------------------
 survey_design_strata <- survey_data %>%
   as_survey_design(ids = 1, # 1 for no cluster ids
                    weights = surv_weight_strata, # weight variable created above
                    strata = health_district # sampling was stratified by district
                   )
-## cluster ---------------------------------------------------------------------
+## クラスター ------------------------------------------------------------------
 survey_design_cluster <- survey_data %>%
   as_survey_design(ids = village_name, # cluster ids
                    weights = surv_weight_cluster, # weight variable created above
                    strata = NULL # sampling was simple (no strata)
                   )
 
-## stratified cluster ----------------------------------------------------------
+## 層化クラスター --------------------------------------------------------------
 survey_design <- survey_data %>%
   as_survey_design(ids = village_name, # cluster ids
                    weights = surv_weight_cluster_strata, # weight variable created above
@@ -556,43 +468,28 @@ survey_design <- survey_data %>%
 ```
 
 <!-- ======================================================= -->
-## Descriptive analysis {  }
 
-Basic descriptive analysis and visualisation is covered extensively in other 
-chapters of the handbook, so we will not dwell on it here. 
-For details see the chapters on [descriptive tables](https://epirhandbook.com/descriptive-tables.html), 
-[statistical tests](https://epirhandbook.com/simple-statistical-tests.html), 
-[tables for presentation](https://epirhandbook.com/tables-for-presentation.html), 
-[ggplot basics](https://epirhandbook.com/ggplot-basics.html) and 
-[R markdown reports](https://epirhandbook.com/r-markdown-reports.html). 
+## 記述的分析
 
-In this section we will focus on how to investigate bias in your sample and visualise this. 
-We will also look at visualising population flow in a survey setting using 
-alluvial/sankey diagrams. 
+基本的な記述的分析と視覚化は、ハンドブックの他の章で広範囲にカバーされているので、ここでは触れません。詳細は、[記述表](https://epirhandbook.com/descriptive-tables.html)、[統計検定](https://epirhandbook.com/simple-statistical-tests.html)、[プレゼンテーションのための表](https://epirhandbook.com/tables-for-presentation.html)、[ggplotの基本](https://epirhandbook.com/ggplot-basics.html)、[Rのマークダウンレポート](https://epirhandbook.com/r-markdown-reports.html)の章を参照してください。
 
-In general, you should consider including the following descriptive analyses:  
+このセクションでは、サンプルの偏りを調査し、それを視覚化する方法に焦点を当てます。また、沖積図やサンキーダイアグラムを使って、調査環境における人口の流れを視覚化することも検討します。
 
-- Final number of clusters, households and individuals included  
-- Number of excluded individuals and the reasons for exclusion 
-- Median (range) number of households per cluster and individuals per household 
+一般的には、以下のような記述的な分析を含めることを検討すべきです。
 
+-   対象となるクラスター、世帯、個人の最終的な数\
+-   除外された人の数とその理由
+-   クラスターあたりの世帯数と世帯あたりの個人数の中央値（範囲）
 
-### Sampling bias 
+### サンプリングバイアス
 
-Compare the proportions in each age group between your sample and 
-the source population. 
-This is important to be able to highlight potential sampling bias. 
-You could similarly repeat this looking at distributions by sex. 
+各年齢層の割合を、サンプルと母集団の間で比較します。これは、潜在的なサンプリングバイアスを明らかにするために重要です。同様に、これを繰り返して性別による分布を調べることもできます。
 
-Note that these p-values are just indicative, and a descriptive discussion (or
-visualisation with age-pyramids below) of the distributions in your study sample 
-compared to the source population is more important than the binomial test itself.
-This is because increasing sample size will more often than not lead to 
-differences that may be irrelevant after weighting your data.
+これらのp値は単なる指標であり、ソース集団と比較した研究サンプルの分布の記述的な議論（または下記の年齢ピラミッドによる視覚化）は、二項検定自体よりも重要であることに注意してください。これは、サンプルサイズを大きくすると、データを重み付けした後では無関係な差になることが多いからです。
 
 ```{r descriptive_sampling_bias, warning = FALSE}
 
-## counts and props of the study population
+## 調査対象者の人数と割合
 ag <- survey_data %>% 
   group_by(age_group) %>% 
   drop_na(age_group) %>% 
@@ -600,36 +497,35 @@ ag <- survey_data %>%
   mutate(proportion = n / sum(n), 
          n_total = sum(n))
 
-## counts and props of the source population
+## 対象集団の人数と割合
 propcount <- population %>% 
   group_by(age_group) %>%
     tally(population) %>%
     mutate(proportion = n / sum(n))
 
-## bind together the columns of two tables, group by age, and perform a 
-## binomial test to see if n/total is significantly different from population
-## proportion.
-  ## suffix here adds to text to the end of columns in each of the two datasets
+## 2つの表の列を結合し、年齢別にグループ化し、二項検定を行って、
+## n/totalが母集団の比率と有意に異なるかどうかを調べる
+  ## ここでは、2つのデータセットの列の最後にテキストを追加している
 left_join(ag, propcount, by = "age_group", suffix = c("", "_pop")) %>%
   group_by(age_group) %>%
-  ## broom::tidy(binom.test()) makes a data frame out of the binomial test and
-  ## will add the variables p.value, parameter, conf.low, conf.high, method, and
-  ## alternative. We will only use p.value here. You can include other
-  ## columns if you want to report confidence intervals
+  ## broom::tidy(binom.test())は、二項検定からデータフレームを作成し、
+  ## 変数p.value, parameter, conf.low, conf.high, method, and alternativeを追加する
+  ## ここではp.valueのみを使用する
+  ## 信頼区間を報告したい場合は、他の列を含めることができる
   mutate(binom = list(broom::tidy(binom.test(n, n_total, proportion_pop)))) %>%
   unnest(cols = c(binom)) %>% # important for expanding the binom.test data frame
   mutate(proportion_pop = proportion_pop * 100) %>%
-  ## Adjusting the p-values to correct for false positives 
-  ## (because testing multiple age groups). This will only make 
-  ## a difference if you have many age categories
+  ## 偽陽性を補正するためにp値を調整する 
+  ## （複数の年齢層をテストしたことによる）
+  ## これは、多くの年齢カテゴリーがある場合にのみ違いが生じる
   mutate(p.value = p.adjust(p.value, method = "holm")) %>%
                       
-  ## Only show p-values over 0.001 (those under report as <0.001)
+  ## 0.001を超えるp値のみ示す(0.001未満は<0.001として示す)
   mutate(p.value = ifelse(p.value < 0.001, 
                           "<0.001", 
                           as.character(round(p.value, 3)))) %>% 
   
-  ## rename the columns appropriately
+  ## 列の名前を適切に変更する
   select(
     "Age group" = age_group,
     "Study population (n)" = n,
@@ -640,54 +536,34 @@ left_join(ag, propcount, by = "age_group", suffix = c("", "_pop")) %>%
   )
 ```
 
+### 人口統計ピラミッド
 
+人口統計（または年齢-性別）ピラミッドは、調査対象者の分布を視覚化する簡単な方法です。また、調査の層別に年齢と性別の[記述表](https://epirhandbook.com/descriptive-tables.html)を作成することも検討する価値があります。ここでは、上で作成した調査設計オブジェクトを使用して、加重比例が可能な**apyramid**パッケージを使用して説明します。[人口統計ピラミッド](https://epirhandbook.com/demographic-pyramids-and-likert-scales.html)を作成するための他のオプションについては、ハンドブックのその章で詳しく説明しています。また、`plot_age_pyramid()`という**sitrep**のラッパー関数を使用して、比率のプロットを作成するための数行のコーディングを省きます。
 
-### Demographic pyramids 
+上のサンプリング・バイアスのセクションで見た差の正式な二項検定のように、ここでは、我々の標本化された母集団が元の母集団と実質的に異なるかどうか、そして重み付けがこの差を修正するかどうかを可視化することに興味があります。これを行うために、**ggplot**の可視化を並べて表示するために**patchwork**パッケージを使用します。詳細はハンドブックの[ggplot
+tips](https://epirhandbook.com/ggplot-tips.html?q=patch#combine-plots)章のプロットの結合のセクションを参照してください。私たちは、ソース集団、重み付けされていない調査集団、重み付けされた調査集団を視覚化します。また、調査の各層ごとに視覚化することも考えられます。ここでの例では、`stack_by = "health_district"`という引数を使用します（詳細は`?plot_age_pyramid`を参照してください）。
 
-Demographic (or age-sex) pyramids are an easy way of visualising the distribution
-in your survey population. It is also worth considering creating 
-[descriptive tables](https://epirhandbook.com/descriptive-tables.html) of age 
-and sex by survey strata. 
-We will demonstrate using the **apyramid** package as it allows for weighted 
-proportions using our survey design object created above. Other options for creating
-[demographic pyramids](https://epirhandbook.com/demographic-pyramids-and-likert-scales.html)
-are covered extensively in that chapter of the handbook. We will also use a 
-wrapper function from **sitrep** called `plot_age_pyramid()` which saves a few lines
-of coding for producing a plot with proportions. 
-
-As with the formal binomial test of difference, seen above in the sampling bias 
-section, we are interested here in visualising whether our sampled population 
-is substantially different from the source population and whether weighting corrects
-this difference. To do this we will use the **patchwork** package to show our 
-**ggplot** visualisations side-by-side; for details see the section on 
-combining plots in [ggplot tips](https://epirhandbook.com/ggplot-tips.html?q=patch#combine-plots)
-chapter of the handbook. 
-We will visualise our source population, our un-weighted survey population and 
-our weighted survey population.
-You may also consider visualising by each strata of your survey - in our example 
-here that would be by using the argument `stack_by  = "health_district"` 
-(see `?plot_age_pyramid` for details). 
-
-<span style="color: black;">**_NOTE:_** The x and y axes are flipped in pyramids </span>
+[**注意：**ピラミッドでは、x軸とy軸が反転します。
+]{style="color: black;"}
 
 ```{r weighted_age_pyramid, warning = FALSE, message = FALSE, fig.show = "hold", fig.width = 15}
 
-## define x-axis limits and labels ---------------------------------------------
-## (update these numbers to be the values for your graph)
-max_prop <- 35      # choose the highest proportion you want to show 
-step <- 5           # choose the space you want beween labels 
+## x軸の範囲とラベルを定義する ---------------------------------------------
+## (これらの数値をグラフの値として更新する)
+max_prop <- 35      # 表示させたい比率の上限を選ぶ 
+step <- 5           # 表示させたいラベル間のスペースを選ぶ
 
-## this part defines vector using the above numbers with axis breaks
+## この部分では、上記の数値を使って、軸の区切りのベクトルを定義する
 breaks <- c(
     seq(max_prop/100 * -1, 0 - step/100, step/100), 
     0, 
     seq(0 + step / 100, max_prop/100, step/100)
     )
 
-## this part defines vector using the above numbers with axis limits
+## この部分では、上記の数値を使って、軸の範囲のベクトルを定義する
 limits <- c(max_prop/100 * -1, max_prop/100)
 
-## this part defines vector using the above numbers with axis labels
+##この部分では、上記の数値を使って、軸のラベルのベクトルを定義する
 labels <-  c(
       seq(max_prop, step, -step), 
       0, 
@@ -695,12 +571,12 @@ labels <-  c(
     )
 
 
-## create plots individually  --------------------------------------------------
+## プロットを個別に作成する  --------------------------------------------------
 
-## plot the source population 
-## nb: this needs to be collapsed for the overall population (i.e. removing health districts)
+## 対象集団をプロットする
+## 注:これは全体の人口を対象にして集計する必要がある（例：健康地区を除く）
 source_population <- population %>%
-  ## ensure that age and sex are factors
+  ## 年齢と性別がfactorであることを確認する
   mutate(age_group = factor(age_group, 
                             levels = c("0-2", 
                                        "3-14", 
@@ -709,43 +585,43 @@ source_population <- population %>%
                                        "45+")), 
          sex = factor(sex)) %>% 
   group_by(age_group, sex) %>% 
-  ## add the counts for each health district together 
+  ## 各健康地区のカウントを足し合わせる
   summarise(population = sum(population)) %>% 
-  ## remove the grouping so can calculate overall proportion
+  ## グループ化を解除して全体の比率を算出する
   ungroup() %>% 
   mutate(proportion = population / sum(population)) %>% 
-  ## plot pyramid 
+  ## ピラミッドをプロットする
   age_pyramid(
             age_group = age_group, 
             split_by = sex, 
             count = proportion, 
             proportional = TRUE) +
-  ## only show the y axis label (otherwise repeated in all three plots)
+  ## Y軸のラベルのみを表示（それ以外は3つのプロットすべてに繰り返される）
   labs(title = "Source population", 
        y = "", 
        x = "Age group (years)") + 
-  ## make the x axis the same for all plots 
+  ## すべてのプロットのX軸を同一にする 
   scale_y_continuous(breaks = breaks, 
     limits = limits, 
     labels = labels)
   
   
-## plot the unweighted sample population 
+## 重み付けされていないサンプル集団をプロットする
 sample_population <- plot_age_pyramid(survey_data, 
                  age_group = "age_group", 
                  split_by = "sex",
                  proportion = TRUE) + 
-  ## only show the x axis label (otherwise repeated in all three plots)
+  ## X軸のラベルのみを表示（それ以外は3つのプロットすべてに繰り返される）
   labs(title = "Unweighted sample population", 
        y = "Proportion (%)", 
        x = "") + 
-  ## make the x axis the same for all plots 
+  ## すべてのプロットのX軸を同一にする 
   scale_y_continuous(breaks = breaks, 
     limits = limits, 
     labels = labels)
 
 
-## plot the weighted sample population 
+## 重み付けされたサンプル人口をプロットする
 weighted_population <- survey_design %>% 
   ## make sure the variables are factors
   mutate(age_group = factor(age_group), 
@@ -754,20 +630,20 @@ weighted_population <- survey_design %>%
     age_group = "age_group",
     split_by = "sex", 
     proportion = TRUE) +
-  ## only show the x axis label (otherwise repeated in all three plots)
+  ## X軸のラベルのみを表示（それ以外は3つのプロットすべてに繰り返される）
   labs(title = "Weighted sample population", 
        y = "", 
        x = "")  + 
-  ## make the x axis the same for all plots 
+  ## すべてのプロットのX軸を同一にする 
   scale_y_continuous(breaks = breaks, 
     limits = limits, 
     labels = labels)
 
-## combine all three plots  ----------------------------------------------------
-## combine three plots next to eachother using + 
+## 3つのプロットを組み合わせる  ----------------------------------------------------
+## 隣接する3つのプロットを「＋」で結合する
 source_population + sample_population + weighted_population + 
-  ## only show one legend and define theme 
-  ## note the use of & for combining theme with plot_layout()
+  ## 凡例を1つだけ表示し、テーマを定義する 
+  ## テーマをplot_layout()と組み合わせるための「&」の使用法に注意する
   plot_layout(guides = "collect") & 
   theme(legend.position = "bottom",                    # move legend to bottom
         legend.title = element_blank(),                # remove title
@@ -776,20 +652,13 @@ source_population + sample_population + weighted_population +
        )
 ```
 
+### 沖積図・サンキーダイアグラム
 
-### Alluvial/sankey diagram
-
-Visualising starting points and outcomes for individuals can be very helpful to 
-get an overview. There is quite an obvious application for mobile populations, 
-however there are numerous other applications such as cohorts or any other situation
-where there are transitions in states for individuals. These diagrams have several
-different names including alluvial, sankey and parallel sets - the details are 
-in the handbook chapter on [diagrams and charts](https://epirhandbook.com/diagrams-and-charts.html#alluvialsankey-diagrams). 
-
+個人個人の出発地点とアウトカムを視覚化することは、概要を把握するのに非常に役立ちます。移動する人口には非常に分かりやすいアプリケーションがありますが、コホートや、個人の状態に遷移があるその他の状況など、数多くのアプリケーションがあります。これらのダイアグラムには、沖積図、サンキー、パラレルセットなど、いくつかの異なる名称があり、詳細はハンドブックの[「ダイアグラムとチャート」](https://epirhandbook.com/diagrams-and-charts.html#alluvialsankey-diagrams)の章に記載されています。
 
 ```{r visualise_population_flow}
 
-## summarize data
+## データの要約
 flow_table <- survey_data %>%
   count(startcause, endcause, sex) %>%  # get counts 
   gather_set_data(x = c("startcause", "endcause")) %>%     # change format for plotting
@@ -800,21 +669,21 @@ flow_table <- survey_data %>%
         )
 
 
-## plot your dataset 
-  ## on the x axis is the start and end causes
-  ## gather_set_data generates an ID for each possible combination
-  ## splitting by y gives the possible start/end combos
-  ## value as n gives it as counts (could also be changed to proportion)
+## データセットをプロットする
+  ## x軸は開始原因と終了原因
+  ## gather_set_dataでは、可能な組み合わせごとにIDを生成する
+  ## yで分割すると、開始と終了の組み合わせが可能となる
+  ## 値をnとすると、数となる（比率に変更することも可能）
 ggplot(flow_table, aes(x, id = id, split = y, value = n)) +
-  ## colour lines by sex 
+  ## 性別での色分け 
   geom_parallel_sets(aes(fill = sex), alpha = 0.5, axis.width = 0.2) +
-  ## fill in the label boxes grey
+  ## ラベルボックスをグレーにする
   geom_parallel_sets_axes(axis.width = 0.15, fill = "grey80", color = "grey80") +
-  ## change text colour and angle (needs to be adjusted)
+  ## 文字の色や角度の変更する（調整が必要）
   geom_parallel_sets_labels(color = "black", angle = 0, size = 5) +
-  ## adjusted y and x axes (probably needs more vertical space)
+  ## y軸とx軸の調整（おそらく垂直方向のスペースが必要）
   scale_x_discrete(name = NULL, expand = c(0, 0.2)) + 
-  ## remove axis labels
+  ## 軸ラベルを削除する
   theme(
     title = element_text(size = 26),
     text = element_text(size = 26),
@@ -828,73 +697,53 @@ ggplot(flow_table, aes(x, id = id, split = y, value = n)) +
 
 ```
 
-
 <!-- ======================================================= -->
-## Weighted proportions {  }
 
-This section will detail how to produce tables for weighted counts and proportions,
-with associated confidence intervals and design effect. 
-There are four different options using functions from the following packages: 
-**survey**, **srvyr**, **sitrep** and **gtsummary**. 
-For minimal coding to produce a standard epidemiology style table, we would 
-recommend the **sitrep** function - which is a wrapper for **srvyr** code; note 
-however that this is not yet on CRAN and may change in the future. 
-Otherwise, the **survey** code is likely to be the most stable long-term, whereas 
-**srvyr** will fit most nicely within tidyverse work-flows. While **gtsummary** 
-functions hold a lot of potential, they appear to be experimental and incomplete
-at the time of writing. 
+## 重み付けされた割合
 
+このセクションでは、重み付けされたカウント数と割合の表を、関連する信頼区間とデザイン効果とともに作成する方法を詳しく説明します。**Survey**、**srvyr**、**sitrep**、**gtsummary**の各パッケージの関数を使った4つの異なるオプションがあります。標準的な疫学スタイルの表を作成するための最小限のコーディングには、**srvyr**コードのラッパーである**sitrep**関数をお勧めしますが、これはまだCRANに掲載されておらず、将来変更される可能性があることに注意してください。それ以外では、**srvyr**がTidyverseのワークフローに最もうまく適合するのに対し、**survey**コードが長期的に最も安定していると思われます。**gtsummary**関数は多くの可能性を秘めていますが、この記事を書いている時点では実験的で不完全なもののようです。
 
-### **Survey** package 
+### **Survey**パッケージ
 
-We can use the `svyciprop()` function from **survey** to get weighted proportions 
-and accompanying 95% confidence intervals. An appropriate design effect can be 
-extracted using the `svymean()` rather than `svyprop()` function. 
-It is worth noting that `svyprop()` only appears to accept variables between 0 and
-1 (or TRUE/FALSE), so categorical variables will not work.
+**Survey**から`svyciprop()`関数を使用して、重み付けされた割合とそれに伴う95%信頼区間を得ることができます。適切なデザイン効果は、`svyprop()`関数ではなく、`svymean()`を使用して抽出することができます。`svyprop()`は、0と1(またはTRUE/FALSE)の間の変数しか受け付けませんので、カテゴリー変数は使えないことに注意する必要があります。
 
-<span style="color: black;">**_NOTE:_** Functions from **survey** also accept **srvyr** design objects, but here we have used the **survey** design object just for consistency </span>
-
+[**注：survey**由来の関数は、**srvyr**デザイン・オブジェクトも受け入れますが、ここでは一貫性を保つために**survey**デザイン・オブジェクトを使用しています。]{style="color: black;"}
 
 ```{r survey_props}
 
-## produce weighted counts 
+## 重み付けされたカウントを生成する
 svytable(~died, base_survey_design)
 
-## produce weighted proportions
+## 重みのあるプロポーションを作る
 svyciprop(~died, base_survey_design, na.rm = T)
 
-## get the design effect 
+## デザイン効果を得る
 svymean(~died, base_survey_design, na.rm = T, deff = T) %>% 
   deff()
 
 ```
 
-We can combine the functions from **survey** shown above in to a function which 
-we define ourselves below, called `svy_prop`; and we can then use that function 
-together with `map()` from the purrr package to iterate over several variables 
-and create a table. See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) 
-chapter for details on **purrr**. 
+上記のような**surbey**の関数を組み合わせて、以下のように独自に定義した`svy_prop`という関数を作ることができます。この関数と**purrr**パッケージの`map()`を使って、複数の変数を反復処理し、表を作成することができます。**purrr**の詳細については、ハンドブックの[「反復」](https://epirhandbook.com/iteration-loops-and-lists.html)の章を参照してください。
 
 ```{r survey_prop_fun}
-# Define function to calculate weighted counts, proportions, CI and design effect
-# x is the variable in quotation marks 
-# design is your survey design object
+# 加重カウント、割合、信頼区間、デザイン効果を計算する関数を定義する
+# xは引用符で囲まれた変数
+# designは調査のデザイン対象
 
 svy_prop <- function(design, x) {
   
-  ## put the variable of interest in a formula 
+  ## 興味のある変数を計算式に入れる 
   form <- as.formula(paste0( "~" , x))
-  ## only keep the TRUE column of counts from svytable
+  ## svytableからカウントのTRUE列だけを残す
   weighted_counts <- svytable(form, design)[[2]]
-  ## calculate proportions (multiply by 100 to get percentages)
+  ## 割合を計算する（100倍にして％を算出）
   weighted_props <- svyciprop(form, design, na.rm = TRUE) * 100
-  ## extract the confidence intervals and multiply to get percentages
+  ## 信頼区間を抽出し、乗算してパーセンテージを求める
   weighted_confint <- confint(weighted_props) * 100
-  ## use svymean to calculate design effect and only keep the TRUE column
+  ## svymeanを使ってデザイン効果を計算し、TRUEの列だけを残す
   design_eff <- deff(svymean(form, design, na.rm = TRUE, deff = TRUE))[[TRUE]]
   
-  ## combine in to one data frame
+  ## 1つのデータフレームにまとめる
   full_table <- cbind(
     "Variable"        = x,
     "Count"           = weighted_counts,
@@ -903,164 +752,145 @@ svy_prop <- function(design, x) {
     "Design effect"   = design_eff
     )
   
-  ## return table as a dataframe
+  ## テーブルをデータフレームとして返す
   full_table <- data.frame(full_table, 
              ## remove the variable names from rows (is a separate column now)
              row.names = NULL)
   
-  ## change numerics back to numeric
+  ## 数値を数字に戻す
   full_table[ , 2:6] <- as.numeric(full_table[, 2:6])
   
-  ## return dataframe
+  ## データフレームを返す
   full_table
 }
 
-## iterate over several variables to create a table 
+## 複数の変数を反復してテーブルを作成する 
 purrr::map(
-  ## define variables of interest
+  ## 関心のある変数を定義する
   c("left", "died", "arrived"), 
-  ## state function using and arguments for that function (design)
+  ## 使用する機能とその機能を実現するための引数の状態（デザイン）
   svy_prop, design = base_survey_design) %>% 
-  ## collapse list in to a single data frame
+  ## リストを単一のデータフレームにまとめる
   bind_rows() %>% 
-  ## round 
+  ## 四捨五入する
   mutate(across(where(is.numeric), round, digits = 1))
 
 ```
 
+### **Srvyr**パッケージ
 
+**Srvyr**では、**dplyr**の構文を使って表を作成することができます。`survey_mean()`関数が使用され、割合引数が指定されていること、また、デザイン効果の計算にも同じ関数が使用されていることに注意してください。これは、**srvyr**が、上のセクションで使われている**survey**パッケージ関数の`svyciprop()`と`svymean()`の両方を内包しているからです。
 
-### **Srvyr** package 
-
-With **srvyr** we can use **dplyr** syntax to create a table. Note that the 
-`survey_mean()` function is used and the proportion argument is specified, and 
-also that the same function is used to calculate design effect. This is because 
-**srvyr** wraps around both of the **survey** package functions `svyciprop()` and 
-`svymean()`, which are used in the above section. 
-
-<span style="color: black;">**_NOTE:_** It does not seem to be possible to get proportions from categorical variables using **srvyr** either, if you need this then check out the section below using **sitrep** </span>
+[**注：srvyr**を使ってカテゴリー変数から割合を求めることはできないようです。もしこれが必要であれば、**sitrep**を使って以下のセクションをチェックしてください。
+]{style="color: black;"}
 
 ```{r srvyr_prop}
 
-## use the srvyr design object
+## srvyrデザイン・オブジェクトの使用
 survey_design %>% 
   summarise(
-    ## produce the weighted counts 
+    ## 重み付けされたカウントを生成する
     counts = survey_total(died), 
-    ## produce weighted proportions and confidence intervals 
-    ## multiply by 100 to get a percentage 
+    ## 重み付けされた割合と信頼区間の生成する 
+    ## 100倍にしてパーセンテージを算出する
     props = survey_mean(died, 
                         proportion = TRUE, 
                         vartype = "ci") * 100, 
-    ## produce the design effect 
+    ## デザイン効果を生成する
     deff = survey_mean(died, deff = TRUE)) %>% 
-  ## only keep the rows of interest
-  ## (drop standard errors and repeat proportion calculation)
+  ## 興味のある行だけを残す
+  ## (標準誤差をドロップして、割合計算を繰り返す)
   select(counts, props, props_low, props_upp, deff_deff)
 
 ```
 
-Here too we could write a function to then iterate over multiple variables using
-the **purrr** package. 
-See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) 
-chapter for details on **purrr**. 
+ここでも**purrr**パッケージを使って、複数の変数を反復処理する関数を書くことができます。**purrr**の詳細については、ハンドブックの[「反復」](https://epirhandbook.com/iteration-loops-and-lists.html)の章を参照してください。
 
 ```{r srvyr_prop_fun}
 
-# Define function to calculate weighted counts, proportions, CI and design effect
-# design is your survey design object
-# x is the variable in quotation marks 
+# 加重カウント、割合、信頼区間、デザイン効果を計算する関数の定義する
+# designは調査のデザイン対象
+# xは引用符で囲まれた変数
 
 
 srvyr_prop <- function(design, x) {
   
   summarise(
-    ## using the survey design object
+    ## 調査デザインオブジェクトの使用する
     design, 
-    ## produce the weighted counts 
+    ## 重み付けされたカウントを生成する 
     counts = survey_total(.data[[x]]), 
-    ## produce weighted proportions and confidence intervals 
-    ## multiply by 100 to get a percentage 
+    ## 重み付けされた割合と信頼区間の生成する
+    ## 100倍にしてパーセンテージを求める 
     props = survey_mean(.data[[x]], 
                         proportion = TRUE, 
                         vartype = "ci") * 100, 
-    ## produce the design effect 
+    ## デザイン効果を生み出す 
     deff = survey_mean(.data[[x]], deff = TRUE)) %>% 
-  ## add in the variable name
+  ## 変数名の追加する
   mutate(variable = x) %>% 
-  ## only keep the rows of interest
-  ## (drop standard errors and repeat proportion calculation)
+  ## 興味のある行だけを残す
+  ## (標準誤差をドロップして、割合計算を繰り返す)
   select(variable, counts, props, props_low, props_upp, deff_deff)
   
 }
   
 
-## iterate over several variables to create a table 
+## 複数の変数を反復してテーブルを作成する 
 purrr::map(
-  ## define variables of interest
+  ## 関心のある変数を定義する
   c("left", "died", "arrived"), 
-  ## state function using and arguments for that function (design)
+  ## 使用する機能とその機能を実現するための引数の状態（デザイン）
   ~srvyr_prop(.x, design = survey_design)) %>% 
-  ## collapse list in to a single data frame
+  ## リストを単一のデータフレームにまとめる
   bind_rows()
   
 
 ```
 
+### **Sitrep**パッケージ
 
-
-### **Sitrep** package 
-
-The `tab_survey()` function from **sitrep** is a wrapper for **srvyr**, allowing 
-you to create weighted tables with minimal coding. It also allows you to calculate
-weighted proportions for categorical variables. 
+**Sitrep**の`tab_survey()`関数は、**srvyr**のラッパーであり、最小限のコーディングで重み付けされた表を作成することができます。また、カテゴリカル変数の加重割合を計算することもできます。
 
 ```{r sitrep_props}
 
-## using the survey design object
+## 調査デザインオブジェクトの使用する
 survey_design %>% 
-  ## pass the names of variables of interest unquoted
+  ## 興味のある変数の名前を引用せずに渡す
   tab_survey(arrived, left, died, education_level,
-             deff = TRUE,   # calculate the design effect
-             pretty = TRUE  # merge the proportion and 95%CI
+             deff = TRUE,   # デザイン効果の算出する
+             pretty = TRUE  # 割合と95%信頼区間を統合する
              )
 
 ```
 
+### **Gtsummary**パッケージ
 
-
-### **Gtsummary** package
-
-With **gtsummary** there does not seem to be inbuilt functions yet to add confidence
-intervals or design effect. 
-Here we show how to define a function for adding confidence intervals and then 
-add confidence intervals to a **gtsummary** table created using the `tbl_svysummary()` 
-function. 
-
+**Gtsummary**には、信頼区間やデザイン効果を追加するための組み込み関数がまだないようです。ここでは、信頼区間を追加するための関数を定義し、`tbl_svysummary()`関数を使って作成した**gtsummary**テーブルに信頼区間を追加する方法を示します。
 
 ```{r gtsummary_table}
 
 
 confidence_intervals <- function(data, variable, by, ...) {
   
-  ## extract the confidence intervals and multiply to get percentages
+  ## 信頼区間を抽出し、乗算してパーセンテージを求める
   props <- svyciprop(as.formula(paste0( "~" , variable)),
               data, na.rm = TRUE)
   
-  ## extract the confidence intervals 
-  as.numeric(confint(props) * 100) %>% ## make numeric and multiply for percentage
-    round(., digits = 1) %>%           ## round to one digit
-    c(.) %>%                           ## extract the numbers from matrix
-    paste0(., collapse = "-")          ## combine to single character
+  ## 信頼区間を抽出する
+  as.numeric(confint(props) * 100) %>% ## 数値化してパーセンテージを乗算する
+    round(., digits = 1) %>%           ## 1桁に四捨五入する
+    c(.) %>%                           ## 行列から数値を抽出する
+    paste0(., collapse = "-")          ## 1つの文字列にまとめる
 }
 
-## using the survey package design object
+## surveyパッケージデザインオブジェクトを使用する
 tbl_svysummary(base_survey_design, 
-               include = c(arrived, left, died),   ## define variables want to include
-               statistic = list(everything() ~ c("{n} ({p}%)"))) %>% ## define stats of interest
-  add_n() %>%  ## add the weighted total 
-  add_stat(fns = everything() ~ confidence_intervals) %>% ## add CIs
-  ## modify the column headers
+               include = c(arrived, left, died),   ## 含めたい変数を定義する
+               statistic = list(everything() ~ c("{n} ({p}%)"))) %>% ## 興味のある統計量を定義する
+  add_n() %>%  ## 重み付けされた総数を加える
+  add_stat(fns = everything() ~ confidence_intervals) %>% ## 信頼区間を加える
+  ## カラムのヘッダーを変更する
   modify_header(
     list(
       n ~ "**Weighted total (N)**",
@@ -1071,19 +901,13 @@ tbl_svysummary(base_survey_design,
 
 ```
 
-
-
 <!-- ======================================================= -->
-## Weighted ratios {  }
 
-Similarly for weighted ratios (such as for mortality ratios) you can use the 
-**survey** or the **srvyr** package. 
-You could similarly write functions (similar to those above) to iterate over 
-several variables. You could also create a function for **gtsummary** as above
-but currently it does not have inbuilt functionality. 
+## 重み付けされた比率
 
+同様に、（死亡率のような）重み付けされた比率については、**survey**や**srvyr**パッケージを使うことができます。さらに、複数の変数を反復処理する関数（上記のものと同様）を書くこともできます。上記のように**gtsummary**のための関数を作ることもできますが、現在のところ内蔵の機能はありません。
 
-### **Survey** package 
+### **Survey**パッケージ
 
 ```{r survey_ratio}
 
@@ -1100,13 +924,12 @@ cbind(
 
 ```
 
-
-### **Srvyr** package 
+### **Srvyr**パッケージ
 
 ```{r srvyr_ratio}
 
 survey_design %>% 
-  ## survey ratio used to account for observation time 
+  ## 観察期間を考慮した調査比率 
   summarise(
     mortality = survey_ratio(
       as.numeric(died) * 10000, 
@@ -1116,18 +939,16 @@ survey_design %>%
 
 ```
 
-
-
-
 <!-- ======================================================= -->
-## Resources {  }
 
-[UCLA stats page](https://stats.idre.ucla.edu/r/seminars/survey-data-analysis-with-r/)  
+## リソース
 
-[Analyze survey data free](http://asdfree.com/)  
+[UCLA統計ページ](https://stats.idre.ucla.edu/r/seminars/survey-data-analysis-with-r/)
 
-[srvyr packge](http://gdfe.co/srvyr/)  
+[アンケートデータを無料で分析](http://asdfree.com/)
 
-[gtsummary package](http://www.danieldsjoberg.com/gtsummary/reference/index.html) 
+[srvyrパッケージ](http://gdfe.co/srvyr/)
 
-[EPIET survey case studies](https://github.com/EPIET/RapidAssessmentSurveys)
+[gtsummaryパッケージ](http://www.danieldsjoberg.com/gtsummary/reference/index.html)
+
+[EPIET調査のケーススタディ](https://github.com/EPIET/RapidAssessmentSurveys)
