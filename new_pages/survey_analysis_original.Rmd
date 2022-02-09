@@ -1,35 +1,16 @@
 
 # Survey analysis { }  
 
-<!-- ======================================================= -->
+<!--======================================================= -->
 ## Overview {  }
 
 This page demonstrates the use of several packages for survey analysis. 
 
+Most survey R packages rely on the [**survey** package](https://cran.r-project.org/web/packages/survey/index.html) for doing weighted analysis. We will use **survey** as well as [**srvyr**](https://cran.r-project.org/web/packages/srvyr/index.html) (a wrapper for **survey** allowing for tidyverse-style coding) and[**gtsummary**](https://cran.r-project.org/web/packages/gtsummary/index.html) (a wrapper for **survey** allowing for publication ready tables). While the original **survey** package does not allow for tidyverse-style coding, it does have the added benefit of allowing for survey-weighted generalised linear models (which will be added to this page at a later date). We will also demonstrate using a function from the [**sitrep**](https://github.com/R4EPI/sitrep)package to create sampling weights (*n.b* this package is currently not yet on CRAN, but can be installed from github).
 
-Most survey R packages rely on the [**survey** package](https://cran.r-project.org/web/packages/survey/index.html) 
-for doing weighted analysis. 
-We will use **survey** as well as [**srvyr**](https://cran.r-project.org/web/packages/srvyr/index.html) 
-(a wrapper for **survey** allowing for tidyverse-style coding) and
-[**gtsummary**](https://cran.r-project.org/web/packages/gtsummary/index.html) 
-(a wrapper for **survey** allowing for publication ready tables). 
-While the original **survey** package does not allow for tidyverse-style coding, 
-it does have the added benefit of allowing for survey-weighted generalised linear 
-models (which will be added to this page at a later date). 
-We will also demonstrate using a function from the [**sitrep**](https://github.com/R4EPI/sitrep)
-package to create sampling weights (*n.b* this package is currently not yet on CRAN, 
-but can be installed from github).
+Most of this page is based off work done for the ["R4Epis" project](https://r4epis.netlify.app/); for detailed code and R-markdown templates see the ["R4Epis" github page](https://github.com/R4EPI/sitrep). Some of the **survey** package based code is based off early versions of [EPIET case studies](https://github.com/EPIET/RapidAssessmentSurveys).
 
-Most of this page is based off work done for the ["R4Epis" project](https://r4epis.netlify.app/); 
-for detailed code and R-markdown templates see the ["R4Epis" github page](https://github.com/R4EPI/sitrep). 
-Some of the **survey** package based code is based off early versions of 
-[EPIET case studies](https://github.com/EPIET/RapidAssessmentSurveys).
-
-At current this page does not address sample size calculations or sampling. 
-For a simple to use sample size calculator see [OpenEpi](https://www.openepi.com/Menu/OE_Menu.htm). 
-The [GIS basics](https://epirhandbook.com/gis-basics.html) page of the handbook 
-will eventually have a section on spatial random sampling, and this page will 
-eventually have a section on sampling frames as well as sample size calculations. 
+At current this page does not address sample size calculations or sampling. For a simple to use sample size calculator see [OpenEpi](https://www.openepi.com/Menu/OE_Menu.htm). The [GIS basics](https://epirhandbook.com/gis-basics.html) page of the handbook will eventually have a section on spatial random sampling, and this page will eventually have a section on sampling frames as well as sample size calculations. 
 
 
 
@@ -80,27 +61,13 @@ The example dataset used in this section:
 -   fictional population counts for the survey area. 
 -   data dictionary for the fictional mortality survey data. 
 
-This is based off the MSF OCA ethical review board pre-approved survey. The 
-fictional dataset was produced as part of the ["R4Epis" project](https://r4epis.netlify.app/). 
-This is all based off data collected using [KoboToolbox](https://www.kobotoolbox.org/), 
-which is a data collection software based off [Open Data Kit](https://opendatakit.org/).
+This is based off the MSF OCA ethical review board pre-approved survey. The fictional dataset was produced as part of the ["R4Epis" project](https://r4epis.netlify.app/). This is all based off data collected using [KoboToolbox](https://www.kobotoolbox.org/), which is a data collection software based off [Open Data Kit](https://opendatakit.org/).
 
-Kobo allows you to export both the collected data, as well as the data dictionary 
-for that dataset. We strongly recommend doing this as it simplifies data cleaning 
-and is useful for looking up variables/questions. 
+Kobo allows you to export both the collected data, as well as the data dictionary for that dataset. We strongly recommend doing this as it simplifies data cleaning and is useful for looking up variables/questions. 
 
+<span style="color: darkgreen;">**_TIP:_** The Kobo data dictionary has variablenames in the "name" column of the survey sheet. Possible values for each variable are specified in choices sheet. In the choices tab, "name" has the shortened value and the "label::english" and "label::french" columns have the appropriate long versions. Using the **epidict** package `msf_dict_survey()` function to import a Kobo dictionary excel file will re-format this for you so it can be used easily to recode.  </span>
 
-<span style="color: darkgreen;">**_TIP:_** The Kobo data dictionary has variable
-names in the "name" column of the survey sheet. 
-Possible values for each variable are specified in choices sheet. 
-In the choices tab, "name" has the shortened value and the "label::english" and 
-"label::french" columns have the appropriate long versions. 
-Using the **epidict** package `msf_dict_survey()` function to import a Kobo 
-dictionary excel file will re-format this for you so it can be used easily to recode.  </span>
-
-<span style="color: orange;">**_CAUTION:_** The example dataset is not the same 
-as an export (as in Kobo you export different questionnaire levels individually) 
-- see the survey data section below to merge the different levels.</span>
+<span style="color: orange;">**_CAUTION:_** The example dataset is not the same as an export (as in Kobo you export different questionnaire levels individually) - see the survey data section below to merge the different levels.</span>
 
 
 The dataset is imported using the `import()` function from the **rio** package. See the page on [Import and export](https://epirhandbook.com/import-and-export.html) for various ways to import data.
@@ -131,9 +98,7 @@ The first 10 rows of the survey are displayed below.
 DT::datatable(head(survey_data, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-We also want to import the data on sampling population so that we can produce 
-appropriate weights. This data can be in different formats, however we would 
-suggest to have it as seen below (this can just be typed in to an excel). 
+We also want to import the data on sampling population so that we can produce appropriate weights. This data can be in different formats, however we would suggest to have it as seen below (this can just be typed in to an excel). 
 
 
 ```{r read_data_pop_show, eval = FALSE}
@@ -148,13 +113,7 @@ The first 10 rows of the survey are displayed below.
 DT::datatable(head(population, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-For cluster surveys you may want to add survey weights at the cluster level. 
-You could read this data in as above. 
-Alternatively if there are only a few counts, these could be entered as below
-in to a tibble. 
-In any case you will need to have one column with a cluster identifier which 
-matches your survey data, and another column with the number of households in 
-each cluster. 
+For cluster surveys you may want to add survey weights at the cluster level. You could read this data in as above. Alternatively if there are only a few counts, these could be entered as belowin to a tibble. In any case you will need to have one column with a cluster identifier which matches your survey data, and another column with the number of households in each cluster. 
 
 ```{r cluster_counts}
 
@@ -169,18 +128,11 @@ cluster_counts <- tibble(cluster = c("village_1", "village_2", "village_3", "vil
 
 ### Clean data {.unnumbered}
 
-The below makes sure that the date column is in the appropriate format. 
-There are several other ways of doing this (see the [Working with dates](https://epirhandbook.com/working-with-dates.html)
-page for details), however using the dictionary to define dates is quick and easy. 
+The below makes sure that the date column is in the appropriate format. There are several other ways of doing this (see the [Working with dates](https://epirhandbook.com/working-with-dates.html)page for details), however using the dictionary to define dates is quick and easy. 
 
-We also create an age group variable using the `age_categories()` function from 
-**epikit** - see [cleaning data](https://epirhandbook.com/cleaning-data-and-core-functions.html#num_cats)
-handbook section for details. 
-In addition, we create a character variable defining which district the various clusters
-are in. 
+We also create an age group variable using the `age_categories()` function from **epikit** - see [cleaning data](https://epirhandbook.com/cleaning-data-and-core-functions.html#num_cats)handbook section for details. In addition, we create a character variable defining which district the various clustersare in. 
 
-Finally, we recode all of the yes/no variables to TRUE/FALSE variables - otherwise
-these cant be used by the **survey** proportion functions. 
+Finally, we recode all of the yes/no variables to TRUE/FALSE variables - otherwise these cant be used by the **survey** proportion functions. 
 
 ```{r cleaning}
 
@@ -243,16 +195,9 @@ we will demonstrate code for:
 - Cluster 
 - Stratified and cluster 
 
-As described above (depending on how you design your questionnaire) the data for 
-each level would be exported as a separate dataset from Kobo. In our example there
-is one level for households and one level for individuals within those households. 
+As described above (depending on how you design your questionnaire) the data for each level would be exported as a separate dataset from Kobo. In our example thereis one level for households and one level for individuals within those households. 
 
-These two levels are linked by a unique identifier. 
-For a Kobo dataset this variable is "_index" at the household level, which 
-matches the "_parent_index" at the individual level.
-This will create new rows for household with each matching individual, 
-see the handbook section on [joining](https://epirhandbook.com/joining-data.html)
-for details. 
+These two levels are linked by a unique identifier. For a Kobo dataset this variable is "_index" at the household level, which matches the "_parent_index" at the individual level.This will create new rows for household with each matching individual, see the handbook section on [joining](https://epirhandbook.com/joining-data.html)for details. 
 
 ```{r merge_data_levels, eval = FALSE}
 
@@ -271,17 +216,9 @@ survey_data <- survey_data %>%
 <!-- ======================================================= -->
 ## Observation time {  }
 
-For mortality surveys we want to now how long each individual was present for in 
-the location to be able to calculate an appropriate mortality rate for our period 
-of interest. This is not relevant to all surveys, but particularly for mortality
-surveys this is important as they are conducted frequently among mobile or displaced
-populations. 
+For mortality surveys we want to now how long each individual was present for in the location to be able to calculate an appropriate mortality rate for our period of interest. This is not relevant to all surveys, but particularly for mortalitysurveys this is important as they are conducted frequently among mobile or displacedpopulations. 
 
-To do this we first define our time period of interest, also known as a recall 
-period (i.e. the time that participants are asked to report on when answering 
-questions). 
-We can then use this period to set inappropriate dates to missing, i.e. if deaths
-are reported from outside the period of interest. 
+To do this we first define our time period of interest, also known as a recall period (i.e. the time that participants are asked to report on when answering questions). We can then use this period to set inappropriate dates to missing, i.e. if deathsare reported from outside the period of interest. 
 
 ```{r recall_period}
 
@@ -315,19 +252,11 @@ survey_data <- survey_data %>%
 ```
 
 
-We can then use our date variables to define start and end dates for each individual. 
-We can use the `find_start_date()` function from **sitrep** to fine the causes for 
-the dates and then use that to calculate the difference between days (person-time). 
+We can then use our date variables to define start and end dates for each individual. We can use the `find_start_date()` function from **sitrep** to fine the causes for the dates and then use that to calculate the difference between days (person-time). 
 
-start date: 
-Earliest appropriate arrival event within your recall period
-Either the beginning of your recall period (which you define in advance), or a 
-date after the start of recall if applicable (e.g. arrivals or births)
+start date:  Earliest appropriate arrival event within your recall period Either the beginning of your recall period (which you define in advance), or a  date after the start of recall if applicable (e.g. arrivals or births)
 
-end date: 
-Earliest appropriate departure event within your recall period
-Either the end of your recall period, or a date before the end of recall 
-if applicable (e.g. departures, deaths)
+end date:  Earliest appropriate departure event within your recall period Either the end of your recall period, or a date before the end of recall  if applicable (e.g. departures, deaths)
 
 ```{r observation_time}
 
@@ -380,19 +309,9 @@ survey_data <- survey_data %>%
 <!-- ======================================================= -->
 ## Weighting {  }
 
-It is important that you drop erroneous observations before adding survey weights. 
-For example if you have observations with negative observation time, you will need
-to check those (you can do this with the `assert_positive_timespan()` function 
-from **sitrep**. 
-Another thing is if you want to drop empty rows (e.g. with `drop_na(uid)`)
-or remove duplicates (see handbook section on [De-duplication] 
-for details). 
-Those without consent need to be dropped too. 
+It is important that you drop erroneous observations before adding survey weights. For example if you have observations with negative observation time, you will needto check those (you can do this with the `assert_positive_timespan()` function from **sitrep**. Another thing is if you want to drop empty rows (e.g. with `drop_na(uid)`)or remove duplicates (see handbook section on [De-duplication] for details). Those without consent need to be dropped too. 
 
-In this example we filter for the cases we want to drop and store them in a separate
-data frame - this way we can describe those that were excluded from the survey. 
-We then use the `anti_join()` function from **dplyr** to remove these dropped cases
-from our survey data. 
+In this example we filter for the cases we want to drop and store them in a separate data frame - this way we can describe those that were excluded from the survey.  We then use the `anti_join()` function from **dplyr** to remove these dropped cases from our survey data. 
 
 <span style="color: red;">**_DANGER:_** You cant have missing values in your weight variable, or any of the variables relevant to your survey design (e.g. age, sex, strata or cluster variables).</span>  
 
@@ -408,11 +327,7 @@ survey_data <- anti_join(survey_data, dropped, by = names(dropped))
 
 ```
 
-As mentioned above we demonstrate how to add weights for three different study 
-designs (stratified, cluster and stratified cluster). These require information 
-on the source population and/or the clusters surveyed. 
-We will use the stratified cluster code for this example, but use whichever is
-most appropriate for your study design. 
+As mentioned above we demonstrate how to add weights for three different study  designs (stratified, cluster and stratified cluster). These require information  on the source population and/or the clusters surveyed.  We will use the stratified cluster code for this example, but use whichever is most appropriate for your study design. 
 
 ```{r survey_weights}
 
@@ -459,9 +374,7 @@ survey_data <- survey_data %>%
 <!-- ======================================================= -->
 ## Survey design objects {  }
 
-Create survey object according to your study design. 
-Used the same way as data frames to calculate weight proportions etc. 
-Make sure that all necessary variables are created before this. 
+Create survey object according to your study design.  Used the same way as data frames to calculate weight proportions etc.  Make sure that all necessary variables are created before this. 
 
 There are four options, comment out those you do not use: 
 - Simple random 
@@ -469,22 +382,13 @@ There are four options, comment out those you do not use:
 - Cluster 
 - Stratified cluster
 
-For this template - we will pretend that we cluster surveys in two separate 
-strata (health districts A and B). 
-So to get overall estimates we need have combined cluster and strata weights. 
+For this template - we will pretend that we cluster surveys in two separate  strata (health districts A and B).  So to get overall estimates we need have combined cluster and strata weights. 
 
-As mentioned previously, there are two packages available for doing this. The 
-classic one is **survey** and then there is a wrapper package called **srvyr** 
-that makes tidyverse-friendly objects and functions. We will demonstrate both, 
-but note that most of the code in this chapter will use **srvyr** based objects. 
-The one exception is that the **gtsummary** package only accepts **survey** objects. 
+As mentioned previously, there are two packages available for doing this. The  classic one is **survey** and then there is a wrapper package called **srvyr**  that makes tidyverse-friendly objects and functions. We will demonstrate both,  but note that most of the code in this chapter will use **srvyr** based objects.  The one exception is that the **gtsummary** package only accepts **survey** objects. 
 
 ### **Survey** package  
 
-The **survey** package effectively uses **base** *R* coding, and so it is not 
-possible to use pipes (`%>%`) or other **dplyr** syntax. 
-With the **survey** package we use the `svydesign()` function to define a survey
-object with appropriate clusters, weights and strata. 
+The **survey** package effectively uses **base** *R* coding, and so it is not possible to use pipes (`%>%`) or other **dplyr** syntax. With the **survey** package we use the `svydesign()` function to define a surveyobject with appropriate clusters, weights and strata. 
 
 <span style="color: black;">**_NOTE:_** we need to use the tilde (`~`) in front of variables, this is because the package uses the **base** *R* syntax of assigning variables based on formulae. </span>
 
@@ -523,9 +427,7 @@ base_survey_design <- svydesign(ids = ~village_name,      # cluster ids
 
 ### **Srvyr** package  
 
-With the **srvyr** package we can use the `as_survey_design()` function, which 
-has all the same arguments as above but allows pipes (`%>%`), and so we do not 
-need to use the tilde (`~`). 
+With the **srvyr** package we can use the `as_survey_design()` function, which has all the same arguments as above but allows pipes (`%>%`), and so we do not need to use the tilde (`~`). 
 
 ```{r survey_design_srvyr}
 ## simple random ---------------------------------------------------------------
@@ -558,17 +460,9 @@ survey_design <- survey_data %>%
 <!-- ======================================================= -->
 ## Descriptive analysis {  }
 
-Basic descriptive analysis and visualisation is covered extensively in other 
-chapters of the handbook, so we will not dwell on it here. 
-For details see the chapters on [descriptive tables](https://epirhandbook.com/descriptive-tables.html), 
-[statistical tests](https://epirhandbook.com/simple-statistical-tests.html), 
-[tables for presentation](https://epirhandbook.com/tables-for-presentation.html), 
-[ggplot basics](https://epirhandbook.com/ggplot-basics.html) and 
-[R markdown reports](https://epirhandbook.com/r-markdown-reports.html). 
+Basic descriptive analysis and visualisation is covered extensively in other chapters of the handbook, so we will not dwell on it here. For details see the chapters on [descriptive tables](https://epirhandbook.com/descriptive-tables.html), [statistical tests](https://epirhandbook.com/simple-statistical-tests.html), [tables for presentation](https://epirhandbook.com/tables-for-presentation.html), [ggplot basics](https://epirhandbook.com/ggplot-basics.html) and [R markdown reports](https://epirhandbook.com/r-markdown-reports.html). 
 
-In this section we will focus on how to investigate bias in your sample and visualise this. 
-We will also look at visualising population flow in a survey setting using 
-alluvial/sankey diagrams. 
+In this section we will focus on how to investigate bias in your sample and visualise this. We will also look at visualising population flow in a survey setting using alluvial/sankey diagrams. 
 
 In general, you should consider including the following descriptive analyses:  
 
@@ -579,16 +473,9 @@ In general, you should consider including the following descriptive analyses:
 
 ### Sampling bias 
 
-Compare the proportions in each age group between your sample and 
-the source population. 
-This is important to be able to highlight potential sampling bias. 
-You could similarly repeat this looking at distributions by sex. 
+Compare the proportions in each age group between your sample and the source population. This is important to be able to highlight potential sampling bias. You could similarly repeat this looking at distributions by sex. 
 
-Note that these p-values are just indicative, and a descriptive discussion (or
-visualisation with age-pyramids below) of the distributions in your study sample 
-compared to the source population is more important than the binomial test itself.
-This is because increasing sample size will more often than not lead to 
-differences that may be irrelevant after weighting your data.
+Note that these p-values are just indicative, and a descriptive discussion (or visualisation with age-pyramids below) of the distributions in your study sample  compared to the source population is more important than the binomial test itself. This is because increasing sample size will more often than not lead to  differences that may be irrelevant after weighting your data.
 
 ```{r descriptive_sampling_bias, warning = FALSE}
 
@@ -607,8 +494,7 @@ propcount <- population %>%
     mutate(proportion = n / sum(n))
 
 ## bind together the columns of two tables, group by age, and perform a 
-## binomial test to see if n/total is significantly different from population
-## proportion.
+## binomial test to see if n/total is significantly different from population proportion.
   ## suffix here adds to text to the end of columns in each of the two datasets
 left_join(ag, propcount, by = "age_group", suffix = c("", "_pop")) %>%
   group_by(age_group) %>%
@@ -644,29 +530,9 @@ left_join(ag, propcount, by = "age_group", suffix = c("", "_pop")) %>%
 
 ### Demographic pyramids 
 
-Demographic (or age-sex) pyramids are an easy way of visualising the distribution
-in your survey population. It is also worth considering creating 
-[descriptive tables](https://epirhandbook.com/descriptive-tables.html) of age 
-and sex by survey strata. 
-We will demonstrate using the **apyramid** package as it allows for weighted 
-proportions using our survey design object created above. Other options for creating
-[demographic pyramids](https://epirhandbook.com/demographic-pyramids-and-likert-scales.html)
-are covered extensively in that chapter of the handbook. We will also use a 
-wrapper function from **sitrep** called `plot_age_pyramid()` which saves a few lines
-of coding for producing a plot with proportions. 
+Demographic (or age-sex) pyramids are an easy way of visualising the distribution in your survey population. It is also worth considering creating  [descriptive tables](https://epirhandbook.com/descriptive-tables.html) of age  and sex by survey strata.  We will demonstrate using the **apyramid** package as it allows for weighted  proportions using our survey design object created above. Other options for creating [demographic pyramids](https://epirhandbook.com/demographic-pyramids-and-likert-scales.html) are covered extensively in that chapter of the handbook. We will also use a  wrapper function from **sitrep** called `plot_age_pyramid()` which saves a few lines of coding for producing a plot with proportions. 
 
-As with the formal binomial test of difference, seen above in the sampling bias 
-section, we are interested here in visualising whether our sampled population 
-is substantially different from the source population and whether weighting corrects
-this difference. To do this we will use the **patchwork** package to show our 
-**ggplot** visualisations side-by-side; for details see the section on 
-combining plots in [ggplot tips](https://epirhandbook.com/ggplot-tips.html?q=patch#combine-plots)
-chapter of the handbook. 
-We will visualise our source population, our un-weighted survey population and 
-our weighted survey population.
-You may also consider visualising by each strata of your survey - in our example 
-here that would be by using the argument `stack_by  = "health_district"` 
-(see `?plot_age_pyramid` for details). 
+As with the formal binomial test of difference, seen above in the sampling bias  section, we are interested here in visualising whether our sampled population  is substantially different from the source population and whether weighting corrects this difference. To do this we will use the **patchwork** package to show our  **ggplot** visualisations side-by-side; for details see the section on  combining plots in [ggplot tips](https://epirhandbook.com/ggplot-tips.html?q=patch#combine-plots) chapter of the handbook.  We will visualise our source population, our un-weighted survey population and  our weighted survey population. You may also consider visualising by each strata of your survey - in our example  here that would be by using the argument `stack_by  = "health_district"`  (see `?plot_age_pyramid` for details). 
 
 <span style="color: black;">**_NOTE:_** The x and y axes are flipped in pyramids </span>
 
@@ -779,12 +645,7 @@ source_population + sample_population + weighted_population +
 
 ### Alluvial/sankey diagram
 
-Visualising starting points and outcomes for individuals can be very helpful to 
-get an overview. There is quite an obvious application for mobile populations, 
-however there are numerous other applications such as cohorts or any other situation
-where there are transitions in states for individuals. These diagrams have several
-different names including alluvial, sankey and parallel sets - the details are 
-in the handbook chapter on [diagrams and charts](https://epirhandbook.com/diagrams-and-charts.html#alluvialsankey-diagrams). 
+Visualising starting points and outcomes for individuals can be very helpful to  get an overview. There is quite an obvious application for mobile populations,  however there are numerous other applications such as cohorts or any other situation where there are transitions in states for individuals. These diagrams have several different names including alluvial, sankey and parallel sets - the details are  in the handbook chapter on [diagrams and charts](https://epirhandbook.com/diagrams-and-charts.html#alluvialsankey-diagrams). 
 
 
 ```{r visualise_population_flow}
@@ -832,26 +693,12 @@ ggplot(flow_table, aes(x, id = id, split = y, value = n)) +
 <!-- ======================================================= -->
 ## Weighted proportions {  }
 
-This section will detail how to produce tables for weighted counts and proportions,
-with associated confidence intervals and design effect. 
-There are four different options using functions from the following packages: 
-**survey**, **srvyr**, **sitrep** and **gtsummary**. 
-For minimal coding to produce a standard epidemiology style table, we would 
-recommend the **sitrep** function - which is a wrapper for **srvyr** code; note 
-however that this is not yet on CRAN and may change in the future. 
-Otherwise, the **survey** code is likely to be the most stable long-term, whereas 
-**srvyr** will fit most nicely within tidyverse work-flows. While **gtsummary** 
-functions hold a lot of potential, they appear to be experimental and incomplete
-at the time of writing. 
+This section will detail how to produce tables for weighted counts and proportions, with associated confidence intervals and design effect.  There are four different options using functions from the following packages:  **survey**, **srvyr**, **sitrep** and **gtsummary**.  For minimal coding to produce a standard epidemiology style table, we would  recommend the **sitrep** function - which is a wrapper for **srvyr** code; note  however that this is not yet on CRAN and may change in the future.  Otherwise, the **survey** code is likely to be the most stable long-term, whereas  **srvyr** will fit most nicely within tidyverse work-flows. While **gtsummary**  functions hold a lot of potential, they appear to be experimental and incomplete at the time of writing. 
 
 
 ### **Survey** package 
 
-We can use the `svyciprop()` function from **survey** to get weighted proportions 
-and accompanying 95% confidence intervals. An appropriate design effect can be 
-extracted using the `svymean()` rather than `svyprop()` function. 
-It is worth noting that `svyprop()` only appears to accept variables between 0 and
-1 (or TRUE/FALSE), so categorical variables will not work.
+We can use the `svyciprop()` function from **survey** to get weighted proportions  and accompanying 95% confidence intervals. An appropriate design effect can be  extracted using the `svymean()` rather than `svyprop()` function.  It is worth noting that `svyprop()` only appears to accept variables between 0 and 1 (or TRUE/FALSE), so categorical variables will not work.
 
 <span style="color: black;">**_NOTE:_** Functions from **survey** also accept **srvyr** design objects, but here we have used the **survey** design object just for consistency </span>
 
@@ -870,11 +717,7 @@ svymean(~died, base_survey_design, na.rm = T, deff = T) %>%
 
 ```
 
-We can combine the functions from **survey** shown above in to a function which 
-we define ourselves below, called `svy_prop`; and we can then use that function 
-together with `map()` from the purrr package to iterate over several variables 
-and create a table. See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) 
-chapter for details on **purrr**. 
+We can combine the functions from **survey** shown above in to a function which we define ourselves below, called `svy_prop`; and we can then use that function together with `map()` from the purrr package to iterate over several variables and create a table. See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) chapter for details on **purrr**. 
 
 ```{r survey_prop_fun}
 # Define function to calculate weighted counts, proportions, CI and design effect
@@ -932,11 +775,7 @@ purrr::map(
 
 ### **Srvyr** package 
 
-With **srvyr** we can use **dplyr** syntax to create a table. Note that the 
-`survey_mean()` function is used and the proportion argument is specified, and 
-also that the same function is used to calculate design effect. This is because 
-**srvyr** wraps around both of the **survey** package functions `svyciprop()` and 
-`svymean()`, which are used in the above section. 
+With **srvyr** we can use **dplyr** syntax to create a table. Note that the `survey_mean()` function is used and the proportion argument is specified, and also that the same function is used to calculate design effect. This is because **srvyr** wraps around both of the **survey** package functions `svyciprop()` and `svymean()`, which are used in the above section. 
 
 <span style="color: black;">**_NOTE:_** It does not seem to be possible to get proportions from categorical variables using **srvyr** either, if you need this then check out the section below using **sitrep** </span>
 
@@ -960,10 +799,7 @@ survey_design %>%
 
 ```
 
-Here too we could write a function to then iterate over multiple variables using
-the **purrr** package. 
-See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html) 
-chapter for details on **purrr**. 
+Here too we could write a function to then iterate over multiple variables using the **purrr** package.  See the handbook [iteration](https://epirhandbook.com/iteration-loops-and-lists.html)  chapter for details on **purrr**. 
 
 ```{r srvyr_prop_fun}
 
@@ -1011,9 +847,7 @@ purrr::map(
 
 ### **Sitrep** package 
 
-The `tab_survey()` function from **sitrep** is a wrapper for **srvyr**, allowing 
-you to create weighted tables with minimal coding. It also allows you to calculate
-weighted proportions for categorical variables. 
+The `tab_survey()` function from **sitrep** is a wrapper for **srvyr**, allowing  you to create weighted tables with minimal coding. It also allows you to calculate weighted proportions for categorical variables. 
 
 ```{r sitrep_props}
 
@@ -1031,11 +865,7 @@ survey_design %>%
 
 ### **Gtsummary** package
 
-With **gtsummary** there does not seem to be inbuilt functions yet to add confidence
-intervals or design effect. 
-Here we show how to define a function for adding confidence intervals and then 
-add confidence intervals to a **gtsummary** table created using the `tbl_svysummary()` 
-function. 
+With **gtsummary** there does not seem to be inbuilt functions yet to add confidence intervals or design effect.  Here we show how to define a function for adding confidence intervals and then  add confidence intervals to a **gtsummary** table created using the `tbl_svysummary()`  function. 
 
 
 ```{r gtsummary_table}
@@ -1076,11 +906,7 @@ tbl_svysummary(base_survey_design,
 <!-- ======================================================= -->
 ## Weighted ratios {  }
 
-Similarly for weighted ratios (such as for mortality ratios) you can use the 
-**survey** or the **srvyr** package. 
-You could similarly write functions (similar to those above) to iterate over 
-several variables. You could also create a function for **gtsummary** as above
-but currently it does not have inbuilt functionality. 
+Similarly for weighted ratios (such as for mortality ratios) you can use the  **survey** or the **srvyr** package.  You could similarly write functions (similar to those above) to iterate over  several variables. You could also create a function for **gtsummary** as above but currently it does not have inbuilt functionality. 
 
 
 ### **Survey** package 
