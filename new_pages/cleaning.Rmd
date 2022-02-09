@@ -644,46 +644,46 @@ linelist <- linelist %>%
   mutate(across(.cols = c(temp, ht_cm, wt_kg), .fns = as.character))
 ```
 
-"tidyselect" ヘルパー関数は、複数の列を指定する際に便利です。これらの関数は上記の列の選択と並び替えのセクションで詳述されており、次のものが含まれます：`everything()`、`last_col()`、`where()`、`starts_with()`、`ends_with()`、`contains()`、`matches()`、`num_range()`、`any_of()`。
+列を指定する際には、"tidyselect" ヘルパー関数を使用すると便利です。"tidyselect" ヘルパー関数には、`everything()`、`last_col()`、`where()`、`starts_with()`、`ends_with()`、`contains()`、`matches()`、`num_range()`、`any_of()` などがあり、本章上部の列の選択と並び替えのセクションで詳述されています。
 
-ここでは、すべての列をcharacter型に変更する例を示します。
+まず、データフレーム内のすべての列を文字列型（character）に変換する例を以下に示します。
 
 ```{r, eval=F}
-#全ての列をcharactor型に変換する。
+# すべての列を文字列型に変換する
 linelist <- linelist %>% 
   mutate(across(.cols = everything(), .fns = as.character))
 ```
 
-　名前に "date "という文字列が含まれるすべての列を文字に変換します（カンマと括弧の配置に注意してください）。
+他の例として、例えば列名に "date "という文字列が含まれている列を文字列型に変換したい場合のコマンドを以下に紹介します（コンマと括弧の配置に注意してください）。
 
 ```{r, eval=F}
-#全ての列をcharactor型に変換する。
+# date という文字が列名に含まれている列を文字列型に変換する
 linelist <- linelist %>% 
   mutate(across(.cols = contains("date"), .fns = as.character))
 ```
 
-　以下は、現在POSIXct型（タイムスタンプを示す未加工のdatetime型）である列、つま `is.POSIXct()`関数の評価値が`TRUE`である列を変換する例です。次に、これらの列に `as.Date()`という関数を適用して、通常のDate型に変換したいと思います。
+また、別の例として、現在 POSIXct 型（未加工の日付時分秒（date-time）を示すデータ型）の列を日付型（date）に変換する例を示します。まず、`is.POSIXct()` の評価値が `TRUE` である列を `where()` で検索し、次に、これらの列に `as.Date()` を適用して、通常の 日付型（date）に変換します。
 
 ```{r, eval=F}
 linelist <- linelist %>% 
   mutate(across(.cols = where(is.POSIXct), .fns = as.Date))
 ```
 
--   is.POSIXctがTRUEまたはFALSEに評価されるように、`across()`内では`where()`という関数も使用していることに注意してください。
+-   `across()` 内で `where()`を使用し、`is.POSIXct()` で各列が TRUE または FALSE か評価できるようにしていることに注意してください。
 
--   `is.POSIXct()`は **lubridate** パッケージのものであることに注意してください。`is.character()`、`is.numeric()`、`is.logical()`のような他の類似した"is"関数は **base R** のものです。
+-   `is.POSIXct()`は **lubridate** パッケージの関数であることに注意してください。`is.character()`、`is.numeric()`、`is.logical()` などの他の類似した "is" 系関数は **base** R の関数です。
 
-#### `across()`関数 {.unnumbered}
+#### `across()` {.unnumbered}
 
-`across()`に関数を提供する方法の詳細については、`?across`のドキュメントをお読みください。要約すると、列に対して実行する関数を指定する方法はいくつかあり、独自の関数を定義することもできます。
+`across()` に関数を与える方法の詳細については、`?across` をコンソールで実行して表示されるドキュメントをお読みください。要約すると、列に対して実行する関数を指定する方法はいくつかあり、独自の関数を定義することもできます。
 
--   関数名のみを指定することができます（例：`mean`または `as.character`）。
+-   関数名のみを指定することができます（例：`mean` または `as.character`）。
 
--   関数を **purrr** スタイルで提供することができます（例：`~ mean(.x, na.rm = TRUE))`( [本ページ](https://epirhandbook.com/en/iteration-loops-and-lists.html#iteration-loops-and-lists)参照 )
+-   関数を **purrr** スタイルで提供することができます（例：`~ mean(.x, na.rm = TRUE))` （[本ページ](https://epirhandbook.com/en/iteration-loops-and-lists.html#iteration-loops-and-lists)参照）
 
 -   リストを指定することで，複数の関数を指定することができます（例：`list(mean = mean, n_miss = ~ sum(is.na(.x)))`）．
 
--   複数の関数を指定した場合は、入力列ごとに複数の変換後の列が返され、`col_fn`という形式で一意の名前が付けられます。新しい列の名前を調整するには、`.names =` 引数で**glue**の構文（[Characters and strings](https://epirhandbook.com/en/characters-and-strings.html#characters-and-strings) のページを参照）を使用します。`{.col}`と`{.fn}`は入力列と関数の省略形です。
+-   複数の関数を指定した場合は、入力列ごとに複数の変換後の列が返され、`col_fn` という形式で一意の名前が付けられます。新しい列の名前を調整するには、`.names =` 引数で **glue** の構文（[Characters and strings](https://epirhandbook.com/en/characters-and-strings.html#characters-and-strings) のページを参照）を使用します。`{.col}` と `{.fn}` は入力列と関数の省略形です。
 
 ### `coalesce()` {.unnumbered}
 
