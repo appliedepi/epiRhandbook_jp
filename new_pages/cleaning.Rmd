@@ -525,36 +525,36 @@ linelist <- linelist_raw %>%
 
 ## 列の作成と変換
 
-　新しい列を追加したり、既存の列を修正したりするには、**dplyr**の関数 `mutate()`を使うことをお勧めします。
+新しい列を追加したり、既存の列を修正したりする場合には、**dplyr** 系関数の `mutate()` を使用することをおすすめします。
 
-　以下は、`mutate()`を使って新しい列を作成する例です。構文は次のとおりです： `mutate(new_column_name = value or transformation)`
+以下に、`mutate()` を使用して新しい列を作成する例を紹介します。次のような構文を使用します：`mutate(new_column_name = value or transformation)`
 
-　Stataでは、これは`generate`コマンドに似ていますが、Rの`mutate()`は既存の列を修正するためにも使用できます。
+Stata の `generate` コマンドに似ていますが、R の `mutate()` は既存の列を修正する場合にも使用できます。
 
 ### 新しい列の作成 {.unnumbered}
 
-　新しい列を作成する最も基本的な`mutate()`コマンドは次のようになります。以下では、すべての行の値が10である新しい列`new_col`を作成します。
+以下は、`mutate()` を使用して新しい列を作成する最も基本的なコマンドはです。ここでは、すべての行の値が 10 である新しい列 `new_col` を作成します。
 
 ```{r, eval=F}
 linelist <- linelist %>% 
   mutate(new_col = 10)
 ```
 
-　また、他の列の値を参照して、計算を行うこともできます。以下では、新しい列 `bmi`が作成され、各ケースのBody mass index（BMI）を格納しています。これは、列`ht_cm`と列`wt_kg`を使用して、BMI = kg/m\^2の式で計算されたものです。
+また、他の列の値を参照して、計算を行うこともできます。以下では、`bmi` という新しい列が作成され、各症例の Body Mass Index（BMI）を格納しています。これは、既存の列である `ht_cm` と `wt_kg` を使用して、BMI = kg/m\^2 の式で計算されたものです。
 
 ```{r}
 linelist <- linelist %>% 
   mutate(bmi = wt_kg / (ht_cm/100)^2)
 ```
 
-　複数の新しい列を作成する場合は、それぞれをコンマで区切って改行します。以下は、**stringr**パッケージの `str_glue()`を使って他列の値を組み合わせたものなど、新しい列の例です（[Characters and strings](https://epirhandbook.com/en/characters-and-strings.html#characters-and-strings) のページを参照）。
+新しい列を複数作成する場合は、それぞれをコンマで区切って改行します。以下は、**stringr** パッケージの `str_glue()` を使って他列の値を組み合わせた列を作成するなど、複数の新しい列を作成する場合の例です（`str_glue()` についての詳細は、[文字列型データ](\#characters-strings) の章を参照ください）。
 
 ```{r}
 new_col_demo <- linelist %>%                       
   mutate(
     new_var_dup    = case_id,             #新しい列＝重複削/存在する他の列をコピー
     new_var_static = 7,                   # 新しい列＝全ての値が同じ
-    new_var_static = new_var_static + 5,  # 列を上書きしたり、他の変数を使って計算したりすることがでる。
+    new_var_static = new_var_static + 5,  # 列を上書きしたり、他の変数を使って計算したりすることができる
     new_var_paste  = stringr::str_glue("{hospital} on ({date_hospitalisation})") 
     # 新しい列 = 他の列の値を貼り付ける
     ) %>% 
@@ -562,57 +562,57 @@ new_col_demo <- linelist %>%
 # デモ用に新しい列のみを表示
 ```
 
-　新しい列を確認します。デモのために、新しい列とそれを作成するために使用された列のみが表示されています。
+新しい列を確認します。デモンストレーションのために、新しい列とそれを作成するために使用された列のみが表示されています。
 
 ```{r message=FALSE, echo=F}
-# ラインリストのデータを表にして表示する。
+# ラインリストのデータを表にして表示する
 DT::datatable(head(new_col_demo,50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-[***ヒント:*** `mutate()`のバリエーションとして、`transmute()`という関数があります。この関数は、`mutate()`と同じように新しい列を追加しますが、括弧の中に書かれていない他のすべての列を削除または取り除きます。]{style="color: darkgreen;"}
+[[**ヒント**]{.ul}**：**`mutate()` の変化形として、`transmute()` という関数があります。この関数は、`mutate()` と同じように新しい列を追加しますが、括弧の中に書かれていない他のすべての列を削除または除外します。]{style="color: darkgreen;"}
 
 ```{r, eval=F}
-# HIDDEN FROM READER
-# removes new demo columns created above
+# HIDDEN FROM READER（ウェブ版には表示されない）
+# 上で新しく作成されたデモ用の列を除外する
 
 # linelist <- linelist %>% 
 #   select(-contains("new_var"))
 ```
 
-### 列クラスの変換 {.unnumbered}
+### 列のデータ型の変換 {.unnumbered}
 
-　日付、数字、理論値（TRUE/FALSE）を含む列は、正しく分類されれば期待通の動きをします。文字クラスの"2"と数字クラスの2は異なります。
+日付、数字、理論値（TRUE/FALSE）を含む列は、正しく分類された時のみ期待通りの動きをします。例えば、文字型の "2" と数字型の 2 は異なることに注意してください。
 
-　インポートコマンド中に列クラスを設定する方法もありますが、扱いにくい場合が多いです。オブジェクトや列のクラスを変換する方法については、[R Basics](https://epirhandbook.com/en/r-basics.html#r-basics) のオブジェクトクラスの項を参照してください。
+データをインポートするコードの中に列のデータ型を指定する方法もありますが、扱いにくい場合が多いです。オブジェクトや列のデータ型を変換する方法については、[R の基礎](\#basics) の章の 3.10 オブジェクトのデータ型のセクションを参照してください。
 
-　まず、重要な列について、正しいクラスであるかどうかのチェックを行ってみましょう。これは最初に`skim()`を実行したときに確認しました。
+本章では、まず、重要な列について、正しいデータ型であるかどうかのチェックを行ってみましょう。これは本章の最初に `skim()` を実行したときに確認しました。
 
-　現在、`age`の列のクラスはcharacter型です。定量的な分析を行うためには、これらの数字が数値として認識される必要があります!
+では、具体的に見ていきましょう。現在、`age` 列のデータ型は 文字列型（character）ですが、定量的な分析を行うためには、これらの数字が数値として認識される必要があります！
 
 ```{r}
 class(linelist$age)
 ```
 
-`date_onset`列のクラスも文字です! 分析を行うには、これらの日付を日付として認識する必要があります。
+`date_onset` 列のデータ型も文字列型です！分析を行うためは、これらの日付が日付として認識される必要があります。
 
 ```{r}
 class(linelist$date_onset)
 ```
 
-　これを解決するには、mutate()の機能を使って、変換で列を再定義します。列をそれ自体として定義し、異なるクラスに変換します。ここでは、基本的な例として、列`age`がクラスNumeric型に変換または適正化します。
+これを解決するために、`mutate()` の機能を使って、変換で列を再定義します。列の定義に変更はありませんが、異なるデータ型に変換します。ここでは、基本的な例として、`age` 列が数値型（numeric）に変換します。
 
 ```{r, eval=F}
 linelist <- linelist %>% 
   mutate(age = as.numeric(age))
 ```
 
-　同様に、`as.character()`や`as.logical()`を使うこともできます。factor型に変換するには、**base R**の`factor()`やforcatsの`as_factor()`が使えます。詳しくは [Factors](https://epirhandbook.com/en/factors.html#factors) のページをご覧ください。
+同様に、`as.character()` や `as.logical()` を使用することもできます。因子型（factor）に変換したい場合は、**base** R の `factor()` や **forcats** パッケージの `as_factor()` を使いましょう。詳しくは、[因子（ファクタ）型データ](\#factors) の章をご覧ください。
 
-Date型 への変換には注意が必要です。いくつかの方法は [Working with dates](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1) のページで説明されています。通常、変換が正しく行われるためには、未加工の日付値がすべて同じ形式である必要があります (例: "MM/DD/YYYY"、または "DD MM YYYY")。クラスの日付に変換した後、データをチェックして、各値が正しく変換されたことを確認してください。
+日付型（date）への変換には注意が必要です。[日付型データ](\#dates) の章でいくつか方法を紹介しますが、通常、日付型への変換を正しく行うためには、日付データがすべて同じ形式である必要があります（例："MM/DD/YYYY"、または "DD MM YYYY"）。データを日付型に変換した後にチェックして、各値が正しく変換されたことを確認してください。
 
 ### グループ化されたデータ {.unnumbered}
 
-　 データフレームがすでにグループ化されている場合（[Grouping data](https://epirhandbook.com/en/grouping-data.html#grouping-data)のページを参照）、`mutate()`の動作はグループ化されていない場合とは異なるかもしれません。`mean()`、`median()`、`max()`などの要約関数は、すべての行ではなく、グループごとに計算されます。
+データフレームがすでにグループ化されている場合（グループ化の詳細は、[データのグループ化](\#grouping) の章を参照ください）は、`mutate()` の動作がグループ化されていない場合と異なるかもしれません。データフレームがすでにグループ化されている場合、`mean()`、`median()`、`max()` などの要約関数は、すべての行ではなくグループごとに計算されます。
 
 ```{r, eval=F}
 # 全行の平均値で正規化された年齢
@@ -625,26 +625,26 @@ linelist %>%
   mutate(age_norm = age / mean(age, na.rm=T))
 ```
 
-　グループ化されたデータフレームでの `mutate ()`の使用については、この [tidyverse mutate documentation](https://dplyr.tidyverse.org/reference/mutate.html) ドキュメントで詳しく説明しています。
+グループ化されたデータフレームでの `mutate ()` の使用については、こちらの [tidyverse mutate に関するドキュメント](https://dplyr.tidyverse.org/reference/mutate.html) で詳しく説明されていますので、必要な方はご覧ください。
 
-### 複数のカラムの変換 {#clean_across .unnumbered}
+### 複数列の一斉変換 {#clean_across .unnumbered}
 
-　簡潔なコードを書くために、同じ変換を複数の列に一度に適用したいことがあります。**dplyr**パッケージ（ **Tidyverse** パッケージにも含まれています）の `across()` 関数を使用して、変換を複数の列に一度に適用することができます。 `across()`はどの **dplyr** 関数で使用することができますが、一般的には`select()`、`mutate()`、`filter()`、`summarise()`内で使用されます。`summarise()`にどのように適用されるかは、[Descriptive tables](https://epirhandbook.com/en/descriptive-tables.html#descriptive-tables) のページを参照してください。
+コードを簡潔にするために、同じ変換を行うコマンドを一度で複数の列に適用したい場合があります。**dplyr** パッケージ（ **tidyverse** パッケージにも含まれています）の `across()` を使用すると、データの変換を行うコマンドを一度に複数の列に適用することができます。 `across()` はすべての **dplyr** 系関数で使用することができますが、一般的には `select()`、`mutate()`、`filter()`、`summarise()` 内でよく使用されます。`across()` をどのように `summarise()` で使用するかについて知りたい方は、[記述統計表の作り方](\#tables-descriptive) の章をご覧ください。
 
-　引数`.cols =`には列を指定し、`.fns =`には適用する関数を指定します。`.fns`関数に与える追加の引数は、カンマの後に含めることができます。
+`across()` では、`.cols =` 引数には列を指定し、`.fns =` 引数には適用する関数を指定します。`.fns` に与える追加の引数は、コンマの後に含めることができます。
 
 #### `across()`列選択 {.unnumbered}
 
-　引数`.cols =` に列を指定します。 個別に名前を付けることもできますし、"tidyselect" ヘルパー関数を使用することもできます。関数を`.fns =`に指定します。 以下に示す関数機能を使用すると、関数はその括弧（ ）なしで記述することに注意してください。
+`.cols =` 引数に列を指定します。 個別に列名を指定することもできますし、"tidyselect" ヘルパー関数を使用することもできます。関数を `.fns =` 引数に指定します。以下に示すように、関数機能を使用すると、関数はその括弧（ ）なしで記述することに注意してください。
 
-ここでは、`as.character()`という変換が、 `across()`で指定された特定の列に適用されています。
+以下の例では、`as.character()` を使用した文字型への変換が、 `across()` で指定された特定の列に適用されます。
 
 ```{r, eval=F}
 linelist <- linelist %>% 
   mutate(across(.cols = c(temp, ht_cm, wt_kg), .fns = as.character))
 ```
 
-　"tidyselect"ヘルパー関数は、列の指定する際に参考になります。これらの関数は上記の列の選択と並び替えのセクションで詳述されており、次のものが含まれます：`everything()`、`last_col()`、`where()`、`starts_with()`、`ends_with()`、`contains()`、`matches()`、`num_range()`、`any_of()`。
+"tidyselect" ヘルパー関数は、複数の列を指定する際に便利です。これらの関数は上記の列の選択と並び替えのセクションで詳述されており、次のものが含まれます：`everything()`、`last_col()`、`where()`、`starts_with()`、`ends_with()`、`contains()`、`matches()`、`num_range()`、`any_of()`。
 
 ここでは、すべての列をcharacter型に変更する例を示します。
 
