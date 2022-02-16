@@ -6,9 +6,9 @@
 
 このページでは、調査データ分析のためのいくつかのパッケージの使用方法を説明します。
 
-ほとんどの調査用Rパッケージは、重み付け分析を行うために[**survey**パッケージ](https://cran.r-project.org/web/packages/survey/index.html)に依存しています。ここでは、[**srvyr**](https://cran.r-project.org/web/packages/srvyr/index.html)（Tidyverseスタイルのコーディングを可能にする**survey**のラッパー）および[**gtsummary**](https://cran.r-project.org/web/packages/gtsummary/index.html)（出版準備の整った表を可能にする**survey**のラッパー）と同様に**survey**を使用します。オリジナルの**survey**パッケージでは、Tidyverseスタイルのコーディングはできませんが、survey-weightedgeneralised linearmodelを使用できるという利点があります（これは後日このページに追加されます）。また、[**sitrep**](https://github.com/R4EPI/sitrep)パッケージの関数を使用して、サンプリングウェイトを作成するデモを行います（注：このパッケージは現在CRANにはまだありませんが、githubからインストールできます）。
+ほとんどの調査用Rパッケージは、重み付け分析を行うために[**survey**パッケージ](https://cran.r-project.org/web/packages/survey/index.html)に依存しています。ここでは、**survey**と同様に[**srvyr**](https://cran.r-project.org/web/packages/srvyr/index.html)（Tidyverseスタイルのコーディングを可能にする**survey**のラッパー）および[**gtsummary**](https://cran.r-project.org/web/packages/gtsummary/index.html)（出版準備rレベルの整った表の出力を可能にする**survey**のラッパー）を使用します。オリジナルの **survey** パッケージは、Tidyverse スタイルのコーディングはできませんが、survey-weighted generalised linearmodel を使用できるという利点があります（これは後日このページに追加される予定です）。また、[**sitrep**](https://github.com/R4EPI/sitrep) パッケージの関数を使用して、サンプリングウェイトを作成するデモも行います（注：このパッケージは現在 CRAN にはありませんが、github からインストールできます）。
 
-このページのほとんどは、[「R4Epis」プロジェクト](https://r4epis.netlify.app/)で行われた作業に基づいています。詳細なコードとR-markdownテンプレートについては、[「R4Epis」のgithubページ](https://github.com/R4EPI/sitrep)を参照してください。**Survey**パッケージベースのコードの一部は、[EPIETケーススタディ](https://github.com/EPIET/RapidAssessmentSurveys)の初期バージョンに基づいています。
+このページのほとんどは、["R4Epis" プロジェクト](https://r4epis.netlify.app/)で行われた作業に基づいています。詳細なコードとR-markdownテンプレートについては、["R4Epis" の github ページ](https://github.com/R4EPI/sitrep)を参照してください。**Survey**パッケージベースのコードの一部は、[EPIETケーススタディ](https://github.com/EPIET/RapidAssessmentSurveys)の初期バージョンに基づいています。
 
 現在、このページではサンプルサイズの計算やサンプリングについては触れていません。簡単に利用できるサンプルサイズ計算機については、[OpenEpi](https://www.openepi.com/Menu/OE_Menu.htm)を参照してください。ハンドブックの[GIS basics](https://epirhandbook.com/gis-basics.html)ページには、いずれ空間的ランダムサンプリングのセクションが設けられ、このページには、サンプルサイズの計算だけでなく、サンプリングフレームのセクションが設けられる予定です。
 
@@ -55,19 +55,19 @@ pacman::p_load_gh(
 
 ### データの読み込み {.unnumbered}
 
-本節で使用する例のデータセットです。
+本節で使用する例のデータセットです：
 
 -   架空の死亡率調査データ
 -   調査対象地域の架空の人口数
 -   架空の死亡率調査データのデータ辞書
 
-これらは、MSFOCA倫理審査委員会が事前に承認した調査に基づいています。架空のデータセットは、[「R4Epis」プロジェクト](https://r4epis.netlify.app/)の一環として作成されました。これはすべて、[OpenDataKit](https://opendatakit.org/)をベースにしたデータ収集ソフトウェアである[KoboToolbox](https://www.kobotoolbox.org/)を使って収集したデータに基づいています。
+これらは、MSF OCA 倫理審査委員会が事前に承認した調査に基づいています。架空のデータセットは、["R4Epis" プロジェクト](https://r4epis.netlify.app/)の一環として作成されました。これはすべて、[OpenDataKit](https://opendatakit.org/) をベースにしたデータ収集ソフトウェアである [KoboToolbox](https://www.kobotoolbox.org/) を使って収集したデータに基づいています。
 
-Koboでは、収集したデータだけでなく、そのデータセットのデータ辞書もエクスポートすることができます。データのクリーニングが容易になり，変数や疑問を調べるのに便利なので，この方法を強くお勧めします。
+Kobo では、収集したデータだけでなく、そのデータセットのデータ辞書もエクスポートすることができます。データのクリーニングが容易になり，変数や疑問を調べるのに便利なので，この方法を強くお勧めします。
 
-[**ヒント：**Koboのデータ辞書では、調査票の"name"欄に変数名が記載されています。各変数の可能な値は、選択肢シートで指定されます。Choicesタブでは、"name"には短縮された値が、"label::english"および"label::french"列には適切な長さの値が表示されます。**Epidict**パッケージの`msf_dict_survey()`関数を使って、Kobo辞書のExcelファイルをインポートすると、これが再フォーマットされるので、再コーディングに簡単に使えるようになります。]{style="color: darkgreen;"}
+<span style="color: darkgreen;">**ヒント：** Kobo のデータ辞書では、調査票の "name" 欄に変数名が記載されています。各変数の可能な値は、選択肢シートで指定されます。Choicesタブでは、"name"には短縮された値が、"label::english"および"label::french"列には適切な長さの値が表示されます。**Epidict**パッケージの`msf_dict_survey()`関数を使って、Kobo辞書のExcelファイルをインポートすると、これが再フォーマットされるので、再コーディングに簡単に使えるようになります。</span>
 
-[**注意：**サンプルデータセットは、単なるエクスポートとは異なります（Koboでは、異なる調査レベルを個別にエクスポートします）-異なるレベルをマージするには、以下の調査データのセクションを参照してください。]{style="color: orange;"}
+<span style="color: orange;">**注意：**サンプルデータセットは、単なるエクスポートとは異なります（Koboでは、異なる調査レベルを個別にエクスポートします）-異なるレベルをマージするには、以下の調査データのセクションを参照してください。</span>
 
 
 データセットは **rio**パッケージの`import()`関数を使ってインポートされます。データをインポートするさまざまな方法については、[インポートおよびエクスポート](https://epirhandbook.com/import-and-export.html)のページを参照してください。
@@ -130,9 +130,9 @@ cluster_counts <- tibble(cluster = c("village_1", "village_2", "village_3", "vil
 
 日付列が適切な形式であることを以下で確認しています。他にもいくつかの方法がありますが（詳しくは[「日付の扱い方」](https://epirhandbook.com/working-with-dates.html)のページをご覧ください）、辞書を使って日付を定義するのが手っ取り早くて簡単です。
 
-また、**epikit**の`age_categories()`関数を使って、年齢グループの変数を作成します（詳細は[データクリーニング](https://epirhandbook.com/cleaning-data-and-core-functions.html#num_cats)のハンドブックセクションを参照）。さらに、各クラスターがどの地区にあるかを定義する文字変数を作成します。
+また、**epikit**の`age_categories()`関数を使って、年齢グループの変数を作成します（詳細は[データクリーニング]()のセクションを参照）。さらに、各クラスターがどの地区にあるかを定義する文字変数を作成します。
 
-最後に、YES/NO変数をすべてTRUE/FALSE変数に再コード化します。このようにしなければ、これらの変数は**調査**比率関数で使用できません。
+最後に、yes/no で表せられる変数をすべて TRUE/FALSE で表せられる変数に再コード化します。このようにしなければ、これらの変数は**調査**比率関数で使用できません。
 
 ```{r cleaning}
 
@@ -189,11 +189,10 @@ survey_data <- survey_data %>%
 <!-- ======================================================= -->
 ## 調査データ
 
-アンケート調査には、さまざまなサンプリングデザインがあります。ここでは、
-層化、クラスター、層化とクラスターのコードを紹介します。
-
-
-
+アンケート調査には、さまざまなサンプリングデザインがあります。ここでは、次についてのコードを紹介します：
+- 層化
+- クラスター
+- 層化とクラスター
 
 上記のように、（調査の作成方法にもよりますが）各レベルのデータは、Koboから別のデータセットとしてエクスポートされます。この例では、世帯が1つのレベルで、その世帯内の個人が1つのレベルです。
 
@@ -262,8 +261,8 @@ survey_data <- survey_data %>%
 
 ## 開始日、終了日、原因のための新しい変数を作成する
 survey_data <- survey_data %>% 
+     ## 出生、世帯の到着、キャンプの到着のうち
      ## 調査で入力された最も古い日付を選択する
-     ## 出生、世帯の到着、キャンプの到着から 
      find_start_date("birthday_date",
                   "arrived_date",
                   period_start = "recall_start",
@@ -271,8 +270,8 @@ survey_data <- survey_data %>%
                   datecol      = "startdate",
                   datereason   = "startcause" 
                  ) %>%
+     ## キャンプでの出発、死亡、調査の終了のうち
      ## 調査で入力された最も古い日付を選択する
-     ## キャンプでの出発、死亡、調査の終了から
      find_end_date("left_date",
                 "death_date",
                 period_start = "recall_start",
@@ -282,19 +281,19 @@ survey_data <- survey_data %>%
                )
 
 
-## 開始／終了時に存在していたものを表示（出生／死亡を除く）
+## 開始／終了時に存在していたものにラベルをつける（出生／死亡を除く）
 survey_data <- survey_data %>% 
      mutate(
-       ## リコール期間の開始日を記入する（空欄の場合） 
+       ## リコール期間の開始日を記入する（欠損している場合への対応） 
        startdate = if_else(is.na(startdate), recall_start, startdate), 
-       ## リコール期間と等しい場合、開始原因を"Present at start"に設定する 
-       ## 出生日と同じでなければ 
+       ## 出生日と同じでなければ、リコール期間と等しい場合、
+       ## 開始原因を"Present at start"に設定する 
        startcause = if_else(startdate == recall_start & startcause != "birthday_date",
                               "Present at start", startcause), 
-       ## リコール期間の終了日を記入する（空欄の場合） 
+       ## リコール期間の終了日を記入する（欠損している場合への対応） 
        enddate = if_else(is.na(enddate), recall_end, enddate), 
-       ## リコールに等しい場合は、最終原因を"Present at end"に設定する
-       ## 死亡日と同じでなければ
+       ## 死亡日と同じでなければ、リコールに等しい場合は、
+       ## 最終原因を"Present at end"に設定する
        endcause = if_else(enddate == recall_end & endcause != "death_date", 
                             "Present at end", endcause))
 
@@ -309,16 +308,15 @@ survey_data <- survey_data %>%
 <!-- ======================================================= -->
 ## 重み付け
 
-調査の重み付けをする前に、誤った観測値を削除することが重要です。例えば、負の観察期間を持つ観察値がある場合、それらをチェックする必要があります（**sitrep**の`assert_positive_timespan()`関数でこれを行うことができます）。もう1つは、空の行を削除するか（例えば`drop_na(uid)`で）、重複した行を削除するかです（詳細はハンドブックの[De-duplication]のセクションを参照してください）。同意のないものもドロップする必要があります。
+調査の重み付けをする前に、誤った観測値を削除することが重要です。例えば、負の観察期間を持つ観察値がある場合、それらをチェックする必要があります（**sitrep** の `assert_positive_timespan()` でこれを行うことができます）。もう1つは、空の行を削除するか（例えば `drop_na(uid)` で）、重複した行を削除するかです（詳細はハンドブックの[De-duplication]のセクションを参照してください）。同意のないものもドロップする必要があります。
 
 この例では、除外したいケースをフィルタリングして、別のデータフレームに保存します。これにより、調査から除外されたケースを説明することができます。次に、**dplyr**の`anti_join()`関数を使用して、調査データからこれらの除外されたケースを削除します。
 
-[**危険：**体重の変数や、調査計画に関連する変数（年齢、性別、層やクラスターの変数など）に欠損値があってはいけません。]{style="color: red;"}
+<span style="color: red;">**<u>危険：</u>** 体重の変数や、調査計画に関連する変数（年齢、性別、層やクラスターの変数など）に欠損値があってはいけません。</span>  
 
 ```{r remove_unused_data}
 
-## ドロップしたケースを保存しておけば、それを説明することができる（例：非同意
-## もしくは、誤った村／クラスター)
+## ドロップしたケースを保存しておけば、それを説明することができる（例：非同意もしくは、誤った村／クラスター)
 dropped <- survey_data %>% 
   filter(!consent | is.na(startdate) | is.na(enddate) | village_name == "other")
 
@@ -327,13 +325,13 @@ survey_data <- anti_join(survey_data, dropped, by = names(dropped))
 
 ```
 
-前述のように、3つの異なる調査デザイン（層化、クラスター、層化クラスター）について、重みを追加する方法を示します。これらの研究デザインには、原住民および/または調査対象のクラスタに関する情報が必要です。この例では、層化クラスターコードを使用しますが、研究デザインに最も適したものを使用してください。
+前述のように、3つの異なる調査デザイン（層化、クラスター、層化クラスター）について、重みを追加する方法を示します。これらの研究デザインには、原住民および/または調査対象のクラスタに関する情報が必要です。この例では、層化クラスターのためのコードを使用しますが、研究デザインに最も適したものを使用してください。
 
 ```{r survey_weights}
 
 # 層化 ------------------------------------------------------------------------
-# "surv_weight_strata"という変数を作成する
 # 年齢層別、性別、健康地区の各個人の重みを含んでいる
+# "surv_weight_strata"という変数を作成する
 survey_data <- add_weights_strata(x = survey_data,
                                          p = population,
                                          surv_weight = "surv_weight_strata",
@@ -376,50 +374,50 @@ survey_data <- survey_data %>%
 
 調査デザインに合わせて調査対象を作成します。データフレームと同様に、重量比率などの計算に使用します。必要な変数がすべて作成されていることを確認してから行います。
 
-単純無作為、層化、クラスター、層化クラスターの4つのオプションがありますが、使用しないものはコメントアウトしてください。
-
-
-
-
+次の4つのオプションがありますが、使用しないものはコメントアウトしてください：
+- 単純無作為
+- 層化
+- クラスター
+- 層化クラスター
 
 このテンプレートでは、2つの異なる層（健康地区AとB）に調査をクラスター化したと仮定します。したがって、全体の推定値を得るためには、クラスターと層の重みを組み合わせる必要があります。
 
 前述したように、これを行うために2つのパッケージが用意されています。古典的なものは**survey**で、それからtidyverseに適したオブジェクトや関数を作る**srvyr**というラッパーパッケージがあります。両方ともデモを行いますが、本章のコードのほとんどは**srvyr**ベースのオブジェクトを使用することに注意してください。1つの例外は、**gtsummary**パッケージが**survey**オブジェクトしか受け付けないことです。
 
-### Surveyパッケージ
+### **Survey** パッケージ
 
-**Survey**パッケージでは、**base** Rコーディングを効果的に使用するため、パイプ (`%>%)` やその他の**dplyr**構文を使用することはできません。**Survey**パッケージでは、`svydesign()`関数を使用して、適切なクラスタ、重み、層を持つ調査オブジェクトを定義します。
+**Survey** パッケージでは、**base** R コーディングを効果的に使用するため、パイプ （`%>%`） やその他の **dplyr** の構文を使用することはできません。**Survey**パッケージでは、`svydesign()`関数を使用して、適切なクラスタ、重み、層を持つ調査オブジェクトを定義します。
 
-[**注意：**変数の前にチルダ（\~）を使う必要があります。これは、パッケージが数式に基づいて変数を割り当てる**base** Rの構文を使用しているためです。 ]{style="color: black;"}
+<span style="color: black;">**注意：**変数の前にチルダ（`~`）を使う必要があります。これは、パッケージが数式に基づいて変数を割り当てる**base**  R の構文を使用しているためです。</span>
 
 ```{r survey_design}
 
 # 単純無作為 ------------------------------------------------------------------
-base_survey_design_simple <- svydesign(ids = ~1, # 1 for no cluster ids
-                   weights = NULL,               # No weight added
-                   strata = NULL,                # sampling was simple (no strata)
-                   data = survey_data            # have to specify the dataset
+base_survey_design_simple <- svydesign(ids = ~1, # クラスターIDなしは1を指定
+                   weights = NULL,               # 重みはなし
+                   strata = NULL,                # 抽出は単純に（層はなし）
+                   data = survey_data            # データセットを指定する必要あり
                   )
 
 ## 層化 -----------------------------------------------------------------------
-base_survey_design_strata <- svydesign(ids = ~1,  # 1 for no cluster ids
-                   weights = ~surv_weight_strata, # weight variable created above
-                   strata = ~health_district,     # sampling was stratified by district
-                   data = survey_data             # have to specify the dataset
+base_survey_design_strata <- svydesign(ids = ~1,  # クラスターIDなしは1を指定
+                   weights = ~surv_weight_strata, # 上で作成した重みの変数を指定
+                   strata = ~health_district,     # 抽出は地域で層化を行う
+                   data = survey_data             # データセットを指定する必要あり
                   )
 
 # クラスター ------------------------------------------------------------------
-base_survey_design_cluster <- svydesign(ids = ~village_name, # cluster ids
-                   weights = ~surv_weight_cluster, # weight variable created above
-                   strata = NULL,                 # sampling was simple (no strata)
-                   data = survey_data              # have to specify the dataset
+base_survey_design_cluster <- svydesign(ids = ~village_name, # クラスターIDを指定
+                   weights = ~surv_weight_cluster, # 上で作成した重みの変数を指定
+                   strata = NULL,                 # 抽出は単純に（層はなし）
+                   data = survey_data              # データセットを指定する必要あり
                   )
 
 # 層化クラスター --------------------------------------------------------------
-base_survey_design <- svydesign(ids = ~village_name,      # cluster ids
-                   weights = ~surv_weight_cluster_strata, # weight variable created above
-                   strata = ~health_district,             # sampling was stratified by district
-                   data = survey_data                     # have to specify the dataset
+base_survey_design <- svydesign(ids = ~village_name,      # クラスターIDを指定
+                   weights = ~surv_weight_cluster_strata, # 上で作成した重みの変数を指定
+                   strata = ~health_district,             # 抽出は地域で層化を行う
+                   data = survey_data                     # データセットを指定する必要あり
                   )
 ```
 
@@ -432,50 +430,50 @@ base_survey_design <- svydesign(ids = ~village_name,      # cluster ids
 ```{r survey_design_srvyr}
 ## 単純無作為 ------------------------------------------------------------------
 survey_design_simple <- survey_data %>% 
-  as_survey_design(ids = 1, # 1 for no cluster ids 
-                   weights = NULL, # No weight added
-                   strata = NULL # sampling was simple (no strata)
+  as_survey_design(ids = 1, # クラスターIDなしは1を指定 
+                   weights = NULL, # 重みはなし
+                   strata = NULL # 抽出は単純に（層はなし）
                   )
 ## 層化 ------------------------------------------------------------------------
 survey_design_strata <- survey_data %>%
-  as_survey_design(ids = 1, # 1 for no cluster ids
-                   weights = surv_weight_strata, # weight variable created above
-                   strata = health_district # sampling was stratified by district
+  as_survey_design(ids = 1, # クラスターIDなしは1を指定
+                   weights = surv_weight_strata, # 上で作成した重みの変数を指定
+                   strata = health_district # 抽出は地域で層化を行う
                   )
 ## クラスター ------------------------------------------------------------------
 survey_design_cluster <- survey_data %>%
-  as_survey_design(ids = village_name, # cluster ids
-                   weights = surv_weight_cluster, # weight variable created above
-                   strata = NULL # sampling was simple (no strata)
+  as_survey_design(ids = village_name, # クラスターIDを指定
+                   weights = surv_weight_cluster, # 上で作成した重みの変数を指定
+                   strata = NULL # 抽出は単純に（層はなし）
                   )
 
 ## 層化クラスター --------------------------------------------------------------
 survey_design <- survey_data %>%
-  as_survey_design(ids = village_name, # cluster ids
-                   weights = surv_weight_cluster_strata, # weight variable created above
-                   strata = health_district # sampling was stratified by district
+  as_survey_design(ids = village_name, # クラスターIDを指定
+                   weights = surv_weight_cluster_strata, # 上で作成した重みの変数を指定
+                   strata = health_district # 抽出は地域で層化を行う
                   )
 ```
 
 <!-- ======================================================= -->
-## 記述的分析
+## 記述的分析 {  }
 
 基本的な記述的分析と視覚化は、ハンドブックの他の章で広範囲にカバーされているので、ここでは触れません。詳細は、[記述表](https://epirhandbook.com/descriptive-tables.html)、[統計検定](https://epirhandbook.com/simple-statistical-tests.html)、[プレゼンテーションのための表](https://epirhandbook.com/tables-for-presentation.html)、[ggplotの基本](https://epirhandbook.com/ggplot-basics.html)、[Rのマークダウンレポート](https://epirhandbook.com/r-markdown-reports.html)の章を参照してください。
 
-このセクションでは、サンプルの偏りを調査し、それを視覚化する方法に焦点を当てます。また、沖積図やサンキーダイアグラムを使って、調査環境における人口の流れを視覚化することも検討します。
+このセクションでは、サンプルの偏りを調査し、それを視覚化する方法に焦点を当てます。また、沖積図／サンキーダイアグラムを使って、調査環境における人口の流れを視覚化することも検討します。
 
 一般的には、以下のような記述的な分析を含めることを検討すべきです。
 
--   対象となるクラスター、世帯、個人の最終的な数\
--   除外された人の数とその理由
--   クラスターあたりの世帯数と世帯あたりの個人数の中央値（範囲）
+- 対象となるクラスター、世帯、個人の最終的な数
+- 除外された人の数とその理由
+- クラスターあたりの世帯数と世帯あたりの個人数の中央値（範囲）
 
 
 ### サンプリングバイアス
 
 各年齢層の割合を、サンプルと母集団の間で比較します。これは、潜在的なサンプリングバイアスを明らかにするために重要です。同様に、これを繰り返して性別による分布を調べることもできます。
 
-これらのp値は単なる指標であり、ソース集団と比較した研究サンプルの分布の記述的な議論（または下記の年齢ピラミッドによる視覚化）は、二項検定自体よりも重要であることに注意してください。これは、サンプルサイズを大きくすると、データを重み付けした後では無関係な差になることが多いからです。
+これらの p 値は単なる指標であり、ソース集団と比較した研究サンプルの分布の記述的な議論（または下記の年齢ピラミッドによる視覚化）は、二項検定自体よりも重要であることに注意してください。これは、サンプルサイズを大きくすると、データを重み付けした後では無関係な差になることが多いからです。
 
 ```{r descriptive_sampling_bias, warning = FALSE}
 
@@ -532,7 +530,7 @@ left_join(ag, propcount, by = "age_group", suffix = c("", "_pop")) %>%
 
 人口統計（または年齢-性別）ピラミッドは、調査対象者の分布を視覚化する簡単な方法です。また、調査の層別に年齢と性別の[記述表](https://epirhandbook.com/descriptive-tables.html)を作成することも検討する価値があります。ここでは、上で作成した調査設計オブジェクトを使用して、加重比例が可能な**apyramid**パッケージを使用して説明します。[人口統計ピラミッド](https://epirhandbook.com/demographic-pyramids-and-likert-scales.html)を作成するための他のオプションについては、ハンドブックのその章で詳しく説明しています。また、`plot_age_pyramid()`という**sitrep**のラッパー関数を使用して、比率のプロットを作成するための数行のコーディングを省きます。
 
-上のサンプリング・バイアスのセクションで見た差の正式な二項検定のように、ここでは、我々の標本化された母集団が元の母集団と実質的に異なるかどうか、そして重み付けがこの差を修正するかどうかを可視化することに興味があります。これを行うために、**ggplot**の可視化を並べて表示するために**patchwork**パッケージを使用します。詳細はハンドブックの[ggplot tips](https://epirhandbook.com/ggplot-tips.html?q=patch#combine-plots)章のプロットの結合のセクションを参照してください。私たちは、ソース集団、重み付けされていない調査集団、重み付けされた調査集団を視覚化します。また、調査の各層ごとに視覚化することも考えられます。ここでの例では、`stack_by = "health_district"`という引数を使用します（詳細は`?plot_age_pyramid`を参照してください）。
+上のサンプリング・バイアスのセクションで見た差の正式な二項検定のように、ここでは、我々の標本化された母集団が元の母集団と実質的に異なるかどうか、そして重み付けがこの差を修正するかどうかを可視化することに興味があります。これを行うために、**ggplot** の可視化を並べて表示するために **patchwork** パッケージを使用します。詳細はハンドブックの [ggplot tips](https://epirhandbook.com/ggplot-tips.html?q=patch#combine-plots) 章のプロットの結合のセクションを参照してください。私たちは、ソース集団、重み付けされていない調査集団、重み付けされた調査集団を視覚化します。また、調査の各層ごとに視覚化することも考えられます。ここでの例では、`stack_by = "health_district"`という引数を使用します（詳細は`?plot_age_pyramid`を参照してください）。
 
 [**注意：**ピラミッドでは、x軸とy軸が反転します。]{style="color: black;"}
 
