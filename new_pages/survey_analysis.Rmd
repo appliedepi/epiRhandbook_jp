@@ -650,11 +650,11 @@ source_population + sample_population + weighted_population +
 
 ## データの要約
 flow_table <- survey_data %>%
-  count(startcause, endcause, sex) %>%  # get counts 
-  gather_set_data(x = c("startcause", "endcause")) %>%     # change format for plotting
-  mutate(x = fct_relevel(x, c("startcause", "endcause")),  # set startcause as first level
+  count(startcause, endcause, sex) %>%  # カウントを取得する
+  gather_set_data(x = c("startcause", "endcause")) %>%     # プロットのために形式を変更する
+  mutate(x = fct_relevel(x, c("startcause", "endcause")),  # startcauseを最初のレベルに設定する
          x = fct_recode(x, 
-                        "Start \n cause" = "startcause",   # add line break (\n) after start
+                        "Start \n cause" = "startcause",   # 改行(\n)をstartの後に追加する
                         "End \n cause"   = "endcause")
         )
 
@@ -681,24 +681,24 @@ ggplot(flow_table, aes(x, id = id, split = y, value = n)) +
     axis.ticks = element_blank(),
     axis.text.y = element_blank(),
     panel.background = element_blank(),
-    legend.position = "bottom",                    # move legend to bottom
-    legend.title = element_blank(),                # remove title
+    legend.position = "bottom",                    # 凡例を図の下に移動
+    legend.title = element_blank(),                # タイトルを除去
   )
 
 ```
 
 
 <!-- ======================================================= -->
-## 重み付けされた割合
+## 重み付けされた割合 {  }
 
-このセクションでは、重み付けされたカウント数と割合の表を、関連する信頼区間とデザイン効果とともに作成する方法を詳しく説明します。**Survey**、**srvyr**、**sitrep**、**gtsummary**の各パッケージの関数を使った4つの異なるオプションがあります。標準的な疫学スタイルの表を作成するための最小限のコーディングには、**srvyr**コードのラッパーである**sitrep**関数をお勧めしますが、これはまだCRANに掲載されておらず、将来変更される可能性があることに注意してください。それ以外では、**srvyr**がTidyverseのワークフローに最もうまく適合するのに対し、**survey**コードが長期的に最も安定していると思われます。**gtsummary**関数は多くの可能性を秘めていますが、この記事を書いている時点では実験的で不完全なもののようです。
+このセクションでは、重み付けされたカウント数と割合の表を、関連する信頼区間とデザイン効果とともに作成する方法を詳しく説明します。**Survey**、**srvyr**、**sitrep**、**gtsummary** の各パッケージの関数を使った 4 つの異なる方法があります。標準的な疫学スタイルの表を作成するための最小限のコーディングには、**srvyr**コードのラッパーである **sitrep** 関数をお勧めしますが、これはまだ CRAN に掲載されておらず、将来変更される可能性があることに注意してください。それ以外では、**srvyr** が Tidyverse のワークフローに最もうまく適合するのに対し、**survey** のコードは長期的に最も安定していると思われます。**gtsummary** の関数群は多くの可能性を秘めていますが、この記事を書いている時点では実験的で不完全なもののようです。
 
 
 ### **Survey**パッケージ
 
-**Survey**から`svyciprop()`関数を使用して、重み付けされた割合とそれに伴う95%信頼区間を得ることができます。適切なデザイン効果は、`svyprop()`関数ではなく、`svymean()`を使用して抽出することができます。`svyprop()`は、0と1(またはTRUE/FALSE)の間の変数しか受け付けませんので、カテゴリー変数は使えないことに注意する必要があります。
+**Survey** から `svyciprop()` 関数を使用して、重み付けされた割合とそれに伴う 95% 信頼区間を得ることができます。適切なデザイン効果は、`svyprop()` ではなく、`svymean()` を使用して抽出することができます。`svyprop()`は、0 から 1 の間の値（またはTRUE/FALSE）しか受け付けませんので、カテゴリー変数は使えないことに注意する必要があります。
 
-[**注：survey**由来の関数は、**srvyr**デザイン・オブジェクトも受け入れますが、ここでは一貫性を保つために**survey**デザイン・オブジェクトを使用しています。]{style="color: black;"}
+<span style="color: black;">**注：** **survey** 由来の関数は、**srvyr** デザイン・オブジェクトも受け入れますが、ここでは一貫性を保つために**survey**デザイン・オブジェクトを使用しています。</span>
 
 
 ```{r survey_props}
@@ -706,7 +706,7 @@ ggplot(flow_table, aes(x, id = id, split = y, value = n)) +
 ## 重み付けされたカウントを生成する
 svytable(~died, base_survey_design)
 
-## 重みのあるプロポーションを作る
+## 重み付けされた割合を作る
 svyciprop(~died, base_survey_design, na.rm = T)
 
 ## デザイン効果を得る
@@ -715,12 +715,12 @@ svymean(~died, base_survey_design, na.rm = T, deff = T) %>%
 
 ```
 
-上記のような**surbey**の関数を組み合わせて、以下のように独自に定義した`svy_prop`という関数を作ることができます。この関数と**purrr**パッケージの`map()`を使って、複数の変数を反復処理し、表を作成することができます。**purrr**の詳細については、ハンドブックの[「反復」](https://epirhandbook.com/iteration-loops-and-lists.html)の章を参照してください。
+上記のような **survey** の関数を組み合わせて、以下のように独自に定義した `svy_prop` という関数を作ることができます。この関数と **purrr** パッケージの `map()` を使って、複数の変数を反復処理し、表を作成することができます。**purrr**の詳細については、ハンドブックの[反復](https://epirhandbook.com/iteration-loops-and-lists.html)の章を参照してください。
 
 ```{r survey_prop_fun}
 # 加重カウント、割合、信頼区間、デザイン効果を計算する関数を定義する
 # xは引用符で囲まれた変数
-# designは調査のデザイン対象
+# designはsurveyデザインオブジェクト
 
 svy_prop <- function(design, x) {
   
@@ -771,11 +771,11 @@ purrr::map(
 
 
 
-### **Srvyr**パッケージ
+### **Srvyr** パッケージ
 
-**Srvyr**では、**dplyr**の構文を使って表を作成することができます。`survey_mean()`関数が使用され、割合引数が指定されていること、また、デザイン効果の計算にも同じ関数が使用されていることに注意してください。これは、**srvyr**が、上のセクションで使われている**survey**パッケージ関数の`svyciprop()`と`svymean()`の両方を内包しているからです。
+**Srvyr** では、**dplyr** の構文を使って表を作成することができます。`survey_mean()` が使用され、割合引数が指定されていること、また、デザイン効果の計算にも同じ関数が使用されていることに注意してください。これは、**srvyr** が、上のセクションで使われている **survey** パッケージ関数群の `svyciprop()` と `svymean()` の両方を内包しているからです。
 
-[**注：srvyr**を使ってカテゴリー変数から割合を求めることはできないようです。もしこれが必要であれば、**sitrep**を使って以下のセクションをチェックしてください。]{style="color: black;"}
+<span style="color: black;">**注：srvyr** を使ってカテゴリー変数から割合を求めることはできないようです。もしこれが必要であれば、**sitrep** を使って以下のセクションをチェックしてください。 </span>
 
 ```{r srvyr_prop}
 
@@ -797,19 +797,19 @@ survey_design %>%
 
 ```
 
-ここでも**purrr**パッケージを使って、複数の変数を反復処理する関数を書くことができます。**purrr**の詳細については、ハンドブックの[「反復」](https://epirhandbook.com/iteration-loops-and-lists.html)の章を参照してください。
+ここでも**purrr**パッケージを使って、複数の変数を反復処理する関数を書くことができます。**purrr**の詳細については、ハンドブックの[反復](https://epirhandbook.com/iteration-loops-and-lists.html)の章を参照してください。
 
 ```{r srvyr_prop_fun}
 
 # 加重カウント、割合、信頼区間、デザイン効果を計算する関数の定義する
-# designは調査のデザイン対象
+# designはsurveyデザインオブジェクト
 # xは引用符で囲まれた変数
 
 
 srvyr_prop <- function(design, x) {
   
   summarise(
-    ## 調査デザインオブジェクトの使用する
+    ## surveyデザインオブジェクトを使用する
     design, 
     ## 重み付けされたカウントを生成する 
     counts = survey_total(.data[[x]]), 
@@ -843,15 +843,15 @@ purrr::map(
 
 
 
-### **Sitrep**パッケージ
+### **Sitrep** パッケージ
 
-**Sitrep**の`tab_survey()`関数は、**srvyr**のラッパーであり、最小限のコーディングで重み付けされた表を作成することができます。また、カテゴリカル変数の加重割合を計算することもできます。
+**Sitrep** の `tab_survey()` は、**srvyr** のラッパーであり、最小限のコーディングで重み付けされた表を作成することができます。また、カテゴリカル変数の加重割合を計算することもできます。
 
 ```{r sitrep_props}
 
 ## 調査デザインオブジェクトの使用する
 survey_design %>% 
-  ## 興味のある変数の名前を引用せずに渡す
+  ## 興味のある変数の名前を引用符をつけずに渡す
   tab_survey(arrived, left, died, education_level,
              deff = TRUE,   # デザイン効果の算出する
              pretty = TRUE  # 割合と95%信頼区間を統合する
@@ -861,9 +861,9 @@ survey_design %>%
 
 
 
-### **Gtsummary**パッケージ
+### **Gtsummary** パッケージ
 
-**Gtsummary**には、信頼区間やデザイン効果を追加するための組み込み関数がまだないようです。ここでは、信頼区間を追加するための関数を定義し、`tbl_svysummary()`関数を使って作成した**gtsummary**テーブルに信頼区間を追加する方法を示します。
+**Gtsummary** には、信頼区間やデザイン効果を追加するための組み込み関数がまだないようです。ここでは、信頼区間を追加するための関数を定義し、`tbl_svysummary()` を使って作成した **gtsummary** テーブルに信頼区間を追加する方法を示します。
 
 
 ```{r gtsummary_table}
@@ -882,7 +882,7 @@ confidence_intervals <- function(data, variable, by, ...) {
     paste0(., collapse = "-")          ## 1つの文字列にまとめる
 }
 
-## surveyパッケージデザインオブジェクトを使用する
+## surveyパッケージのデザインオブジェクトを使用する
 tbl_svysummary(base_survey_design, 
                include = c(arrived, left, died),   ## 含めたい変数を定義する
                statistic = list(everything() ~ c("{n} ({p}%)"))) %>% ## 興味のある統計量を定義する
@@ -902,12 +902,12 @@ tbl_svysummary(base_survey_design,
 
 
 <!-- ======================================================= -->
-## 重み付けされた比率
+## 重み付けされた比率 {  }
 
 同様に、（死亡率のような）重み付けされた比率については、**survey**や**srvyr**パッケージを使うことができます。さらに、複数の変数を反復処理する関数（上記のものと同様）を書くこともできます。上記のように**gtsummary**のための関数を作ることもできますが、現在のところ内蔵の機能はありません。
 
 
-### **Survey**パッケージ
+### **Survey** パッケージ
 
 ```{r survey_ratio}
 
@@ -925,7 +925,7 @@ cbind(
 ```
 
 
-### **Srvyr**パッケージ
+### **Srvyr** パッケージ
 
 ```{r srvyr_ratio}
 
