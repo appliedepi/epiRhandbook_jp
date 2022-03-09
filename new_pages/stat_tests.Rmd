@@ -1,11 +1,11 @@
-# 基本的な統計的検定 {\#stat-tests}
+# 基本的な統計的検定 { #stat-tests }
 
-このページでは、**base**R、**rstatix**、**gtsummary**を使って、基本的な統計的検定を行う方法を紹介します。
+この章では、**base**R、**rstatix**、**gtsummary** を使って、基本的な統計的検定を行う方法を紹介します。
 
 -   T 検定
--   Shapiro-Wilk検定
--   Wilcoxonの順位和検定
--   Kruskal-Wallis検定
+-   Shapiro-Wilk 検定
+-   Wilcoxon の順位和検定
+-   Kruskal-Wallis 検定
 -   カイ二乗検定
 -   数値変数間の相関
 
@@ -13,9 +13,9 @@
 
 上記の各パッケージには、それぞれ利点と欠点があります：
 
--   **base** R 関数を使用して、R コンソールに統計的な出力を表示します。
+-   **base** R の関数を使用して、R コンソールに統計的な出力を表示します。
 
--   データフレームで結果を表示する場合や、グループごとに検定を実行したい場合は、**rstatix** 関数を使用します。
+-   データフレームで結果を表示する場合や、グループごとに検定を実行したい場合は、**rstatix** パッケージの関数を使用します。
 
 -   出版用の表を素早く表示したい場合は、**gtsummary** を使用します。
 
@@ -25,7 +25,7 @@
 
 ### パッケージを読み込む {.unnumbered}
 
-このコードチャンクは、分析に必要なパッケージの読み込みを示しています。このハンドブックでは **pacman** の `p_load()` をおすすめします。これは必要に応じてパッケージをインストールし、使用するためにパッケージを読み込みます。インストールされたパッケージは **base** R の `library()`でも読み込みができます。R のパッケージに関する詳細は [R basics]{\#basics}のページをご覧ください。
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、pacman パッケージの p_load() を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである base の library() を使用して読み込むこともできます。R のパッケージに関する詳細は [R basics](#basics) の章をご覧ください。
 
 ```{r}
 pacman::p_load(
@@ -43,7 +43,7 @@ pacman::p_load(
 
 ### データをインポートする
 
-エボラ出血熱のシミュレーションで得られた症例のデータセットをインポートします。このデータをみたい方は, ["clean" linelist をダウンロードするためにここをクリック](https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds) してください ( .rds file として保存されます)。 **rio** packageから、`import()` ファンクションを使用してデータをインポートしてください。（.xlsx, .rds, .csv などの多くのタイプのファイルが使用可能です。詳しくは「インポート／エクスポート{\#importing}」のページをご覧ください。
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは **rio** パッケージの `import()` を利用してインポートしましょう（**rio** パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）
 
 ```{r, echo=F}
 # linelist を R にインポートする
@@ -70,7 +70,7 @@ DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list
 
 「スチューデントの t 検定」とも呼ばれる[ｔ検定](https://en.wikipedia.org/wiki/Student%27s_t-test)は、通常、2つのグループ間で何らかの数値変数の平均値に有意差があるかどうかを判定するために使用されます。ここでは、列が同じデータフレーム内にあるかどうかに応じて、この検定を行うための構文を示します。
 
-構文1：これは、数値列とカテゴリー列が同じデータフレームにある場合の構文です。数式の左側に数値列を、右側にカテゴリー列を用意します。データセットを `data =`で指定します。オプションとして、`paired = TRUE`、`conf.level =` (初期設定は0.95)、`alternative =` ("two.sided", "less", "greater" のいずれか)を設定します。詳細を知りたい場合は `?t.test` と入力してください。
+構文1：これは、数値列とカテゴリー列が同じデータフレームにある場合の構文です。数式の左側に数値列を、右側にカテゴリー列を用意します。データセットを `data =`で指定します。オプションとして、`paired = TRUE`、`conf.level =` (初期設定は0.95)、`alternative =` ("two.sided"、 "less"、 "greater" のいずれか)を設定します。詳細を知りたい場合は `?t.test` と入力してください。
 
 ```{r}
 ##ｔ検定を使用してアウトカムグループごとに平均年齢を比較する
@@ -134,13 +134,9 @@ chisq.test(linelist$gender, linelist$outcome)
 
 **rstatix** パッケージは、「パイプ・フレンドリー」なフレームワークで統計的検定を実行し、結果を取得する機能を提供します。結果は自動的にデータフレームに格納されるので、結果に対して後続の操作を行うことができます。また、関数に渡されるデータをグループ化して、グループごとに統計を実行することも容易です。
 
-{.unnumbered}
+### 要約統計 {.unnumbered}
 
-###  {.unnumbered}
-
-### 要約統計
-
-`get_summary_stats()`関数は、要約統計を素早く表示する方法です。データセットをこの関数に繋げて、分析したい列を指定するだけです。列が指定されていない場合は、すべての列の統計量が計算されます。
+`get_summary_stats()` は、要約統計を素早く表示する方法です。データセットをこの関数に繋げて、分析したい列を指定するだけです。列が指定されていない場合は、すべての列の統計量が計算されます。
 
 デフォルトでは、数、最大値、最小値、平均、25パーセンタイル値、75パーセンタイル値、四分位範囲、中央絶対偏差 (mad)、平均、標準偏差、標準誤差、平均値の信頼区間という全ての種類の要約統計量が表示されます。
 
@@ -161,9 +157,7 @@ linelist %>%
 
 また、**rstatix** を使って統計的な検定を行うこともできます。
 
-###  {.unnumbered}
-
-### T 検定
+### T 検定 {.unnumbered}
 
 数式の構文を使って、数値とカテゴリーの列を指定します。
 
@@ -187,8 +181,6 @@ linelist %>%
   t_test(age_years ~ 1, mu = 18)
 ```
 
-### 　 {.unnumbered}
-
 ### **Shapiro-Wilk 検定** {.unnumbered}
 
 前述の通り、サンプルサイズは3～5000の間でなければなりません。
@@ -199,9 +191,7 @@ linelist %>%
   shapiro_test(age_years)
 ```
 
-###  {.unnumbered}
-
-### **Wilcoxon** の順位和検定
+### **Wilcoxon** の順位和検定 {.unnumbered}
 
 Mann--Whitney の U 検定としても知られています。
 
@@ -210,9 +200,7 @@ linelist %>%
   wilcox_test(age_years ~ gender)
 ```
 
-###  {.unnumbered}
-
-### **Kruskal-Wallis** 検定
+### **Kruskal-Wallis** 検定 {.unnumbered}
 
 ```{r}
 linelist %>% 
@@ -221,7 +209,7 @@ linelist %>%
 
 ### カイ二乗検定
 
-カイ二乗検定の関数は表をもとに実施しますので、まずクロス集計を作成します。クロス集計を作成する方法はたくさんありますが（[記述表]{\# tables-descriptive}を参照）、ここでは　**janitor** の `tabyl()`を使用し、`chisq_test()`に渡す前に値ラベルの左端の列を削除します。
+カイ二乗検定の関数は表をもとに実施しますので、まずクロス集計を作成します。クロス集計を作成する方法はたくさんありますが（[記述表](#tables-descriptive)を参照）、ここでは　**janitor**  パッケージの `tabyl()` を使用し、`chisq_test()` に渡す前に値ラベルの左端の列を削除します。
 
 ```{r}
 linelist %>% 
@@ -231,19 +219,17 @@ linelist %>%
 
 ```
 
-**rstatix** 関数では、さらに多くの関数や統計検定を実行できます。rstatix のドキュメントをオンラインで見るには、[ここをクリック](https://github.com/kassambara/rstatix)するか、?rstatix を入力してください。
+**rstatix** パッケージの関数では、さらに多くの関数や統計検定を実行できます。rstatix パッケージのドキュメントをオンラインで見るには、[ここをクリック](https://github.com/kassambara/rstatix)するか、?rstatix を入力してください。
 
-##  {#stats_gt}
+## `gtsummary` パッケージ {#stats_gt}
 
-## `gtsummary` パッケージ
+本パッケージで作成したきれいな表に統計的な検定の結果を追加したい場合は、**gtsummary** パッケージを使用してください（「[記述表](#tables-descriptive)」章の **gtsummary** セクションで説明しています）。
 
-本パッケージで作成したきれいな表に統計的な検定の結果を追加したい場合は、**gtsummary** を使用してください（「記述表{\# tables-descriptive}」ページの **gtsummary** セクションで説明しています）。
-
-`tbl_summary`で比較の統計的検定を行うには、テーブルに `add_p`関数を追加し、使用する検定を指定します。`add_q`関数を使用して、多重検定で補正された p 値を得ることができる。詳細は `?tbl_summary`を実行してください。
+`tbl_summary()` で比較の統計的検定を行うには、テーブルに `add_p()` を追加し、使用する検定を指定します。`add_q()` を使用して、多重検定で補正された p 値を得ることができる。詳細は `?tbl_summary` を実行してください。
 
 ### カイ二乗検定
 
-2つのグループにおけるカテゴリー変数の割合を比較します。カテゴリー変数に適用された場合の `add_p()`へのデフォルトの統計的検定は、連続性補正を用いた独立性のカイ二乗検定ですが、予想される算出数が5以下の場合は、フィッシャーの正確検定が用いられます。
+2つのグループにおけるカテゴリー変数の割合を比較します。カテゴリー変数に適用された場合の `add_p()` へのデフォルトの統計的検定は、連続性補正を用いた独立性のカイ二乗検定ですが、予想される算出数が5以下の場合は、フィッシャーの正確検定が用いられます。
 
 ```{r chi_gt}
 linelist %>% 
@@ -252,7 +238,7 @@ linelist %>%
   add_p()                        # 実行する検定の指定
 ```
 
-### T 検定
+### T 検定 {}
 
 2つのグループにおける連続変数の平均値の差を比較します。例えば、患者の転帰ごとに平均年齢を比較します。
 
@@ -268,9 +254,7 @@ linelist %>%
 
 ```
 
-###  {.unnumbered}
-
-### **Wilcoxon** の順位和検定
+### **Wilcoxon** の順位和検定 {.unnumbered}
 
 2つのグループにおける連続変数の分布を比較します。デフォルトでは、2つのグループを比較する際に Wilcoxon の順位和検定と中央値（四分位範囲）を使用します。しかし、非正規分布のデータや複数のグループを比較する場合は、Kruskal-Wallis 検定を使用することがより適切です。
 
@@ -552,7 +536,7 @@ linelist %>%
 
 ### 相関
 
-数値変数間の相関は、**tidyverse corrr** パッケージを使用して実施することができます。Pearson、Kendall tau、Spearman rhoを使って相関を計算することができます。このパッケージは表を作成し、値を自動的に記入する機能も備えています。
+数値変数間の相関は、**tidyverse corrr** パッケージを使用して実施することができます。Pearson、Kendall tau、Spearman rho を使って相関を計算することができます。このパッケージは表を作成し、値を自動的に記入する機能も備えています。
 
 ```{r, warning=F, message=F}
 
@@ -575,8 +559,8 @@ rplot(correlation_tab)
 
 <!-- ======================================================= -->
 
-### リソース
+### 参考資料
 
-このページにおける多くの情報はオンラインでのこれらのリソースより採用しています。
+この章における多くの情報はオンラインでのこれらのリソースより採用しています。
 
 [gtsummary](http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html) [dplyr](https://dplyr.tidyverse.org/articles/grouping.html) [corrr](https://corrr.tidymodels.org/articles/using-corrr.html) [sthda correlation](http://www.sthda.com/english/wiki/correlation-test-between-two-variables-in-r)
