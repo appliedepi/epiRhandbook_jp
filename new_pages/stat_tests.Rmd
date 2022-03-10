@@ -1,167 +1,153 @@
-# Simple statistical tests { }
+# 基本的な統計的検定 { #stat-tests }
 
+この章では、**base**R、**rstatix**、**gtsummary** を使って、基本的な統計的検定を行う方法を紹介します。
 
-This page demonstrates how to conduct simple statistical tests using **base** R, **rstatix**, and **gtsummary**.  
+-   T 検定
+-   Shapiro-Wilk 検定
+-   Wilcoxon の順位和検定
+-   Kruskal-Wallis 検定
+-   カイ二乗検定
+-   数値変数間の相関
 
-* T-test  
-* Shapiro-Wilk test  
-* Wilcoxon rank sum test  
-* Kruskal-Wallis test  
-* Chi-squared test  
-* Correlations between numeric variables  
+...他にも様々な検定を行うことができますが、ここでは一般的なものだけを紹介し、それ以外のものにはドキュメントへのリンクを張っています。
 
-...many other tests can be performed, but we showcase just these common ones and link to further documentation.  
+上記の各パッケージには、それぞれ利点と欠点があります：
 
-Each of the above packages bring certain advantages and disadvantages:  
+-   **base** R の関数を使用して、R コンソールに統計的な出力を表示します。
 
-* Use **base** R functions to print a statistical outputs to the R Console  
-* Use **rstatix** functions to return results in a data frame, or if you want tests to run by group  
-* Use **gtsummary** if you want to quickly print publication-ready tables  
+-   データフレームで結果を表示する場合や、グループごとに検定を実行したい場合は、**rstatix** パッケージの関数を使用します。
 
-
+-   出版用の表を素早く表示したい場合は、**gtsummary** を使用します。
 
 <!-- ======================================================= -->
-## Preparation {  }
 
+## 準備
 
-### Load packages {.unnumbered}
+### パッケージを読み込む {.unnumbered}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
-
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、pacman パッケージの p_load() を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである base の library() を使用して読み込むこともできます。R のパッケージに関する詳細は [R basics](#basics) の章をご覧ください。
 
 ```{r}
 pacman::p_load(
-  rio,          # File import
-  here,         # File locator
-  skimr,        # get overview of data
-  tidyverse,    # data management + ggplot2 graphics, 
-  gtsummary,    # summary statistics and tests
-  rstatix,      # statistics
-  corrr,        # correlation analayis for numeric variables
-  janitor,      # adding totals and percents to tables
-  flextable     # converting tables to HTML
+  rio,          # ファイルをインポートする
+  here,         # ファイルの位置決める
+  skimr,        # データの概要を把握する
+  tidyverse,    # データ管理 + ggplot2 グラフィックス 
+  gtsummary,    # 要約統計と検定をする
+  rstatix,      # 統計を行う
+  corrr,        # 数値変数の相関分析を行う
+  janitor,      # 表に合計値とパーセンテージを加える
+  flextable     # 表をHTMLに変換する
   )
 ```
 
-### Import data {.unnumbered}
+### データをインポートする
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import your data with the `import()` function from the **rio** package (it accepts many file types like .xlsx, .rds, .csv - see the [Import and export] page for details).  
-
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは **rio** パッケージの `import()` を利用してインポートしましょう（**rio** パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）
 
 ```{r, echo=F}
-# import the linelist into R
+# linelist を R にインポートする
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
-# import the linelist
+# linelist のインポートをする
 linelist <- import("linelist_cleaned.rds")
 ```
 
-The first 50 rows of the linelist are displayed below.
+linelist の最初の50行が下のように表示されます。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# linelist のデータをテーブルとして表示する
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
+## base R
 
+**base** R の関数を使って、統計的検定を行うことができます。コマンドは比較的簡単で、結果は R のコンソールに表示されるので簡単に見ることができます。しかし、出力は、通常、リストですので、結果を次の操作で使用したい場合は、操作が難しくなります。
 
+### T 検定
 
+「スチューデントの t 検定」とも呼ばれる[ｔ検定](https://en.wikipedia.org/wiki/Student%27s_t-test)は、通常、2つのグループ間で何らかの数値変数の平均値に有意差があるかどうかを判定するために使用されます。ここでは、列が同じデータフレーム内にあるかどうかに応じて、この検定を行うための構文を示します。
 
-## **base** R {}
-
-You can use **base** R functions to conduct statistical tests. The commands are relatively simple and results will print to the R Console for simple viewing. However, the outputs are usually lists and so are harder to manipulate if you want to use the results in subsequent operations. 
-
-### T-tests {.unnumbered} 
-
-A [t-test](https://en.wikipedia.org/wiki/Student%27s_t-test), also called "Student's t-Test", is typically used to determine if there is a significant difference between the means of some numeric variable between two groups. Here we'll show the syntax to do this test depending on whether the columns are in the same data frame.
-
-**Syntax 1:** This is the syntax when your numeric and categorical columns are in the same data frame. Provide the numeric column on the left side of the equation and the categorical column on the right side. Specify the dataset to `data = `. Optionally, set `paired = TRUE`, and `conf.level = ` (0.95 default), and `alternative = ` (either "two.sided", "less", or "greater"). Enter `?t.test` for more details.  
+構文1：これは、数値列とカテゴリー列が同じデータフレームにある場合の構文です。数式の左側に数値列を、右側にカテゴリー列を用意します。データセットを `data =`で指定します。オプションとして、`paired = TRUE`、`conf.level =` (初期設定は0.95)、`alternative =` ("two.sided"、 "less"、 "greater" のいずれか)を設定します。詳細を知りたい場合は `?t.test` と入力してください。
 
 ```{r}
-## compare mean age by outcome group with a t-test
+##ｔ検定を使用してアウトカムグループごとに平均年齢を比較する
 t.test(age_years ~ gender, data = linelist)
 ```
 
-**Syntax 2:** You can compare two separate numeric vectors using this alternative syntax. For example, if the two columns are in different data sets.  
+構文2：この代替構文を使って、2つの別々の数値ベクトルを比較することができます。たとえば、2 つの列が異なるデータセットにある場合です。
 
 ```{r, eval=F}
 t.test(df1$age_years, df2$age_years)
 ```
 
-You can also use a t-test to determine whether a sample mean is significantly different from some specific value. Here we conduct a one-sample t-test with the known/hypothesized population mean as `mu = `:  
+また，t 検定は，標本平均がある特定の値と有意に異なるかどうかを判定するためにも使用できます。ここでは、既知/仮説の母平均を `mu =`として、1標本の t 検定を行います。
 
 ```{r, eval=F}
 t.test(linelist$age_years, mu = 45)
 ```
 
-### Shapiro-Wilk test {.unnumbered}  
+### Shapiro-Wilk 検定
 
-The [Shapiro-Wilk test](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) can be used to determine whether a sample came from a normally-distributed population (an assumption of many other tests and analysis, such as the t-test). However, this can only be used on a sample between 3 and 5000 observations. For larger samples a [quantile-quantile plot](https://ggplot2.tidyverse.org/reference/geom_qq.html) may be helpful. 
-
+[Shapiro-Wilk 検定](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test)は，標本が正規分布の母集団から得られたものであるかどうかを判定するために使用できます（t 検定など，他の多くの検定や分析の仮定）．ただし，これは3件から5000件まで観察サンプルにしか使用できません。より大きなサンプルでは，[分位数-分位数 プロット](https://ggplot2.tidyverse.org/reference/geom_qq.html)を使用することが有用かもしれません。
 
 ```{r, eval=F}
 shapiro.test(linelist$age_years)
 ```
 
-### Wilcoxon rank sum test {.unnumbered}
+### Wilcoxon の順位和検定
 
-The Wilcoxon rank sum test, also called the [Mann–Whitney U test](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test), is often used to help determine if two numeric samples are from the same distribution when their populations are not normally distributed or have unequal variance.
+Wilcoxon の順位和検定（[Mann--Whitney の U 検定](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test)とも呼ばれる）は、2つの数値サンプルの母集団が正規分布していない場合や、不均等な分散を持つ場合に、そのサンプルが同じ分布から来ているかどうかを判断するためによく使用されます。
 
 ```{r wilcox_base}
 
-## compare age distribution by outcome group with a wilcox test
+## Wilcoxon の検定を使用してアウトカムグループごとに年齢の分布を比較する
 wilcox.test(age_years ~ outcome, data = linelist)
 
 ```
 
+### Kruskal-Wallis 検定
 
-### Kruskal-Wallis test {.unnumbered}
-
-
-The [Kruskal-Wallis test](https://en.wikipedia.org/wiki/Kruskal%E2%80%93Wallis_one-way_analysis_of_variance) is an extension of the Wilcoxon rank sum test that can be used to test for differences in the distribution of more than two samples. When only two samples are used it gives identical results to the Wilcoxon rank sum test. 
+[Kruskal-Wallis 検定](https://en.wikipedia.org/wiki/Kruskal%E2%80%93Wallis_one-way_analysis_of_variance)は、Wilcoxon の順位和検定を拡張したもので、2つ以上のサンプルの分布の違いを検定するのに使用できます。2つのサンプルしか使用しない場合は、Wilcoxon の順位和検定と同じ結果が得られます。
 
 ```{r }
 
-## compare age distribution by outcome group with a kruskal-wallis test
+##  Kruskal-Wallis 検定を使用して、アウトカムグループごとに年齢の分布を比較する
 kruskal.test(age_years ~ outcome, linelist)
 
 ```
 
-### Chi-squared test {.unnumbered} 
+### カイ二乗検定
 
-[Pearson's Chi-squared test](https://en.wikipedia.org/wiki/Chi-squared_test) is used in testing for significant differences between categorical croups. 
+[Pearson のカイ二乗検定](https://en.wikipedia.org/wiki/Chi-squared_test)は、カテゴリー変数のグループ間の有意差を検定する際に使用されます。
 
 ```{r}
 
-## compare the proportions in each group with a chi-squared test
+## 各グループにおける割合をカイ二乗検定で比較する
 chisq.test(linelist$gender, linelist$outcome)
 
 ```
 
+### **rstatix** パッケージ
 
+**rstatix** パッケージは、「パイプ・フレンドリー」なフレームワークで統計的検定を実行し、結果を取得する機能を提供します。結果は自動的にデータフレームに格納されるので、結果に対して後続の操作を行うことができます。また、関数に渡されるデータをグループ化して、グループごとに統計を実行することも容易です。
 
-## **rstatix** package {}
+### 要約統計 {.unnumbered}
 
-The **rstatix** package offers the ability to run statistical tests and retrieve results in a "pipe-friendly" framework. The results are automatically in a data frame so that you can perform subsequent operations on the results. It is also easy to group the data being passed into the functions, so that the statistics are run for each group.  
+`get_summary_stats()` は、要約統計を素早く表示する方法です。データセットをこの関数に繋げて、分析したい列を指定するだけです。列が指定されていない場合は、すべての列の統計量が計算されます。
 
-
-### Summary statistics {.unnumbered}  
-
-The function `get_summary_stats()` is a quick way to return summary statistics. Simply pipe your dataset to this function and provide the columns to analyse. If no columns are specified, the statistics are calculated for all columns.  
-
-By default, a full range of summary statistics are returned: n, max, min, median, 25%ile, 75%ile, IQR, median absolute deviation (mad), mean, standard deviation, standard error, and a confidence interval of the mean. 
-
+デフォルトでは、数、最大値、最小値、平均、25パーセンタイル値、75パーセンタイル値、四分位範囲、中央絶対偏差 (mad)、平均、標準偏差、標準誤差、平均値の信頼区間という全ての種類の要約統計量が表示されます。
 
 ```{r}
 linelist %>%
   rstatix::get_summary_stats(age, temp)
 ```
 
-You can specify a subset of summary statistics to return by providing one of the following values to `type = `: "full", "common", "robust", "five_number", "mean_sd", "mean_se", "mean_ci", "median_iqr", "median_mad", "quantile", "mean", "median", "min", "max".  
+`type =` に以下の値のいずれかを指定することで、返す要約統計量の一部を指定することができます。full"、"common"、"robust"、"five_number"、"mean_sd"、"mean_se"、"mean_ci"、"median_iqr"、"median_mad"、"quantile"、"mean"、"median"、"min"、"max"
 
-It can be used with grouped data as well, such that a row is returned for each grouping-variable:  
+グループ化されたデータにも使用でき、グループ化された変数ごとに行として返される。
 
 ```{r}
 linelist %>%
@@ -169,25 +155,25 @@ linelist %>%
   rstatix::get_summary_stats(age, temp, type = "common")
 ```
 
-You can also use **rstatix** to conduct statistical tests:  
+また、**rstatix** を使って統計的な検定を行うこともできます。
 
-### T-test {.unnumbered}  
+### T 検定 {.unnumbered}
 
-Use a formula syntax to specify the numeric and categorical columns:  
+数式の構文を使って、数値とカテゴリーの列を指定します。
 
 ```{r}
 linelist %>% 
   t_test(age_years ~ gender)
 ```
 
-Or use `~ 1` and specify `mu = ` for a one-sample T-test. This can also be done by group.  
+また、`~ 1` を使用し、 `mu =` を指定すると、1標本の T 検定を行うことができます。これは、グループごとに行うこともできます。
 
 ```{r}
 linelist %>% 
   t_test(age_years ~ 1, mu = 30)
 ```
 
-If applicable, the statistical tests can be done by group, as shown below:  
+該当する場合は、以下のようにグループごとに統計的検定を行うことができます。
 
 ```{r}
 linelist %>% 
@@ -195,37 +181,35 @@ linelist %>%
   t_test(age_years ~ 1, mu = 18)
 ```
 
-### Shapiro-Wilk test {.unnumbered}  
+### **Shapiro-Wilk 検定** {.unnumbered}
 
-As stated above, sample size must be between 3 and 5000.  
+前述の通り、サンプルサイズは3～5000の間でなければなりません。
 
 ```{r}
 linelist %>% 
-  head(500) %>%            # first 500 rows of case linelist, for example only
+  head(500) %>%      # 例として、linelist での最初の500行の症例
   shapiro_test(age_years)
 ```
 
-### Wilcoxon rank sum test {.unnumbered}  
+### **Wilcoxon** の順位和検定 {.unnumbered}
+
+Mann--Whitney の U 検定としても知られています。
 
 ```{r}
 linelist %>% 
   wilcox_test(age_years ~ gender)
 ```
 
-
-### Kruskal-Wallis test {.unnumbered}  
-
-Also known as the Mann-Whitney U test.  
+### **Kruskal-Wallis** 検定 {.unnumbered}
 
 ```{r}
 linelist %>% 
   kruskal_test(age_years ~ outcome)
 ```
 
+### カイ二乗検定
 
-### Chi-squared test {.unnumbered}  
-
-The chi-square test function accepts a table, so first we create a cross-tabulation. There are many ways to create a cross-tabulation (see [Descriptive tables]) but here we use `tabyl()` from **janitor** and remove the left-most column of value labels before passing to `chisq_test()`.  
+カイ二乗検定の関数は表をもとに実施しますので、まずクロス集計を作成します。クロス集計を作成する方法はたくさんありますが（[記述表](#tables-descriptive)を参照）、ここでは　**janitor**  パッケージの `tabyl()` を使用し、`chisq_test()` に渡す前に値ラベルの左端の列を削除します。
 
 ```{r}
 linelist %>% 
@@ -235,92 +219,77 @@ linelist %>%
 
 ```
 
-Many many more functions and statistical tests can be run with **rstatix** functions. See the documentation for **rstatix** [online here](https://github.com/kassambara/rstatix) or by entering ?rstatix.  
+**rstatix** パッケージの関数では、さらに多くの関数や統計検定を実行できます。rstatix パッケージのドキュメントをオンラインで見るには、[ここをクリック](https://github.com/kassambara/rstatix)するか、?rstatix を入力してください。
 
+## `gtsummary` パッケージ {#stats_gt}
 
+本パッケージで作成したきれいな表に統計的な検定の結果を追加したい場合は、**gtsummary** パッケージを使用してください（「[記述表](#tables-descriptive)」章の **gtsummary** セクションで説明しています）。
 
+`tbl_summary()` で比較の統計的検定を行うには、テーブルに `add_p()` を追加し、使用する検定を指定します。`add_q()` を使用して、多重検定で補正された p 値を得ることができる。詳細は `?tbl_summary` を実行してください。
 
+### カイ二乗検定
 
-## `gtsummary` package {#stats_gt}
-
-Use **gtsummary** if you are looking to add the results of a statistical test to a pretty table that was created with this package (as described in the **gtsummary** section of the [Descriptive tables](#tbl_gt) page).  
-
-Performing statistical tests of comparison with `tbl_summary` is done by adding the 
-`add_p` function to a table and specifying which test to use. It is possible to get p-values corrected for multiple testing by using the
-`add_q` function. Run `?tbl_summary` for details.  
-
-### Chi-squared test {.unnumbered}
-
-Compare the proportions of a categorical variable in two groups. The default statistical test for `add_p()` when applied to a categorical variable is to perform a chi-squared test of independence with continuity correction, but if any expected call count is below 5 then a Fisher's exact test is used. 
+2つのグループにおけるカテゴリー変数の割合を比較します。カテゴリー変数に適用された場合の `add_p()` へのデフォルトの統計的検定は、連続性補正を用いた独立性のカイ二乗検定ですが、予想される算出数が5以下の場合は、フィッシャーの正確検定が用いられます。
 
 ```{r chi_gt}
 linelist %>% 
-  select(gender, outcome) %>%    # keep variables of interest
-  tbl_summary(by = outcome) %>%  # produce summary table and specify grouping variable
-  add_p()                        # specify what test to perform
+  select(gender, outcome) %>%    # 興味のある変数を投入
+  tbl_summary(by = outcome) %>%  # 要約表の作成とグループ化をする変数を指定
+  add_p()                        # 実行する検定の指定
 ```
 
+### T 検定 {}
 
-### T-tests {.unnumbered} 
-
-Compare the difference in means for a continuous variable in two groups. 
-For example, compare the mean age by patient outcome. 
+2つのグループにおける連続変数の平均値の差を比較します。例えば、患者の転帰ごとに平均年齢を比較します。
 
 ```{r ttest_gt}
 
 linelist %>% 
-  select(age_years, outcome) %>%             # keep variables of interest
-  tbl_summary(                               # produce summary table
-    statistic = age_years ~ "{mean} ({sd})", # specify what statistics to show
-    by = outcome) %>%                        # specify the grouping variable
-  add_p(age_years ~ "t.test")                # specify what tests to perform
+  select(age_years, outcome) %>%             # 興味のある変数を投入
+  tbl_summary(                               # 要約表を作成
+    statistic = age_years ~ "{mean} ({sd})", # 表示したい要約統計量を指定
+    by = outcome) %>%                        # グループ化する変数を指定
+  add_p(age_years ~ "t.test")                # 実行する検定を指定
 
 
 ```
 
-### Wilcoxon rank sum test{.unnumbered}
+### **Wilcoxon** の順位和検定 {.unnumbered}
 
-Compare the distribution of a continuous variable in two groups. The default 
-is to use the Wilcoxon rank sum test and the median (IQR) when comparing two 
-groups. However for non-normally distributed data or comparing multiple groups, 
-the Kruskal-wallis test is more appropriate. 
+2つのグループにおける連続変数の分布を比較します。デフォルトでは、2つのグループを比較する際に Wilcoxon の順位和検定と中央値（四分位範囲）を使用します。しかし、非正規分布のデータや複数のグループを比較する場合は、Kruskal-Wallis 検定を使用することがより適切です。
 
 ```{r wilcox_gt}
 
 linelist %>% 
-  select(age_years, outcome) %>%                       # keep variables of interest
-  tbl_summary(                                         # produce summary table
-    statistic = age_years ~ "{median} ({p25}, {p75})", # specify what statistic to show (this is default so could remove)
-    by = outcome) %>%                                  # specify the grouping variable
-  add_p(age_years ~ "wilcox.test")                     # specify what test to perform (default so could leave brackets empty)
-
-
+  select(age_years, outcome) %>%                       # 興味ある変数を投入
+  tbl_summary(                                         # 要約表を作成
+    statistic = age_years ~ "{median} ({p25}, {p75})", # 表示したい統計量を指定(これは初期値なので取り除くことができる)
+    by = outcome) %>%                                  # グループ化する変数を指定
+  add_p(age_years ~ "wilcox.test")                     # 実行する検定を指定（これはデフォルトなので括弧内は取り除くことが可能）
 ```
 
-### Kruskal-wallis test {.unnumbered}
+### **Kruskal-Wallis** 検定 {.unnumbered}
 
-Compare the distribution of a continuous variable in two or more groups, 
-regardless of whether the data is normally distributed. 
+データが正規分布しているかどうかに関わらず、2つ以上のグループにおける連続変数の分布を比較します。
 
 ```{r kruskal_gt}
 
 linelist %>% 
-  select(age_years, outcome) %>%                       # keep variables of interest
-  tbl_summary(                                         # produce summary table
-    statistic = age_years ~ "{median} ({p25}, {p75})", # specify what statistic to show (default, so could remove)
-    by = outcome) %>%                                  # specify the grouping variable
-  add_p(age_years ~ "kruskal.test")                    # specify what test to perform
+  select(age_years, outcome) %>%                       # 興味ある変数を投入
+  tbl_summary(                                         # 要約表を作成
+    statistic = age_years ~ "{median} ({p25}, {p75})", # 表示したい統計量を指定(これは初期値なので取り除くことができる)
+    by = outcome) %>%                                  # グループ化する変数を指定
+  add_p(age_years ~ "kruskal.test")                    # 実行する検定を指定
 
 
 ```
 
-
-
-
 <!-- ## `dplyr` package {} -->
 
 <!-- Performing statistical tests in `dplyr` alone is very dense, again because it  -->
+
 <!-- does not fit within the tidy-data framework. It requires using `purrr` to create -->
+
 <!-- a list of dataframes for each of the subgroups you want to compare. See the page on [Iteration, loops, and lists] to learn about **purrr**.   -->
 
 <!-- An easier alternative may be the `rstatix` package.  -->
@@ -330,174 +299,268 @@ linelist %>%
 <!-- ```{r ttest_dplyr} -->
 
 <!-- linelist %>%  -->
+
 <!--   ## only keep variables of interest -->
+
 <!--   select(age, outcome) %>%  -->
+
 <!--   ## drop those missing outcome  -->
+
 <!--   filter(!is.na(outcome)) %>%  -->
+
 <!--   ## specify the grouping variable -->
+
 <!--   group_by(outcome) %>%  -->
+
 <!--   ## create a subset of data for each group (as a list) -->
+
 <!--   nest() %>%  -->
+
 <!--   ## spread in to wide format -->
+
 <!--   pivot_wider(names_from = outcome, values_from = data) %>%  -->
+
 <!--   mutate( -->
+
 <!--     ## calculate the mean age for the death group -->
+
 <!--     Death_mean = map(Death, ~mean(.x$age, na.rm = TRUE)), -->
+
 <!--     ## calculate the sd among dead  -->
+
 <!--     Death_sd = map(Death, ~sd(.x$age, na.rm = TRUE)), -->
+
 <!--     ## calculate the mean age for the recover group -->
+
 <!--     Recover_mean = map(Recover, ~mean(.x$age, na.rm = TRUE)),  -->
+
 <!--     ## calculate the sd among recovered  -->
+
 <!--     Recover_sd = map(Recover, ~sd(.x$age, na.rm = TRUE)), -->
+
 <!--     ## using both grouped data sets compare mean age with a t-test -->
+
 <!--     ## keep only the p.value -->
+
 <!--     t_test = map2(Death, Recover, ~t.test(.x$age, .y$age)$p.value) -->
+
 <!--   ) %>%  -->
+
 <!--   ## drop datasets  -->
+
 <!--   select(-Death, -Recover) %>%  -->
+
 <!--   ## return a dataset with the medians and p.value (drop missing) -->
+
 <!--   unnest(cols = everything()) -->
 
 <!-- ``` -->
-
 
 <!-- ### Wilcoxon rank sum test {.unnumbered} -->
 
 <!-- ```{r wilcox_dplyr} -->
 
 <!-- linelist %>%  -->
+
 <!--   ## only keep variables of interest -->
+
 <!--   select(age, outcome) %>%  -->
+
 <!--   ## drop those missing outcome  -->
+
 <!--   filter(!is.na(outcome)) %>%  -->
+
 <!--   ## specify the grouping variable -->
+
 <!--   group_by(outcome) %>%  -->
+
 <!--   ## create a subset of data for each group (as a list) -->
+
 <!--   nest() %>%  -->
+
 <!--   ## spread in to wide format -->
+
 <!--   pivot_wider(names_from = outcome, values_from = data) %>%  -->
+
 <!--   mutate( -->
+
 <!--     ## calculate the median age for the death group -->
+
 <!--     Death_median = map(Death, ~median(.x$age, na.rm = TRUE)), -->
+
 <!--     ## calculate the sd among dead  -->
+
 <!--     Death_iqr = map(Death, ~str_c( -->
+
 <!--       quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE),  -->
+
 <!--       collapse = ", " -->
+
 <!--       )), -->
+
 <!--     ## calculate the median age for the recover group -->
+
 <!--     Recover_median = map(Recover, ~median(.x$age, na.rm = TRUE)),  -->
+
 <!--     ## calculate the sd among recovered  -->
+
 <!--     Recover_iqr = map(Recover, ~str_c( -->
+
 <!--       quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE),  -->
+
 <!--       collapse = ", " -->
+
 <!--       )), -->
+
 <!--     ## using both grouped data sets compare age distribution with a wilcox test -->
+
 <!--     ## keep only the p.value -->
+
 <!--     wilcox = map2(Death, Recover, ~wilcox.test(.x$age, .y$age)$p.value) -->
+
 <!--   ) %>%  -->
+
 <!--   ## drop datasets  -->
+
 <!--   select(-Death, -Recover) %>%  -->
+
 <!--   ## return a dataset with the medians and p.value (drop missing) -->
+
 <!--   unnest(cols = everything()) -->
 
 <!-- ``` -->
 
 <!-- ### Kruskal-wallis test {.unnumbered} -->
 
-
 <!-- ```{r kruskal_dplyr} -->
 
 <!-- linelist %>%  -->
+
 <!--   ## only keep variables of interest -->
+
 <!--   select(age, outcome) %>%  -->
+
 <!--   ## drop those missing outcome  -->
+
 <!--   filter(!is.na(outcome)) %>%  -->
+
 <!--   ## specify the grouping variable -->
+
 <!--   group_by(outcome) %>%  -->
+
 <!--   ## create a subset of data for each group (as a list) -->
+
 <!--   nest() %>%  -->
+
 <!--   ## spread in to wide format -->
+
 <!--   pivot_wider(names_from = outcome, values_from = data) %>%  -->
+
 <!--   mutate( -->
+
 <!--     ## calculate the median age for the death group -->
+
 <!--     Death_median = map(Death, ~median(.x$age, na.rm = TRUE)), -->
+
 <!--     ## calculate the sd among dead  -->
+
 <!--     Death_iqr = map(Death, ~str_c( -->
+
 <!--       quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE),  -->
+
 <!--       collapse = ", " -->
+
 <!--       )), -->
+
 <!--     ## calculate the median age for the recover group -->
+
 <!--     Recover_median = map(Recover, ~median(.x$age, na.rm = TRUE)),  -->
+
 <!--     ## calculate the sd among recovered  -->
+
 <!--     Recover_iqr = map(Recover, ~str_c( -->
+
 <!--       quantile(.x$age, probs = c(0.25, 0.75), na.rm = TRUE),  -->
+
 <!--       collapse = ", " -->
+
 <!--       )), -->
+
 <!--     ## using the original data set compare age distribution with a kruskal test -->
+
 <!--     ## keep only the p.value -->
+
 <!--     kruskal = kruskal.test(linelist$age, linelist$outcome)$p.value -->
+
 <!--   ) %>%  -->
+
 <!--   ## drop datasets  -->
+
 <!--   select(-Death, -Recover) %>%  -->
+
 <!--   ## return a dataset with the medians and p.value (drop missing) -->
+
 <!--   unnest(cols = everything()) -->
 
 <!-- ``` -->
 
 <!-- ### Chi-squared test {.unnumbered}  -->
 
-
 <!-- ```{r} -->
-<!-- linelist %>%  -->
-<!--   ## do everything by gender  -->
-<!--   group_by(outcome) %>%  -->
-<!--   ## count the variable of interest -->
-<!--   count(gender) %>%  -->
-<!--   ## calculate proportion  -->
-<!--   ## note that the denominator here is the sum of each gender -->
-<!--   mutate(percentage = n / sum(n) * 100) %>%  -->
-<!--   pivot_wider(names_from = outcome, values_from = c(n, percentage)) %>%  -->
-<!--   filter(!is.na(gender)) %>%  -->
-<!--   mutate(pval = chisq.test(linelist$gender, linelist$outcome)$p.value) -->
-<!-- ``` -->
 
+<!-- linelist %>%  -->
+
+<!--   ## do everything by gender  -->
+
+<!--   group_by(outcome) %>%  -->
+
+<!--   ## count the variable of interest -->
+
+<!--   count(gender) %>%  -->
+
+<!--   ## calculate proportion  -->
+
+<!--   ## note that the denominator here is the sum of each gender -->
+
+<!--   mutate(percentage = n / sum(n) * 100) %>%  -->
+
+<!--   pivot_wider(names_from = outcome, values_from = c(n, percentage)) %>%  -->
+
+<!--   filter(!is.na(gender)) %>%  -->
+
+<!--   mutate(pval = chisq.test(linelist$gender, linelist$outcome)$p.value) -->
+
+<!-- ``` -->
 
 <!-- ======================================================= -->
 
-## Correlations 
+### 相関
 
-Correlation between numeric variables can be investigated using the **tidyverse**  
-**corrr** package. It allows you to compute correlations using Pearson, Kendall
-tau or Spearman rho. The package creates a table and also has a function to 
-automatically plot the values. 
+数値変数間の相関は、**tidyverse corrr** パッケージを使用して実施することができます。Pearson、Kendall tau、Spearman rho を使って相関を計算することができます。このパッケージは表を作成し、値を自動的に記入する機能も備えています。
 
 ```{r, warning=F, message=F}
 
 correlation_tab <- linelist %>% 
-  select(generation, age, ct_blood, days_onset_hosp, wt_kg, ht_cm) %>%   # keep numeric variables of interest
-  correlate()      # create correlation table (using default pearson)
+  select(generation, age, ct_blood, days_onset_hosp, wt_kg, ht_cm) %>%   # 興味ある変数を投入
+  correlate()      # 相関係数表を作成 (初期設定ではPearsonを使用)
 
-correlation_tab    # print
+correlation_tab    # 表示す
 
-## remove duplicate entries (the table above is mirrored) 
+## 重複する項目を削除 (上記の表がミラーリングされている) 
 correlation_tab <- correlation_tab %>% 
   shave()
 
-## view correlation table 
+## 相関係数表を表示
 correlation_tab
 
-## plot correlations 
+## 相関をプロット
 rplot(correlation_tab)
 ```
 
-
 <!-- ======================================================= -->
 
-## Resources {  }
+### 参考資料
 
-Much of the information in this page is adapted from these resources and vignettes online:  
+この章における多くの情報はオンラインでのこれらのリソースより採用しています。
 
-[gtsummary](http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html)
-[dplyr](https://dplyr.tidyverse.org/articles/grouping.html)
-[corrr](https://corrr.tidymodels.org/articles/using-corrr.html)
-[sthda correlation](http://www.sthda.com/english/wiki/correlation-test-between-two-variables-in-r)
+[gtsummary](http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html) [dplyr](https://dplyr.tidyverse.org/articles/grouping.html) [corrr](https://corrr.tidymodels.org/articles/using-corrr.html) [sthda correlation](http://www.sthda.com/english/wiki/correlation-test-between-two-variables-in-r)
