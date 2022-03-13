@@ -1,188 +1,166 @@
-
-# Missing data { }
+# データの欠損 {#missing-data}
 
 ```{r, out.width=c("50%"), echo=F}
 knitr::include_graphics(here::here("images", "missingness.png"))
 knitr::include_graphics(here::here("images", "missingness_overview.png"))
 ```
 
-This page will cover how to:  
+この章では以下の内容について説明します：
 
-1) Assess missingness  
-2) Filter out rows by missingness  
-3) Plot missingness over time  
-4) Handle how `NA` is displayed in plots  
-5) Perform missing value imputation: MCAR, MAR, MNAR  
-
-
+1)  欠損の評価
+2)  欠損による行のフィルタリング
+3)  時系列ごとの欠損のプロット
+4)  プロットにおける `NA` の処理の仕方
+5)  欠損値の補完：MCAR, MAR, MNAR
 
 <!-- ======================================================= -->
-## Preparation { }
 
-### Load packages {.unnumbered}  
+## 準備
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+### パッケージの読み込み {.unnumbered}
+
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、pacman パッケージの p_load() を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである base （以下、base R）の library() を使用して読み込むこともできます。R のパッケージに関する詳細は [R basics](#basics) の章をご覧ください。
 
 ```{r}
 pacman::p_load(
-  rio,           # import/export
-  tidyverse,     # data mgmt and viz
-  naniar,        # assess and visualize missingness
-  mice           # missing data imputation
+  rio,           # インポート／エクスポート
+  tidyverse,     # データの管理と視覚化
+  naniar,        # 欠損の評価と視覚化
+  mice           # 欠損値の補完
 )
 ```
 
+### データのインポート {.unnumbered}
 
-### Import data {.unnumbered}
-
-We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import your data with the `import()` function from the **rio** package (it accepts many file types like .xlsx, .rds, .csv - see the [Import and export] page for details).  
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは *rio* パッケージの import() を利用してインポートしましょう（*rio* パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）
 
 ```{r, echo=F}
-# import the linelist into R
+# ラインリストを R にインポートする
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
-# import the linelist
+# ラインリストをインポートする
 linelist <- import("linelist_cleaned.rds")
 ```
 
-The first 50 rows of the linelist are displayed below.
+最初の 50 行を以下に示します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストのデータをテーブルとして表示する
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
+### インポート時における欠損の変換 {.unnumbered}
 
-### Convert missing on import {.unnumbered}  
-
-When importing your data, be aware of values that should be classified as missing. For example, 99, 999, "Missing", blank cells (""), or cells with an empty space (" "). You can convert these to `NA` (R's version of missing data) during the data import command.  
-See the page on importing page section on [Missing data](#import_missing) for details, as the exact syntax varies by file type.  
-
+データをインポートする際に、欠損、と分類されるべき値については少し注意が必要です。例えば、99、999、"Missing"、空欄（""）、または 空のスペースを含むセル（" "） などです。インポートのコマンドと一緒にこれらの値を `NA` （R において欠損値を示す）に変換することが出来ます。 使用するコマンドがファイルのタイプによって異なるので、詳細については [データの欠損](#import_missing) のインポートのセクションを参考にしてください。
 
 <!-- ======================================================= -->
-## Missing values in R { }
 
-Below we explore ways that missingness is presented and assessed in R, along with some adjacent values and functions.  
+## R における欠損値
 
-### `NA` {.unnumbered}  
+以下では、R における欠損の表示や評価の仕方、また、それに関連するいくつかの値や関数について見ていきたいと思います。
 
-In R, missing values are represented by a reserved (special) value - `NA`. Note that this is typed *without* quotes. "NA" is different and is just a normal character value (also a Beatles lyric from the song Hey Jude).  
+### `NA` {.unnumbered}
 
-Your data may have other ways of representing missingness, such as "99", or "Missing", or "Unknown" - you may even have empty character value "" which looks "blank", or a single space " ". Be aware of these and consider whether to [convert them to `NA` during import](#import_missing) or during data cleaning with `na_if()`.  
+R においては、欠損値は予約語（特別な値）として指定された `NA` で表示されます。これは引用符<u>なし</u>で用いることに注意が必要です。"NA" とは異なり、これは通常の文字と同じ扱いとなります（ビートルズの Hey Jude の歌詞と同じです）。
 
-In your data cleaning, you may also want to convert the other way - changing all `NA` to "Missing" or similar with `replace_na()` or with `fct_explicit_na()` for factors.  
+データ内では "99"、"Missing"、または "Unknown" というように欠損が表されていることもあります。また、空の文字値 ""（空欄のように見える）や、スペース " " で表されていることもあります。これらについては、[インポート時に `NA` に変換する](#import_missing) もしくはデータを `na_if()` を用いてクリーニングする必要があります。
 
+データクリーニングにおいて、逆に全ての `NA` を "Missing" に変換したり、`replace_na()` を用いたり、因子型の場合には `fct_explicit_na()` を用いたりして処理することもできます。
 
+### いろいろな `NA` {.unnumbered}
 
-
-### Versions of `NA` {.unnumbered}  
-
-Most of the time, `NA` represents a missing value and everything works fine. However, in some circumstances you may encounter the need for *variations* of `NA` specific to an object class (character, numeric, etc). This will be rare, but you should be aware.    
-The typical scenario for this is when creating a new column with the **dplyr** function `case_when()`. As described in the [Cleaning data and core functions](#clean_case_when) page, this function evaluates every row in the data frame, assess whether the rows meets specified logical criteria (right side of the code), and assigns the correct new value (left side of the code). *Importantly: all values on the right side must be the same class*.  
+多くの場合は、`NA` が欠損値を示し、それで全てがうまくいきます。しかし、オブジェクトのクラス（文字値、数値、など）によって<u>異なる</u> `NA` を用いる必要が出てくる場合があります。あまり頻繁に起こることではないですが、注意が必要です。 多いのは、**dplyr** パッケージの `case_when()` を用いて新しい列を作成する場合などです。 [データクリーニングと主要関数](#cleaning) の章で述べたように、この関数はデータフレーム内の全ての行に対して、ある基準（コードの右辺に書かれている条件）に合致するかどうかを評価し、新しい値（コードの左辺に書かれている値）を作成します。<u>右辺に書かれている値は、全て同じクラスでないといけません。</u>
 
 ```{r, eval=F}
 linelist <- linelist %>% 
   
-  # Create new "age_years" column from "age" column
+  # "age" 列から新しく "age_years" 列を作成する
   mutate(age_years = case_when(
-    age_unit == "years"  ~ age,       # if age is given in years, assign original value
-    age_unit == "months" ~ age/12,    # if age is given in months, divide by 12
-    is.na(age_unit)      ~ age,       # if age UNIT is missing, assume years
-    TRUE                 ~ NA_real_)) # any other circumstance, assign missing
+    age_unit == "years"  ~ age,       # age が年であれば、そのままの値を返す
+    age_unit == "months" ~ age/12,    # age が月であれば、12 で割る
+    is.na(age_unit)      ~ age,       # age のユニットが欠損であれば、years とする
+    TRUE                 ~ NA_real_)) # 他のすべての場合には欠損とする
 ```
 
-If you want `NA` on the right side, you may need to specify one of the special `NA` options listed below. If the other right side values are character, consider using "Missing" instead or otherwise use `NA_character_`. If they are all numeric, use `NA_real_`. If they are all dates or logical, you can use `NA`.  
+右辺に `NA` を持ってきたい場合は、以下に示している特殊な `NA` のうちのどれかを用いる必要があります。他の右辺の値が文字型の場合は "Missing" か、`NA_character_` を使用する必要があります。他の右辺が日付型や数字型の場合は `NA_real_` を用いります。条件式であった場合 `NA` を用いることが出来ます。
 
-* `NA` - use for dates or logical TRUE/FALSE 
-* `NA_character_` - use for characters  
-* `NA_real_`  - use for numeric
+-   `NA` - 条件式 TRUE/FALSE において用いる
+-   `NA_character_` - 文字値に用いる
+-   `NA_real_` - 日付型、数字値に用いる
 
-Again, it is not likely you will encounter these variations *unless* you are using `case_when()` to create a new column. See the [R documentation on NA](https://stat.ethz.ch/R-manual/R-devel/library/base/html/NA.html) for more information. 
+繰り返しになりますが、新しい行を `case_when()` を用いて作成しようと<u>しない限り</u>は、こうした例に出会うことはありません。より詳細について知りたい方は、[R documentation on NA](https://stat.ethz.ch/R-manual/R-devel/library/base/html/NA.html) を参考にしてください。
 
+### `NULL` {.unnumbered}
 
+他に R で用いられる値に、`NULL` があります。これは、条件が正でも誤でもないことを示しています。すなわち、値が定義されない関数などを適用した際に返されます。一般的には、関数を書いたり、ある特定の条件において `NULL` を返すことを指示する [**shiny** app](#shiny-basicss) を書いたりする場合を除いて、`NULL` を値として指定することはありません。
 
+Nullかどうかは is.null() を用いて評価することができ、as.null() を用いて変換することができます。
 
+`NULL` と `NA` の違いについては、[ブログのポスト](https://www.r-bloggers.com/2010/04/r-na-vs-null/) を見てください。
 
-### `NULL` {.unnumbered}  
+### `NaN` {.unnumbered}
 
-`NULL` is another reserved value in R. It is the logical representation of a statement that is neither true nor false. It is returned by expressions or functions whose values are undefined. Generally do not assign NULL as a value, unless writing functions or perhaps writing a [**shiny** app][Dashboards with Shiny] to return `NULL` in specific scenarios.  
+NaN は値としてとることが不可能なものを表す特別な値です。例えば、0 を 0 で割れ、と R に指示したような場合です。`is.nan()` を用いて評価することが出来、また、補足関数として`is.infinite()` や `is.finite()` が存在します。
 
-Null-ness can be assessed using `is.null()` and conversion can made with `as.null()`.  
+### `Inf` {.unnumbered}
 
-See this [blog post](https://www.r-bloggers.com/2010/04/r-na-vs-null/) on the difference between `NULL` and `NA`.  
+Inf は無限大を表します。例えば、ある値を0で割った場合などです。
 
+これらの欠損値がどのように影響するかを簡単な例で示しましょう。例えば、`z <- c(1, 22, NA, Inf, NaN, 5)` で作成される `z` というベクターまたはコラムがあるとします。
 
-
-
-### `NaN` {.unnumbered}  
-
-Impossible values are represented by the special value `NaN`. An example of this is when you force R to divide 0 by 0. You can assess this with `is.nan()`. You may also encounter complementary functions including `is.infinite()` and `is.finite()`.  
-
-
-### `Inf` {.unnumbered}  
-
-`Inf` represents an infinite value, such as when you divide a number by 0.  
-
-As an example of how this might impact your work: let's say you have a vector/column `z` that contains these values: `z <- c(1, 22, NA, Inf, NaN, 5)`
-
-If you want to use `max()` on the column to find the highest value, you can use the `na.rm = TRUE` to remove the `NA` from the calculation, but the `Inf` and `NaN` remain and `Inf` will be returned. To resolve this, you can use brackets `[ ]` and `is.finite()` to subset such that only finite values are used for the calculation: `max(z[is.finite(z)])`.  
+一番大きな値を見つけるために `max()` をこのコラムに適用することを考えます。`na.rm = TRUE` を用いることで、計算から `NA` を除くことが出来ます。しかし、`Inf` や `NaN` は残り、結果として `Inf` が返されます。これは、[ ] と is.finite() を用いて有限な値のみを含むサブセットを作成して計算することで解決することができます： max(z[is.finite(z)]) 。
 
 ```{r, eval=F}
 z <- c(1, 22, NA, Inf, NaN, 5)
-max(z)                           # returns NA
-max(z, na.rm=T)                  # returns Inf
-max(z[is.finite(z)])             # returns 22
+max(z)                           # NA が返される
+max(z, na.rm=T)                  # Inf が返される
+max(z[is.finite(z)])             # 22 が返される
 ```
 
+### 例 {.unnumbered}
 
-### Examples {.unnumbered}  
++-----------------------------------------------------------------------------------------------------------------------+-----------------------------------------+
+| R コマンド                                                                                                            | 出力                                    |
++=======================================================================================================================+=========================================+
+| `5 / 0`                                                                                                               | `Inf`                                   |
++-----------------------------------------------------------------------------------------------------------------------+-----------------------------------------+
+| `0 / 0`                                                                                                               | `NaN`                                   |
++-----------------------------------------------------------------------------------------------------------------------+-----------------------------------------+
+| `5 / NA`                                                                                                              | `NA`                                    |
++-----------------------------------------------------------------------------------------------------------------------+-----------------------------------------+
+| `5 / Inf |`0NA - 5`|`NAInf / 5`|`Infclass(NA)`| "logical"`class(NaN)`| "numeric"`class(Inf)`| "numeric"`class(NULL)\` | "NULL"                                  |
++-----------------------------------------------------------------------------------------------------------------------+-----------------------------------------+
 
-
-R command | Outcome
-----------|--------------
-`5 / 0` | `Inf`  
-`0 / 0` | `NaN`  
-`5 / NA` | `NA`  
-`5 / Inf | `0`  
-`NA - 5` | `NA`  
-`Inf / 5` | `Inf`  
-`class(NA)` | "logical"  
-`class(NaN)` | "numeric"  
-`class(Inf)` | "numeric"  
-`class(NULL)` | "NULL"  
-
-"NAs introduced by coercion" is a common warning message. This can happen if you attempt to make an illegal conversion like inserting a character value into a vector that is otherwise numeric.  
+"NAs introduced by coercion" はよくある警告メッセージです。数値のベクターに文字値を挿入しようとするなどの不正な操作を行った場合に起こります。
 
 ```{r}
 as.numeric(c("10", "20", "thirty", "40"))
 ```
 
-`NULL` is ignored in a vector.  
+`NULL` はベクターにおいては無視されます。
 
 ```{r}
 my_vector <- c(25, NA, 10, NULL)  # define
 my_vector                         # print
 ```
 
-
-Variance of one number results in `NA`.  
+ある一つの値の分散を求めようとすると `NA` が返されます。
 
 ```{r}
 var(22)
 ```
 
-
 <!-- ======================================================= -->
-## Useful functions { }
 
-The following are useful **base** R functions when assessing or handling missing values:  
+## 便利な関数
 
+以下では、R の **base R** の関数で、欠損値を評価したり扱ったりする際に便利なものを示します。
 
-### `is.na()` and `!is.na()` {.unnumbered}  
+### `is.na()` と `!is.na()` {.unnumbered}
 
-Use `is.na()`to identify missing values, or use its opposite (with `!` in front) to identify non-missing values. These both return a logical value (`TRUE` or `FALSE`). Remember that you can `sum()` the resulting vector to count the number `TRUE`, e.g. `sum(is.na(linelist$date_outcome))`.    
+`is.na()` は欠損値を特定する場合、または欠損でない値を特定する場合（`!` を一緒に用いります）に使います。どちらも理論値（`TRUE` or `FALSE`）が返されます。 返されたベクトルに `sum()` を適用、例えば `sum(is.na(linelist$date_outcome))` とすることで、`TRUE` の数を計算することが出来ます。
 
 ```{r}
 my_vector <- c(1, 4, 56, NA, 5, NA, 22)
@@ -191,32 +169,28 @@ is.na(my_vector)
 sum(is.na(my_vector))
 ```
 
+### `na.omit()` {.unnumbered}
 
-### `na.omit()` {.unnumbered}  
-
-This function, if applied to a data frame, will remove rows with *any* missing values. It is also from **base** R.  
-If applied to a vector, it will remove `NA` values from the vector it is applied to. For example:  
+この関数をデータフレームに対して適用することで、<u>一つでも</u>欠損値を含む行を除くことが出来ます。これもまた、**base R** に含まれます。 ベクトルに対して適用すると、`NA` を除くことが出来ます。例えば：
 
 ```{r}
 na.omit(my_vector)
 ```
 
-### `drop_na()` {.unnumbered}  
+### `drop_na()` {.unnumbered}
 
-This is a **tidyr** function that is useful in a [data cleaning pipeline][Cleaning data and core functions]. If run with the parentheses empty, it removes rows with *any* missing values. If column names are specified in the parentheses, rows with missing values in those columns will be dropped. You can also use "tidyselect" syntax to specify the columns.  
+[データクリーニング](#cleaning) の際に便利な **tidyr** パッケージの関数です。括弧内を空にして走らせると、欠損値を<u>一つでも含む</u>行を除くことが出来ます。括弧内で列の名前を指定することで、その列内の値が欠損している行を除くことが出来ます。列の指定には "tidyselect" を用いることもできます。
 
 ```{r, eval=F}
 linelist %>% 
-  drop_na(case_id, date_onset, age) # drops rows missing values for any of these columns
+  drop_na(case_id, date_onset, age) # これらの列の値を欠損している行を除く
 ```
 
+### `na.rm = TRUE` {.unnumbered}
 
-### `na.rm = TRUE` {.unnumbered}  
+`max()`、`min()`、`sum()` または、`mean()` などの計算を行う関数を用いるときに NA が一つでも存在すると、`NA` が返されます。このデフォルトの挙動は意図的なもので、データの中に欠損がある場合の注意喚起となります。
 
-When you run a mathematical function such as `max()`, `min()`, `sum()` or `mean()`, if there are any `NA` values present the returned value will be `NA`. This default behavior is intentional, so that you are alerted if any of your data are missing.  
-
-You can avoid this by removing missing values from the calculation. To do this, include the argument `na.rm = TRUE` ("na.rm" stands for "remove `NA`").  
-
+計算から欠損値を除くことで、この警告を回避することが出来ます。そのためには、`na.rm = TRUE` （"na.rm" 引数 は "remove `NA`" の意）を一緒に用いります。
 
 ```{r}
 my_vector <- c(1, 4, 56, NA, 5, NA, 22)
@@ -226,79 +200,70 @@ mean(my_vector)
 mean(my_vector, na.rm = TRUE)
 ```
 
-
-
 <!-- ======================================================= -->
-## Assess missingness in a data frame { }
 
-You can use the package **naniar** to assess and visualize missingness in the data frame `linelist`.  
+## データフレーム内の欠損を評価する
+
+データフレーム `linelist` 内の欠損を評価し、視覚化するのには **naniar** パッケージが便利です。
 
 ```{r}
-# install and/or load package
+# パッケージをインストールするもしくは読み込む
 pacman::p_load(naniar)
 ```
 
-### Quantifying missingness {.unnumbered}
+### 欠損の数を定量化する {.unnumbered}
 
-To find the percent of all values that are missing use `pct_miss()`. Use `n_miss()` to get the number of missing values.  
+全ての欠損の値の割合を示すには `pct_miss()` を、数を示すには `n_miss()` を用いります。
 
 ```{r}
-# percent of ALL data frame values that are missing
+# すべてのデータフレーム内の欠損値の割合
 pct_miss(linelist)
 ```
 
-The two functions below return the percent of rows with any missing value, or that are entirely complete, respectively. Remember that `NA` means missing, and that ``""` or `" "` will not be counted as missing.  
+以下の 2 つの関数は、それぞれ、欠損値を含む行の割合、または欠損が一つもない行の割合を返してくれます。`NA` は欠損を意味しますが、`""` や `" "` は欠損としてはカウントされないことに注意してください。
 
 ```{r}
-# Percent of rows with any value missing
-pct_miss_case(linelist)   # use n_complete() for counts
+# 欠損値を含む行の割合を示す
+pct_miss_case(linelist)   # 数を示すには n_miss() を用いる
 ```
 
 ```{r}
-# Percent of rows that are complete (no values missing)  
-pct_complete_case(linelist) # use n_complete() for counts
+# コンプリートケース（欠損のない行）の割合を示す  
+pct_complete_case(linelist) # 数を示すには n_complete() を用いる
 ```
 
+### 欠損状況を視覚化する {.unnumbered}
 
+`gg_miss_var()` を用いることで、それぞれの列における欠損値の数（もしくは割合）を示すことが出来ます。
 
-### Visualizing missingness {.unnumbered}  
-
-The `gg_miss_var()` function will show you the number (or %) of missing values in each column. A few nuances:  
-
-* You can add a column name (not in quote) to the argument `facet = ` to see the plot by groups  
-* By default, counts are shown instead of percents, change this with `show_pct = TRUE`  
-* You can add axis and title labels as for a normal `ggplot()` with `+ labs(...)`  
-
+-   プロットをグループごとに見たい場合は、`facet =` で列の名前（引用符にいれない）を指定することが出来ます
+-   デフォルトでは、割合ではなく数が表示されます。割合にしたい場合は `show_pct = TRUE` で指定します
+-   通常の `ggplot()` 通り、軸やタイトルのラベルを追加したい場合は `+ labs(...)` を用いて行うことが出来ます
 
 ```{r}
 gg_miss_var(linelist, show_pct = TRUE)
 ```
 
-Here the data are piped `%>%` into the function. The `facet = ` argument is also used to split the data.  
+以下では、データが `%>%` を用いて関数に渡されています。`facet =` を用いても、データを分けることが出来ます。
 
 ```{r}
 linelist %>% 
   gg_miss_var(show_pct = TRUE, facet = outcome)
 ```
 
-
-You can use `vis_miss()` to visualize the data frame as a heatmap, showing whether each value is missing or not. You can also `select()` certain columns from the data frame and provide only those columns to the function.    
-
+どの値が欠損しているかを示すために、`vis_miss()` を用いてデータフレームをヒートマップで表すことが出来ます。また 特定の列をデータフレームから select() して関数にその列だけを渡すこともできます。
 ```{r}
-# Heatplot of missingness across the entire data frame  
+# データフレーム全体に対して欠損のヒートプロットを示す  
 vis_miss(linelist)
 ```
 
+### 欠損状況の関係性を探り、可視化する {.unnumbered}
 
-### Explore and visualize missingness relationships {.unnumbered} 
+存在しないものをどうやって視覚化すればよいのでしょうか？デフォルトでは、`ggplot()` を使うと、欠損値を除いてプロットを作成してしまいます。
 
-How do you visualize something that is not there??? By default, `ggplot()` removes points with missing values from plots.  
+**naniar** パッケージの `geom_miss_point()` を用いれば解決します。2 つの列から散布図を作成するときに、ある一方の変数は存在し、片方の変数は欠損である場合には、欠損値をその列の最小値よりもさらに 10% 小さな値に変換し、違う色で散布図上に示してくれます。
 
-**naniar** offers a solution via `geom_miss_point()`. When creating a scatterplot of two columns, records with one of the values missing and the other value present are shown by setting the missing values to 10% lower than the lowest value in the column, and coloring them distinctly.  
-
-In the scatterplot below, the red dots are records where the value for one column is present but the value for the other column is missing. This allows you to see the distribution of missing values in relation to the non-missing values.  
-
-
+以下に示している散布図では、赤いドットはある一方の変数は存在しているが片方の変数が欠損している場合を示しています。これによって欠損していない値に対する欠損している値の分布を視覚的に確認することが出来ます。
 
 ```{r}
 ggplot(
@@ -307,26 +272,21 @@ ggplot(
   geom_miss_point()
 ```
 
-To assess missingness in the data frame *stratified by another column*, consider `gg_miss_fct()`, which returns a heatmap of percent missingness in the data frame *by a factor/categorical (or date) column*:  
+<u>別の列によって層別化した</u>あとに欠損を評価したい場合は、`gg_miss_fct()` を使います。これは、<u>因子型（または日付）の列の値ごとに</u>データフレームの欠損の割合をヒートマップで示してくれます。
 
 ```{r}
 gg_miss_fct(linelist, age_cat5)
 ```
 
-
-This function can also be used with a date column to see how missingness has changed over time:  
+この関数を日付ごとにデータフレームを示すのに用いると、欠損が時系列を追うごとにどのように変化しているかを示すことも出来ます。
 
 ```{r}
 gg_miss_fct(linelist, date_onset)
 ```
 
+### 「付随する」列 {.unnumbered}
 
-
-
-### "Shadow" columns {.unnumbered}
-
-Another way to visualize missingness in one column by values in a second column is using the "shadow" that **naniar** can create. `bind_shadow()` creates a binary `NA`/not `NA` column for every existing column, and binds all these new columns to the original dataset with the appendix "_NA". This doubles the number of columns - see below:  
-
+ある一方の列の欠損を、もう片方の列の値ごとに示す別の方法として、**naniar** パッケージの作成する「付随する列」を用いるものがあります。`bind_shadow()` を用いると、全ての列に対して `NA` または not `NA` の 2 値変数を作成し、"\_NA" を末尾に付けた新しい列として元のデータセットに結合してくれます。すなわち、データセットの列は 2 倍になります。
 
 ```{r}
 shadowed_linelist <- linelist %>% 
@@ -335,60 +295,58 @@ shadowed_linelist <- linelist %>%
 names(shadowed_linelist)
 ```
 
-These "shadow" columns can be used to plot the proportion of values that are missing, by any another column.  
+これらの「付随する列」は、他のどの列に対してでも、欠損している値の割合をプロットするのに使えます。
 
-For example, the plot below shows the proportion of records missing `days_onset_hosp` (number of days from symptom onset to hospitalisation), by that record's value in `date_hospitalisation`. Essentially, you are plotting the density of the x-axis column, but stratifying the results (`color = `) by a shadow column of interest. This analysis works best if the x-axis is a numeric or date column.  
-
+例えば、以下のプロットでは、`date_hospitalisation` 列の値ごとに、`days_onset_hosp` 列（発症してから入院までの日数）における欠損の割合を示しています。x 軸の列の密度をプロットしており、興味のある付随する列によって層別化（`color =`）していることに注意してください。x 軸が数値もしくは日付の列である場合、このプロットはうまく実行されます。
 
 ```{r, message = F}
-ggplot(data = shadowed_linelist,          # data frame with shadow columns
-  mapping = aes(x = date_hospitalisation, # numeric or date column
-                colour = age_years_NA)) + # shadow column of interest
-  geom_density()                          # plots the density curves
+ggplot(data = shadowed_linelist,          # 付随する列を含むデータフレーム
+  mapping = aes(x = date_hospitalisation, # 数値もしくは日付の列
+                colour = age_years_NA)) + # 興味のある付随する列
+  geom_density()                          # 密度曲線をプロットする
 ```
 
-You can also use these "shadow" columns to stratify a statistical summary, as shown below:
+以下に示すように、統計量のサマリを層別化して示すのにも「付随する列」を使用することが出来ます。
 
 ```{r}
 linelist %>%
-  bind_shadow() %>%                # create the shows cols
-  group_by(date_outcome_NA) %>%    # shadow col for stratifying
+  bind_shadow() %>%                # 「付随する列」を作成する
+  group_by(date_outcome_NA) %>%    # 層別化に用いる「付随する列」を指定する
   summarise(across(
-    .cols = age_years,             # variable of interest for calculations
-    .fns = list("mean" = mean,     # stats to calculate
+    .cols = age_years,             # 統計量を示したい変数を指定する
+    .fns = list(「mean」 = mean,     # 興味のある統計量を指定する
                 "sd" = sd,
                 "var" = var,
                 "min" = min,
                 "max" = max),  
-    na.rm = TRUE))                 # other arguments for the stat calculations
+    na.rm = TRUE))                 # 統計量の計算に用いるその他のコマンド
 ```
 
+以下に、列の欠損値の割合を時系列ごとに示す他の方法を示します。**naniar** パッケージは<u>使用しません</u>。週ごとの観測値の欠損の割合を示しています。
 
-An alternative way to plot the proportion of a column's values that are missing over time is shown below. It does *not* involve **naniar**. This example shows percent of weekly observations that are missing).  
+1)  データを、興味のある単位時間（日、週、など）でまとめ、`NA`（そしてその他興味のある値）を含む観測値の割合を計算します
+2)  `ggplot()` を用いて、欠損の割合を折れ線グラフとしてプロットします
 
-1) Aggregate the data into a useful time unit (days, weeks, etc.), summarizing the proportion of observations with `NA` (and any other values of interest)  
-2) Plot the proportion missing as a line using `ggplot()`  
-
-Below, we take the linelist, add a new column for week, group the data by week, and then calculate the percent of that week's records where the value is missing. (note: if you want % of 7 days the calculation would be slightly different).  
+以下では、ラインリストを用いて、まず週ごとの値を新しい列として加え、値が欠損している週ごとの記録の割合を計算しています（7 日間での割合を計算したい場合は、以下のスクリプトとは少し異なります）。
 
 ```{r}
 outcome_missing <- linelist %>%
-  mutate(week = lubridate::floor_date(date_onset, "week")) %>%   # create new week column
-  group_by(week) %>%                                             # group the rows by week
-  summarise(                                                     # summarize each week
-    n_obs = n(),                                                  # number of records
+  mutate(week = lubridate::floor_date(date_onset, "week")) %>%   # 新しく week の列を作成する
+  group_by(week) %>%                                             # 行を、week ごとにグルーピングする
+  summarise(                                                     # それぞれの値を week ごとにまとめる
+    n_obs = n(),                                                  # 観測数
     
-    outcome_missing = sum(is.na(outcome) | outcome == ""),        # number of records missing the value
-    outcome_p_miss  = outcome_missing / n_obs,                    # proportion of records missing the value
+    outcome_missing = sum(is.na(outcome) | outcome == ""),        # 欠損を含む観測数
+    outcome_p_miss  = outcome_missing / n_obs,                    # 欠損を含む観測の割合
   
-    outcome_dead    = sum(outcome == "Death", na.rm=T),           # number of records as dead
-    outcome_p_dead  = outcome_dead / n_obs) %>%                   # proportion of records as dead
+    outcome_dead    = sum(outcome == "Death", na.rm=T),           # 死亡例の観測数
+    outcome_p_dead  = outcome_dead / n_obs) %>%                   # 死亡例の観測の割合
   
-  tidyr::pivot_longer(-week, names_to = "statistic") %>%         # pivot all columns except week, to long format for ggplot
-  filter(stringr::str_detect(statistic, "_p_"))                  # keep only the proportion values
+  tidyr::pivot_longer(-week, names_to = "statistic") %>%         # ggplot のために week を除くすべての列をロング形式にピボットする
+  filter(stringr::str_detect(statistic, "_p_"))                  # 割合を示す値だけを残す
 ```
 
-Then we plot the proportion missing as a line, by week. The [ggplot basics] page if you are unfamiliar with the **ggplot2** plotting package.  
+このデータを用いて、週ごとに欠損の割合を折れ線で示します。**ggplot2** パッケージについてあまり詳しくない場合は、[ggplotの基礎](#ggplot-basics) の章を参考にしてください。
 
 ```{r, message=F, warning=F}
 ggplot(data = outcome_missing)+
@@ -407,53 +365,48 @@ ggplot(data = outcome_missing)+
   theme(legend.position = "bottom")
 ```
 
+<!-- ======================================================= -->
 
+## 欠損値を含むデータを使う
 
+### 欠損値を含む行を取り除く {.unnumbered}
 
+欠損値を含む行を除く簡単な方法は、**dplyr** パッケージの `drop_na()` を用いる方法です。
+
+元の `linelist` には `nrow(linelist)` 行含まれています。欠損値を含む行を除いた後の行数は以下になります。
+
+```{r}
+linelist %>% 
+  drop_na() %>%     # あらゆる欠損値を含む列を除く
+  nrow()
+```
+
+また、ある特定の列内の欠損値を含む行を除くこともできます。
+
+```{r}
+linelist %>% 
+  drop_na(date_onset) %>% # date_onset 行に欠損を含む列を除く
+  nrow()
+```
+
+順番に行を表示することも出来ますし、 ["tidyselect" helper functions](#clean_tidyselect) を使うこともできます。
+
+```{r}
+linelist %>% 
+  drop_na(contains("date")) %>% # "date" を含む行に欠損を含む列を除く 
+  nrow()
+```
 
 <!-- ======================================================= -->
-## Using data with missing values  
 
+### `ggplot()` での `NA` の扱い方 {.unnumbered}
 
-### Filter out rows with missing values {.unnumbered}
+たいていの場合、プロットから除かれた値の数はキャプションとして報告するのが賢明です。以下に例を示します。
 
-To quickly remove rows with missing values, use the **dplyr** function `drop_na()`.  
+`ggplot()` においては、`labs()` を追加し、その中で `caption =` としてキャプションを追加することが出来ます。キャプションの中で **stringr** パッケージの `str_glue()` を使うことで、文中に直接値を張り付けることが出来るので、データそれぞれの値を用いることが出来ます。
 
-The original `linelist` has ` nrow(linelist)` rows. The adjusted number of rows is shown below:  
-
-```{r}
-linelist %>% 
-  drop_na() %>%     # remove rows with ANY missing values
-  nrow()
-```
-
-You can specify to drop rows with missingness in certain columns:  
-
-```{r}
-linelist %>% 
-  drop_na(date_onset) %>% # remove rows missing date_onset 
-  nrow()
-```
-
-You can list columns one after the other, or use ["tidyselect" helper functions](#clean_tidyselect):  
-
-```{r}
-linelist %>% 
-  drop_na(contains("date")) %>% # remove rows missing values in any "date" column 
-  nrow()
-```
-
-
-
-<!-- ======================================================= -->
-### Handling `NA` in `ggplot()` {.unnumbered}
-
-It is often wise to report the number of values excluded from a plot in a caption. Below is an example:  
-
-In `ggplot()`, you can add `labs()` and within it a `caption = `. In the caption, you can use `str_glue()` from **stringr** package to paste values together into a sentence dynamically so they will adjust to the data. An example is below:  
-
-* Note the use of `\n` for a new line.  
-* Note that if multiple column would contribute to values not being plotted (e.g. age or sex if those are reflected in the plot), then you must filter on those columns as well to correctly calculate the number not shown.  
+-   `\n` は、行替えに用いることが出来ます。
+-   もし、複数の列がプロットに表示されない値を含む場合（例えば、年齢あるいは性別がプロットに反映されている場合）、表示されていない数を正確に計算するためにはそれらの列で絞り込みを行う必要があります。
 
 ```{r, eval=F}
 labs(
@@ -465,16 +418,16 @@ labs(
   {nrow(central_data %>% filter(is.na(date_onset)))} cases missing date of onset and not shown."))  
 ```
 
-Sometimes, it can be easier to save the string as an object in commands prior to the `ggplot()` command, and simply reference the named string object within the `str_glue()`.  
-
+`ggplot()` コマンドを使用する前に、文字をオブジェクトとして保存し、`str_glue()` 内ではそのオブジェクト名を指定するだけの方が簡単な場合もあります。
 
 <!-- ======================================================= -->
-### `NA` in factors {.unnumbered}
 
-If your column of interest is a factor, use `fct_explicit_na()` from the **forcats** package to convert `NA` values to a character value. See more detail in the [Factors] page. By default, the new value is "(Missing)" but this can be adjusted via the `na_level =` argument.   
+### 因子型における`NA` {.unnumbered}
+
+興味のある列が因子型である場合、`NA` を文字値にするには **forcats** パッケージの `fct_explicit_na()` を用いる必要があります。詳細については[因子（ファクタ）型データ]	(#factors)の章を参考にしてください。デフォルトでは、新しい値は "(Missing)" として扱われますが、`na_level =` のコマンドによって変更することが出来ます。
 
 ```{r}
-pacman::p_load(forcats)   # load package
+pacman::p_load(forcats)   # パッケージの読み込み
 
 linelist <- linelist %>% 
   mutate(gender = fct_explicit_na(gender, na_level = "Missing"))
@@ -482,71 +435,70 @@ linelist <- linelist %>%
 levels(linelist$gender)
 ```
 
-
-
 <!-- ======================================================= -->
-## Imputation { }
+
+## 欠損値の補完
+
+単純に全ての欠損値を除いたデータセットを解析するのではなく、「ギャップを埋めて」、欠損値を補完してからデータを解析する方が良い場合もあります。単純にすべての欠損値を除くと、いろいろ問題があることがあります。例えば：
+
+1)  欠損値を含む観測値や大量の欠損値を含む変数を全て除くと、ある種の解析を行うパワーが減る可能性があります。例えば、先に示したように、linelist データにおいては、全ての変数のうち欠損値をまったく含まない観測は限られた割合しかありません。データセットの大部分を取り除いてしまうと、大量の情報を失ってしまうことになります！さらに、たいていの変数はそれなりの量の欠損値を含んでいます。そのため、ほとんどの分析において欠損値がたくさん含まれる変数を除去することはあまり適切ではありません。
 
 
-Sometimes, when analyzing your data, it will be important to "fill in the gaps" and impute missing data While you can always simply analyze a dataset after removing all missing values, this can cause problems in many ways. Here are two examples: 
+2)  欠損がなぜ生じているのかによっては、単に欠損を含まないデータのみで解析することは、解析結果にバイアスが生じたり、ミスリーディングな結果となることがあります。例えば、ある患者さんが熱や咳などの重要な症状の有無に関するデータを欠損しているとします。たとえば、明らかにそこまで重症でない患者さんについては熱や咳などの症状について記録をしていない可能性もあります。その場合は、単に欠損を含む観測値を除くと、データセット内の最も健康な人々を除くことになり、非常に結果にバイアスを生じることになります。
 
-1) By removing all observations with missing values or variables with a large amount of missing data, you might reduce your power or ability to do some types of analysis. For example, as we discovered earlier, only a small fraction of the observations in our linelist dataset have no missing data across all of our variables. If we removed the majority of our dataset we'd be losing a lot of information! And, most of our variables have some amount of missing data--for most analysis it's probably not reasonable to drop every variable that has a lot of missing data either.
+どのくらい欠損しているか、ということに加えて、なぜ欠損が生じてるのかを考えることが重要です。そうすることで、欠損データを補完することがどのくらい重要なのか、そしてどの方法で補完することが一番良いのかについて判断を下しやすくなるでしょう。
 
-2) Depending on why your data is missing, analysis of only non-missing data might lead to biased or misleading results. For example, as we learned earlier we are missing data for some patients about whether they've had some important symptoms like fever or cough. But, as one possibility, maybe that information wasn't recorded for people that just obviously weren't very sick. In that case, if we just removed these observations we'd be excluding some of the healthiest people in our dataset and that might really bias any results.
+### 欠損データの種類 {.unnumbered}
 
-It's important to think about why your data might be missing in addition to seeing how much is missing. Doing this can help you decide how important it might be to impute missing data, and also which method of imputing missing data might be best in your situation.
+欠損データには一般的に、以下に挙げる 3 つの種類があります；
 
-### Types of missing data {.unnumbered}
+1)  **Missing Completely at Random** (MCAR) これは、データが欠損する確率と、他のデータ内との変数との間に関係性がないことを意味します。すべてのケースで、欠損する確率がおなじこととなります。これは珍しい状況です。しかし、もしデータが MCAR であると信じる確固とした理由があるのであれば、欠損していないデータだけを補間を行わずに分析することは、結果にバイアスを生じさせません（とはいえ、パワーはいくらか失われます）。[TODO: consider discussing statistical tests for MCAR]
 
-Here are three general types of missing data:
+2)  **Missing at Random** (MAR) この名前は少しミスリーディングで、というのも、MAR は、生じている欠損のパターンを他の変数の情報から規則的に予測できるタイプの欠損データのことだからです。例えば、全てのケースにおいて、熱のデータを欠損しているのは、実は寒気と痛みのある人は熱があると推測されたために熱を測らなかったためだとします。そうだとすると、寒気と痛みのあった観測値においては、発熱もまた生じていると容易に予測することが出来、欠損値を補完するためにこの情報を使用することが出来ます。実際には、これはもう少しスペクトラム的な話で、悪寒と痛みの両方を訴えており発熱のデータを欠損している患者は発熱もしている可能性が高いが、必ずしもそうというわけではない、ということです。しかし、完全に予測できるわけではなくとも、予測可能ではあります。欠損データの種類としては、最も多いタイプのものです。
 
-1) **Missing Completely at Random** (MCAR). This means that there is no relationship between the probability of data being missing and any of the other variables in your data. The probability of being missing is the same for all cases This is a rare situation. But, if you have strong reason to believe your data is MCAR analyzing only non-missing data without imputing won't bias your results (although you may lose some power). [TODO: consider discussing statistical tests for MCAR]
+3)  **Missing not at Random** (MNAR) **Not Missing at Random** (NMAR) と呼ばれることもあります。このタイプは、欠損データの割合が系統的でなく、他の情報を用いて予測可能でもなく、また、ランダムに欠損が生じているわけでもないタイプの欠損のデータのことです。すなわち、データは何らかの明らかになっていない原因により欠損しているか、あるいは情報を持っていない何らかの規則に基づいて欠損しているといえます。例えば、年齢のデータが欠損しているのは、非常に高齢の患者は自分の年齢を知らないか、自分の年齢を開示したくなかったからだとします。この場合、年齢の欠損は、年齢データ自身に関連しており（すなわちランダムに生じているわけではない）、従って他の情報に基づいて欠損を予測することはできません。MNAR は複雑で、対処法としては、欠損を補完しようとするよりも、もっとデータを集めること、そしてなぜ欠損が生じているのかについての情報を収集することが良いでしょう。
 
-2) **Missing at Random** (MAR). This name is actually a bit misleading as MAR means that your data is missing in a systematic, predictable way based on the other information you have. For example, maybe every observation in our dataset with a missing value for fever was actually not recorded because every patient with chills and and aches was just assumed to have a fever so their temperature was never taken. If true, we could easily predict that every missing observation with chills and aches has a fever as well and use this information to impute our missing data. In practice, this is more of a spectrum. Maybe if a patient had both chills and aches they were more likely to have a fever as well if they didn't have their temperature taken, but not always. This is still predictable even if it isn't perfectly predictable. This is a common type of missing data 
+まとめると、MCAR データを補完することは比較的容易ですが、一方、MNAR データを補完することは不可能ではないにしても非常にチャレンジングです。多くのデータの補完のメソッドは、MAR を仮定しています。
 
-3) **Missing not at Random** (MNAR). Sometimes, this is also called **Not Missing at Random** (NMAR). This assumes that the probability of a value being missing is NOT systematic or predictable using the other information we have but also isn't missing randomly. In this situation data is missing for unknown reasons or for reasons you don't have any information about. For example, in our dataset maybe information on age is missing because some very elderly patients either don't know or refuse to say how old they are. In this situation, missing data on age is related to the value itself (and thus isn't random) and isn't predictable based on the other information we have. MNAR is complex and often the best way of dealing with this is to try to collect more data or information about why the data is missing rather than attempt to impute it. 
+### 便利なパッケージ {.unnumbered}
 
-In general, imputing MCAR data is often fairly simple, while MNAR is very challenging if not impossible. Many of the common data imputation methods assume MAR. 
+Mmisc、missForest（ランダムフォレストによる欠損値の補完）、そして mice（連鎖方程式による多重代入法）などのパッケージは、欠損値の補完に便利です。このセクションでは、いろいろなテクニックを学ぶことの出来る mice パッケージについてのみ解説します。mice の開発者によるオンラインブックには、より詳細が示されています（<https://stefvanbuuren.name/fimd/>）。
 
-### Useful packages {.unnumbered}
-
-Some useful packages for imputing missing data are Mmisc, missForest (which uses random forests to impute missing data), and mice (Multivariate Imputation by Chained Equations). For this section we'll just use the mice package, which implements a variety of techniques. The maintainer of the mice package has published an online book about imputing missing data that goes into more detail here (https://stefvanbuuren.name/fimd/).  
-
-Here is the code to load the mice package:
+mice パッケージを読み込みます；
 
 ```{r}
 pacman::p_load(mice)
 ```
 
-### Mean Imputation {.unnumbered}
+### 平均値代入法 {.unnumbered}
 
-Sometimes if you are doing a simple analysis or you have strong reason to think you can assume MCAR, you can simply set missing numerical values to the mean of that variable. Perhaps we can assume that missing temperature measurements in our dataset were either MCAR or were just normal values. Here is the code to create a new variable that replaces missing temperature values with the mean temperature value in our dataset. However, in many situations replacing data with the mean can lead to bias, so be careful.
+例えば、非常に単純な解析をしている、あるいは MCAR を仮定する強い理由がある時には、数値の欠損を単にその変数の平均値で代入することが出来る場合があります。例えば、我々のデータセット内の気温の欠損値は MCAR であるか単に平年値である、と仮定できる可能性があります。気温の欠損値をデータセットの値の平均値で補完した新しい変数を作成するコードを示します。しかし、多くの場合では単に平均値を補完するとバイアスを生じる可能性があるので、十分注意が必要です。
 
 ```{r}
 linelist <- linelist %>%
   mutate(temp_replace_na_with_mean = replace_na(temp, mean(temp, na.rm = T)))
 ```
 
-You could also do a similar process for replacing categorical data with a specific value. For our dataset, imagine you knew that all observations with a missing value for their outcome (which can be "Death" or "Recover") were actually people that died (note: this is not actually true for this dataset):
+同じような方法で、因子型の欠損値をある特定の値で補完することもできます。例えば、転帰について（"Death" または "Recover"）の情報が欠損している観測値はすべて死亡データであるとします（このデータセットについては、これは本当は正しくないのですが）。
 
 ```{r}
 linelist <- linelist %>%
   mutate(outcome_replace_na_with_death = replace_na(outcome, "Death"))
 ```
 
-### Regression imputation {.unnumbered}
+### 回帰代入法 {.unnumbered}
 
-A somewhat more advanced method is to use some sort of statistical model to predict what a missing value is likely to be and replace it with the predicted value. Here is an example of creating predicted values for all the observations where temperature is missing, but age and fever are not, using simple linear regression using fever status and age in years as predictors. In practice you'd want to use a better model than this sort of simple approach.
+いくらかアドバンスな方法として、何らかの統計モデルを用いて欠損値がどんな値らしいのかを推測し、それで補完する方法があります。ここでは、体温についての情報は欠損しているけれど年齢と発熱についての情報は存在する観測値に対して、年齢（年）と発熱を予測因子とした簡単な線形回帰モデルを用いて値を予測する方法を示しています。実際には、このような単純なモデルではなく、より正確なモデルを使用した方が良いでしょう。
 
 ```{r, warning=F, message=F}
 simple_temperature_model_fit <- lm(temp ~ fever + age_years, data = linelist)
 
-#using our simple temperature model to predict values just for the observations where temp is missing
+#単純な体温モデルを用いて、体温の欠損値を予測する
 predictions_for_missing_temps <- predict(simple_temperature_model_fit,
                                         newdata = linelist %>% filter(is.na(temp))) 
 ```
 
-Or, using the same modeling approach through the mice package to create imputed values for the missing temperature observations:
+もしくは、体温の欠損値に対して同様にモデルを作成する方法として mice パッケージを用いる方法もあります。
 
 ```{r}
 model_dataset <- linelist %>%
@@ -562,17 +514,16 @@ temp_imputed_values <- temp_imputed$imp$temp
 
 ```
 
+これは、欠損値を予測値で補完する、という意味で missForest パッケージなどのよりアドバンスな方法と同じタイプの方法だと言えます。missForest の場合は、線形回帰ではなくランダムフォレストを用いて予測モデルを作成します。他のタイプのモデルを使用することもできます。この方法は、MCARの場合はうまくいきますが、MAR あるいは MNAR の方がデータをうまく説明する、と思っている場合には注意が必要です。補完の質は、予測モデルがどのくらい正確か、ということにも拠りますが、正確なモデルであっても補完されたデータのばらつきが少し過小となる場合もあります。
 
-This is the same type of approach by some more advanced methods like using the missForest package to replace missing data with predicted values. In that case, the prediction model is a random forest instead of a linear regression. You can use other types of models to do this as well. However, while this approach works well under MCAR you should be a bit careful if you believe MAR or MNAR more accurately describes your situation. The quality of your imputation will depend on how good your prediction model is and even with a very good model the variability of your imputed data may be underestimated. 
+### LOCF と BOCF {.unnumbered}
 
-### LOCF and BOCF {.unnumbered}
+Last observation carried forward (LOCF) と baseline observation carried forward (BOCF) は、時系列および縦断データの補完方法です。考え方としては、欠損の生じている観測値よりも前に観測されたデータで欠損値を補完しようというものです。連続で値が欠損している場合は、最後に観測された値で補完します。
 
-Last observation carried forward (LOCF) and baseline observation carried forward (BOCF) are imputation methods for time series/longitudinal data. The idea is to take the previous observed value as a replacement for the missing data. When multiple values are missing in succession, the method searches for the last observed value.
-
-The `fill()` function from the **tidyr** package can be used for both LOCF and BOCF imputation (however, other packages such as **HMISC**, **zoo**, and **data.table** also include methods for doing this). To show the `fill()` syntax we'll make up a simple time series dataset containing the number of cases of a disease for each quarter of the years 2000 and 2001. However, the year value for subsequent quarters after Q1 are missing so we'll need to impute them. The `fill()` junction is also demonstrated in the [Pivoting data] page.  
+LOCF および BOCF のどちらも **tidyr** パッケージの `fill()` を用いて実装することが出来ます（**HMISC**、**zoo**、そして **data.table** などのパッケージを用いても行うことが出来ます）。`fill()` をどのように使うのか示すために、2000 年と 2001 年において四半期ごとの罹患数を含む単純な時系列データを作成します。しかし、Q1 以降の半期に関するデータは欠損しているので、補完する必要があります。[データの縦横変換](#pivoting) の章においても、`fill()` の使用方法が示されています。
 
 ```{r}
-#creating our simple dataset
+#単純なデータセットを作成する
 disease <- tibble::tribble(
   ~quarter, ~year, ~cases,
   "Q1",    2000,    66013,
@@ -584,15 +535,15 @@ disease <- tibble::tribble(
   "Q3",      NA,    44568,
   "Q4",      NA,    50197)
 
-#imputing the missing year values:
+#year の欠損値を補完する
 disease %>% fill(year)
 
 ```
 
-Note: make sure your data are sorted correctly before using the `fill()` function. `fill()`  defaults to filling "down" but you can also impute values in different directions by changing the `.direction` parameter. We can make a similar dataset where the year value is recorded only at the end of the year and missing for earlier quarters: 
+`fill()` を使用する前に、データが正しくソートされているかどうかを確認してください。`fill()` はデフォルトで「下向きに」補完しますが、 `.direction` パラメタを用いることで違う方向に補完することもできます。例えば、似たようなデータですが、今度は年の終わり（Q4）のみ記録があり、他は欠損しているデータセットがあるとします。
 
 ```{r}
-#creating our slightly different dataset
+#先ほどと少しだけ違うデータセットを作成する
 disease <- tibble::tribble(
   ~quarter, ~year, ~cases,
   "Q1",      NA,    66013,
@@ -604,25 +555,25 @@ disease <- tibble::tribble(
   "Q3",      NA,    44568,
   "Q4",    2001,    50197)
 
-#imputing the missing year values in the "up" direction:
+#year の欠損値を、今度は「上向き」に補完する
 disease %>% fill(year, .direction = "up")
 
 ```
-In this example, LOCF and BOCF are clearly the right things to do, but in more complicated situations it may be harder to decide if these methods are appropriate. For example, you may have missing laboratory values for a hospital patient after the first day. Sometimes, this can mean the lab values didn't change...but it could also mean the patient recovered and their values would be very different after the first day! Use these methods with caution.
 
+この例では、LOCF およびに BOCF は明らかに正しい方法でしたが、より複雑な状況ではこの方法が適切かどうかを判断するのが難しい場合もあります。例えば、初日から何日間か、患者の検査値が欠損しているとします。ある場合は、これは検査値に変動がないことを示していますが、患者が回復しており、値が初日とはまったく異なる可能性もあります！なので、少し注意してこれらのメソッドを使う必要があります。
 
-### Multiple Imputation {.unnumbered}
+### 多重代入法 {.unnumbered}
 
-The online book we mentioned earlier by the author of the mice package (https://stefvanbuuren.name/fimd/) contains a detailed explanation of multiple imputation and why you'd want to use it. But, here is a basic explanation of the method:
+先ほど紹介した mice パッケージの開発者によるオンラインブック（<https://stefvanbuuren.name/fimd/>）には多重代入法の説明と、なぜそれを使いたいのかが詳細に記されています。ここでは、方法の基本的な部分を説明します。
 
-When you do multiple imputation, you create multiple datasets with the missing values imputed to plausible data values (depending on your research data you might want to create more or less of these imputed datasets, but the mice package sets the default number to 5). The difference is that rather than a single, specific value each imputed value is drawn from an estimated distribution (so it includes some randomness). As a result, each of these datasets will have slightly different different imputed values (however, the non-missing data will be the same in each of these imputed datasets). You still use some sort of predictive model to do the imputation in each of these new datasets (mice has many options for prediction methods including *Predictive Mean Matching*, *logistic regression*, and *random forest*) but the mice package can take care of many of the modeling details. 
+多重代入法では、尤もらしい値で欠損値を代入したデータセットを複数作成します（データによってはより多くもしくは少なくデータセットを作成したい場合もあると思いますが、mice パッケージのデフォルトでは、5 つのデータセットが作成されます）。違いとしては、代入される値は、ある単一の値ではなく、予測された分布に基づき特定される値（したがっていくらかのランダムさを含んでいます）である、という点です。それぞれのデータセットに対してある種の予測モデルを用いる（mice には様々なオプションがあり、例えば<u>予測平均マッチング</u>、<u>ロジスティック回帰</u>、<u>ランダムフォレスト</u>などがあります）点では同じですが、mice パッケージでは様々なモデルの詳細についてまで考慮することが出来ます。
 
-Then, once you have created these new imputed datasets, you can apply then apply whatever statistical model or analysis you were planning to do for each of these new imputed datasets and pool the results of these models together. This works very well to reduce bias in both MCAR and many MAR settings and often results in more accurate standard error estimates.
+代入されたデータセット群を作成したら、これらの新しいデータセットそれぞれに対して、もともと計画していた統計解析を行い、それらの結果を一つにプールします。この方法は、MCAR において、また MAR の多くの場合においてバイアスを減少するのに非常に有用で、より正確な標準誤差を得ることが出来ます。
 
-Here is an example of applying the Multiple Imputation process to predict temperature in our linelist dataset using a age and fever status (our simplified model_dataset from above):  
+以下では、多重代入法を用いて、ラインリストのデータセット（より単純にした model_dataset を用いります）で、年齢と発熱のデータから体温を予測する方法を示します。
 
 ```{r}
-# imputing missing values for all variables in our model_dataset, and creating 10 new imputed datasets
+# model_datasetにおける欠損をすべて代入し、新たに 10 つのデータセットを作成する
 multiple_imputation = mice(
   model_dataset,
   seed = 1,
@@ -634,17 +585,14 @@ model_fit <- with(multiple_imputation, lm(temp ~ age_years + fever))
 base::summary(mice::pool(model_fit))
 ```
 
-Here we used the mice default method of imputation, which is Predictive Mean Matching. We then used these imputed datasets to separately estimate and then pool results from simple linear regressions on each of these datasets. There are many details we've glossed over and many settings you can adjust during the Multiple Imputation process while using the mice package. For example, you won't always have numerical data and might need to use other imputation methods (you can still use the mice package for many other types of data and methods). But, for a more robust analysis when missing data is a significant concern, Multiple Imputation is good solution that isn't always much more work than doing a complete case analysis. 
-
-
-
-
+ここでは、mice のデフォルトの予測モデルである予測平均マッチングで欠損を補完しました。そして、それぞれの代入されたデータセットを値の推定に用いり、線形回帰によりそれぞれのデータセットにおいて得られた推定値をプールします。ここでは触れませんでしたが、mice パッケージを用いる際にはより詳細な方法や多重代入法に関する様々な設定を考慮する必要があります。例えば、常に数値データであるとは限らず、その場合は他の代入方法を用いる必要があります（mice パッケージでは、他の様々なデータの種類や補完が出来ます）。欠損データが非常に問題となる場合は、より頑健な解析結果を得るためには、単にコンプリートケースによる解析を行うよりも、多重代入法を用いる方が良いと言えるでしょう。
 
 <!-- ======================================================= -->
-## Resources { }
+
+## 参考資料
 
 Vignette on the [naniar package](https://cran.r-project.org/web/packages/naniar/vignettes/getting-started-w-naniar.html)
 
 Gallery of [missing value visualizations](https://cran.r-project.org/web/packages/naniar/vignettes/naniar-visualisation.html)
 
-[Online book](https://stefvanbuuren.name/fimd/) about multiple imputation in R by the maintainer of the **mice** package 
+[Online book](https://stefvanbuuren.name/fimd/) about multiple imputation in R by the maintainer of the **mice** package
