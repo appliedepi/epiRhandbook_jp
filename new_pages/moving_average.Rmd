@@ -1,186 +1,169 @@
-
-# Moving averages { }  
+# 移動平均 {#moving-average}
 
 ```{r, out.width=c("100%"), echo=F}
 knitr::include_graphics(here::here("images", "moving_avg_epicurve.png"))
 ```
 
+この章では、移動平均を計算し、可視化する方法として、以下の２つを説明します:
 
-This page will cover two methods to calculate and visualize moving averages:  
-
-1) Calculate with the **slider** package  
-2) Calculate *within* a `ggplot()` command with the **tidyquant** package  
-
-
+1)  **slider** パッケージを利用した計算
+2)  `ggplot()` 内のコマンドとして、**tidyquant** パッケージを利用した計算
 
 <!-- ======================================================= -->
-## Preparation {  }
 
-### Load packages {.unnumbered}
+## 準備
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages. 
+### パッケージをロードする {.unnumbered}
 
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、pacman パッケージの p_load() を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである base （以下、base R）の library() を使用して読み込むこともできます。R のパッケージに関する詳細は [R basics](#basics) の章をご覧ください。
 
 ```{r}
 pacman::p_load(
-  tidyverse,      # for data management and viz
-  slider,         # for calculating moving averages
-  tidyquant       # for calculating moving averages within ggplot
+  tidyverse,      # データマネージメントと可視化のため
+  slider,         # 移動平均の計算のため
+  tidyquant       # ggplot内の移動平均の計算のため
 )
 ```
 
+### データのインポート {.unnumbered}
 
-### Import data {.unnumbered}
-
-We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
-
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは *rio* パッケージの import() を利用してインポートしましょう（*rio* パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）
 
 ```{r, echo=F}
-# import the linelist into R
+# ラインリストをRに取り込む
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
-# import the linelist
+# ラインリストのインポート
 linelist <- import("linelist_cleaned.xlsx")
 ```
 
-The first 50 rows of the linelist are displayed below.
+ラインリストの最初の50行を以下に表示します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストのデータをテーブルとして表示する
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-
 <!-- ======================================================= -->
-## Calculate with **slider** {  }
 
-**Use this approach to calculate a moving average in a data frame prior to plotting.**  
+## **slider を利用した計算**
 
-The **slider** package provides several "sliding window" functions to compute rolling averages, cumulative sums, rolling regressions, etc. It treats a data frame as a vector of rows, allowing iteration row-wise over a data frame.   
+**プロットする前にデータフレームを使って移動平均を計算するには、この方法を使用します。**
 
-Here are some of the common functions:  
+**slider** パッケージには rolling regressions（移動平均）や累積和、rolling averages（データの時期をずらして回帰する手法）などを計算するために、いくつかの "sliding window" 関数を提供します。これはデータフレームを行（row）のベクトルとして扱い、データフレーム上の行ごとの反復計算が可能になります。
 
-* `slide_dbl()` - iterates through a *numeric* (hence "_dbl") column performing an operation using a sliding window  
-  * `slide_sum()` - rolling sum shortcut function for `slide_dbl()`  
-  * `slide_mean()` - rolling average shortcut function for `slide_dbl()` 
-* `slide_index_dbl()` - applies the rolling window on a numeric column using a separate column to *index* the window progression (useful if rolling by date with some dates absent)  
-  * `slide_index_sum()` - rolling sum shortcut function with indexing  
-  * `slide_index_mean()` - rolling mean shortcut function with indexing  
-  
-The **slider** package has many other functions that are covered in the Resources section of this page. We briefly touch upon the most common.  
+ここで、いくつかの代表的な関数を提示します：
 
-**Core arguments**  
+-   `slide_dbl()` - sliding window を用いた*数値型*（つまり、"\_dbl"）の列を介して行う演算処理
 
-* `.x`, the first argument by default, is the vector to iterate over and to apply the function to  
-* `.i = ` for the "index" versions of the **slider** functions - provide a column to "index" the roll on (see section [below](#roll_index))  
-* `.f = `, the second argument by default, either:  
-  * A function, written without parentheses, like `mean`, or  
-  * A formula, which will be converted into a function. For example `~ .x - mean(.x)` will return the result of the current value minus the mean of the window's value  
-  
-* For more details see this [reference material](https://davisvaughan.github.io/slider/reference/slide.html)
+    -   `slide_sum()` - `slide_dbl()`の rolling sum のショートカット関数
+    -   `slide_mean()` - `slide_dbl()`の rolling average のショートカット関数
 
+-   `slide_index_dbl()` - windows（小範囲） の進行をインデックス化するための別の列を使用し、数値型の列に rolling window を適用する（一部の日付が存在しないデータセットで、日付による rolling をする場合に便利）
 
+    -   `slide_index_sum()` - インデックスありの rolling sum のショートカット関数
+    -   `slide_index_mean()` - インデックスありの rolling mean のショートカット関数
 
-**Window size**  
+**slider** パッケージはほかにも様々な関数があり、この章の Resources セクションで紹介しています。ここでは、最も一般的な機能について簡単に説明します。
 
-Specify the size of the window by using either `.before`, `.after`, or both arguments:   
+**実引数**
 
-* `.before = ` - Provide an integer  
-* `.after = ` - Provide an integer  
-* `.complete = ` - Set this to `TRUE` if you only want calculation performed on complete windows  
+-   `.x`, デフォルトでは第1引数となります。反復処理を行い、関数を適用するベクトルを指定します。
 
-For example, to achieve a 7-day window including the current value and the six previous, use `.before = 6`. To achieve a "centered" window provide the same number to both `.before = ` and `.after = `.    
+-   `.i =` **slider** 機能の "index" バージョンのために、"index" をロールするための列を用意します（[以下のセクションを参照](#roll_index)）
 
-By default, `.complete = ` will be FALSE so if the full window of rows does not exist, the functions will use available rows to perform the calculation. Setting to TRUE restricts so calculations are only performed on complete windows.  
+-   `.f =`, デフォルトでは2番目の引数となり、以下のどちらかを指定します：
 
-**Expanding window**  
+    -   括弧なしで書かれた関数（例えば `mean` など）
+    -   関数に変換される数式。例えば、`~ .x - mean(.x)` の場合は、現在の値からウィンドウの平均値を引いた結果を返します
 
-To achieve *cumulative* operations, set the `.before = ` argument to `Inf`. This will conduct the operation on the current value and all coming before.  
+-   さらなる詳細はこの [reference material](https://davisvaughan.github.io/slider/reference/slide.html) を参照してください。
 
+**Window size（小範囲の大きさ）**
 
+`.before`、`.after` のいずれか、または両方の引数を使用して、window sizeを指定してください：
 
+-   `.before =` - 整数を指定
+-   `.after =` - 整数を指定
+-   `.complete =` - 完全なwindow（範囲を指定する必要のない場合）に対してのみの計算を行いたい場合は `TRUE` に設定してください
 
+例えば、現在の値とその前の6日間の値を含む7日間のウィンドウを表示するためには、`.before = 6` というように使います。中央値を基準としたウィンドウにするためには、`.before =` と `.after =` の両方に同じ値を指定します。
 
-### Rolling by date  {#roll_index .unnumbered}  
+デフォルトでは、`.complete =` は FALSE となっており、完全な行のウィンドウが存在しない場合、関数は利用可能な行を使用して計算を行います。TRUE に設定すると、完全なウィンドウでのみ計算が実施されるように制限することになります。
 
-The most likely use-case of a rolling calculation in applied epidemiology is to examine a metric *over time*. For example, a rolling measurement of case incidence, based on daily case counts. 
+**Window の拡張**
 
-If you have clean time series data with values for every date, you may be OK to use `slide_dbl()`, as demonstrated here in the [Time series and outbreak detection](#timeseries_moving) page.  
+累積演算を行うためには、`.before =` 引数を `Inf` に設定します。これにより、現在の値とそれより前の全ての値に対して計算が行われます。
 
-However, in many applied epidemiology circumstances you may have dates absent from your data, where there are no events recorded. In these cases, it is best to use the "index" versions of the **slider** functions.  
+### 日付による rolling {#roll_index .unnumbered}
 
+応用疫学での rolling 計算の最も一般的な使用例は、ある指標を<u>時系列</u>でみることでしょう。例えば、毎日の症例数をもとにした発生数（incidence）の測定などです。
 
-### Indexed data {.unnumbered}  
+全ての日付に値がある時系列のデータがある場合、[Time series and outbreak detection](#time-series) の章で紹介されているように、`slide_dbl()` を使用してもよいでしょう。
 
-Below, we show an example using `slide_index_dbl()` on the case linelist. Let us say that our objective is to calculate a rolling 7-day incidence - the sum of cases using a rolling 7-day window. If you are looking for an example of rolling average, see the section below on [grouped rolling](#roll_slider_group).    
+しかし、応用疫学分野では、イベントが記録されていない日付が欠損していることがあります。このような場合には、**slider** パッケージの関数の "index" バージョンを使用するのがベストです。
 
-To begin, the dataset `daily_counts` is created to reflect the daily case counts from the `linelist`, as calculated with `count()` from **dplyr**.  
+### インデックス化されたデータ {.unnumbered}
+
+以下では、感染者のラインリストに `slide_index_dbl()` を使った例を示します。ここでは、移動7日間発生数（7日間の window を使用したケースの合計）を計算することを目的とします。もし移動平均の例を探しているのであれば、[grouped rolling](#roll_slider_group) のセクションを参照してください。
+
+まず、`daily_counts` というデータセットを作成し、**dplyr** パッケージの `count()` から計算された `linelist` の毎日の症例数を反映させましょう。
 
 ```{r}
-# make dataset of daily counts
+# デーリーカウントのデータセットを作成
 daily_counts <- linelist %>% 
   count(date_hospitalisation, name = "new_cases")
 ```
 
-
-Here is the `daily_counts` data frame - there are ` nrow(daily_counts)` rows, each day is represented by one row, but especially early in the epidemic *some days are not present (there were no cases admitted on those days)*.  
-
+ここに、`daily_counts` のデータフレームがあります - `nrow(daily_counts)` 行があり、各日は1行で表されていますが、<u>特に流行の初期には存在しない日もあります（その日に入院した症例はいませんでした）</u>。
 
 ```{r, echo=F}
 DT::datatable(daily_counts, rownames = FALSE, options = list(pageLength = 6, scrollX=T) )
 ```
 
+`slide_dbl()` のような標準的な rolling 関数は、7<u>日間</u>ではなく7<u>行</u>のウィンドウを使用するという認識を持つことが重要です。そのため、データに入っていない日付がある場合、いくつかのウィンドウは実際には7日間よりも長くなります！
 
+`slide_index_dbl()` を使うと、「スマート」な rolling window を実現することができます。"index" とは、この関数が rolling window の "index" として<u>別の列</u>を使うことを意味します。window は単にデータフレームの行に基づいているわけではないのです。
 
-It is crucial to recognize that a standard rolling function (like `slide_dbl()` would use a window of 7 *rows*, not 7 *days*. So, if there are any absent dates, some windows will actually extend more than 7 calendar days!  
+インデックス列が日付の場合、ウィンドウの範囲を `.before =` や `.after =` にして、**lubridate** パッケージの `days()` や `months()` の単位で指定することができます。このようにすると、関数のおかげでウィンドウに存在しない欠損日（`NA` 値として）も含まれることになります。
 
-A "smart" rolling window can be achieved with `slide_index_dbl()`. The "index" means that the function uses a *separate column* as an "index" for the rolling window. The window is not simply based on the rows of the data frame.  
-
-If the index column is a date, you have the added ability to specify the window extent to `.before = ` and/or `.after = ` in units of **lubridate** `days()` or `months()`. If you do these things, the function will include absent days in the windows as if they were there (as `NA` values).  
-
-Let's show a comparison. Below, we calculate rolling 7-day case incidence with regular and indexed windows.  
-
+それでは、比較をしてみましょう。以下では、通常の7日間の rolling した発生数とインデックス window を利用した7日間の rolling した発生数を計算します。
 
 ```{r}
 rolling <- daily_counts %>% 
-  mutate(                                # create new columns
-    # Using slide_dbl()
+  mutate(                                # 新しい列を作る
+    # slide_dbl() を使う
     ###################
     reg_7day = slide_dbl(
-      new_cases,                         # calculate on new_cases
-      .f = ~sum(.x, na.rm = T),          # function is sum() with missing values removed
-      .before = 6),                      # window is the ROW and 6 prior ROWS
+      new_cases,                         # 新しいケースを計算する
+      .f = ~sum(.x, na.rm = T),          # 欠損値が除外された sum() 関数
+      .before = 6),                      # ウィンドウは当行と6つ前の行
     
-    # Using slide_index_dbl()
+    # slide_index_dbl() を使う
     #########################
     indexed_7day = slide_index_dbl(
-        new_cases,                       # calculate on new_cases
-        .i = date_hospitalisation,       # indexed with date_onset 
-        .f = ~sum(.x, na.rm = TRUE),     # function is sum() with missing values removed
-        .before = days(6))               # window is the DAY and 6 prior DAYS
+        new_cases,                       # 新しいケースを計算する
+        .i = date_hospitalisation,       # インデックス化された date_onset 
+        .f = ~sum(.x, na.rm = TRUE),     # 欠損値が除外された sum()
+        .before = days(6))               # ウィンドウは当日と6つ前の日
     )
 
 ```
 
-Observe how in the regular column for the first 7 rows the count steadily increases *despite the rows not being within 7 days of each other*! The adjacent "indexed" column accounts for these absent calendar days, so its 7-day sums are much lower, at least in this period of the epidemic when the cases a farther between.  
+最初の7行の通常列では、<u>それぞれの行が7日以内ではないにもかかわらず</u>、カウントが増加していることを確認してください！隣接する「インデックス化」された列では、データがない日にちが考慮されているため、少なくともケースの差が大きい流行のこの時期においては、7日間の合計値はかなり低くなっています。
 
 ```{r, echo=F}
 DT::datatable(rolling, rownames = FALSE, options = list(pageLength = 12, scrollX=T) )
 ```
 
-
-
-Now you can plot these data using `ggplot()`:  
+では、`ggplot()` を用いて、これらのデータをプロットしてみましょう。
 
 ```{r}
 ggplot(data = rolling)+
   geom_line(mapping = aes(x = date_hospitalisation, y = indexed_7day), size = 1)
 ```
-
-
-
 
 <!-- ### Rolling by month {.unnumbered}   -->
 
@@ -189,97 +172,99 @@ ggplot(data = rolling)+
 <!-- If however, you want to calculate rolling statistics over several months (e.g a 2-month rolling window), you can use the `slide_period()` function from **slider**.   -->
 
 <!-- ```{r} -->
+
 <!-- monthly_mean = function(data){ -->
+
 <!--   summarise(data, mean = mean(new_cases, na.rm=T)) -->
+
 <!-- } -->
 
 <!-- linelist %>%  -->
+
 <!--   count(date_hospitalisation, name = "new_cases") %>%  -->
+
 <!--   mutate( -->
+
 <!--     slide_period_dfr( -->
+
 <!--       new_cases,  -->
+
 <!--       .i = date_hospitalisation, -->
+
 <!--       .period = "month", -->
+
 <!--       .f = monthly_mean))  #~mean(.x, na.rm=T))) -->
 
 <!--       #values_col = new_cases, -->
+
 <!--       #index_col = date_hospitalisation -->
+
 <!--     )) -->
-
-
 
 <!-- ``` -->
 
+### グループ別の rolling {#roll_slider_group .unnumbered}
 
-### Rolling by group {#roll_slider_group .unnumbered}  
+**slider** 関数を使う前にデータをグループ化した場合、sliding window はグループごとに適用されます。*by group* で必要な順序で行をアレンジするように注意してください。
 
-If you group your data prior to using a **slider** function, the sliding windows will be applied by group. Be careful to arrange your rows in the desired order *by group*.  
+Sliding window は新しいグループが始まるたびに再スタートします。したがって、注意しなくてはならないのは、データがグループ化されていて、`.complete = TRUE` を設定している場合、グループ間の移動のたびに空の値が発生するということです。関数が行を下方に移動すると、グループ化された列を移動するたびに計算を可能にする最小のウィンドウサイズが生じ、再スタートします。
 
-Each time a new group begins, the sliding window will re-start. Therefore, one nuance to be aware of is that if your data are grouped *and* you have set `.complete = TRUE`, you will have empty values at each transition between groups. As the function moved downward through the rows, every transition in the grouping column will re-start the accrual of the minimum window size to allow a calculation.  
+データのグループ化に関する詳細は、[データのグループ化](#grouping) の章を参照してください。
 
-See handbook page on [Grouping data] for details on grouping data.
-
-Below, we count linelist cases by date *and* by hospital. Then we arrange the rows in ascending order, first ordering by hospital and then within that by date. Next we set `group_by()`. Then we can create our new rolling average. 
-
+以下では、病院別かつ日付別にラインリストの症例をカウントしています。次に、行を昇順に並べます。まず病院別に並べ、その中で日付別に並べます。続いて、`group_by()` を設定します。そして、新しい移動平均を作ることができます。
 
 ```{r}
 grouped_roll <- linelist %>%
 
   count(hospital, date_hospitalisation, name = "new_cases") %>% 
 
-  arrange(hospital, date_hospitalisation) %>%   # arrange rows by hospital and then by date
+  arrange(hospital, date_hospitalisation) %>%   # 病院別、続いて日付別に行を並べる
   
-  group_by(hospital) %>%              # group by hospital 
+  group_by(hospital) %>%              # 病院でグループ化
     
-  mutate(                             # rolling average  
+  mutate(                             # 移動平均  
     mean_7day_hosp = slide_index_dbl(
-      .x = new_cases,                 # the count of cases per hospital-day
-      .i = date_hospitalisation,      # index on date of admission
-      .f = mean,                      # use mean()                   
-      .before = days(6)               # use the day and the 6 days prior
+      .x = new_cases,                 # ケース/病院-日のカウント
+      .i = date_hospitalisation,      # 入院日のインデックス
+      .f = mean,                      # mean() を使う                  
+      .before = days(6)               # 当日と6日前までの使用
       )
   )
 
 ```
 
-Here is the new dataset:  
+こちらが、新しいデータセットです：
 
 ```{r, echo=F}
 DT::datatable(grouped_roll, rownames = FALSE, options = list(pageLength = 12, scrollX=T) )
 ```
 
-
-We can now plot the moving averages, displaying the data by group by specifying `~ hospital` to `facet_wrap()` in `ggplot()`. For fun, we plot two geometries - a `geom_col()` showing the daily case counts and a `geom_line()` showing the 7-day moving average.  
-
+`ggplot()` の `facet_wrap()` に `~ hospital` と指定することで、データをグループ別（ここでは病院別）に表示し、移動平均をプロットすることができます。楽しいのでここでは、毎日の症例数を示す `geom_col()` と、7日間の移動平均を示す `geom_line()` という2つの幾何学図形をプロットしてみます。
 
 ```{r, warning=F, message=F}
 ggplot(data = grouped_roll)+
-  geom_col(                       # plot daly case counts as grey bars
+  geom_col(                       # 日ごとのケースカウントを灰色のバーで表示
     mapping = aes(
       x = date_hospitalisation,
       y = new_cases),
     fill = "grey",
     width = 1)+
-  geom_line(                      # plot rolling average as line colored by hospital
+  geom_line(                      # 病院ごとに色分けして移動平均を表示
     mapping = aes(
       x = date_hospitalisation,
       y = mean_7day_hosp,
       color = hospital),
     size = 1)+
-  facet_wrap(~hospital, ncol = 2)+ # create mini-plots per hospital
-  theme_classic()+                 # simplify background  
-  theme(legend.position = "none")+ # remove legend
-  labs(                            # add plot labels
+  facet_wrap(~hospital, ncol = 2)+ # 病院ごとにミニプロットを作成
+  theme_classic()+                 # 背景をシンプルに 
+  theme(legend.position = "none")+ # 凡例を非表示にする
+  labs(                            # プロットのラベルを追加する
     title = "7-day rolling average of daily case incidence",
     x = "Date of admission",
     y = "Case incidence")
 ```
 
-
-<span style="color: red;">**_DANGER:_** If you get an error saying *"slide() was deprecated in tsibble 0.9.0 and is now defunct. Please use slider::slide() instead."*, it means that the `slide()` function from the **tsibble** package is masking the `slide()` function from **slider** package. Fix this by specifying the package in the command, such as `slider::slide_dbl()`.</span>
-
-
-
+[***警告：*** *"slide() was deprecated in tsibble 0.9.0 and is now defunct. Please use slider::slide() instead."* というエラーが出た場合、**tsibble** パッケージの `slide()` をマスクしていることを意味します。 `slider::slide_dbl()` のように、コマンドパッケージを指定して修正してください。]{style="color: red;"}
 
 <!-- You can group the data prior to using a **slider** function. For example, if you want to calculate the same 7-day rolling sum as above, but by hospital. above rolling mean delay from symptom onset to hospital admission (column `days_onset_hosp`).   -->
 
@@ -288,107 +273,121 @@ ggplot(data = grouped_roll)+
 <!-- f you want a rolling average by *months*, you can use **lubridate** to group the data by month, and then apply `slide_index_dbl()` as below shown for a three-month rolling average:   -->
 
 <!-- ```{r} -->
+
 <!-- months_delay <- linelist %>% -->
+
 <!--   arrange(date_onset) %>%    # drop rows missing date of onset -->
+
 <!--   group_by(hospital) %>%  -->
+
 <!--   #group_by(month_onset = floor_date(date_onset, "month")) %>% # create and group by month of onset  -->
+
 <!--   mutate( -->
+
 <!--     delay_7d = slide_index_dbl( -->
+
 <!--       days_onset_hosp,                  # calculate avg based on value in new_cases column -->
+
 <!--       .i = date_onset,                 # index column is date_onset, so non-present dates are included in 7day window  -->
+
 <!--       .f = ~mean(.x, na.rm = TRUE),     # function is mean() with missing values removed -->
+
 <!--       .before = days(7)), -->
 
 <!--     delay_month = slide_index_dbl( -->
-<!--       days_onset_hosp,                  # calculate avg based on value in new_cases column -->
-<!--       .i = date_onset,                 # index column is date_onset, so non-present dates are included in 7day window  -->
-<!--       .f = ~mean(.x, na.rm = TRUE),     # function is mean() with missing values removed -->
-<!--       .before = months(1)))               # window is the month and the prior month -->
 
+<!--       days_onset_hosp,                  # calculate avg based on value in new_cases column -->
+
+<!--       .i = date_onset,                 # index column is date_onset, so non-present dates are included in 7day window  -->
+
+<!--       .f = ~mean(.x, na.rm = TRUE),     # function is mean() with missing values removed -->
+
+<!--       .before = months(1)))               # window is the month and the prior month -->
 
 <!-- # window is the month and the prior month -->
 
 <!-- ``` -->
 
 <!-- ```{r} -->
+
 <!-- ggplot(data = months_delay, mapping = aes(x = month_onset))+ -->
+
 <!--   geom_line(mapping = aes(y = )) -->
 
 <!-- ``` -->
 
-
-
-
-
-
 <!-- ======================================================= -->
-## Calculate with **tidyquant** within `ggplot()` {  }
 
-The package **tidyquant** offers another approach to calculating moving averages - this time from *within* a `ggplot()` command itself.  
+## `ggplot()` 内の **tidyquant** パッケージによる計算
 
-Below the `linelist` data are counted by date of onset, and this is plotted as a faded line (`alpha` < 1). Overlaid on top is a line created with `geom_ma()` from the package **tidyquant**, with a set window of 7 days (`n = 7`) with specified color and thickness.  
+**tidyquant** パッケージは、移動平均を異なるアプローチで計算します - 今回は `ggplot()` のコマンド内の例です。
 
-By default `geom_ma()` uses a simple moving average (`ma_fun = "SMA"`), but other types can be specified, such as:  
+`linelist` では、データは発症日別にカウントされ、色あせた線としてプロットされています（`alpha` \< 1）。上に重ねているのは、 **tidyquant** パッケージの `geom_ma()` で作成された選で、7日間（`n = 7`）のウィンドウが設定され、色と太さが指定されています。
 
-* "EMA" - exponential moving average (more weight to recent observations)  
-* "WMA" - weighted moving average (`wts` are used to weight observations in the moving average)  
-* Others can be found in the function documentation  
+`geom_ma()` はデフォルトでは、単純移動平均（`ma_fun = "SMA"`）を使用しますが、以下のようなほかのタイプを指定することもできます：
+
+-   "EMA" - 指数移動平均（最近の観測値に重きを置く）\
+-   "WMA" - 加重移動平均（`wts` は移動平均における観測値の重みづけに使用される）
+-   その他の機能については、関数の説明を参照してください
 
 ```{r}
 linelist %>% 
-  count(date_onset) %>%                 # count cases per day
-  drop_na(date_onset) %>%               # remove cases missing onset date
-  ggplot(aes(x = date_onset, y = n))+   # start ggplot
-    geom_line(                          # plot raw values
+  count(date_onset) %>%                 # 日ごとのケースをカウントする
+  drop_na(date_onset) %>%               # 発症日がないケースを除外する
+  ggplot(aes(x = date_onset, y = n))+   # ggplot を始める
+    geom_line(                          # そのままの数値をプロットする
       size = 1,
-      alpha = 0.2                       # semi-transparent line
+      alpha = 0.2                       # 半透明の線
       )+             
     tidyquant::geom_ma(                 # plot moving average
       n = 7,           
       size = 1,
       color = "blue")+ 
-  theme_minimal()                       # simple background
+  theme_minimal()                       # 移動平均の表示
 ```
 
-See this [vignette](https://cran.r-project.org/web/packages/tidyquant/vignettes/TQ04-charting-with-tidyquant.html) for more details on the options available within **tidyquant**.  
-
+**tidyquant** パッケージで利用できるオプションの更なる詳細については、[ビニエット（vignette）](https://cran.r-project.org/web/packages/tidyquant/vignettes/TQ04-charting-with-tidyquant.html) を参照してください。
 
 <!-- ## Rolling regression  -->
 
 <!-- ```{r} -->
+
 <!-- a <- linelist %>% -->
+
 <!--   separate(time_admission, into = c("hour", "minute"), sep = ":") %>%  -->
+
 <!--   count(days_onset_hosp, hour) %>%  -->
+
 <!--   mutate(reg_admit_hour = slide(., ~lm(days_onset_hosp ~ hour), .before = 3, .complete = T)) %>%  -->
+
 <!--   mutate(coeff = reg_admit_hour[[1]]) -->
 
 <!-- ggplot()+ -->
+
 <!--   geom_point(aes(x = hour, y = days_onset_hosp)) -->
 
 <!-- ``` -->
 
 <!-- ```{r} -->
+
 <!-- linelist %>%  -->
+
 <!--   mutate( -->
 
 <!--   ) -->
 
 <!-- ``` -->
 
-
 <!-- ======================================================= -->
-## Resources {  }
 
+## 参考資料 { 　｝
 
-See the helpful online [vignette for the **slider** package](https://cran.r-project.org/web/packages/slider/vignettes/slider.html)  
+[**slider** パッケージの参考になるオンライン vignette はこちらをご覧ください](https://cran.r-project.org/web/packages/slider/vignettes/slider.html)
 
-The **slider** [github page](https://github.com/DavisVaughan/slider)
+**slider** パッケージの[github](https://github.com/DavisVaughan/slider)ページ
 
-A **slider** [vignette](https://davisvaughan.github.io/slider/articles/slider.html)  
+**slider** パッケージの [vignette](https://davisvaughan.github.io/slider/articles/slider.html)
 
 [tidyquant vignette](https://cran.r-project.org/web/packages/tidyquant/vignettes/TQ04-charting-with-tidyquant.html)
 
-If your use case requires that you “skip over” weekends and even holidays, you might like **almanac** package.
-
-
-
+週末や祝日を「スキップ」する必要がある場合は、**almanac** パッケージがおすすめです。
