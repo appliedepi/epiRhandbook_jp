@@ -1,156 +1,181 @@
-# GIS basics { }  
+# GIS の基本 { #gis }  
 
 ```{r, out.width=c('100%', '100%'), echo=F}
+library(tidyverse)
+library(here)
+
+
+# 訳注: macOS で日本語が文字化けしたので、フォント設定を入れています。これは Windows と Linux では逆に余計な警告を出すので、デフォルトでは "sans" にしています。（レビューアー注釈：レビュールールに沿わない記載ですが、今後、日本版にローカライズする際に有用な記載と考え、コメントとしてのこしておきます。）
+# gis_jfontname <- "sans"
+# gis_sysinf <- Sys.info()
+# if (!is.null(gis_sysinf)) {
+#   if (gis_sysinf['sysname'] == "Darwin") {
+#     gis_jfontname <- "HiraginoSans-W3"
+#   }
+# }
+
 knitr::include_graphics(here::here("images", "gis_head_image.png"))
 ```
 
 <!-- ======================================================= -->
-## Overview {  }
+## 概要 {  }
 
-Spatial aspects of your data can provide a lot of insights into the situation of the outbreak, and to answer questions such as: 
+データに空間情報があることで、アウトブレイクの状況について多くの洞察が得られ、次のような質問に答えることができます。
 
-* Where are the current disease hotspots?
-* How have the hotspots have changed over time?
-* How is the access to health facilities? Are any improvements needed?
+* 現在の疾病のホットスポットはどこか？
+* ホットスポットは時系列でどのように変化しているか？
+* 医療施設へのアクセスはどうなっているか？改善が必要か？
 
-The current focus of this GIS page to address the needs of applied epidemiologists in outbreak response. We will explore basic spatial data visualization methods using **tmap** and **ggplot2** packages. We will also walk through some of the basic spatial data management and querying methods with the **sf** package. Lastly, we will briefly touch upon concepts of *spatial statistics* such as spatial relationships, spatial autocorrelation, and spatial regression using the **spdep** package.  
+この GIS の章では、疫学業務担当者がアウトブレイク対応において知りたいニーズに応えることを目的としています。ここでは、**tmap** と **ggplot2** パッケージを使って、基本的な空間データの可視化方法を学びます。また、**sf** パッケージを使用して、基本的な空間データの管理とクエリの方法についても説明します。最後に、**spdep** パッケージを用いて、空間的関係、空間的自己相関、空間回帰など、<u>空間統計</u>の概念に簡単に触れます。 
 
 
 
-## Key terms {}  
+## 重要な用語 {}  
 
-Below we introduce some key terminology. For a thorough introduction to GIS and spatial analysis, we suggest that you review one of the longer tutorials or courses listed in the References section.  
+ここでは、いくつかの重要な用語を紹介します。GIS と空間分析について詳しく知りたい方は、「リソース」節に掲載されている長いチュートリアルやコースをご覧になることをお勧めします。 
 
-**Geographic Information System (GIS)** - A GIS is a framework or environment for gathering, managing, analyzing, and visualizing spatial data.
+**GIS（Geographic Information System, 地理情報システム）** - GIS とは、空間データを収集、管理、分析、視覚化するためのフレームワークまたは環境のことです。
 
-### GIS software {.unnumbered}
+### GIS ソフトウェア {.unnumbered}
 
-Some popular GIS software allow point-and-click interaction for map development and spatial analysis. These tools comes with advantages such as not needing to learn code and the ease of manually selecting and placing icons and features on a map. Here are two popular ones:  
+一般的な GIS ソフトウェアの中には、マウス操作で地図の作成や空間分析ができるものがあります。これらのツールには、コードを覚える必要がない、アイコンや機能を手動で選択して地図上に配置するのが簡単であるなどの利点があります。ここでは、人気のある2つのソフトウェアを紹介します。 
 
-**ArcGIS** - A commercial GIS software developed by the company ESRI, which is very popular but quite expensive  
+**ArcGIS** - ESRI 社が開発した商用の GIS ソフトウェアで、非常に人気がありますますが、かなり高価です。 
 
-**QGIS** - A free open-source GIS software that can do almost anything that ArcGIS can do. You can [download QGIS here](https://qgis.org/en/site/forusers/download.html)  
+**QGIS** - フリーのオープンソース GIS ソフトウェアで、ArcGIS でできることもおおむねできます。[ここでQGIS をダウンロードすることができます。](https://qgis.org/en/site/forusers/download.html)  
 
-Using R as a GIS can seem more intimidating at first because instead of "point-and-click", it has a "command-line interface" (you must code to acquire the desired outcome). However, this is a major advantage if you need to repetitively produce maps or create an analysis that is reproducible.  
+R を GIS として使用することは、「マウス操作」ではなく「コマンドライン・インターフェース」（目的の結果を得るためにはコーディングが必要）であるため、最初は敷居が高く感じられるかもしれません。しかし、繰り返し地図を作成したり、再現性のある分析を行う必要がある場合には、これは大きな利点となります。 
 
-### Spatial data {.unnumbered}
+### 空間データ {.unnumbered}
 
-The two primary forms of spatial data used in GIS are vector and raster data:
+GIS で使用される空間データには、主にベクトルデータとラスターデータの 2 種類があります。
 
-**Vector Data** - The most common format of spatial data used in GIS, vector data are comprised of geometric features of vertices and paths. Vector spatial data can be further divided into three widely-used types:
+**ベクトルデータ** - GIS で使用される空間データの最も一般的な形式です。ベクトルデータは、頂点とパスの幾何学的なフィーチャ (feature; 「地物」とも訳される) で構成されています。ベクトルの空間データは、さらに3つの広く使用されるタイプに分類されます。
 
-  * *Points* - A point consists of a coordinate pair (x,y)  representing a specific location in a coordinate system. Points are the most basic form of spatial data, and may be used to denote a case (i.e. patient home) or a location (i.e. hospital) on a map.
+  * <u>点</u> - 点は、座標系における特定の位置を表す座標ペア(x,y)で構成されます。点は空間データの最も基本的な形態であり、地図上の症例（例：患者の家）や場所（例：病院）を表すのに使用されます。
 
-  * *Lines* - A line is composed of two connected points. Lines have a length, and may be used to denote things like roads or rivers.
+  * <u>線</u> - 線は、2つの接続された点で構成されます。線には長さがあり、道路や川などを表すのに使われます。
 
-  * *Polygons* - A polygon is composed of at least three line segments connected by points. Polygon features have a length (i.e. the perimeter of the area) as well as an area measurement. Polygons may be used to note an area (i.e. a village) or a structure (i.e. the actual area of a hospital). 
+  * <u>ポリゴン</u> - ポリゴンは、点で接続された少なくとも3つの線分で構成されています。ポリゴンのフィーチャは、面積だけでなく、長さ（すなわち、面の外周の長さ）を持っています。ポリゴンは、地域（例：村）や構造（例：病院の実際の面積）を示すときに使用されます。
 
-**Raster Data** - An alternative format for spatial data, raster data is a matrix of cells (e.g. pixels) with each cell containing information such as height, temperature, slope, forest cover, etc. These are often aerial photographs, satellite imagery, etc. Rasters can also be used as “base maps” below vector data.
+**ラスターデータ** - 空間データの代替フォーマットであるラスターデータは、セル（ピクセルなど）のマトリックスで、各セルには高さ、温度、傾斜、森林被覆などの情報が含まれています。これは、航空写真や衛星画像などでよく見られます。ラスターデータは、ベクトルデータの下の「基図」としても使用されます。
 
-### Visualizing spatial data {.unnumbered}
+### 空間データの可視化 {.unnumbered}
 
-To visually represent spatial data on a map, GIS software requires you to provide sufficient information about where different features should be, in relation to one another. If you are using vector data, which will be true for most use cases, this information will typically be stored in a shapefile:
+GIS ソフトウェアでは、空間データを地図上に視覚的に表現するために、それぞれのフィーチャがどこにあるのか、お互いの関係について十分な情報を提供する必要があります。ベクトルデータを使用している場合、ほとんどのユース症例では、この情報は通常シェープファイルに保存されます。
 
-**Shapefiles** - A shapefile is a common data format for storing "vector" spatial data consisting or lines, points, or polygons. A single shapefile is actually a collection of at least three files - .shp, .shx, and .dbf. All of these sub-component files must be present in a given directory (folder) for the shapefile to be readable. These associated files can be compressed into a ZIP folder to be sent via email or download from a website.  
+**シェープファイル** - シェープファイルは、線、点、ポリゴンで構成される「ベクトル」空間データを保存するための一般的なデータフォーマットです。1つのシェープファイルは、実際には少なくとも3つのファイル（.shp、.shx、.dbf）の集合体です。シェープファイルを読み取るためには、これらのサブコンポーネントファイルがすべて同一のディレクトリ（フォルダ）に存在する必要があります。これらの関連ファイルは、ZIPフォルダに圧縮してメールで送信したり、ウェブサイトからダウンロードすることができます。 
 
-The shapefile will contain information about the features themselves, as well as where to locate them on the Earth’s surface. This is important because while the Earth is a globe, maps are typically two-dimensional; choices about how to “flatten” spatial data can have a big impact on the look and interpretation of the resulting map.
+シェープファイルには、フィーチャ自体の情報だけでなく、地球の表面のどこにあるかという情報も含まれています。空間データをどのように「平面化」するかは、地図の見た目や解釈に大きな影響を与えるため、重要なポイントとなります。
 
-**Coordinate Reference Systems (CRS)** - A CRS is a coordinate-based system used to locate geographical features on the Earth's surface. It has a few key components:  
+**座標参照系 (Coordinate Reference Systems, CRS) ** - CRS とは、地球上の地理的フィーチャを特定するために使用される座標ベースのシステムです。CRSにはいくつかの重要な要素があります。
 
-  * *Coordinate System* - There are many many different coordinate systems, so make sure you know which system your coordinates are from. Degrees of latitude/longitude are common, but you could also see [UTM](https://www.maptools.com/tutorials/utm/quick_guide) coordinates.  
+  * <u>座標系 (Coordinate System)</u> - 非常にたくさんの座標系があるため、自分が使用する座標がどの座標系を用いているのかを必ず確認してください。緯度/経度の度数を用いたものは一般的ですが、[UTM](https://www.maptools.com/tutorials/utm/quick_guide) 座標が利用されていることもあります。 
   
-  * *Units* - Know what the units are for your coordinate system (e.g. decimal degrees, meters)  
+  * <u>単位 (Units)</u> - 座標系の単位を知ることができます（例：小数点で表された度、メートル）。 
 
-  * *Datum* - A particular modeled version of the Earth. These have been revised over the years, so ensure that your map layers are using the same datum.  
+  * <u>測地系 (Datum)</u> - 地球上の特定のモデルの、特定のバージョンを指します。測地系は長年にわたって改訂されてきたので、地図として表示されるレイヤー（マップレイヤー）が同じ測地系を使用していることを確認してください。 
 
-  * *Projection* - A reference to the mathematical equation that was used to project the truly round earth onto a flat surface (map).  
+  * <u>投影 (Projection)</u> - 実際には丸い地球を平らな表面（地図）に投影するために使用された数式への参照。
 
-Remember that you can summarise spatial data without using the mapping tools shown below. Sometimes a simple table by geography (e.g. district, country, etc.) is all that is needed!  
+以下に示すマッピングツールを使用しなくても、空間データを要約することができることも覚えておいてください。地域別（例：地区、国など）のシンプルな表があれば十分なこともあります。 
 
-## Getting started with GIS  
+訳注: 日本で主に利用されている CRS は次のような
+ものがあります。<!-- Translator NOTE: CRS commonly used in Japan are following:-->
+
+* 平面直角座標系（世界測地系）I〜XIII EPSG: 2443-2455
+* JGD2000 GRS80楕円体 EPSG:4612 
+
+## はじめての GIS  
 
 
-There are a couple of key items you will need to have and to think about to make a map. These include:
+地図を作るためには、以下の通り、いくつかの重要な要素について、考え、また入手しなければありません。
 
-  * A **dataset** -- this can be in a spatial data format (such as shapefiles, as noted above) or it may not be in a spatial format (for instance just as a csv).
+  * **データセット** - これは空間データ形式（上述のようにシェープファイルなど）の場合もあれば、空間形式ではない場合もあります（例えば、単なる csv など）。
   
-  * If your dataset is not in a spatial format you will also need a **reference dataset**. Reference data consists of the spatial representation of the data and the related **attributes**, which would include material containing the location and address information of specific features.
+  * データセットが空間フォーマットでない場合は、**参照データ**も必要です。参照データは、データの空間表現と関連する**属性**で構成されており、特定のフィーチャの位置情報やアドレス情報を含む資料などがあります。
   
-    + If you are working with pre-defined geographic boundaries (for example, administrative regions), reference shapefiles are often freely available to download from a government agency or data sharing organization. When in doubt, a good place to start is to Google “[regions] shapefile”
+    + 事前に定義された地理的境界線（例えば、行政区域）を扱う場合、参照シェープファイルは、政府機関やデータ共有組織から自由にダウンロードできることが多いです。迷ったときは、「[地域名] shapefile」とグーグルで検索してみるとよいでしょう。
     
-    + If you have address information, but no latitude and longitude, you may need to use a **geocoding engine** to get the spatial reference data for your records. 
+    + 住所情報はあっても緯度・経度がないような場合は、 **ジオコーディング・エンジン**（**geocoding engine**）を使ってデータの空間参照データを取得する必要があるかもしれません。
     
-  * An idea about **how you want to present** the information in your datasets to your target audience. There are many different types of maps, and it is important to think about which type of map best fits your needs.
+  * データセットの情報を対象者に、**どのように見せたいか**というアイデア。地図には様々な種類がありますが、どの種類の地図が自分のニーズに最も適しているかを考えることが重要です。
 
-### Types of maps for visualizing your data {.unnumbered}
+訳注：日本の主なGISデータ： <!--Translator NOTE: GIS dataset often used in Japan:-->
+*  [国勢調査](http://e-stat.go.jp/SG2/eStatGIS/page/download.html)
+*  [国土数値地図](http://nlftp.mlit.go.jp/ksj/)
+*  [国土地理院基盤地図](http://www.gsi.go.jp/kiban/etsuran.html)
+*  [G空間情報センター](https://www.geospatial.jp/ckan/dataset)
 
-**Choropleth map** - a type of thematic map where colors, shading, or patterns are used to represent geographic regions in relation to their value of an attribute. For instance a larger value could be indicated by a darker colour than a smaller value. This type of map is particularly useful when visualizing a variable and how it changes across defined regions or geopolitical areas.
+### データを可視化するための地図のタイプ {.unnumbered}
+
+**色分け（Choropleth）地図** - 主題図の一種で、色、濃淡、またはパターンを使って、ある属性の値に関連して地理的な地域を表現するもの。例えば、大きな値は小さな値よりも濃い色で示されます。このタイプの地図は、ある変数と、それが定義された地域や地政学的エリアでどのように変化するかを視覚化する場合に特に便利です。
 
 ```{r, out.width = '50%', fig.align = "center", fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "gis_choropleth.png"))
 ```
 
-**Case density heatmap** - a type of thematic map where colours are used to represent intensity of a value, however, it does not use defined regions or geopolitical boundaries to group data. This type of map is typically used for showing ‘hot spots’ or areas with a high density or concentration of points. 
+**症例密度ヒートマップ** - 主題図の一種で、値の強さを色で表しますが、データをグループ化するために定義された地域や地政学的な境界線は使用しません。このタイプの地図は、一般的に「ホットスポット」や、点が高密度または集中しているエリアを示すために使用されます。
 
 ```{r, fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "gis_heatmap.png"))
 ```
 
-**Dot density map** - a thematic map type that uses dots to represent attribute values in your data. This type of map is best used to visualize the scatter of your data and visually scan for clusters.
+**点密度マップ** - は、データの属性値をドットで表現する主題図タイプです。このタイプのマップは、データの散らばりを視覚化し、クラスターを視覚的にスキャンするのに適しています。
 
 ```{r, fig.align = "center", echo=F}
 # dot density img here
 ```
 
-**Proportional symbols map (graduated symbols map)** - a thematic map similar to a choropleth map, but instead of using colour to indicate the value of an attribute it uses a symbol (usually a circle) in relation to the value. For instance a larger value could be indicated by a larger symbol than a smaller value. This type of map is best used when you want to visualize the size or quantity of your data across geographic regions. 
+**等級シンボルマップ（段階のあるシンボルマップ）** - 色分け地図に似ている主題図ですが、属性の値を色で表すのではなく、その値に対応するシンボル（通常は円）を使用します。例えば、大きな値は小さな値よりも大きなシンボルで示されます。このタイプの地図は、地域ごとのデータの大きさや量を視覚化したい場合に最適です。
 
 ```{r, fig.align = "center", echo=F}
 # proportional symbols img here
 ```
 
-You can also combine several different types of visualizations to show complex geographic patterns. For example, the cases (dots) in the map below are colored according to their closest health facility (see legend). The large red circles show *health facility catchment areas* of a certain radius, and the bright red case-dots those that were outside any catchment range:
+また、複数の異なるタイプの視覚化を組み合わせて、複雑な地理的パターンを示すこともできます。例えば、下の地図の症例（点）は、最も近い医療施設に応じて色分けされています（凡例参照）。大きな赤い円は、一定の半径を持つ<u>医療施設のキャッチメントエリア</u>を示し、赤色の症例点は、キャッチメントの範囲外にある症例を示しています。
 
 ```{r, fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "gis_hf_catchment.png"))
 ```
 
-Note: The primary focus of this GIS page is based on the context of field outbreak response. Therefore the contents of the page will cover the basic spatial data manipulations, visualizations, and analyses.
+注：この GIS の章の主な焦点は、現場でのアウトブレイク対応の状況に基づいています。そのため、この章の内容は、基本的な空間データの操作、視覚化、および分析をカバーしています。
 
 
 <!-- ======================================================= -->
-## Preparation {  }
+## 準備 {  }
 
-### Load packages {.unnumbered}  
+### パッケージを読み込む {.unnumbered}  
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、pacman パッケージの p_load() を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである base （以下、base R）の library() を使用して読み込むこともできます。R のパッケージに関する詳細は[R の基礎](#basics)の章をご覧ください。
 
 ```{r}
 pacman::p_load(
-  rio,           # to import data
-  here,          # to locate files
-  tidyverse,     # to clean, handle, and plot the data (includes ggplot2 package)
-  sf,            # to manage spatial data using a Simple Feature format
-  tmap,          # to produce simple maps, works for both interactive and static maps
-  janitor,       # to clean column names
-  OpenStreetMap, # to add OSM basemap in ggplot map
-  spdep          # spatial statistics
+  rio,           # データをインポート
+  here,          # ファイルの位置を探す
+  tidyverse,     # データを処理、プロット (ggplot2 パッケージを含む)
+  sf,            # Simple Featureフォーマットによる空間データの管理
+  tmap,          # シンプルな地図を作成、インタラクティブな地図と静的な地図の両方に対応
+  janitor,       # 列名のクリーニング
+  OpenStreetMap, # ggplot map に OSM 基図を追加
+  spdep          # 空間統計
   ) 
                   
 ```
 
-You can see an overview of all the R packages that deal with spatial data at the [CRAN "Spatial Task View"](https://cran.r-project.org/web/views/Spatial.html).  
+[CRAN "Spatial Task View"](https://cran.r-project.org/web/views/Spatial.html)では、空間データを扱うすべての R パッケージの概要を見ることができます。
 
 
-### Sample case data {.unnumbered}
+### 症例データサンプル {.unnumbered}
 
-For demonstration purposes, we will work with a random sample of 1000 cases from the simulated Ebola epidemic `linelist` dataframe (computationally, working with fewer cases is easier to display in this handbook). If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file).  
+ここでは分かりやすくするため、シミュレーションされたエボラ出血熱の `linelist` データフレームから1000件のランダムなサンプルを使って作業します（計算上、少ない件数で作業すると、このハンドブックでの表示が容易になります）。続いて、<a href='https://github.com/appliedepi/epirhandbook_eng/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>「きれいな」linelist</a> をクリックしてダウンロードできます（.rdsファイル）。 
 
-Since we are taking a random sample of the cases, your results may look slightly different from what is demonstrated here when you run the codes on your own.
+ここではランダムにサンプルを取っているので、実際にコードを実行してみると、ここでデモされているものとは若干異なる結果になるかもしれません。
 
-Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
+データを **rio** パッケージ（.xlsx, .csv, .rds など多くのファイルタイプを扱えます - 詳細は[データのインポート・エクスポート](#importing)の章を参照してください）の `import()` を使ってインポートします。 
 
 ```{r, echo=F}
-# import clean case linelist
+# 前処理済みのlinelistをインポート
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))  
 ```
 
@@ -159,109 +184,109 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 linelist <- import("linelist_cleaned.rds")  
 ```
 
-Next we select a random sample of 1000 rows using `sample()` from **base** R.   
+次に、**base** R から `sample()` を使って 1000 行のランダムなサンプルを選択します。  
 
 ```{r}
-# generate 1000 random row numbers, from the number of rows in linelist
+# linelistの行数から1000個のランダムな行番号を生成
 sample_rows <- sample(nrow(linelist), 1000)
 
-# subset linelist to keep only the sample rows, and all columns
+# サンプル行の全ての列だけを保持するlinelistにサブセット化する
 linelist <- linelist[sample_rows,]
 ```
 
-Now we want to convert this `linelist` which is class dataframe, to an object of class "sf" (spatial features). Given that the linelist has two columns "lon" and "lat" representing the longitude and latitude of each case's residence, this will be easy.  
+このデータフレームクラスの `linelist` をクラス "sf"（空間フィーチャ）のオブジェクトに変換したいと思います。この linelist には、各症例の居住地の経度と緯度を表す "lon" と "lat" の2つの列があるので、これは簡単です。 
 
-We use the package **sf** (spatial features) and its function `st_as_sf()` to create the new object we call `linelist_sf`. This new object looks essentially the same as the linelist, but the columns `lon` and `lat` have been designated as coordinate columns, and a coordinate reference system (CRS) has been assigned for when the points are displayed. 4326 identifies our coordinates as based on the [World Geodetic System 1984 (WGS84)](https://gisgeography.com/wgs84-world-geodetic-system/) - which is standard for GPS coordinates.  
+ここでは、**sf**（空間的フィーチャ）パッケージとその関数、 `st_as_sf()` を使用して、`linelist_sf` という新しいオブジェクトを作成します。この新しいオブジェクトは、基本的には linelist と同じですが、列 `lon` と `lat` を座標列として指定し、点を表示する際の座標参照系 (CRS) を割り当てています。4326では、GPS座標の標準である [World Geodetic System 1984 (WGS84)](https://gisgeography.com/wgs84-world-geodetic-system/) に基づいた座標が指定されています。  
 
 ```{r}
-# Create sf object
+# sfオブジェクトを生成
 linelist_sf <- linelist %>%
      sf::st_as_sf(coords = c("lon", "lat"), crs = 4326)
 ```
 
-This is how the original `linelist` dataframe looks like. In this demonstration, we will only use the column `date_onset` and `geometry` (which was constructed from the longitude and latitude fields above and is the last column in the data frame).  
+これがオリジナルの `linelist` データフレームの中身です。このデモでは、`date_onset` と `geometry`（上記の経度と緯度のフィールドから作成されたもので、データフレームの最後の列）の列のみを使用します。 
 
 ```{r}
 DT::datatable(head(linelist_sf, 10), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### Admin boundary shapefiles {.unnumbered}  
+### 行政境界シェープファイル {.unnumbered}  
 
-**Sierra Leone: Admin boundary shapefiles**  
+**シエラレオネ (Sierra Leone): 行政境界シェープファイル**  
 
-In advance, we have downloaded all administrative boundaries for Sierra Leone from the Humanitarian Data Exchange (HDX) [website here](https://data.humdata.org/dataset/sierra-leone-all-ad-min-level-boundaries). Alternatively, you can download these and all other example data for this handbook via our R package, as explained in the [Download handbook and data] page.  
+事前に、Humanitarian Data Exchange (HDX) [ウェブサイト](https://data.humdata.org/dataset/sierra-leone-all-ad-min-level-boundaries)からシエラレオネのすべての行政（admin）境界データをダウンロードしておきました。あるいは、[ハンドブックとデータのダウンロード](#data-used)の章で説明しているように、私たちの R パッケージを介して、このデータやその他のサンプルデータをダウンロードすることもできます。 
 
-Now we are going to do the following to save the Admin Level 3 shapefile in R:  
+では、いよいよ Admin Level 3 のシェープファイルを R に保存するために、以下の作業を行います。 
 
-1) Import the shapefile  
-2) Clean the column names  
-3) Filter rows to keep only areas of interest  
+1) シェープファイルをインポートする
+2) 列名を加工する
+3) 興味のある地域だけを残すために行を抽出する
 
-To import a shapefile we use the `read_sf()` function from **sf**. It is provided the filepath via `here()`. - in our case the file is within our R project in the "data", "gis", and "shp" subfolders, with filename "sle_adm3.shp" (see pages on [Import and export] and [R projects] for more information). You will need to provide your own file path.  
+シェープファイルをインポートするには、**sf** パッケージの `read_sf()` を使います。ファイルのパスは `here()` で与えられます。- 今回の場合、ファイルはRプロジェクトの "data"、"gis"、"shp" というサブフォルダに "sle_adm3.shp" として格納されています（詳細は [データのインポート・エクスポート](#importing) と [R プロジェクトの設定](#r-projects) の章を参照してください）。独自のファイルパスを設定してください。
 
 ```{r, echo=F}
 sle_adm3_raw <- sf::read_sf(here("data", "gis", "shp", "sle_adm3.shp"))
 ```
 
 
-Next we use `clean_names()` from the **janitor** package to standardize the column names of the shapefile. We also use `filter()` to keep only the rows with admin2name of "Western Area Urban" or "Western Area Rural".    
+次に、**janitor** パッケージの `clean_names()` を使って、シェープファイルの列名を標準化します。また、`filter()` を使って、admin2name が "Western Area Urban" または "Western Area Rural" の行だけを残します。   
 
 ```{r}
 # ADM3 level clean
 sle_adm3 <- sle_adm3_raw %>%
-  clean_names() %>% # standardize column names
-  filter(admin2name %in% c("Western Area Urban", "Western Area Rural")) # filter to keep certain areas
+  clean_names() %>% # 列名の標準化
+  filter(admin2name %in% c("Western Area Urban", "Western Area Rural")) # 特定の地域を残してフィルター
 ```
 
-Below you can see the how the shapefile looks after import and cleaning. *Scroll to the right* to see how there are columns with admin level 0 (country), admin level 1, admin level 2, and finally admin level 3. Each level has a character name and a unique identifier "pcode". The pcode expands with each increasing admin level e.g. SL (Sierra Leone) -> SL04 (Western) -> SL0410 (Western Area Rural) -> SL040101 (Koya Rural).  
+下の表は、インポートし、クリーニングした後のシェープファイルの様子です。右側にスクロールして、admin レベル 0（国）、admin レベル 1、admin レベル 2、そして最後に admin レベル 3 の列があることがわかります。それぞれのレベルには、キャラクター名と固有の識別子 "pcode" があります。たとえば、SL（Sierra Leone） → 04（Western） → L0410（Western Area Rural）→ L0040101（Koya Rural）のように、pcode は admin レベルが上がるごとに拡張されます。
 
 ```{r message=FALSE, echo=F}
-# display the shapefile as a table
+# shapefile を表として表示
 DT::datatable(head(sle_adm3, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
 
-### Population data {.unnumbered}  
+### 人口データ {.unnumbered}
 
-**Sierra Leone: Population by ADM3**  
+**シエラレオネ: ADM3 ごとの人口**  
 
-These data can again be downloaded from HDX (link [here](https://data.humdata.org/dataset/sierra-leone-population)) or via our **epirhandbook** R package as explained [in this page][Download handbook and data]. We use `import()` to load the .csv file. We also pass the imported file to `clean_names()` to standardize the column name syntax.   
+これらのデータは、HDX からダウンロードすることもできますし（リンクは[こちら](https://data.humdata.org/dataset/sierra-leone-population)）、この章[ハンドブックとデータのダウンロード](#data-used)で説明しているように、**epirhandbook** パッケージを介してダウンロードすることもできます。.csv ファイルの読み込みには、`import()` を使用します。また、インポートしたファイルを `clean_names()` に渡して列名の構文を標準化します。
 
 ```{r}
-# Population by ADM3
+# ADM3 ごとの人口
 sle_adm3_pop <- import(here("data", "gis", "population", "sle_admpop_adm3_2020.csv")) %>%
   clean_names()
 ```
 
-Here is what the population file looks like. Scroll to the right to see how each jurisdiction has columns with `male` population, `female` populaton, `total` population, and the population break-down in columns by age group.  
+人口ファイルはこのようになっています。右にスクロールすると、各行政区域に `male`、`female`、`total` の列があり、さらに年齢層別の列に人口の内訳が表示されています。 
 
 ```{r message=FALSE, echo=F}
-# display the population as a table
+# 人口を表として表示
 DT::datatable(head(sle_adm3_pop, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-### Health Facilities {.unnumbered}
+### 医療施設 {.unnumbered}
 
-**Sierra Leone: Health facility data from OpenStreetMap**  
+**シエラレオネ: OpenStreetMap からの医療施設**  
 
-Again we have downloaded the locations of health facilities from HDX [here](https://data.humdata.org/dataset/hotosm_sierra_leone_health_facilities) or via instructions in the [Download handbook and data] page.   
+今回も HDX から医療施設の位置情報をダウンロードしました。[こちら](https://data.humdata.org/dataset/hotosm_sierra_leone_health_facilities) または [ハンドブックとデータのダウンロード](#data-used)の章の指示に従ってください。  
 
-We import the facility points shapefile with `read_sf()`, again clean the column names, and then filter to keep only the points tagged as either "hospital", "clinic", or "doctors".  
+施設の位置を示す点のシェープファイルを `read_sf()` でインポートし、列名をクリーニングしてから、病院（"hospital"）、診療所（"clinic"）、医師（"doctor"） のいずれかのタグが付けられた点だけを残すように抽出しました。 
 
 
 ```{r}
-# OSM health facility shapefile
+# OSM 医療施設の shapefile
 sle_hf <- sf::read_sf(here("data", "gis", "shp", "sle_hf.shp")) %>% 
   clean_names() %>%
   filter(amenity %in% c("hospital", "clinic", "doctors"))
 ```
 
-Here is the resulting dataframe - *scroll right* to see the facility name and `geometry` coordinates.  
+<u>右にスクロールする</u>と、施設名と `geometry` 座標が表示されます。 
 
 ```{r message=FALSE, echo=F}
-# display the population as a table
+# 人口を表として表示
 DT::datatable(head(sle_hf, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
@@ -270,46 +295,46 @@ DT::datatable(head(sle_hf, 50), rownames = FALSE, options = list(pageLength = 5,
 
 
 <!-- ======================================================= -->
-## Plotting coordinates {  }
+## 座標のプロット {  }
 
-The easiest way to plot X-Y coordinates (longitude/latitude, points), in this case of cases, is to draw them as points directly from the `linelist_sf` object which we created in the preparation section.
+X-Y座標（経度・緯度で表される点）をプロットする最も簡単な方法は、今回の場合、準備編で作成した `linelist_sf` オブジェクトから直接、点として描画することです。
 
-The package **tmap** offers simple mapping capabilities for both static ("plot" mode) and interactive ("view" mode) with just a few lines of code. The **tmap** syntax is similar to that of **ggplot2**, such that commands are added to each other with `+`. Read more detail in this [vignette](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html). 
+**tmap** パッケージ は、わずか数行のコードで、静的（"plot" モード）とインタラクティブ（"view" モード）の両方に対応したシンプルなマッピング機能を提供します。**tmap** パッケージ の構文は **ggplot2** パッケージ と似ていて、コマンド同士を `+` で追加していきます。詳しくはこの [vignette](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html) をご覧ください。
 
 
-1) Set the **tmap** mode. In this case we will use "plot" mode, which produces static outputs.  
+1) **tmap** モードを設定。ここでは plot モードを使い、静的なアウトプットを作成します。  
 
 ```{r, warning = F, message=F}
-tmap_mode("plot") # choose either "view" or "plot"
+tmap_mode("plot") # "view" または "plot" を選択
 ```
 
-Below, the points are plotted alone.`tm_shape()` is provided with the `linelist_sf` objects. We then add points via `tm_dots()`, specifying the size and color. Because `linelist_sf` is an sf object, we have already designated the two columns that contain the lat/long coordinates and the coordinate reference system (CRS): 
+以下では、点を単独でプロットしています。`tm_shape()` は、`linelist_sf` オブジェクトとともに提供されます。次に、`tm_dots()` でサイズと色を指定して点を追加します。`linelist_sf` は sf オブジェクトなので、緯度・経度座標と座標系（CRS）を格納する2つの列はすでに指定されています。
 
 
 ```{r, warning = F, message=F}
-# Just the cases (points)
+# 症例（点）のみ
 tm_shape(linelist_sf) + tm_dots(size=0.08, col='blue')
 ```
 
-Alone, the points do not tell us much. So we should also map the administrative boundaries:  
+点だけでは、あまり意味がありません。そこで、行政境界もマッピングする必要があります。 
 
-Again we use `tm_shape()` (see [documentation](https://www.rdocumentation.org/packages/tmap/versions/3.3/topics/tm_shape)) but instead of providing the case points shapefile, we provide the administrative boundary shapefile (polygons).  
+ここでも `tm_shape()` を使いますが（[documentation](https://www.rdocumentation.org/packages/tmap/versions/3.3/topics/tm_shape) 参照）、症例の点のシェープファイルを提供する代わりに、行政境界のシェープファイル（ポリゴン）を提供します。 
 
-With the `bbox = ` argument (bbox stands for "bounding box") we can specify the coordinate boundaries. First we show the map display without `bbox`, and then with it.  
+`bbox = ` の引数（bbox は "bounding box" の略）で、座標の境界を指定することができます。まず `bbox` なしの地図表示を行い、次に `bbox` ありの地図表示を行います。 
 
 ```{r, out.width = c('50%', '50%'), fig.show='hold', warning=F, message=F}
-# Just the administrative boundaries (polygons)
-tm_shape(sle_adm3) +               # admin boundaries shapefile
-  tm_polygons(col = "#F7F7F7")+    # show polygons in light grey
-  tm_borders(col = "#000000",      # show borders with color and line weight
+# 行政境界（ポリゴン）のみ
+tm_shape(sle_adm3) +               # 行政境界のシェープファイル
+  tm_polygons(col = "#F7F7F7")+    # ポリゴンを薄い灰色で表示
+  tm_borders(col = "#000000",      # 境界を色と線の太さで表示
              lwd = 2) +
-  tm_text("admin3name")            # column text to display for each polygon
+  tm_text("admin3name")            # 各ポリゴンについて表示する列テキスト
 
 
-# Same as above, but with zoom from bounding box
+# 上と同様、ただしバウンディングボックス引数から縮尺を指定
 tm_shape(sle_adm3,
-         bbox = c(-13.3, 8.43,    # corner
-                  -13.2, 8.5)) +  # corner
+         bbox = c(-13.3, 8.43,    # 角
+                  -13.2, 8.5)) +  # 角
   tm_polygons(col = "#F7F7F7") +
   tm_borders(col = "#000000", lwd = 2) +
   tm_text("admin3name")
@@ -317,98 +342,98 @@ tm_shape(sle_adm3,
 ```
 
 
-And now both points and polygons together:  
+そして、今度は点とポリゴンの両方を一緒に表示します。
 
 ```{r, warning=F, message=FALSE}
-# All together
+# すべてまとめる
 tm_shape(sle_adm3, bbox = c(-13.3, 8.43, -13.2, 8.5)) +     #
   tm_polygons(col = "#F7F7F7") +
   tm_borders(col = "#000000", lwd = 2) +
   tm_text("admin3name")+
 tm_shape(linelist_sf) +
   tm_dots(size=0.08, col='blue', alpha = 0.5) +
-  tm_layout(title = "Distribution of Ebola cases")   # give title to map
-
+  tm_layout(title = "Distribution of Ebola cases")   # 地図にタイトルを付ける
+            
 ```
 
 
-To read a good comparison of mapping options in R, see this [blog post](https://rstudio-pubs-static.s3.amazonaws.com/324400_69a673183ba449e9af4011b1eeb456b9.html).  
+R でのマッピングオプションの比較については、こちらの [ブログ記事](https://rstudio-pubs-static.s3.amazonaws.com/324400_69a673183ba449e9af4011b1eeb456b9.html) をご覧ください。 
 
 
 
 
 <!-- ======================================================= -->
-## Spatial joins {}
+## 空間結合 {}
 
-You may be familiar with *joining* data from one dataset to another one. Several methods are discussed in the [Joining data] page of this handbook. A spatial join serves a similar purpose but leverages spatial relationships. Instead of relying on common values in columns to correctly match observations, you can utilize their spatial relationships, such as one feature being *within* another, or *the nearest neighbor* to another, or within a *buffer* of a certain radius from another, etc.  
-
-
-The **sf** package offers various methods for spatial joins. See more documentation about the st_join method and spatial join types in this [reference](https://r-spatial.github.io/sf/reference/geos_binary_pred.html).  
+データセットと別のデータセットを <u>結合</u> することについては知っているでしょう。いくつかの方法は、このハンドブックの[データの結合](#joining-matching)の章で説明しています。空間結合は、同様の目的を持ちますが、空間的な関係を利用します。観測値を正しく一致させるために列の共通の値に頼るのではなく、あるフィーチャが他のフィーチャの中に入っているとか、他のフィーチャに<u>最近傍</u>であるとか、他のフィーチャから一定の半径の<u>バッファ</u>内にあるなど、空間的な関係を利用することができます。 
 
 
-### Points in polygon {.unnumbered}
-**Spatial assign administrative units to cases**
+**sf** パッケージには、空間結合のための様々なメソッドが用意されています。st_join メソッドや空間結合の種類については、こちらの[参考資料](https://r-spatial.github.io/sf/reference/geos_binary_pred.html)に詳しい説明があります。 
 
-Here is an interesting conundrum: the case linelist does not contain any information about the administrative units of the cases. Although it is ideal to collect such information during the initial data collection phase, we can also assign administrative units to individual cases based on their spatial relationships (i.e. point intersects with a polygon).  
 
-Below, we will spatially intersect our case locations (points) with the ADM3 boundaries (polygons):  
+### ポリゴン内の点 {.unnumbered}
+**症例に行政単位を空間割当て**
 
-1) Begin with the linelist (points)  
-2) Spatial join to the boundaries, setting the type of join at "st_intersects"  
-3) Use `select()` to keep only certain of the new administrative boundary columns  
+ここで興味深い問題があります。症例の linelist には、症例の admin 単位に関する情報が含まれていません。このような情報は、最初のデータ収集段階で収集するのが理想的ですが、空間的な関係（つまり、点がポリゴンと交差する）に基づいて、個々の症例に admin 単位を割り当てることもできます。
+
+以下では、症例の位置（点）と ADM3 の境界（ポリゴン）を空間的に交差させます。 
+
+1) linelist（点）から始める  
+2) 結合のタイプを "st_intersects" に設定して、境界線に空間的に結合する
+3) `select()` を使用して、新しい行政境界列のうち特定のものだけを残す  
 
 ```{r, warning=F, message=F}
 linelist_adm <- linelist_sf %>%
   
-  # join the administrative boundary file to the linelist, based on spatial intersection
+  # 空間交差に基づいて行政境界を linelist に結合
   sf::st_join(sle_adm3, join = st_intersects)
 ```
 
-All the columns from `sle_adms` have been added to the linelist! Each case now has columns detailing the administrative levels that it falls within. In this example, we only want to keep two of the new columns (admin level 3), so we `select()` the old column names and just the two additional of interest:  
+`sle_adms` のすべての列が linelist に追加されました！各症例には、該当する行政区域レベルの詳細を示す列が追加されました。この例では、新しい列のうち 2 つ（admin レベル3）だけを残したいので、古い列名を `select()` して、追加したい2つだけを選択します。 
 
 ```{r, warning=F, message=F}
 linelist_adm <- linelist_sf %>%
   
-  # join the administrative boundary file to the linelist, based on spatial intersection
+  # 空間交差に基づいて、行政境界ファイルを linelist に結合
   sf::st_join(sle_adm3, join = st_intersects) %>% 
   
-  # Keep the old column names and two new admin ones of interest
+  # 古い列名はそのままに、新たに2つの admin の列名を追加
   select(names(linelist_sf), admin3name, admin3pcod)
 ```
 
-Below, just for display purposes you can see the first ten cases and that their admin level 3 (ADM3) jurisdictions that have been attached, based on where the point spatially intersected with the polygon shapes.    
+下の図は、最初の10件と、ポリゴン図形と空間的に交差する点に基づいて付けられた admin レベル3（ADM3）の行政境界を表示しています。
 
 ```{r, warning=F, message=F}
-# Now you will see the ADM3 names attached to each case
+# これで、各症例に ADM3 名がついたことが確認できます。
 linelist_adm %>% select(case_id, admin3name, admin3pcod)
 ```
 
-Now we can describe our cases by administrative unit - something we were not able to do before the spatial join!  
+空間結合の前にはできなかった、行政単位での症例の表現が可能になりました。
 
 ```{r, warning=F, message=F}
-# Make new dataframe containing counts of cases by administrative unit
-case_adm3 <- linelist_adm %>%          # begin with linelist with new admin cols
-  as_tibble() %>%                      # convert to tibble for better display
-  group_by(admin3pcod, admin3name) %>% # group by admin unit, both by name and pcode 
-  summarise(cases = n()) %>%           # summarize and count rows
-  arrange(desc(cases))                     # arrange in descending order
+# 行政単位ごとに症例の数を含むデータフレームを新規作成
+case_adm3 <- linelist_adm %>%          # 新しい admin 列を含む linelist で始める
+  as_tibble() %>%                      # 見やすいように tibble に変換
+  group_by(admin3pcod, admin3name) %>% # 名前と pcode で行政単位をグループ化
+  summarise(cases = n()) %>%           # 要約と行数のカウント
+  arrange(desc(cases))                 # 下り順に並べ替え
 
 case_adm3
 ```
 
-We can also create a bar plot of case counts by administrative unit.  
+また、行政単位ごとの症例数の棒グラフを作成することもできます。 
 
-In this example, we begin the `ggplot()` with the `linelist_adm`, so that we can apply factor functions like `fct_infreq()` which orders the bars by frequency (see page on [Factors] for tips).  
+この例では、`ggplot()` を `linelist_adm` で始めているので、頻度で棒グラフを並べる `fct_infreq()` などのファクタ関数を適用することができます（ヒントは [因子（ファクタ）型データ](#factors) の章を参照してください）。 
 
 ```{r, warning=F, message=F}
 ggplot(
-    data = linelist_adm,                       # begin with linelist containing admin unit info
+    data = linelist_adm,                     # admin unit 情報を含む linelist で始める
     mapping = aes(
-      x = fct_rev(fct_infreq(admin3name))))+ # x-axis is admin units, ordered by frequency (reversed)
-  geom_bar()+                                # create bars, height is number of rows
-  coord_flip()+                              # flip X and Y axes for easier reading of adm units
-  theme_classic()+                           # simplify background
-  labs(                                      # titles and labels
+      x = fct_rev(fct_infreq(admin3name))))+ # x軸は行政単位、件数で並べ替え
+  geom_bar()+                                # 帽を作成、高さは行数
+  coord_flip()+                              # adm を読みやすくするためにXとYを入れ替える
+  theme_classic()+   # 背景を単純に
+  labs(                                      # タイトルとラベル
     x = "Admin level 3",
     y = "Number of cases",
     title = "Number of cases, by adminstative unit",
@@ -418,142 +443,141 @@ ggplot(
 
 
 <!-- ======================================================= -->
-### Nearest neighbor {.unnumbered}
+### 最近傍 {.unnumbered}
 
-**Finding the nearest health facility / catchment area**  
+**最寄の医療施設／集客エリアを探す**  
 
-It might be useful to know where the health facilities are located in relation to the disease hot spots.
+病気のホットスポットに関連して、医療施設がどこにあるかを知っておくと便利かもしれません。
 
-We can use the *st_nearest_feature* join method from the `st_join()` function (**sf** package) to visualize the closest health facility to individual cases.  
+ここでは、`st_join()` (**sf** パッケージ)の *st_nearest_feature* 結合メソッドを使って、個々の症例に最も近い医療施設を可視化することができます。 
 
-1) We begin with the shapefile linelist `linelist_sf`  
-2) We spatially join with `sle_hf`, which is the locations of health facilities and clinics (points)  
+1) まず、シェープファイルのラインリスト `linelist_sf` を用意します。 
+2) 保健施設や診療所の位置（点）である `sle_hf` と空間的に結合します。 
 
 ```{r, warning=F, message=F}
-# Closest health facility to each case
-linelist_sf_hf <- linelist_sf %>%                  # begin with linelist shapefile  
-  st_join(sle_hf, join = st_nearest_feature) %>%   # data from nearest clinic joined to case data 
-  select(case_id, osm_id, name, amenity) %>%       # keep columns of interest, including id, name, type, and geometry of healthcare facility
-  rename("nearest_clinic" = "name")                # re-name for clarity
+# 各症例に最も近い医療施設
+linelist_sf_hf <- linelist_sf %>%                  # linelist shapefile で始める
+  st_join(sle_hf, join = st_nearest_feature) %>%   # 症例データから最も近い診療所からのデータ
+  select(case_id, osm_id, name, amenity) %>%       # 残しておくべき列、例えば id, name, type, と医療施設の位置情報
+  rename("nearest_clinic" = "name")                # 分かりやすいように名前を変更
 ```
 
-We can see below (first 50 rows) that the each case now has data on the nearest clinic/hospital  
+以下（最初の50行）のように、それぞれの症例には最寄りの診療所や病院のデータがあることがわかります。 
 
 ```{r message=FALSE, echo=F}
 DT::datatable(head(linelist_sf_hf, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-We can see that "Den Clinic" is the closest health facility for about ~30% of the cases.
+約30％の症例で "Den Clinic" が最も近い医療機関であることがわかります。
 
 ```{r}
-# Count cases by health facility
-hf_catchment <- linelist_sf_hf %>%   # begin with linelist including nearest clinic data
-  as.data.frame() %>%                # convert from shapefile to dataframe
-  count(nearest_clinic,              # count rows by "name" (of clinic)
-        name = "case_n") %>%         # assign new counts column as "case_n"
-  arrange(desc(case_n))              # arrange in descending order
+# 医療施設ごとに症例を数える
+hf_catchment <- linelist_sf_hf %>%   # 最寄りの診療所データを含むlinelistで始める
+  as.data.frame() %>%                # shapefile をデータフレームに変換
+  count(nearest_clinic,              # （診療所の）"name" で行を数える
+        name = "case_n") %>%         # 数えたデータの列に "case_n" と命名
+  arrange(desc(case_n))              # 下がり順で並べ替え
 
-hf_catchment                         # print to console
+hf_catchment                         # console に表示
 ```
 
-To visualize the results, we can use **tmap** - this time interactive mode for easier viewing  
+結果を可視化するために、**tmap** パッケージ を使用することができます。 
 
 ```{r, warning=F, message=F}
-tmap_mode("view")   # set tmap mode to interactive  
+tmap_mode("view")   # tmap モードをインタラクティブに設定
 
-# plot the cases and clinic points 
-tm_shape(linelist_sf_hf) +            # plot cases
-  tm_dots(size=0.08,                  # cases colored by nearest clinic
+# 症例と診療所の点をプロット
+tm_shape(linelist_sf_hf) +            # 症例をプロット
+  tm_dots(size=0.08,                  # 最も近い診療所で症例を色分け
           col='nearest_clinic') +    
-tm_shape(sle_hf) +                    # plot clinic facilities in large black dots
+tm_shape(sle_hf) +                    # 診療所を大きい黒い点でプロット
   tm_dots(size=0.3, col='black', alpha = 0.4) +      
-  tm_text("name") +                   # overlay with name of facility
-tm_view(set.view = c(-13.2284, 8.4699, 13), # adjust zoom (center coords, zoom)
+  tm_text("name") +                   # 施設名でオーバーレイ
+tm_view(set.view = c(-13.2284, 8.4699, 13), # 縮尺を調整 (中心座標, zoom)
         set.zoom.limits = c(13,14))+
 tm_layout(title = "Cases, colored by nearest clinic")
 ```
 
 
-### Buffers {.unnumbered} 
+### バッファ {.unnumbered} 
 
-We can also explore how many cases are located within 2.5km (~30 mins) walking distance from the closest health facility.
+また、最も近い医療施設から徒歩2.5km（約30分）以内にある症例がどれくらいあるかを調べることもできます。
 
-*Note: For more accurate distance calculations, it is better to re-project your sf object to the respective local map projection system such as UTM (Earth projected onto a planar surface). In this example, for simplicity we will stick to the World Geodetic System (WGS84) Geograhpic coordinate system (Earth represented in a spherical / round surface, therefore the units are in decimal degrees). We will use a general conversion of: 1 decimal degree = ~111km.*  
+<u>注: より正確な距離を計算するためには、UTM（地球を平面に投影したもの）などの各地域の地図投影系に sf オブジェクトを再投影するのがよいでしょう。この例では、簡単にするために、世界測地系（WGS84）の地理的座標系（地球は球状/円形の表面で表現され、そのため単位は10進法の度数）にしておきます。ここでは、一般的な換算として、1度＝約111kmとします。</u>
 
-See more information about map projections and coordinate systems at this [esri article](https://www.esri.com/arcgis-blog/products/arcgis-pro/mapping/gcs_vs_pcs/). This [blog](http://www.geo.hunter.cuny.edu/~jochen/gtech201/lectures/lec6concepts/map%20coordinate%20systems/how%20to%20choose%20a%20projection.htm) talks about different types of map projection and how one can choose a suitable projection depending on the area of interest and the context of your map / analysis.
+地図投影法と座標系については、こちらの[esriの記事](https://www.esri.com/arcgis-blog/products/arcgis-pro/mapping/gcs_vs_pcs/)をご覧ください。こちらの[ブログ](http://www.geo.hunter.cuny.edu/~jochen/gtech201/lectures/lec6concepts/map%20coordinate%20systems/how%20to%20choose%20a%20projection.htm) では、様々なタイプの地図投影について、また、興味のある分野や地図・分析の文脈に応じて、どのように適切な投影を選ぶことができるかについて述べられています。
 
 
-**First**, create a circular buffer with a radius of ~2.5km around each health facility. This is done with the function `st_buffer()` from **tmap**. Because the unit of the map is in lat/long decimal degrees, that is how "0.02" is interpreted. If your map coordinate system is in meters, the number must be provided in meters.  
+**まず**、各医療施設の周囲に半径約2.5kmの円形バッファを作成します。これは **tmap** パッケージ の `st_buffer()` で行います。地図の単位は緯度・経度の10進法であるため、"0.02" は度数として解釈されます。地図の座標系がメートル単位の場合は、数値もメートル単位で指定する必要があります。 
 
 ```{r, warning=F, message=F}
 sle_hf_2k <- sle_hf %>%
-  st_buffer(dist=0.02)       # decimal degrees translating to approximately 2.5km 
+  st_buffer(dist=0.02)       # 約2.5kmに度数を変換
 ```
 
-Below we plot the buffer zones themselves, with the :  
+以下のように、バッファゾーン自体を作ります：
 
 ```{r, warning=F, message=F}
 tmap_mode("plot")
-# Create circular buffers
+# 円バッファを作成
 tm_shape(sle_hf_2k) +
   tm_borders(col = "black", lwd = 2)+
-tm_shape(sle_hf) +                    # plot clinic facilities in large red dots
+tm_shape(sle_hf) +                    # 診療所を大きい赤丸でプロット
   tm_dots(size=0.3, col='black')      
 ```
 
 
-**Second*, we intersect these buffers with the cases (points) using `st_join()` and the join type of *st_intersects*. That is, the data from the buffers are joined to the points that they intersect with. 
+**次に**、<u>`st_join()` の *st_intersects* 結合タイプを使って、これらのバッファと症例（点）を交差させます。</u>これによって、バッファからのデータが、交差している点に結合されます。
 
 ```{r, warning=F, message=F}
-# Intersect the cases with the buffers
+# バッファで症例を交差
 linelist_sf_hf_2k <- linelist_sf_hf %>%
   st_join(sle_hf_2k, join = st_intersects, left = TRUE) %>%
   filter(osm_id.x==osm_id.y | is.na(osm_id.y)) %>%
   select(case_id, osm_id.x, nearest_clinic, amenity.x, osm_id.y)
 ```
 
-Now we can count the results: ` nrow(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),])` out of 1000 cases did not intersect with any buffer (that value is missing), and so live more than 30 mins walk from the nearest health facility.
+これによって結果を数えることができます。1000件のうち`r nrow(linelist_sf_hf_2k[is.na(linelist_sf_hf_2k$osm_id.y),])`件は、どのバッファとも交差していない（値が欠けている）ので、最寄りの医療施設から徒歩30分以上の場所に住んでいることになります。
 
 ```{r}
-# Cases which did not get intersected with any of the health facility buffers
+# どの医療施設バッファとも交差しなかった症例
 linelist_sf_hf_2k %>% 
   filter(is.na(osm_id.y)) %>%
   nrow()
 ```
 
-We can visualize the results such that cases that did not intersect with any buffer appear in red.  
+その結果、どのバッファとも交わらなかった症例が赤で表示されるように可視化されます。 
 
 ```{r, out.width = '100%', warning=F, message=F}
 tmap_mode("view")
 
-# First display the cases in points
+# まず症例を点で表示
 tm_shape(linelist_sf_hf) +
   tm_dots(size=0.08, col='nearest_clinic') +
 
-# plot clinic facilities in large black dots
+# 診療所を大きい黒点でプロット
 tm_shape(sle_hf) +                    
   tm_dots(size=0.3, col='black')+   
 
-# Then overlay the health facility buffers in polylines
+# 医療施設バッファをポリラインで重ねる
 tm_shape(sle_hf_2k) +
   tm_borders(col = "black", lwd = 2) +
 
-# Highlight cases that are not part of any health facility buffers
-# in red dots  
+# どの医療施設バッファにもない症例を赤点で強調
 tm_shape(linelist_sf_hf_2k %>%  filter(is.na(osm_id.y))) +
   tm_dots(size=0.1, col='red') +
 tm_view(set.view = c(-13.2284,8.4699, 13), set.zoom.limits = c(13,14))+
 
-# add title  
+# タイトルを追加
 tm_layout(title = "Cases by clinic catchment area")
 
 ```
 
 
-### Other spatial joins {.unnumbered}  
+### 他の空間結合 {.unnumbered}  
 
-Alternative values for argument `join` include (from the [documentation](https://r-spatial.github.io/sf/reference/st_join.html))
+`join`の引数は、このほかに以下の値をとります。 ([ドキュメント](https://r-spatial.github.io/sf/reference/st_join.html)より)
 
 * st_contains_properly  
 * st_contains  
@@ -573,226 +597,232 @@ Alternative values for argument `join` include (from the [documentation](https:/
 
 
 
-## Choropleth maps {}  
+## 色分け（Choropleth）地図 {}
 
 
-Choropleth maps can be useful to visualize your data by pre-defined area, usually administrative unit or health area. In outbreak response this can help to target resource allocation for specific areas with high incidence rates, for example.
+色分け地図は、あらかじめ定義されたエリア（通常は行政単位や保健エリア）ごとにデータを視覚化するのに役立ちます。例えば、感染発生対応では、発生率の高い特定の地域にリソースを割り当てる際に役立ちます。
 
-Now that we have the administrative unit names assigned to all cases (see section on spatial joins, above), we can start mapping the case counts by area (choropleth maps).
+すべての症例に行政単位名が割り当てられたので（上記の「空間結合」のセクションを参照）、症例数をエリア別にマッピングすることができます（色分け地図）。
 
-Since we also have population data by ADM3, we can add this information to the *case_adm3* table created previously.
+ADM3 ごとの人口データもあるので、この情報を先に作成した *case_adm3* テーブルに追加することができます。
 
-We begin with the dataframe created in the previous step `case_adm3`, which is a summary table of each administrative unit and its number of cases.  
+まず、前のステップで作成したデータフレーム `case_adm3` から始めます。これは、各行政単位とその症例数の要約表です。 
 
-1) The population data `sle_adm3_pop` are joined using a `left_join()` from **dplyr** on the basis of common values across column `admin3pcod` in the `case_adm3` dataframe, and column `adm_pcode` in the `sle_adm3_pop` dataframe. See page on [Joining data]).  
-2) `select()` is applied to the new dataframe, to keep only the useful columns - `total` is total population  
-3) Cases per 10,000 populaton is calculated as a new column with `mutate()`  
+1) 人口データ `sle_adm3_pop` は、**dplyr** パッケージ の `left_join()` を用いて、`case_adm3` データフレームの `admin3pcod` 列と `sle_adm3_pop` データフレームの `adm_pcode` 列に共通する値に基づいて結合されています。[データの結合](#joining-matching)の章を参照）。 
+2) `select()` を新しいデータフレームに適用して、有用な列だけを残す - `total` は総人口です。 
+3) `mutate()` を用いて、人口 10,000 人あたりの症例数を新しい列として計算します。
 
 
 ```{r}
-# Add population data and calculate cases per 10K population
+# 人口データを追加し、１万人当たりの症例数を計算
 case_adm3 <- case_adm3 %>% 
-     left_join(sle_adm3_pop,                             # add columns from pop dataset
-               by = c("admin3pcod" = "adm3_pcode")) %>%  # join based on common values across these two columns
-     select(names(case_adm3), total) %>%                 # keep only important columns, including total population
-     mutate(case_10kpop = round(cases/total * 10000, 3)) # make new column with case rate per 10000, rounded to 3 decimals
+     left_join(sle_adm3_pop,                             # 人口データから列を追加　
+               by = c("admin3pcod" = "adm3_pcode")) %>%  # 二つの列の共通の値に基づく結合
+     select(names(case_adm3), total) %>%                 # 重要な列のみ保持、総人口など
+     mutate(case_10kpop = round(cases/total * 10000, 3)) # 10000あたりの症例数の列を作成、小数点以下３桁で四捨五入
 
-case_adm3                                                # print to console for viewing
+case_adm3                                                # console に表示
 ```
 
-Join this table with the ADM3 polygons shapefile for mapping
+このテーブルを ADM3 のポリゴンシェープファイル と結合してマッピングします。
 
 ```{r, warning=F, message=F}
-case_adm3_sf <- case_adm3 %>%                 # begin with cases & rate by admin unit
-  left_join(sle_adm3, by="admin3pcod") %>%    # join to shapefile data by common column
-  select(objectid, admin3pcod,                # keep only certain columns of interest
-         admin3name = admin3name.x,           # clean name of one column
+case_adm3_sf <- case_adm3 %>%                 # 行政単位での症例と感染率で始める
+  left_join(sle_adm3, by="admin3pcod") %>%    # shapefile データと共通列で結合
+  select(objectid, admin3pcod,                # 指定した列のみ保持
+         admin3name = admin3name.x,           # 一つの列名をきれいにする
          admin2name, admin1name,
          cases, total, case_10kpop,
-         geometry) %>%                        # keep geometry so polygons can be plotted
-  st_as_sf()                                  # convert to shapefile
+         geometry) %>%                        # プロットできるように座標を保持
+  st_as_sf()                                  # shapefile に変換
 
 ```
 
 
-Mapping the results
+結果をマッピング。
 
 ```{r, message=F, warning=F}
-# tmap mode
-tmap_mode("plot")               # view static map
+case_adm3_sf <- na.omit(case_adm3_sf)
 
-# plot polygons
+# tmap mode
+tmap_mode("plot")               # 静的地図を表示
+
+# ポリゴンをプロット
 tm_shape(case_adm3_sf) + 
-        tm_polygons("cases") +  # color by number of cases column
-        tm_text("admin3name")   # name display
+        tm_polygons("cases") +  # 症例数の列で色分け
+        tm_text("admin3name")   # 表示に名前を付ける
 ```
 
-We can also map the incidence rates  
+インシデンス率もまた地図にします。
 
 
 ```{r, warning=F, message=F}
-# Cases per 10K population
-tmap_mode("plot")             # static viewing mode
+# 1万人あたりの症例
+tmap_mode("plot")             # 静的ビューモード
 
-# plot
-tm_shape(case_adm3_sf) +                # plot polygons
-  tm_polygons("case_10kpop",            # color by column containing case rate
-              breaks=c(0, 10, 50, 100), # define break points for colors
-              palette = "Purples"       # use a purple color palette
+# プロット
+tm_shape(case_adm3_sf) +                # ポリゴンをプロット
+  tm_polygons("case_10kpop",            # 症例率を含む列で色分け
+              breaks=c(0, 10, 50, 100), # 色分けの値を定義
+              palette = "Purples"       # 紫色のカラーパレットを使用
               ) +
-  tm_text("admin3name")                 # display text
+  tm_text("admin3name")                 # テキストを表示
 
 ```
 
-## Mapping with ggplot2
-If you are already familiar with using **ggplot2**, you can use that package instead to create static maps of your data. The `geom_sf()` function will draw different objects based on which features (points, lines, or polygons) are in your data. For example, you can use `geom_sf()` in a `ggplot()` using `sf` data with polygon geometry to create a choropleth map.
+## ggplot2 で地図作成
+すでに **ggplot2** パッケージ の使用に慣れている場合は、データの静的なマップを作成する代わりに、ggplot2 パッケージを使用することができます。`geom_sf()` は、データに含まれる特徴 (点、線、多角形) に応じて異なるオブジェクトを描画します。例えば、ポリゴンを含む `sf` データを使った `ggplot()` の中で `geom_sf()` を使うと、色分け地図を作ることができます。
 
-To illustrate how this works, we can start with the ADM3 polygons shapefile that we used earlier. Recall that these are Admin Level 3 regions in Sierra Leone:
+これがどのように機能するかを説明するために、先ほど使用した ADM3 ポリゴンのシェープファイルから始めます。このポリゴンは、シエラレオネの Admin Level 3 の地域であることを思い出してください。
 
 ```{r}
 sle_adm3
 ```
-We can use the `left_join()` function from **dplyr** to add the data we would like to map to the shapefile object. In this case, we are going to use the `case_adm3` data frame that we created earlier to summarize case counts by administrative region; however, we can use this same approach to map any data stored in a data frame.
+**dplyr** パッケージ の `left_join()` を使って、マッピングしたいデータをシェープファイルオブジェクトに追加することができます。この例では、先ほど作成した `case_adm3` データフレームを使って、行政区ごとの症例数をまとめていますが、データフレームに格納されているどのようなデータでも、同様の方法でマッピングすることができます。
+
 ```{r}
 sle_adm3_dat <- sle_adm3 %>% 
-  inner_join(case_adm3, by = "admin3pcod") # inner join = retain only if in both data objects
+  inner_join(case_adm3, by = "admin3pcod") # inner join = どちらのデータオブジェクトにもある場合にのみ残す
 
-select(sle_adm3_dat, admin3name.x, cases) # print selected variables to console
+select(sle_adm3_dat, admin3name.x, cases) # console に選択した変数を表示
 ```
 
-To make a column chart of case counts by region, using **ggplot2**, we could then call `geom_col()` as follows:
+**ggplot2** パッケージ を使って、地域別の症例数の棒グラフを作成するには、次のように `geom_col()` を呼び出します。
 
 ```{r, fig.align = "center"}
 ggplot(data=sle_adm3_dat) +
-  geom_col(aes(x=fct_reorder(admin3name.x, cases, .desc=T),   # reorder x axis by descending 'cases'
-               y=cases)) +                                  # y axis is number of cases by region
-  theme_bw() +
-  labs(                                                     # set figure text
+  geom_col(aes(x=fct_reorder(admin3name.x, cases, .desc=T),   # 'cases' 下がり順でx軸を並べ替え
+               y=cases)) +                                  # y軸は地域ごとの症例数
+  theme_bw() + 
+  labs(                                                     # 図のテキストを設定
     title="Number of cases, by administrative unit",
     x="Admin level 3",
     y="Number of cases"
   ) + 
-  guides(x=guide_axis(angle=45))                            # angle x-axis labels 45 degrees to fit better
+  guides(x=guide_axis(angle=45))                            # 見やすいようにx軸を45度傾ける
 
 ```
 
-If we want to use **ggplot2** to instead make a choropleth map of case counts, we can use similar syntax to call the `geom_sf()` function:
+もし、**ggplot2** パッケージ を使って症例数の色分け地図を作りたい場合は、同様の構文で `geom_sf()` を呼び出すことができます。
 
 ```{r, fig.align = "center"}
 ggplot(data=sle_adm3_dat) + 
-  geom_sf(aes(fill=cases))    # set fill to vary by case count variable
+  geom_sf(aes(fill=cases))    # 症例数で塗りつぶしが変化するように設定
 
 ```
 
-We can then customize the appearance of our map using grammar that is consistent across **ggplot2**, for example:
+そして、例えば、**ggplot2** パッケージ で統一されている文法を使って、地図の外観をカスタマイズすることができます。
+
 ```{r, fig.align = "center"}
 ggplot(data=sle_adm3_dat) +                           
   geom_sf(aes(fill=cases)) +						
-  scale_fill_continuous(high="#54278f", low="#f2f0f7") +    # change color gradient
+  scale_fill_continuous(high="#54278f", low="#f2f0f7") +    # 色の段階を変更
   theme_bw() +
-  labs(title = "Number of cases, by administrative unit",   # set figure text
+  labs(title = "Number of cases, by administrative unit",   # 図のテキストを設定
        subtitle = "Admin level 3"
   )
 ```
 
-For R users who are comfortable working with **ggplot2**, `geom_sf()` offers a simple and direct implementation that is suitable for basic map visualizations. To learn more, read the [geom_sf() vignette](https://ggplot2.tidyverse.org/reference/ggsf.html) or the [ggplot2 book](https://ggplot2-book.org/maps.html). 
+**ggplot2** パッケージ に慣れているRユーザーにとって、`geom_sf()`は、実装がシンプルで直接的であり、基本的な地図の可視化に適しています。詳しくは、[geom_sf() ビニエット（vignette）](https://ggplot2.tidyverse.org/reference/ggsf.html) または [ggplot2 book](https://ggplot2-book.org/maps.html) をご覧ください。
 
 
 
 
 
 <!-- ======================================================= -->
-## Basemaps { }
+## 基図 { }
 
 ### OpenStreetMap {.unnumbered} 
 
-Below we describe how to achieve a basemap for a **ggplot2** map using OpenStreetMap features. Alternative methods include using **ggmap** which requires free registration with Google ([details](https://www.earthdatascience.org/courses/earth-analytics/lidar-raster-data-r/ggmap-basemap/)).  
+以下では、OpenStreetMap の機能を使って **ggplot2** パッケージを利用したマップの基図を作成する方法を説明します。他の方法としては、Google への無料登録が必要な **ggmap** パッケージ を使用する方法があります([詳細](https://www.earthdatascience.org/courses/earth-analytics/lidar-raster-data-r/ggmap-basemap/))。
 
-[**OpenStreetMap**](https://en.wikipedia.org/wiki/OpenStreetMap) is a collaborative project to create a free editable map of the world. The underlying geolocation data (e.g. locations of cities, roads, natural features, airports, schools, hospitals, roads etc) are considered the primary output of the project.
+[**OpenStreetMap**](https://en.wikipedia.org/wiki/OpenStreetMap) パッケージは、自由に編集可能な世界地図を作成する共同プロジェクトです。基本となるジオロケーション・データ（都市、道路、自然、空港、学校、病院、道路などの位置情報）は、このプロジェクトの主要なアウトプットと考えられています。
 
-First we load the **OpenStreetMap** package, from which we will get our basemap.  
+まず、**OpenStreetMap** パッケージをロードして、そこから基図を取得します。 
 
-Then, we create the object `map`, which we define using the function `openmap()` from **OpenStreetMap** package ([documentation](https://www.rdocumentation.org/packages/OpenStreetMap/versions/0.3.4/topics/openmap)). We provide the following:  
+次に、オブジェクト `map` を作成します。これは、**OpenStreetMap** パッケージの `openmap()` を使用して定義します ([documentation](https://www.rdocumentation.org/packages/OpenStreetMap/versions/0.3.4/topics/openmap))。以下のものを用意します。
 
-* `upperLeft` and `lowerRight` Two coordinate pairs specifying the limits of the basemap tile  
-  * In this case we've put in the max and min from the linelist rows, so the map will respond dynamically to the data  
-* `zoom = ` (if null it is determined automatically)  
-* `type =` which type of basemap - we have listed several possibilities here and the code is currently using the first one (`[1]`) "osm"  
-* `mergeTiles = ` we chose TRUE so the basetiles are all merged into one
+* `upperLeft` と `lowerRight` 基図タイルの境界を指定する2つの座標ペア。 
+  * ここでは、ラインリストの行の最大値と最小値を入れているので、地図は動的にデータに反応します。 
+* `zoom = ` (null の場合は自動的に決定されます)  
+* `type =` 基図の種類 - ここではいくつかの可能性を挙げていますが、コードは現在、最初のもの（`[1]`）である "osm" を使用しています。 
+* `mergeTiles = ` TRUEを選択したので、ベースタイルはすべて1つに統合されます。
 
 
 ```{r, message=FALSE, warning=FALSE}
-# load package
+# パッケージをロード
 pacman::p_load(OpenStreetMap)
 
-# Fit basemap by range of lat/long coordinates. Choose tile type
+# 緯度経度の範囲に基図を切り取る。タイル種別を選択。
 map <- openmap(
-  upperLeft = c(max(linelist$lat, na.rm=T), max(linelist$lon, na.rm=T)),   # limits of basemap tile
+  upperLeft = c(max(linelist$lat, na.rm=T), max(linelist$lon, na.rm=T)),   # 基図のタイルの制限
   lowerRight = c(min(linelist$lat, na.rm=T), min(linelist$lon, na.rm=T)),
   zoom = NULL,
   type = c("osm", "stamen-toner", "stamen-terrain", "stamen-watercolor", "esri","esri-topo")[1])
 ```
 
-If we plot this basemap right now, using `autoplot.OpenStreetMap()` from **OpenStreetMap** package, you see that the units on the axes are not latitude/longitude coordinates. It is using a different coordinate system. To correctly display the case residences (which are stored in lat/long), this must be changed.  
+今、この基図を **OpenStreetMap** パッケージの `autoplot.OpenStreetMap()` を使ってプロットしてみると、軸の単位が緯度・経度座標ではない違う座標系を使っていることがわかります。緯度/経度で保存されている）症例の位置を正しく表示するには、これを変更する必要があります。 
 
-```{r, warning=F, message=F}
+```{r, warning=F, message=F,eval=F}
 autoplot.OpenStreetMap(map)
 ```
-Thus, we want to convert the map to latitude/longitude with the `openproj()` function from **OpenStreetMap** package. We provide the basemap `map` and also provide the Coordinate Reference System (CRS) we want. We do this by providing the "proj.4" character string for the WGS 1984 projection, but you can provide the CRS in other ways as well. (see [this page](https://www.earthdatascience.org/courses/earth-analytics/spatial-data-r/understand-epsg-wkt-and-other-crs-definition-file-types/) to better understand what a proj.4 string is)  
+
+そこで、 **OpenStreetMap** パッケージの `openproj()` を使って、地図を緯度/経度に変換したいと思います。基図 `map` と、必要な座標系（CRS）を指定します。ここでは、WGS 1984投影の "proj.4"文字列を指定していますが、他の方法でCRSを指定することもできます。(proj.4文字列が何であるかを理解するには、[このページ](https://www.earthdatascience.org/courses/earth-analytics/spatial-data-r/understand-epsg-wkt-and-other-crs-definition-file-types/)を参照してください)  
 
 ```{r, warning=F, message=F}
-# Projection WGS84
+# 座標系 WGS84
 map_latlon <- openproj(map, projection = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 ```
 
-Now when we create the plot we see that along the axes are latitude and longitude coordinate. The coordinate system has been converted. Now our cases will plot correctly if overlaid!  
+プロットを作成すると、軸に沿って緯度と経度の座標が表示されています。座標系が変換されたことになります。これで、症例を重ね合わせても正しくプロットできるようになりました。 
 
 ```{r, warning=F, message=F}
-# Plot map. Must use "autoplot" in order to work with ggplot
+# 地図をプロット。ggplot を使うためには、"autoplot" が必須。
 autoplot.OpenStreetMap(map_latlon)
 ```
 
-See the tutorials [here](http://data-analytics.net/cep/Schedule_files/geospatial.html) and [here](https://www.rdocumentation.org/packages/OpenStreetMap/versions/0.3.4/topics/autoplot.OpenStreetMap) for more info.  
+詳しくはチュートリアル[こちら](http://data-analytics.net/cep/Schedule_files/geospatial.html)と[こちら](https://www.rdocumentation.org/packages/OpenStreetMap/versions/0.3.4/topics/autoplot.OpenStreetMap)をご覧ください。 
 
 
 
 
 
-## Contoured density heatmaps {}
+## 等高線密度ヒートマップ {}
 
-Below we describe how to achieve a contoured density heatmap of cases, over a basemap, beginning with a linelist (one row per case).  
+以下では、基図の上に症例の等高線付き密度ヒートマップを作成する方法を説明します。まず、ラインリストから始めます（1症例につき1行）。
 
-1) Create basemap tile from OpenStreetMap, as described above  
-2) Plot the cases from `linelist` using the latitude and longitude columns  
-3) Convert the points to a density heatmap with `stat_density_2d()` from **ggplot2**, 
+1) 上述のように OpenStreetMap から基図タイルを作成する  
+2) `linelist` の症例を、緯度と経度の列を使ってプロットする。 
+3) **ggplot2** パッケージの `stat_density_2d()` を使って、点を密度ヒートマップに変換する。
 
 
-When we have a basemap with lat/long coordinates, we can plot our cases on top using the lat/long coordinates of their residence. 
+緯度・経度座標を持つ基図があれば、その上に事例の居住地の緯度・経度座標を使ってプロットすることができます。
 
-Building on the function `autoplot.OpenStreetMap()` to create the basemap, **ggplot2** functions will easily add on top, as shown with `geom_point()` below:  
+基図を作成するための関数 `autoplot.OpenStreetMap()` をベースにして、**ggplot2** パッケージ の関数を使えば、以下の `geom_point()` のように簡単に上に追加することができます。 
 
 ```{r, warning=F, message=F}
-# Plot map. Must be autoplotted to work with ggplot
-autoplot.OpenStreetMap(map_latlon)+                 # begin with the basemap
-  geom_point(                                       # add xy points from linelist lon and lat columns 
+# 地図をプロット。ggplot と使うためには autoplot が必須。
+autoplot.OpenStreetMap(map_latlon)+                 # 基図から始める
+  geom_point(                                       # linelist の経度と緯度の列から xy の点を追加
     data = linelist,                                
     aes(x = lon, y = lat),
     size = 1, 
     alpha = 0.5,
-    show.legend = FALSE) +                          # drop legend entirely
-  labs(x = "Longitude",                             # titles & labels
+    show.legend = FALSE) +                          # 凡例を完全に削除
+  labs(x = "Longitude",                                  # タイトルとラベル
        y = "Latitude",
        title = "Cumulative cases")
 
 ```
-The map above might be difficult to interpret, especially with the points overlapping. So you can instead plot a 2d density map using the **ggplot2** function `stat_density_2d()`. You are still using the linelist lat/lon coordinates, but a 2D kernel density estimation is performed and the results are displayed with contour lines - like a topographical map. Read the full [documentation here](https://ggplot2.tidyverse.org/reference/geom_density_2d.html).  
+
+上のマップは、特に点が重なっているところは、解釈が難しいかもしれません。そこで、 **ggplot2** パッケージの `stat_density_2d()` を用いて 2 次元密度マップを作成することができます。ラインリストの緯度/軽度座標を使用していますが、2D カーネル密度推定を行い、その結果を等高線で表示します（地形図のように）。完全な[ドキュメントはこちら](https://ggplot2.tidyverse.org/reference/geom_density_2d.html)をご覧ください。 
 
 
 ```{r, warning=F, message=F}
-# begin with the basemap
+# 基図から始める
 autoplot.OpenStreetMap(map_latlon)+
   
-  # add the density plot
+  # 密度プロットを追加
   ggplot2::stat_density_2d(
         data = linelist,
         aes(
@@ -805,13 +835,15 @@ autoplot.OpenStreetMap(map_latlon)+
         contour_var = "count",
         show.legend = F) +                          
   
-  # specify color scale
+  # カラースケールを指定
   scale_fill_gradient(low = "black", high = "red")+
   
-  # labels 
+  # ラベル 
   labs(x = "Longitude",
        y = "Latitude",
        title = "Distribution of cumulative cases")
+
+
 
 ```
 
@@ -820,32 +852,32 @@ autoplot.OpenStreetMap(map_latlon)+
 
 
 <!-- ======================================================= -->
-### Time series heatmap {.unnumbered}
+### 時系列ヒートマップ {.unnumbered}
 
-The density heatmap above shows *cumulative cases*. We can examine the outbreak over time and space by faceting the heatmap based on the *month of symptom onset*, as derived from the linelist.  
+上の密度ヒートマップは、<u>累積症例</u>を示しています。このヒートマップをラインリストから得られた<u>症状の発症月</u>に基づいて分割 （facet） することで、時空間的なアウトブレイクを調べることができます。 
 
-We begin in the `linelist`, creating a new column with the Year and Month of onset. The `format()` function from **base** R changes how a date is displayed. In this case we want "YYYY-MM".  
+まず、`linelist`で、発症した年と月の新しい列を作成します。**base** R の `format()` は、日付の表示方法を変更します。ここでは "YYYY-MM"とします。 
 
 ```{r, warning=F, message=F}
-# Extract month of onset
+# 発症した月を抽出
 linelist <- linelist %>% 
   mutate(date_onset_ym = format(date_onset, "%Y-%m"))
 
-# Examine the values 
+# 値を調査
 table(linelist$date_onset_ym, useNA = "always")
 ```
 
-Now, we simply introduce facetting via **ggplot2** to the density heatmap. `facet_wrap()` is applied, using the new column as rows. We set the number of facet columns to 3 for clarity.  
+ここでは、密度ヒートマップに **ggplot2** パッケージによる分割列を導入するだけです。`facet_wrap()` が適用され、新しい列が行として使用されます。わかりやすくするために、分割列の数を 3 に設定しました。 
 
 
 ```{r, warning=F, message=F}
-# packages
+# パッケージ
 pacman::p_load(OpenStreetMap, tidyverse)
 
-# begin with the basemap
+# 基図から始める
 autoplot.OpenStreetMap(map_latlon)+
   
-  # add the density plot
+  # 密度プロットを追加
   ggplot2::stat_density_2d(
         data = linelist,
         aes(
@@ -858,84 +890,90 @@ autoplot.OpenStreetMap(map_latlon)+
         contour_var = "count",
         show.legend = F) +                          
   
-  # specify color scale
+  # カラースケールを指定
   scale_fill_gradient(low = "black", high = "red")+
   
-  # labels 
+  # ラベル
   labs(x = "Longitude",
        y = "Latitude",
        title = "Distribution of cumulative cases over time")+
   
-  # facet the plot by month-year of onset
-  facet_wrap(~ date_onset_ym, ncol = 4)               
+  # 発症した month-year でプロットを分割
+  facet_wrap(~ date_onset_ym, ncol = 4)
+
+
 
 ```
 
 
 
 <!-- SPATIAL STATISTICS SECTION IS UNDER DEVELOPMENT --> 
-## Spatial statistics
-Most of our discussion so far has focused on visualization of spatial data. In some cases, you may also be interested in using *spatial statistics* to quantify the spatial relationships of attributes in your data. This section will provide a very brief overview of some key concepts in spatial statistics, and suggest some resources that will be helpful to explore if you wish to do more comprehensive spatial analyses. 
+## 空間統計
 
-### Spatial relationships {.unnumbered}  
+これまでの議論のほとんどは、空間データの視覚化に焦点を当ててきました。しかし、<u>空間統計</u>を使用し、データ内の属性の空間的な関係を定量化したいような場合もあるでしょう。ここでは、空間統計の主要な概念を簡単に説明し、より包括的な空間分析を行いたい場合に参考となるリソースを紹介します。
 
-Before we can calculate any spatial statistics, we need to specify the relationships between features in our data. There are many ways to conceptualize spatial relationships, but a simple and commonly-applicable model to use is that of *adjacency* - specifically, that we expect a geographic relationship between areas that share a border or “neighbour” one another. 
+### 空間的な関係 {.unnumbered}
 
-We can quantify adjacency relationships between administrative region polygons in the `sle_adm3` data we have been using with the **spdep** package. We will specify *queen* contiguity, which means that regions will be neighbors if they share at least one point along their borders. The alternative would be *rook* contiguity, which requires that regions share an edge - in our case, with irregular polygons, the distinction is trivial, but in some cases the choice between queen and rook can be influential.  
- 
+空間統計を計算する前に、データのフィーチャ間の関係を特定する必要があります。空間的な関係を概念化する方法は数多くありますが、シンプルで一般的に適用できるモデルは「隣接関係」です。具体的には、境界を共有している、または「隣り合っている」エリア間に地理的な関係があると考えます。
+
+**spdep** パッケージで使用している `sle_adm3` データの行政区域ポリゴン間の隣接関係を定量化することができます。ここでは、<u>共点</u>隣接 (*queen* contiguity) を指定します。こちらは、地域がその境界に沿って少なくとも1つの点を共有していれば、隣り合っていることを意味します。この他には、<u>共辺</u>隣接 (*rook*) を指定することもできます。こちらは、地域がその境界に沿って境界縁を共有していれば、隣り合っていることを意味します。この違いは些細なことですが、この事例は不規則なポリゴンですので、場合によっては queen と rook の選択が影響を与えることもあります。 
+
 ```{r}
-sle_nb <- spdep::poly2nb(sle_adm3_dat, queen=T) # create neighbors 
-sle_adjmat <- spdep::nb2mat(sle_nb)    # create matrix summarizing neighbor relationships
-sle_listw <- spdep::nb2listw(sle_nb)   # create listw (list of weights) object -- we will need this later
+sle_nb <- spdep::poly2nb(sle_adm3_dat, queen=T) # 隣接を作成
+sle_adjmat <- spdep::nb2mat(sle_nb)    # 隣接関係をまとめた行列の作成
+sle_listw <- spdep::nb2listw(sle_nb)   # listw (重みのリスト) オブジェクトを作成 -- 後で使います
 
 sle_nb
 round(sle_adjmat, digits = 2)
 ```
 
-The matrix printed above shows the relationships between the 9 regions in our `sle_adm3` data. A score of 0 indicates two regions are not neighbors, while any value other than 0 indicates a neighbor relationship. The values in the matrix are scaled so that each region has a total row weight of 1.
+上の図は、`sle_adm3` データの 9 つのリージョン間の関係を示しています。スコア 0 は2つの地域が隣り合っていないことを示し、0以外の値は隣り合っていることを示しています。行列の値は、各地域の行の重みの合計が 1 になるようにスケーリングされています。
 
-A better way to visualize these neighbor relationships is by plotting them:
+これらの隣接関係を視覚化するより良い方法は、プロットすることです。
+
 ```{r, fig.align='center', results='hide'}
-plot(sle_adm3_dat$geometry) +                                           # plot region boundaries
-  spdep::plot.nb(sle_nb,as(sle_adm3_dat, 'Spatial'), col='grey', add=T) # add neighbor relationships
+plot(sle_adm3_dat$geometry) +                                           # 地域境界をプロット
+  spdep::plot.nb(sle_nb,as(sle_adm3_dat, 'Spatial'), col='grey', add=T) # 隣接関係を追加
 ```
 
-We have used an adjacency approach to identify neighboring polygons; the neighbors we identified are also sometimes called **contiguity-based neighbors**. But this is just one way of choosing which regions are expected to have a geographic relationship. The most common alternative approaches for identifying geographic relationships generate **distance-based neighbors**; briefly, these are:
+ここでは、隣接するポリゴンを特定するために、隣接アプローチを用いました。特定した隣接は、**隣接ベース近傍** (**contiguity-based neighbors**) と呼ばれることもあります。しかし、これは、どの地域が地理的な関係を持っていると予想されるかを選択する一つの方法に過ぎません。地理的関係を特定するため別の方法で、最も一般的な方法は、以下のような**距離ベース近傍**を生成することです。
   
-  * **K-nearest neighbors** - Based on the distance between centroids (the geographically-weighted center of each polygon region), select the *n* closest regions as neighbors. A maximum-distance proximity threshold may also be specified. In **spdep**, you can use `knearneigh()` (see [documentation](https://r-spatial.github.io/spdep/reference/knearneigh.html)).
+  * **K-最近傍** - セントロイド（各ポリゴン領域の地理的に重み付けされた中心）間の距離に基づいて、*n*個の最も近い領域を近傍として選択します。最大距離の近さのしきい値を指定することもできます。**spdep** パッケージでは、`knearneigh()` が使えます（[ドキュメント](https://r-spatial.github.io/spdep/reference/knearneigh.html)を参照）。
   
-  * **Distance threshold neighbors** - Select all neighbors within a distance threshold. In **spdep**, these neighbor relationships can be identified using `dnearneigh()` (see [documentation](https://www.rdocumentation.org/packages/spdep/versions/1.1-7/topics/dnearneigh)).
+  * **距離閾値近傍** - 距離閾値以内のすべての近傍を選択します。**spdep** パッケージでは、これらの近傍関係は `dnearneigh()` を使って特定できます（[ドキュメント](https://www.rdocumentation.org/packages/spdep/versions/1.1-7/topics/dnearneigh)を参照）。
 
-### Spatial autocorrelation {.unnumbered}  
+### 空間的自己相関 {.unnumbered}
 
-Tobler's oft-cited first law of geography states that "everything is related to everything else, but near things are more related than distant things." In epidemiology, this often means that risk of a particular health outcome in a given region is more similar to its neighboring regions than to those far away. This concept has been formalized as **spatial autocorrelation** - the statistical property that geographic features with similar values are clustered together in space. Statistical measures of spatial autocorrelation can be used to *quantify the extent of spatial clustering* in your data, *locate where clustering occurs*, and *identify shared patterns of spatial autocorrelation* between distinct variables in your data. This section gives an overview of some common measures of spatial autocorrelation and how to calculate them in R.
+よく引用されるトブラーの地理学の第一法則では、「すべてのものは他のすべてのものに関係しているが、近くのものは遠くのものより関係している」とされています。疫学においては、ある地域における特定の健康結果のリスクは、遠くの地域よりも近隣の地域に類似していることを意味していることが多いです。この概念は、「空間的自己相関」として正式に定義されています。これは、類似した値を持つ地理的フィーチャが空間的に集まっているという統計的特性です。空間的自己相関の統計的測定は、データにおける<u>空間的クラスタリングの程度を定量化</u>し、<u>クラスタリングが発生する場所を特定</u>し、データ内の異なる変数間の空間的自己相関の<u>共通パターンを特定</u>するために使用することができます。このセクションでは、空間的自己相関の一般的な測定方法とRでの計算方法について説明します。
 
-**Moran's I** - This is a global summary statistic of the correlation between the value of a variable in one region, and the values of the same variable in neighboring regions. The Moran's I statistic typically ranges from -1 to 1. A value of 0 indicates no pattern of spatial correlation, while values closer to 1 or -1 indicate stronger spatial autocorrelation (similar values close together) or spatial dispersion (dissimilar values close together), respectively.
+**Moran's I** - これは、ある地域での変数の値と、近隣の地域での同じ変数の値との間の相関のグローバルな要約統計です。通常、Moran's I 統計量は、-1 から 1 の範囲をとります。0 は、空間的な相関のパターンがないことを示し、1 や -1 に近い値は、それぞれ空間的な自己相関（似たような値が近くにある）や空間的なばらつき（似ていない値が近くにある）が強いことを示しています。
 
-For an example, we will calculate a Moran's I statistic to quantify the spatial autocorrelation in Ebola cases we mapped earlier (remember, this is a subset of cases from the simulated epidemic `linelist` dataframe). The **spdep** package has a function, `moran.test`, that can do this calculation for us:
+例として、先ほどマッピングしたエボラ出血熱の症例の空間的自己相関を定量化するために、Moran's I 統計量を計算してみます（これは、シミュレーションされた `linelist` データフレームからの症例のサブセットであることを覚えておいてください）。**spdep** パッケージには、この計算を行うための、`moran.test()` があります。
 
 ```{r}
-moran_i <-spdep::moran.test(sle_adm3_dat$cases,    # numeric vector with variable of interest
-                            listw=sle_listw)       # listw object summarizing neighbor relationships
+moran_i <-spdep::moran.test(sle_adm3_dat$cases,    # 指定の変数で数値ベクトル
+                            listw=sle_listw)       # 隣接関係を要約したlistwオブジェクト
 
-moran_i                                            # print results of Moran's I test
+moran_i                                            # Moran's I 検定の結果を表示
 ```
-The output from the `moran.test()` function shows us a Moran I statistic of ` round(moran_i$estimate[1],2)`. This indicates the presence of spatial autocorrelation in our data - specifically, that regions with similar numbers of Ebola cases are likely to be close together. The p-value provided by `moran.test()` is generated by comparison to the expectation under null hypothesis of no spatial autocorrelation, and can be used if you need to report the results of a formal hypothesis test.
 
-**Local Moran's I** - We can decompose the (global) Moran's I statistic calculated above to identify *localized* spatial autocorrelation; that is, to identify specific clusters in our data. This statistic, which is sometimes called a **Local Indicator of Spatial Association (LISA)** statistic, summarizes the extent of spatial autocorrelation around each individual region. It can be useful for finding "hot" and "cold" spots on the map.
+`moran.test()` の出力を見ると、Moran's I 統計量は `round(moran_i$estimate[1],2)` となっています。これは、データに空間的な自己相関が存在することを示しています。具体的には、エボラ出血熱の患者数が同程度の地域は、近くにある可能性が高いということです。`moran.test()` で得られるp値は、空間的自己相関がないという帰無仮説の下での期待値との比較によって生成され、正式な仮説検定の結果を報告する必要がある場合に使用できます。
 
-To show an example, we can calculate and map Local Moran's I for the Ebola case counts used above, with the `local_moran()` function from **spdep**:
+**Local Moran's I** - 上で計算した（グローバルな）Moran's I 統計を分解することで、<u>局所的な</u>空間的な自己相関を識別することができます。これを利用すると、データ内の特定のクラスターの識別を行うことができます。この統計は、LISA（Local Indicator of Spatial Association）統計量と呼ばれることもあり、個々の地域における空間的自己相関の程度を要約したものです。この値は、地図上の「ホット」と「コールド」な場所を見つけるのに役立ちます。
+
+例として、上で使用したエボラ出血熱の症例数に対して、**spdep** パッケージの `local_moran()` を用いて、Local Moran's I を計算し、地図上に描画することができます。
+
 ```{r, fig.align='center'}
-# calculate local Moran's I
+# local Moran's I を計算
 local_moran <- spdep::localmoran(                  
-  sle_adm3_dat$cases,                              # variable of interest
-  listw=sle_listw                                  # listw object with neighbor weights
+  sle_adm3_dat$cases,                              # 指定の変数
+  listw=sle_listw                                  # 隣接の重み付けをした listw オブジェクト
 )
 
-# join results to sf data
+# 結果を sf データに結合
 sle_adm3_dat<- cbind(sle_adm3_dat, local_moran)    
 
-# plot map
+# 地図をプロット
 ggplot(data=sle_adm3_dat) +
   geom_sf(aes(fill=Ii)) +
   theme_bw() +
@@ -946,21 +984,21 @@ ggplot(data=sle_adm3_dat) +
 
 ```
 
-**Getis-Ord Gi\*** - This is another statistic that is commonly used for hotspot analysis; in large part, the popularity of this statistic relates to its use in the Hot Spot Analysis tool in ArcGIS. It is based on the assumption that typically, the difference in a variable's value between neighboring regions should follow a normal distribution. It uses a z-score approach to identify regions that have significantly higher (hot spot) or significantly lower (cold spot) values of a specified variable, compared to their neighbors. 
+**Getis-Ord Gi\*** - これもホットスポットの分析によく使われる統計です。この統計が人気である理由は、ArcGIS のホットスポット分析ツールで使われていることに関係しています。この統計は、通常、近隣地域間の変数の値の差は正規分布に従うはずだという仮定に基づいています。このツールは、z-score を利用したアプローチを用いて、指定された変数の値が近隣の地域に比べて統計的に特定の変数の値が有意に高い（ホットスポット）または低い（コールドスポット）地域を特定します。
 
-We can calculate and map the Gi* statistic using the `localG()` function from **spdep**:  
+**spdep** パッケージの `localG()` を使って Gi* 統計量を計算し、マッピングすることができます。 
 
 ```{r}
-# Perform local G analysis
+# local G 分析を実行
 getis_ord <- spdep::localG(
   sle_adm3_dat$cases,
   sle_listw
 )
 
-# join results to sf data
+# 結果を sf データに結合
 sle_adm3_dat$getis_ord <- getis_ord
 
-# plot map
+# 地図をプロット
 ggplot(data=sle_adm3_dat) +
   geom_sf(aes(fill=getis_ord)) +
   theme_bw() +
@@ -972,67 +1010,71 @@ ggplot(data=sle_adm3_dat) +
 ```
 
 
-As you can see, the map of Getis-Ord Gi* looks slightly different from the map of Local Moran's I produced earlier. This reflects that the method used to calculate these two statistics are slightly different; which one you should use depends on your specific use case and the research question of interest.
+上のとおり、Getis-Ord Gi* のマップは、先に作成した Local Moran's の地図とは若干異なっています。これは、これらの2つの統計量を計算するために使用される方法がわずかに異なることを反映しています。どちらを使用すべきかは、特定の事例とあなたが関心を持っているリサーチクエスチョンに依存します。
 
-**Lee's L test** - This is a statistical test for bivariate spatial correlation. It allows you to test whether the spatial pattern for a given variable *x* is similar to the spatial pattern of another variable, *y*, that is hypothesized to be related spatially to *x*. 
+**Lee's L test** - これは、二変量の空間相関に関する統計的な検定です。与えられた変数 *x* の空間パターンが、*x* に空間的に関連すると仮定された別の変数 *y* の空間パターンに類似しているかどうかを検定することができます。
 
-To give an example, let's test whether the spatial pattern of Ebola cases from the simulated epidemic is correlated with the spatial pattern of population. To start, we need to have a `population` variable in our `sle_adm3` data. We can use the `total` variable from the `sle_adm3_pop` dataframe that we loaded earlier.
+例として、シミュレーションしたエボラ出血熱の患者数の空間パターンが、人口の空間パターンと相関しているかどうかを検証してみましょう。まず始めに、`sle_adm3` データに `population` 変数が必要です。先ほど読み込んだ `sle_adm3_pop` データフレームの `total` 変数を使うことができます。
 
 ```{r}
 sle_adm3_dat <- sle_adm3_dat %>% 
-  rename(population = total)                          # rename 'total' to 'population'
+  rename(population = total)                          # 列名 total を population に変更
 ```
 
-We can quickly visualize the spatial patterns of the two variables side by side, to see whether they look similar:
+2つの変数の空間パターンを並べて視覚化することで、似ているかどうかをすぐに確認することができます。
+
 ```{r, fig.align='center', warning=F, message=F}
 tmap_mode("plot")
 
-cases_map <- tm_shape(sle_adm3_dat) + tm_polygons("cases") + tm_layout(main.title="Cases")
-pop_map <- tm_shape(sle_adm3_dat) + tm_polygons("population") + tm_layout(main.title="Population")
+cases_map <- tm_shape(sle_adm3_dat) + tm_polygons("cases") + 
+  tm_layout(main.title="Cases")
+pop_map <- tm_shape(sle_adm3_dat) + 
+  tm_polygons("population") + 
+  tm_layout(main.title="Population")
 
 tmap_arrange(cases_map, pop_map, ncol=2)   # arrange into 2x1 facets
 ```
 
-Visually, the patterns seem dissimilar. We can use the `lee.test()` function in **spdep** to test statistically whether the pattern of spatial autocorrelation in the two variables is related. The L statistic will be close to 0 if there is no correlation between the patterns, close to 1 if there is a strong positive correlation (i.e. the patterns are similar), and close to -1 if there is a strong negative correlation (i.e. the patterns are inverse). 
+視覚的には、この 2 つのパターンは似ていないように見えます。**spdep** パッケージの `lee.test()` を使って、2 つの変数の空間的自己相関のパターンが関連しているかどうかを統計的に検定することができます。L 統計量は、パターン間に相関がなければ 0 に近く、強い正の相関があれば（パターンが似ている場合は）1 に近く、強い負の相関があれば（パターンが逆の場合は）-1 に近くなります。
 
 ```{r, warning=F, message=F}
 lee_test <- spdep::lee.test(
-  x=sle_adm3_dat$cases,          # variable 1 to compare
-  y=sle_adm3_dat$population,     # variable 2 to compare
-  listw=sle_listw                # listw object with neighbor weights
+  x=sle_adm3_dat$cases,          # 比較する変数１
+  y=sle_adm3_dat$popultion,      # 比較する変数２
+  listw=sle_listw                # 隣接重みづけのある listw オブジェクト
 )
 
 lee_test
 ```
 
-The output above shows that the Lee's L statistic for our two variables was ` round(lee_test$estimate[1],2)`, which indicates weak negative correlation. This confirms our visual assessment that the pattern of cases and population are not related to one another, and provides evidence that the spatial pattern of cases is not strictly a result of population density in high-risk areas.
+上記の出力では、2つの変数の Lee's L 統計量が `round(lee_test$estimate[1],2)` となり、弱い負の相関があることを示しています。これは、症例のパターンと人口が互いに関連していないという私たちの視覚的な評価を裏付けるものであり、症例の空間的なパターンは、厳密には高リスク地域の人口密度の結果ではないという証拠となります。
 
-The Lee L statistic can be useful for making these kinds of inferences about the relationship between spatially distributed variables; however, to describe the nature of the relationship between two variables in more detail, or adjust for confounding, *spatial regression* techniques will be needed. These are described briefly in the following section.
+Lee's L 統計は、空間的に分布する変数間の関係について、このような推論を行うのに役立ちます。しかし、2 つの変数間の関係の性質をより詳細に記述したり、交絡を調整したりするには、<u>空間回帰</u>技術が必要になります。以下では、これらについて簡単に説明します。
 
-### Spatial regression {.unnumbered}  
+### 空間回帰 {.unnumbered}
 
-You may wish to make statistical inferences about the relationships between variables in your spatial data. In these cases, it is useful to consider *spatial regression* techniques - that is, approaches to regression that explicitly consider the spatial organization of units in your data. Some reasons that you may need to consider spatial regression models, rather than standard regression models such as GLMs, include:
+空間データの変数間の関係を統計的に推論したい場合があります。このような場合には、<u>空間回帰</u>の手法、つまり、データ内のユニットの空間的な構成を明示的に考慮した回帰のアプローチを検討することが有用です。GLM のような標準的な回帰モデルではなく、空間回帰モデルを検討する必要がある理由は以下の通りです。
 
-  * Standard regression models assume that residuals are independent from one another. In the presence of strong *spatial autocorrelation*, the residuals of a standard regression model are likely to be spatially autocorrelated as well, thus violating this assumption. This can lead to problems with interpreting the model results, in which case a spatial model would be preferred.
+  * 標準的な回帰モデルは、残差が互いに独立していることを前提としています。標準回帰モデルは、残差が互いに独立であると仮定していますが、強い<u>空間的自己相関</u>がある場合、標準回帰モデルの残差は空間的にも自己相関している可能性が高く、この仮定に反することになります。これは、モデルの結果を解釈する際に問題となる可能性があり、そのような場合には、空間モデルを使用することが望ましいでしょう。
   
-  * Regression models also typically assume that the effect of a variable *x* is constant over all observations. In the case of *spatial heterogeneity*, the effects we wish to estimate may vary over space, and we may be interested in quantifying those differences. In this case, spatial regression models offer more flexibility for estimating and interpreting effects.
+  * また、回帰モデルでは、変数 *x* の効果がすべての観測点で一定であることを仮定します。<u>空間的に異質</u>である場合、推定したい効果は空間によって異なる可能性があり、その違いを定量化することに興味があるかもしれません。このような場合、空間回帰モデルは効果の推定と解釈をより柔軟に行うことができます。
   
-The details of spatial regression approaches are beyond the scope of this handbook. This section will instead provide an overview of the most common spatial regression models and their uses, and refer you to references that may of use if you wish to explore this area further.
+空間回帰アプローチの詳細については、このハンドブックの範囲外です。このセクションでは、最も一般的な空間回帰モデルとその用途の概要を説明し、この分野をさらに探求したい場合に役立つ参考文献を紹介します。
 
-**Spatial error models** - These models assume that the error terms across spatial units are correlated, in which case the data would violate the assumptions of a standard OLS model. Spatial error models are also sometimes referred to as **simultaneous autoregressive (SAR) models**. They can be fit using the `errorsarlm()` function in the **spatialreg** package (spatial regression functions which used to be a part of **spdep**). 
+**空間誤差モデル** - これらのモデルは、空間ユニット間の誤差項が相関していると仮定していますが、その場合、データは標準的な最小二乗法(OLS) モデルの仮定に反することになります。空間誤差モデルは、「同時自己回帰（SAR）モデル」と呼ばれることもあります。空間誤差モデルは、 **spatialreg** パッケージの `errorsarlm()`（空間回帰関数、以前は **spdep** パッケージの一部だった）を使ってフィットさせることができます。
 
-**Spatial lag models** - These models assume that the dependent variable for a region *i* is influenced not only by value of independent variables in *i*, but also by the values of those variables in regions neighboring *i*. Like spatial error models, spatial lag models are also sometimes described as **simultaneous autoregressive (SAR) models**.  They can be fit using the `lagsarlm()` function in the **spatialreg** package.
+**空間ラグモデル** - このモデルは、ある地域 *i* の従属変数が、*i* の独立変数の値だけでなく、*i* に隣接する地域のそれらの変数の値にも影響されると仮定しています。空間誤差モデルと同様に、空間ラグモデルもまた、**同時自己回帰（SAR）モデル**と呼ばれることがあります。 空間ラグモデルは、**spatialreg** パッケージの `lagsarlm()` を使ってフィットさせることができます。
 
-The **spdep** package contains several useful diagnostic tests for deciding between standard OLS, spatial lag, and spatial error models. These tests, called *Lagrange Multiplier diagnostics*, can be used to identify the type of spatial dependence in your data and choose which model is most appropriate. The function `lm.LMtests()` can be used to calculate all of the Lagrange Multiplier tests. Anselin (1988) also provides a useful flow chart tool to decide which spatial regression model to use based on the results of the Lagrange Multiplier tests:
+**spdep** パッケージには、標準的な最小二乗法 (OLS)  モデル、空間ラグモデル、空間誤差モデルを決定するための便利な診断テストがいくつか含まれています。これらのテストは、<u>ラグランジュ乗数診断</u>と呼ばれ、データの空間依存性のタイプを特定し、どのモデルが最も適切かを選択するために使用することができます。`lm.LMtests()` を用いると、すべてのラグランジュ乗数検定を計算することができます。Anselin (1988) は、ラグランジュ乗数検定の結果に基づいて、どの空間回帰モデルを使用するかを決定するための便利なフローチャートツールも提供しています。
 
 ```{r, fig.align='center', echo=F}
 knitr::include_graphics(here::here("images", "gis_lmflowchart.jpg"))
 ```
 
-**Bayesian hierarchical models** - Bayesian approaches are commonly used for some applications in spatial analysis, most commonly for [disease mapping](https://pubmed.ncbi.nlm.nih.gov/15690999/). They are preferred in cases where case data are sparsely distributed (for example, in the case of a rare outcome) or statistically "noisy", as they can be used to generate "smoothed" estimates of disease risk by accounting for the underlying latent spatial process. This may improve the quality of estimates. They also allow investigator pre-specification (via choice of prior) of complex spatial correlation patterns that may exist in the data, which can account for spatially-dependent and -independent variation in both independent and dependent variables. In R, Bayesian hierarchical models can be fit using the **CARbayes** package (see [vignette](https://cran.r-project.org/web/packages/CARBayes/vignettes/CARBayes.pdf)) or R-INLA (see [website](https://www.r-inla.org/home) and [textbook](https://becarioprecario.bitbucket.io/inla-gitbook/)). R can also be used to call external software that does Bayesian estimation, such as JAGS or WinBUGS.
+**ベイズ階層モデル** - ベイズを用いた手法は、いくつかの応用例において空間分析で一般的に使用されています。最も一般的なのは [疾患マッピング](https://pubmed.ncbi.nlm.nih.gov/15690999/) です。症例データの分布がまばらであったり（例えば、稀な結果の場合）、統計的に「ノイズが多い」場合には、潜在的な空間プロセスを考慮して疾病リスクの「平滑化された」推定値を生成するために使用することができるので、ベイズを用いた手法の方が好まれます。これにより、推定値の質が向上する可能性があります。また、データに存在する可能性のある複雑な空間的相関パターンを（選択することで）事前に指定することができ、独立変数と従属変数の両方における空間依存および非依存の変動を説明することができます。Rでは、**CARbayes** パッケージ（ [ビニエット（vignette）](https://cran.r-project.org/web/packages/CARBayes/vignettes/CARBayes.pdf) 参照）や R-INLA（[website](https://www.r-inla.org/home) や [textbook](https://becarioprecario.bitbucket.io/inla-gitbook/) 参照）を用いてベイズ階層モデルをフィットさせることができます。また、R は JAGS や WinBUGS のようなベイズ推定を行う外部ソフトウェアを呼び出すのにも使うことができます。
 
 <!-- ======================================================= -->
-## Resources {  }
+## 参考資料 {  }
 
 * R Simple Features and sf package [vignette](https://cran.r-project.org/web/packages/sf/vignettes/sf1.html)
 
