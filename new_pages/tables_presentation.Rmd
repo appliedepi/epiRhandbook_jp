@@ -1,5 +1,5 @@
 
-# Tables for presentation { }  
+# 見やすい表の作り方 {#tables-presentation}
 
 
 ```{r echo=FALSE, fig.show='hold', message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
@@ -9,64 +9,64 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 border_style = officer::fp_border(color="black", width=1)
 
 pacman::p_load(
-  rio,            # import/export
-  here,           # file pathways
-  flextable,      # make HTML tables 
-  officer,        # helper functions for tables
-  tidyverse)      # data management, summary, and visualization
+  rio,            # インポート/エクスポート
+  here,           # ファイルパス指定
+  flextable,      # HTML表を作成 
+  officer,        # 作表に関するヘルパー関数
+  tidyverse)      # データ管理、要約、ビジュアライゼーション
 
 table <- linelist %>% 
-  # filter
+  # フィルタ
   ########
-  #filter(!is.na(outcome) & hospital != "Missing") %>%  # Remove cases with missing outcome or hospital
+  #filter(!is.na(outcome) & hospital != "Missing") %>%  # 転帰または病院が不明な症例を除外
   
-  # Get summary values per hospital-outcome group
+  # 病院と転帰のグループごとの要約を取得
   ###############################################
-  group_by(hospital, outcome) %>%                      # Group data
-  summarise(                                           # Create new summary columns of indicators of interest
-    N = n(),                                            # Number of rows per hospital-outcome group     
-    ct_value = median(ct_blood, na.rm=T)) %>%           # median CT value per group
+  group_by(hospital, outcome) %>%                      # データのグループ化
+  summarise(                                           # 関心のある指標の要約する列を新規作成
+    N = n(),                                            # 病院-転帰グループごとの行数     
+    ct_value = median(ct_blood, na.rm=T)) %>%           # グループごとのCTの中央値
   
-  # add totals
+  # 合計行を追加
   ############
-  bind_rows(                                           # Bind the previous table with this mini-table of totals
+  bind_rows(                                           # 前の表とこのミニ表の合計を結合する
     linelist %>% 
       filter(!is.na(outcome) & hospital != "Missing") %>%
-      group_by(outcome) %>%                            # Grouped only by outcome, not by hospital    
+      group_by(outcome) %>%                            # 病院をなくして転帰のみでグループ化     
       summarise(
-        N = n(),                                       # Number of rows for whole dataset     
-        ct_value = median(ct_blood, na.rm=T))) %>%     # Median CT for whole dataset
+        N = n(),                                       # データセット全体の行数     
+        ct_value = median(ct_blood, na.rm=T))) %>%     # データセット全体のCTの中央値
   
-  # Pivot wider and format
+  # ピボットの幅とフォーマット
   ########################
   mutate(hospital = replace_na(hospital, "Total")) %>% 
-  pivot_wider(                                         # Pivot from long to wide
-    values_from = c(ct_value, N),                       # new values are from ct and count columns
-    names_from = outcome) %>%                           # new column names are from outcomes
-  mutate(                                              # Add new columns
-    N_Known = N_Death + N_Recover,                               # number with known outcome
-    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # percent cases who died (to 1 decimal)
-    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # percent who recovered (to 1 decimal)
-  select(                                              # Re-order columns
-    hospital, N_Known,                                   # Intro columns
-    N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
-    N_Death, Pct_Death, ct_value_Death)  %>%             # Death columns
-  arrange(N_Known) %>%                                 # Arrange rows from lowest to highest (Total row at bottom)
+  pivot_wider(                                         # 縦持ちから横持ちへのピボット変換
+    values_from = c(ct_value, N),                       # CT値とカウント列からの新規の値
+    names_from = outcome) %>%                           # 転帰から新規の列名
+  mutate(                                              # 新しい列の追加
+    N_Known = N_Death + N_Recover,                               # 転帰がわかっている症例数
+    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # 死亡症例のパーセント（小数点1桁）
+    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # 回復症例のパーセント（小数点1桁）
+  select(                                              # 列の再並び替え
+    hospital, N_Known,                                   # 最初の列
+    N_Recover, Pct_Recover, ct_value_Recover,            # 回復症例の列
+    N_Death, Pct_Death, ct_value_Death)  %>%             # 死亡症例の列
+  arrange(N_Known) %>%                                 # 行を低い順から高い順に（合計は最下部）
 
-  # formatting
+  # フォーマット
   ############
   flextable() %>% 
   add_header_row(
-    top = TRUE,                # New header goes on top of existing header row
-    values = c("Hospital",     # Header values for each column below
+    top = TRUE,                # 既存のヘッダ列の上に新しいヘッダを配置
+    values = c("Hospital",     # 各列のヘッダ値は以下の通り
                "Total cases with known outcome", 
-               "Recovered",    # This will be the top-level header for this and two next columns
+               "Recovered",    # この列と次の2つの列のトップレベルのヘッダ
                "",
                "",
-               "Died",         # This will be the top-level header for this and two next columns
-               "",             # Leave blank, as it will be merged with "Died"
+               "Died",         # この列と次の2つの列のトップレベルのヘッダ
+               "",             # 「死亡」と統合させるので空欄のまま
                "")) %>% 
-    set_header_labels(         # Rename the columns in original header row
+    set_header_labels(         # 元のヘッダ行の列名を変更
       hospital = "", 
       N_Known = "",                  
       N_Recover = "Total",
@@ -75,12 +75,12 @@ table <- linelist %>%
       N_Death = "Total",
       Pct_Death = "% of cases",
       ct_value_Death = "Median CT values")  %>% 
-  merge_at(i = 1, j = 3:5, part = "header") %>% # Horizontally merge columns 3 to 5 in new header row
+  merge_at(i = 1, j = 3:5, part = "header") %>% # 3列目から5列目までを新しいヘッダ行に水平に結合
   merge_at(i = 1, j = 6:8, part = "header") %>%  
   border_remove() %>%  
   theme_booktabs() %>% 
-  vline(part = "all", j = 2, border = border_style) %>%   # at column 2 
-  vline(part = "all", j = 5, border = border_style) %>%   # at column 5
+  vline(part = "all", j = 2, border = border_style) %>%   # 2列目 
+  vline(part = "all", j = 5, border = border_style) %>%   # 5列目
   merge_at(i = 1:2, j = 1, part = "header") %>% 
   merge_at(i = 1:2, j = 2, part = "header") %>% 
   width(j=1, width = 2.7) %>% 
@@ -98,97 +98,97 @@ table
 ```
 
 
-This page demonstrates how to convert summary data frames into presentation-ready tables with the **flextable** package. These tables can be inserted into powerpoint slides, HTML pages, PDF or Word documents, etc.  
+この章では **flextable** パッケージを使って、要約したデータフレームを見やすい表に変換する方法を紹介します。これらの表は、パワーポイントのスライド、HTML ページ、PDF や Word 文書などに挿入することができます。
 
-Understand that *before* using **flextable**, you must create the summary table as a data frame. Use methods from the [Descriptive tables] and [Pivoting data] pages such as tabulations, cross-tabulations, pivoting, and calculating descriptive statistics. The resulting data frame can then be passed to **flextable** for display formatting.  
+**flextable** パッケージを使用する <u>前</u> に、要約表をデータフレームとして作成する必要があります。[記述統計表の作り方](#tables-descriptive)および[データの縦横変換](#pivoting)の章に紹介されている方法を使い、表計算、クロス集計などを作成してください作成されたデータフレームを **flextable** に渡して、見やすいように書式設定を行うことができます。
 
 
-There are many other R packages that can be used to craft tables for presentation - we chose to highlight **flextable** in this page. An example using the **knitr** package and its `kable()` function can be found in the [Contact Tracing] page. Likewise, the **DT** package is highlighted in the page [Dashboards with Shiny]. Others such as **GT** and **huxtable** are mentione in the [Suggested packages] page.  
+本章では **flextable** パッケージを紹介していますが、他にも見やすい表を作成するために利用できる R パッケージはたくさんあります。 **knitr** パッケージとそこに含まれる `kable()` を使った例は、[接触者の追跡](#contact-tracing)の 章で紹介しています。同様に、**DT** パッケージは [Shiny で作るダッシュボード](#shiny-basics) の章で紹介しています。**GT** パッケージや **huxtable** パッケージのような他のパッケージは、[推奨するパッケージ](#packages-suggested) の章で紹介しています。
 
 
 
 <!-- ======================================================= -->
-## Preparation {  }
+## 準備 {  }
 
-### Load packages {.unnumbered} 
+### パッケージの読み込み {.unnumbered}
 
-Install and load **flextable**. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load packages with `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+**flextable** パッケージをインストールして読み込みましょう。以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、pacman パッケージの p_load() を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである base （以下、base R）の library() を使用して読み込むこともできます。R のパッケージに関する詳細は [R の基礎](#basics) の章をご覧ください。
 
 ```{r}
 pacman::p_load(
-  rio,            # import/export
-  here,           # file pathways
-  flextable,      # make HTML tables 
-  officer,        # helper functions for tables
-  tidyverse)      # data management, summary, and visualization
+  rio,            # インポート/エクスポート
+  here,           # ファイルパス指定
+  flextable,      # HTML表を作成 
+  officer,        # 作表に関するヘルパー関数
+  tidyverse)      # データ管理、要約、ビジュアライゼーション
 
 ```
 
-### Import data {.unnumbered}  
+### データをインポート {.unnumbered}
 
-To begin, we import the cleaned linelist of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details). 
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは *rio* パッケージの import() を利用してインポートしましょう（*rio* パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）
 
 
 ```{r, echo=F}
-# import the linelist into R
+# ラインリストをRにインポート
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
-# import the linelist
+# ラインリストをインポート
 linelist <- import("linelist_cleaned.rds")
 ```
 
-The first 50 rows of the linelist are displayed below.
+ラインリスト の最初の 50 行を以下に表示します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# linelistデータの最初の50行を以下に表示します。
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### Prepare table {.unnumbered}  
+### テーブルの準備 {.unnumbered}
 
-*Before* beginning to use **flextable** you will need to *create* your table as a data frame. See the page on [Descriptive tables] and [Pivoting data] to learn how to create a data frame using packages such as **janitor** and **dplyr**. You must arrange the content in rows and columns as you want it displayed. Then, the data frame will be passed to **flextable** to display it with colors, headers, fonts, etc. 
-  
-Below is an example from the [Descriptive tables] page of converting the case `linelist` into a data frame that summarises patient outcomes and CT values by hospital, with a Totals row at the bottom. The output is saved as `table`.  
+**flextable** パッケージを使い始める *前* に、テーブルをデータフレームとして <u>作成する</u> 必要があります。**janitor** や **dplyr** などのパッケージを利用してデータフレームを作成する方法を学ぶには [記述統計表の作り方](#tables-descriptive)および[データの縦横変換](#pivoting)の章をご覧ください。表を表示したい内容に行と列を整えることが必要です。その後、データフレームを **flextable** に渡して、色、ヘッダ、フォントなどを設定していきます。
+
+以下は、 [記述統計表の作り方](#tables-descriptive) の章の例で、症例 `linelist` を病院ごとに患者の転帰と CT 値をまとめたデータフレームに変換し、下部に合計（Total）行を設定したものです。出力結果を `table` として保存します。
 
 ```{r message=FALSE, warning=FALSE}
 table <- linelist %>% 
   
-  # Get summary values per hospital-outcome group
+  # 病院と転帰のグループごとの要約量を取得
   ###############################################
-  group_by(hospital, outcome) %>%                      # Group data
-  summarise(                                           # Create new summary columns of indicators of interest
-    N = n(),                                            # Number of rows per hospital-outcome group     
-    ct_value = median(ct_blood, na.rm=T)) %>%           # median CT value per group
+  group_by(hospital, outcome) %>%                      # データのグループ化
+  summarise(                                           # 関心のある指標の要約する列を新規作成
+    N = n(),                                            # 病院-転帰グループごとの行数     
+    ct_value = median(ct_blood, na.rm=T)) %>%           # グループごとのCTの中央値
   
-  # add totals
+  # 合計行を追加
   ############
-  bind_rows(                                           # Bind the previous table with this mini-table of totals
+  bind_rows(                                           # 前の表とこのミニ表の合計を結合する
     linelist %>% 
       filter(!is.na(outcome) & hospital != "Missing") %>%
-      group_by(outcome) %>%                            # Grouped only by outcome, not by hospital    
+      group_by(outcome) %>%                            # hospitalごとではなく、outcomeのみでグループ化     
       summarise(
-        N = n(),                                       # Number of rows for whole dataset     
-        ct_value = median(ct_blood, na.rm=T))) %>%     # Median CT for whole dataset
+        N = n(),                                       # データセット全体の行数     
+        ct_value = median(ct_blood, na.rm=T))) %>%     # データセット全体のCTの中央値
   
-  # Pivot wider and format
+  # 横にピボット変換してフォーマット
   ########################
   mutate(hospital = replace_na(hospital, "Total")) %>% 
-  pivot_wider(                                         # Pivot from long to wide
-    values_from = c(ct_value, N),                       # new values are from ct and count columns
-    names_from = outcome) %>%                           # new column names are from outcomes
-  mutate(                                              # Add new columns
-    N_Known = N_Death + N_Recover,                               # number with known outcome
-    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # percent cases who died (to 1 decimal)
-    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # percent who recovered (to 1 decimal)
-  select(                                              # Re-order columns
-    hospital, N_Known,                                   # Intro columns
-    N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
-    N_Death, Pct_Death, ct_value_Death)  %>%             # Death columns
-  arrange(N_Known)                                    # Arrange rows from lowest to highest (Total row at bottom)
+  pivot_wider(                                         # 縦から横への縦横変換
+    values_from = c(ct_value, N),                       # CT値とカウント列からの新規の値
+    names_from = outcome) %>%                           # 転帰を新しい列名に
+  mutate(                                              # 新しい列の追加
+    N_Known = N_Death + N_Recover,                               # 転帰がわかっている症例数
+    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # 死亡症例のパーセント（小数点1桁）
+    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% #回復症例のパーセント（小数点1桁）
+  select(                                              # 列の再並び替え
+    hospital, N_Known,                                   # 最初の列
+    N_Recover, Pct_Recover, ct_value_Recover,            # 回復症例の列
+    N_Death, Pct_Death, ct_value_Death)  %>%             # 死亡症例の列
+  arrange(N_Known)                                    # 行を低い順から高い順に（合計は最下部）
 
-table  # print
+table  # 出力
 
 ```
 
@@ -196,11 +196,11 @@ table  # print
 
 
 <!-- ======================================================= -->
-## Basic flextable {  }
+## flextable の基本
 
-### Create a flextable {.unnumbered}  
+### flextable を作成する {.unnumbered}
 
-To create and manage **flextable** objects, we first pass the data frame through the `flextable()` function. We save the result as `my_table`.  
+**flextable** オブジェクトを作成・管理するために、まずデータフレームを `flextable()` に渡します。その結果を `my_table` として保存します。
 
 ```{r}
 
@@ -209,25 +209,25 @@ my_table
 
 ```
 
-After doing this, we can progressively pipe the `my_table` object through more **flextable** formatting functions.  
+このようにした後、 `my_table` オブジェクトをさらに **flextable** パッケージに含まれる表をフォーマットするための関数に次々とパイプ演算子で渡していくことができます。
 
-In this page for sake of clarity we will save the table at intermediate steps as `my_table`, adding **flextable** functions bit-by-bit. If you want to see *all* the code from beginning to end written in one chunk, visit the [All code together](#tbl_pres_all) section below.  
+この章では、わかりやすくするために、途中の段階でテーブルを `my_table`として保存し、段階的に **flextable** の機能を追加していきます。最初から最後までの <u>すべて</u> のコードをまとめて見たい場合は、下記の[すべてのコードをまとめる](#tbl_pres_all)セクションをご覧ください。
 
-The general syntax of each line of **flextable** code is as follows:
+**flextable** パッケージのコードの各行の一般的な構文は以下の通りです。:
 
-* `function(table, i = X, j = X, part = "X")`, where:
-  * The 'function' can be one of many different functions, such as `width()` to determine column widths, `bg()` to set background colours, `align()` to set whether text is centre/right/left aligned, and so on. 
-  * `table = ` is the name of the data frame, although does not need to be stated if the data frame is piped into the function.
-  * `part = ` refers to which part of the table the function is being applied to. E.g. "header", "body" or "all". 
-  * `i = ` specifies the *row* to apply the function to, where 'X' is the row number. If multiple rows, e.g. the first to third rows, one can specify: `i = c(1:3)`. Note if 'body' is selected, the first row starts from underneath the header section.
-  * `j = ` specifies the *column* to apply the function to, where 'x' is the column number or name. If multiple columns, e.g. the fifth and sixth, one can specify: `j = c(5,6)`. 
-  
-You can find the complete list of **flextable** formatting function [here](https://davidgohel.github.io/flextable/reference/index.html) or review the documentation by entering `?flextable`.  
+* `function(table, i = X, j = X, part = "X")`, と記載して:
+  * 'function' には、列の幅を決める `width()` 、背景色を設定する `bg()` 、テキストを中央/右/左に揃えるかどうかを設定する `align()` など、さまざまな関数のうちのひとつを指定することができます。
+  * `table =` は、データフレームの名前ですが、データフレームを関数にパイプ演算子で渡している場合は、記述する必要はありません。
+  * `part =` 関数がテーブルのどの部分に適用されるかを示します。例："header"、"body"、"all"。
+  * `i =` 関数を適用する <u>行</u> を、'X' に行番号を入力して指定します。複数の行、例えば 1 行目から 3 行目までを指定する場合は、 `i = c(1:3)` とします。なお、 'body' を選択した場合、最初の行はヘッダセクションの下から始まります。
+  * `j =` は、関数を適用する <u>列</u> を、'x' に列番号または列名を入力して指定します。複数の列、例えば 5列目と6列目を指定する場合は、 `j = c(5,6)` とします。
+
+**flextable** パッケージのフォーマット関数の全リストは [ここ](https://davidgohel.github.io/flextable/reference/index.html) でご覧いただけます。また、 `?flextable`と入力してドキュメントを確認することもできます。
 
 
-### Column width {.unnumbered}
+### 列の幅 {.unnumbered}
 
-We can use the `autofit()` function, which nicely stretches out the table so that each cell only has one row of text. The function `qflextable()` is a convenient shorthand for `flextable()` and `autofit()`.  
+`autofit()` を使うと、各セルに 1 行分のテキストしか入らないように表をうまい具合に引き伸ばすことができます。`qflextable()` は、 `flextable()` および `autofit()`を簡潔にした便利なものです。
 
 ```{r}
 
@@ -235,9 +235,9 @@ my_table %>% autofit()
 
 ```
 
-However, this might not always be appropriate, especially if there are very long values within cells, meaning the table might not fit on the page. 
+しかし、セル内の値が非常に長く、表がページに収まらない場合など、必ずしも適切ではない場合があります。 
 
-Instead, we can specify widths with the `width()` function. It can take some playing around to know what width value to put. In the example below, we specify different widths for column 1, column 2, and columns 4 to 8. 
+その代わりに、 `width()` で幅を指定することができます。以下の例では、1 列目、2 列目、4 列目から 8 列目にそれぞれ異なる幅を指定しています。
 
 ```{r}
 
@@ -250,31 +250,31 @@ my_table
   
 ```
 
-### Column headers {.unnumbered}
+### 列のヘッダ {.unnumbered}
 
-We want more clearer headers for easier interpretation of the table contents.
+表の内容をわかりやすくするために、ヘッダをより明確にしたいことがあります。
 
-For this table, we will want to add a second header layer so that columns covering the same subgroups can be grouped together. We do this with the `add_header_row()` function with `top = TRUE`. We provide the new name of each column to `values = `, leaving empty values `""` for columns we know we will merge together later.  
+この表では、同じサブグループをカバーする列がグループ化されるように、2 つ目のヘッダレイヤを追加したいと思います。そのために、 `top = TRUE`の `add_header_row()` を使用します。各列の新しい名前を `values =`に指定し、 後で統合することがわかっている列には空の値`""` を指定します。
 
-We also rename the header names in the now-second header in a separate `set_header_labels()` command.  
+また、別の `set_header_labels()` コマンドで、2 つ目のヘッダのヘッダ名を変更します。
 
-Finally, to "combine" certain column headers in the top header we use `merge_at()` to merge the column headers in the top header row.  
+最後に、特定の列のヘッダをトップヘッダに「結合」するために、 `merge_at()` を使用してトップヘッダ行の列のヘッダを結合します。
 
 ```{r}
 my_table <- my_table %>% 
   
   add_header_row(
-    top = TRUE,                # New header goes on top of existing header row
-    values = c("Hospital",     # Header values for each column below
+    top = TRUE,                # 既存のヘッダ列の上に新しいヘッダを配置
+    values = c("Hospital",     # 各列のヘッダ値は以下の通り
                "Total cases with known outcome", 
-               "Recovered",    # This will be the top-level header for this and two next columns
+               "Recovered",    # この列と次の2つの列のトップレベルのヘッダ
                "",
                "",
-               "Died",         # This will be the top-level header for this and two next columns
-               "",             # Leave blank, as it will be merged with "Died"
+               "Died",         # この列と次の2つの列のトップレベルのヘッダ
+               "",             # 「死亡」と統合させるので空欄のまま
                "")) %>% 
     
-  set_header_labels(         # Rename the columns in original header row
+  set_header_labels(         # 元のヘッダ行の列名を変更
       hospital = "", 
       N_Known = "",                  
       N_Recover = "Total",
@@ -284,46 +284,46 @@ my_table <- my_table %>%
       Pct_Death = "% of cases",
       ct_value_Death = "Median CT values")  %>% 
   
-  merge_at(i = 1, j = 3:5, part = "header") %>% # Horizontally merge columns 3 to 5 in new header row
-  merge_at(i = 1, j = 6:8, part = "header")     # Horizontally merge columns 6 to 8 in new header row
+  merge_at(i = 1, j = 3:5, part = "header") %>% # 3列目から5列目までを新しいヘッダ行に水平に結合
+  merge_at(i = 1, j = 6:8, part = "header")     # 6列目から8列目までを新しいヘッダ行に水平に結合
 
 my_table  # print
 
 ```
 
-### Borders and background {.unnumbered}  
+### 罫線と背景 {.unnumbered}
 
-You can adjust the borders, internal lines, etc. with various **flextable** functions. It is often easier to start by removing all existing borders with `border_remove()`.  
+罫線や内線などの調整は、さまざまな **flextable** パッケージの関数で行うことができます `border_remove()`で既存の罫線をすべて削除することから始めると、簡単な場合が多いです。
 
-Then, you can apply default border themes by passing the table to `theme_box()`, `theme_booktabs()`, or `theme_alafoli()`.  
+そして、 `theme_box()`、`theme_booktabs()`、 `theme_alafoli()`にテーブルを渡すことで、デフォルトの罫線テーマを適用することができます。
 
-You can add vertical and horizontal lines with a variety of functions. `hline()` and `vline()` add lines to a specified row or column, respectively. Within each, you must specify the `part = ` as either "all", "body", or "header". For vertical lines, specify the column to `j = `, and for horizontal lines the row to `i = `. Other functions like `vline_right()`, `vline_left()`, `hline_top()`, and `hline_bottom()` add lines to the outsides only.  
+多彩な機能で縦線や横線を入れることができます。 `hline()` と `vline()` は、それぞれ指定した行や列に線を追加する関数です。それぞれの関数の中で、 `part =` の部分を "all"、"body"、"header" のいずれかに指定する必要があります。縦線の場合は `j =`までの列を、横線の場合は `i =`までの行を指定します。また、 `vline_right()`、`vline_left()`、 `hline_top()`、 `hline_bottom()` などの関数は、外側のみに線を追加します。
 
-In all of these functions, the actual line style itself must be specified to `border = ` and must be the output of a separate command using the `fp_border()` function from the **officer** package. This function helps you define the width and color of the line. You can define this above the table commands, as shown below.  
+これらのすべての関数において、実際の罫線のスタイル自体は `border =` で指定する必要があり、 **officer** パッケージの `fp_border()` を使用した別のコマンドで出力しなければなりません。この関数は、線の幅と色を定義するのに役立ちます。以下のように、表コマンドの上で定義することができます。
 
 ```{r}
-# define style for border line
+# 罫線のスタイルを定義する
 border_style = officer::fp_border(color="black", width=1)
 
-# add border lines to table
+# 表に罫線を追加
 my_table <- my_table %>% 
 
-  # Remove all existing borders
+  # 既存の罫線をすべて削除
   border_remove() %>%  
   
-  # add horizontal lines via a pre-determined theme setting
+  # 既定のテーマ設定のまま水平線を追加
   theme_booktabs() %>% 
   
-  # add vertical lines to separate Recovered and Died sections
-  vline(part = "all", j = 2, border = border_style) %>%   # at column 2 
-  vline(part = "all", j = 5, border = border_style)       # at column 5
+  # 回復症例 と 死亡症例のセクションを分けるために縦線を追加
+  vline(part = "all", j = 2, border = border_style) %>%   # 2列目
+  vline(part = "all", j = 5, border = border_style)       # 5列目
 
 my_table
 ```
 
-### Font and alignment {.unnumbered}
+### フォントと配置 {.unnumbered}
 
-We centre-align all columns aside from the left-most column with the hospital names, using the `align()` function from **flextable**.
+**flextable** パッケージの `align()` を使って、病院名のある左端の列以外のすべての列を中央揃えにします。
 
 ```{r}
 my_table <- my_table %>% 
@@ -331,30 +331,30 @@ my_table <- my_table %>%
 my_table
 ```
 
-Additionally, we can increase the header font size and change then to bold. We can also change the total row to bold.  
+さらに、ヘッダのフォントサイズを大きくして、ボールドに変更することもできます。また、全体の行を太字にすることもできます。
 
 ```{r}
 
 my_table <-  my_table %>%  
-  fontsize(i = 1, size = 12, part = "header") %>%   # adjust font size of header
-  bold(i = 1, bold = TRUE, part = "header") %>%     # adjust bold face of header
-  bold(i = 7, bold = TRUE, part = "body")           # adjust bold face of total row (row 7 of body)
+  fontsize(i = 1, size = 12, part = "header") %>%   # ヘッダのフォントサイズを調整
+  bold(i = 1, bold = TRUE, part = "header") %>%     # ヘッダの太字を調整
+  bold(i = 7, bold = TRUE, part = "body")           # 合計行の太字を調整する（本文7行目）
 
 my_table
 
 ```
 
 
-We can ensure that the proportion columns display only one decimal place using the function `colformat_num()`. Note this could also have been done at data management stage with the `round()` function. 
+`colformat_num()` を使用して、比率の列のみを小数点 1 桁まで表示することができます。なお、これはデータ管理の段階で `round()` を用いて行うこともできます。
 
 ```{r}
 my_table <- colformat_num(my_table, j = c(4,7), digits = 1)
 my_table
 ```
 
-### Merge cells {.unnumbered}  
+### セルの結合 {.unnumbered}
 
-Just as we merge cells horizontally in the header row, we can also merge cells vertically using `merge_at()` and specifying the rows (`i`) and column (`j`). Here we merge the "Hospital" and "Total cases with known outcome" values vertically to give them more space.   
+ヘッダ行で水平方向にセルを結合したように、`merge_at()` で行 （`i`） と列 （`j`） を指定して垂直方向にセルを結合することもできます。ここでは、「Hospital（病院）」と「Total cases with known outcome（転帰がわかっている症例の合計数）」の値を垂直方向に結合して、スペースを確保しています。
 
 ```{r}
 my_table <- my_table %>% 
@@ -364,9 +364,9 @@ my_table <- my_table %>%
 my_table
 ```
 
-### Background color {.unnumbered}
+### 背景色 {.unnumbered}
 
-To distinguish the content of the table from the headers, we may want to add additional formatting. e.g. changing the background color. In this example we change the table body to gray.
+表の内容をヘッダと区別するために、背景色の変更などの書式設定を追加したい場合があります。この例では、表の本文をグレーに変更します。
 
 ```{r}
 my_table <- my_table %>% 
@@ -377,9 +377,9 @@ my_table
 
 
 <!-- ======================================================= -->
-## Conditional formatting {  }
+## 条件付き書式設定
 
-We can highlight all values in a column that meet a certain rule, e.g. where more than 55% of cases died. Simply put the criteria to the `i = ` or `j = ` argument, preceded by a tilde `~`. Reference the column in the data frame, not the display heading values.  
+例えば、55% 以上の症例が死亡した場所など、あるルールを満たす列のすべての値を強調表示することができます。基準を `i =` または `j =` の引数に入れ、その前にチルダ `~`を付けるだけです。表示する見出しの値ではなく、データフレームの列を参照します。
 
 ```{r}
 
@@ -390,7 +390,7 @@ my_table %>%
 
 
 
-Or, we can highlight the entire row meeting a certain criterion, such as a hospital of interest. To do this we just remove the column (`j`) specification so the criteria apply to all columns.
+また、関心のある病院など、特定の基準を満たす行全体を強調表示することもできます。そのためには、列(`j`) の指定を外すだけで、基準がすべての列に適用されます。
 
 
 ```{r}
@@ -400,71 +400,71 @@ my_table %>%
 
 ```
 
-## All code together {#tbl_pres_all}  
+## すべてのコードをまとめる {#tbl_pres_all}
 
 
-Below we show all the code from the above sections together.  
+以下に、上記のセクションのコードをすべてまとめて示します。
 
-```{r}  
+```{r}
 
 border_style = officer::fp_border(color="black", width=1)
 
 pacman::p_load(
-  rio,            # import/export
-  here,           # file pathways
-  flextable,      # make HTML tables 
-  officer,        # helper functions for tables
-  tidyverse)      # data management, summary, and visualization
+  rio,            # インポート/エクスポート
+  here,           # ファイルパス指定
+  flextable,      # HTML表を作成 
+  officer,        # 作表に関するヘルパー関数
+  tidyverse)      # データ管理、要約、ビジュアライゼーション
 
 table <- linelist %>% 
 
-  # Get summary values per hospital-outcome group
+  # 病院と転帰のグループごとの要約を取得
   ###############################################
-  group_by(hospital, outcome) %>%                      # Group data
-  summarise(                                           # Create new summary columns of indicators of interest
-    N = n(),                                            # Number of rows per hospital-outcome group     
-    ct_value = median(ct_blood, na.rm=T)) %>%           # median CT value per group
+  group_by(hospital, outcome) %>%                      # データのグループ化
+  summarise(                                           # 関心のある指標の要約する列を新規作成
+    N = n(),                                            # 病院-転帰グループごとの行数     
+    ct_value = median(ct_blood, na.rm=T)) %>%           # グループごとのCTの中央値
   
-  # add totals
+  # 合計行を追加
   ############
-  bind_rows(                                           # Bind the previous table with this mini-table of totals
+  bind_rows(                                           # 前の表とこのミニ表の合計を結合する
     linelist %>% 
       filter(!is.na(outcome) & hospital != "Missing") %>%
-      group_by(outcome) %>%                            # Grouped only by outcome, not by hospital    
+      group_by(outcome) %>%                            # 病院をなくして転帰のみでグループ化     
       summarise(
-        N = n(),                                       # Number of rows for whole dataset     
-        ct_value = median(ct_blood, na.rm=T))) %>%     # Median CT for whole dataset
+        N = n(),                                       # データセット全体の行数     
+        ct_value = median(ct_blood, na.rm=T))) %>%     # データセット全体のCTの中央値
   
-  # Pivot wider and format
+  # ピボットの幅とフォーマット
   ########################
   mutate(hospital = replace_na(hospital, "Total")) %>% 
-  pivot_wider(                                         # Pivot from long to wide
-    values_from = c(ct_value, N),                       # new values are from ct and count columns
-    names_from = outcome) %>%                           # new column names are from outcomes
-  mutate(                                              # Add new columns
-    N_Known = N_Death + N_Recover,                               # number with known outcome
-    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # percent cases who died (to 1 decimal)
-    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # percent who recovered (to 1 decimal)
-  select(                                              # Re-order columns
-    hospital, N_Known,                                   # Intro columns
-    N_Recover, Pct_Recover, ct_value_Recover,            # Recovered columns
-    N_Death, Pct_Death, ct_value_Death)  %>%             # Death columns
-  arrange(N_Known) %>%                                 # Arrange rows from lowest to highest (Total row at bottom)
+  pivot_wider(                                         # 縦持ちから横持ちへの縦横変換
+    values_from = c(ct_value, N),                       # CT値とカウント列からの新規の値
+    names_from = outcome) %>%                           # 転帰を新しい列名に
+  mutate(                                              # 新しい列の追加
+    N_Known = N_Death + N_Recover,                               # 転帰がわかっている症例数
+    Pct_Death = scales::percent(N_Death / N_Known, 0.1),         # 死亡症例のパーセント（小数点1桁）
+    Pct_Recover = scales::percent(N_Recover / N_Known, 0.1)) %>% # 回復症例のパーセント（小数点1桁）)
+  select(                                              # 列の再並び替え
+    hospital, N_Known,                                   # 最初の列
+    N_Recover, Pct_Recover, ct_value_Recover,            # 回復症例の列
+    N_Death, Pct_Death, ct_value_Death)  %>%             # 死亡症例の列
+  arrange(N_Known) %>%                                 # 行を低い順から高い順に（合計は最下部）
 
-  # formatting
+  # フォーマット
   ############
-  flextable() %>%              # table is piped in from above
+  flextable() %>%              # 表は上からパイプ演算子で渡す
   add_header_row(
-    top = TRUE,                # New header goes on top of existing header row
-    values = c("Hospital",     # Header values for each column below
+    top = TRUE,                # 既存のヘッダ列の上に新しいヘッダを配置
+    values = c("Hospital",     # 各列のヘッダ値は以下の通り
                "Total cases with known outcome", 
-               "Recovered",    # This will be the top-level header for this and two next columns
+               "Recovered",    # この列と次の2つの列のトップレベルのヘッダ
                "",
                "",
-               "Died",         # This will be the top-level header for this and two next columns
-               "",             # Leave blank, as it will be merged with "Died"
+               "Died",         # この列と次の2つの列のトップレベルのヘッダ
+               "",             # 「死亡」と統合させるので空欄のまま
                "")) %>% 
-    set_header_labels(         # Rename the columns in original header row
+    set_header_labels(         # 元のヘッダ行の列名を変更
       hospital = "", 
       N_Known = "",                  
       N_Recover = "Total",
@@ -473,12 +473,12 @@ table <- linelist %>%
       N_Death = "Total",
       Pct_Death = "% of cases",
       ct_value_Death = "Median CT values")  %>% 
-  merge_at(i = 1, j = 3:5, part = "header") %>% # Horizontally merge columns 3 to 5 in new header row
+  merge_at(i = 1, j = 3:5, part = "header") %>% # 3列目から5列目までを新しいヘッダ行に水平に結合
   merge_at(i = 1, j = 6:8, part = "header") %>%  
   border_remove() %>%  
   theme_booktabs() %>% 
-  vline(part = "all", j = 2, border = border_style) %>%   # at column 2 
-  vline(part = "all", j = 5, border = border_style) %>%   # at column 5
+  vline(part = "all", j = 2, border = border_style) %>%   # 2行目 
+  vline(part = "all", j = 5, border = border_style) %>%   # 5行目
   merge_at(i = 1:2, j = 1, part = "header") %>% 
   merge_at(i = 1:2, j = 2, part = "header") %>% 
   width(j=1, width = 2.7) %>% 
@@ -496,48 +496,47 @@ table
 
 
 <!-- ======================================================= -->
-## Saving your table {  }
+## 表の保存 {  }
 
-There are different ways the table can be integrated into your output. 
+この表を出力方式にはいろいろな方法があります。
 
-### Save single table {.unnumbered}
+### 単一のテーブルとして保存 {.unnumbered}
 
-You can export the tables to Word, PowerPoint or HTML or as an image (PNG) files. To do this, use one of the following functions:
+表を Word、PowerPoint、HTML、または画像（PNG）ファイルとしてエクスポートすることができます。これを行うには、次のいずれかの機能を使用します。:
 
-* `save_as_docx()`  
-* `save_as_pptx()`  
-* `save_as_image()`  
-* `save_as_html()`  
+* `save_as_docx()`
+* `save_as_pptx()`
+* `save_as_image()`
+* `save_as_html()`
 
-For instance below we save our table as a word document. Note the syntax of the first argument - you can just provide the name of your flextable object e.g. `my_table`, or you can give is a "name" as shown below (the name is "my table"). If name, this will appear as the title of the table in Word. We also demonstrate code to save as PNG image.  
+最初の引数の構文に注意してください - flextable オブジェクトの名前（例： `my_table`）だけを指定することもできますし、以下のように「名前」を指定することもできます（名前は "my table" です）。名前を付けると、Word で表のタイトルとして表示されます。PNG 画像として保存するコードもご紹介します。
 
 ```{r message=FALSE, warning=FALSE, eval=F}
-# Edit the 'my table' as needed for the title of table.  
+# 表のタイトルに合わせ 'my table' を必要に応じて編集   
 save_as_docx("my table" = my_table, path = "file.docx")
 
 save_as_image(my_table, path = "file.png")
 ```
 
-Note the packages `webshot` or `webshot2` are required to save a flextable as an image. Images may come out with transparent backgrounds.
+なお、flextable を画像として保存するには、 `webshot` または `webshot2` パッケージが必要です。画像は背景が透明になることがあります。
 
-If you want to view a 'live' version of the **flextable** output in the intended document format, use `print()` and specify one of the below to `preview = `. The document will "pop-up" open on your computer in the specified software program, but will not be saved. This can be useful to check if the table fits in one page/slide or so you can quickly copy it into another document, you can use the print method with the argument preview set to “pptx” or “docx”.  
+**flextable** パッケージの出力の 'live' バージョンを意図したドキュメント形式で表示したい場合は、 `print()` を使用し、 `preview =`に以下のいずれかを指定します。ドキュメントは、指定したソフトウェアプログラムでコンピュータ上に「ポップアップ」して開きますが、保存はされません。この方法は表が１ページやスライドに収まるかを確認する場合や、別の文書に素早く表をコピーするような場合に便利です。引数の preview に "pptx" または "docx" を指定して print() を使用することができます。
 
 ```{r, eval=F}
-print(my_table, preview = "docx") # Word document example
-print(my_table, preview = "pptx") # Powerpoint example
+print(my_table, preview = "docx") # Word文書の例
+print(my_table, preview = "pptx") # Powerpointの例
 ```
 
-### Print table in R markdown {.unnumbered}  
+### R マークダウンで表を出力 {.unnumbered}
 
-This table can be integrated into your an automated document, an R markdown output, if the table object is called within the R markdown chunk. This means the table can be updated as part of a report where the data might change, so the numbers can be refreshed.
+この表は、表オブジェクトが R マークダウンチャンク内で呼び出された場合、自動化ドキュメントである R マークダウン出力に統合することができます。つまり、データが変更される可能性のあるレポートの一部としてテーブルを更新し、数値をリフレッシュすることができます。
 
-See detail in the [Reports with R Markdown] page of this handbook. 
+詳細は、本ハンドブック [R Markdown で作るレポート]() の章をご覧ください。
 
 <!-- ======================================================= -->
-## Resources {  }
+## 参考資料
 
-The full **flextable** book is here: https://ardata-fr.github.io/flextable-book/
-The Github site is [here](https://davidgohel.github.io/flextable/)  
-A manual of all the **flextable** functions can be found [here](https://davidgohel.github.io/flextable/reference/index.html)
+**flextable** の完全解説版はこちら://ardata-fr.github.io/flextable-book/ The Github サイト [こちら](https://davidgohel.github.io/flextable/)\
+**flextable** の全機能のマニュアルは [こちら](https://davidgohel.github.io/flextable/reference/index.html)からご覧いただけます。
 
-A gallery of beautiful example **flextable** tables with code can be accessed [here](https://ardata-fr.github.io/flextable-gallery/gallery/)  
+コード付きの美しい **flextable** の例を集めたギャラリーは [こちら](https://ardata-fr.github.io/flextable-gallery/gallery/)からご覧いただけます。
