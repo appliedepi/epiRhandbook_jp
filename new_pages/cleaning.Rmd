@@ -947,59 +947,63 @@ linelist <- linelist %>%
 
 **fct_explicit_na()**
 
-これは、**forcats** パッケージの関数です。**forcats** パッケージは、ファクタ（factor）型の列を扱います。ファクターは、`c("First", "Second", "Third")`のような順序付きの値を扱うためのRの方法であり、表やプロットに表示される値（病院など）の順序を設定します。[Factors](https://epirhandbook.com/en/factors.html#factors)のページを参照してください。
+`fct_explicit_na()` は、**forcats** パッケージに含まれている関数です。**forcats** パッケージは、因子（ファクタ）型の列を扱います。因子型は、`c("First", "Second", "Third")` のような順序付きの値を扱うための R の方法であり、表やプロットに表示される値（病院など）の順序を設定します。詳細は、[因子（ファクタ）型データ](#factors) の章を参照してください。
 
-データがFactor型で、`replace_na()`を使ってNAを "Missing "に変換しようとすると、次のようなエラーが表示されます： `invalid factor level, NA generated.` 因子の可能なレベルとして定義されていない "Missing" を値として追加しようとしたため、拒否されます。
+データが因子型で、`replace_na()` を使って `NA` を "Missing" に変換しようとすると、以下のようなエラーが表示されます。
 
-この問題を解決する最も簡単な方法は、forcats の関数`fct_explicit_na()`を使用することです。この関数は、列をFactor型に変換し、NA値を文字"(Missing)"に変換します。
+`invalid factor level, NA generated.`
+
+"Missing" を因子型がとれるレベルとして定義せずに追加しようとしたため、エラーとなります。
+
+この問題を解決する最も簡単な方法は、**forcats** パッケージの `fct_explicit_na()` を使用することです。この関数は、列を因子型に変換し、`NA` 値を文字型の "(Missing)" に変換します。
 
 ```{r, eval=F}
 linelist %>% 
   mutate(hospital = fct_explicit_na(hospital))
 ```
 
-　よりゆっくりとした方法としては、`fct_expand()`を用いてFactor型を追加し、その後、欠損値を変換する方法があります。
+もう一つ、さらに手間がかかる方法ですが、`fct_expand()` を用いて因子型を追加し、その後、欠損値を変換しても同じ結果を得ることができます。
 
 **`na_if()`**
 
-　特定の値を NA に変換するには、**dplyr** の `na_if()`を使います。以下のコマンドは `replace_na()`の逆の操作を行います。以下の例では、列 `hospital` の "Missing" の値はすべて `NA`に変換されます。
+特定の値を `NA` に変換するには、**dplyr** の `na_if()` を使います。以下のコマンドは `replace_na()` とは逆の操作を行います。以下の例では、列 `hospital` の "Missing" の値はすべて `NA` に変換されます。
 
 ```{r}
 linelist <- linelist %>% 
   mutate(hospital = na_if(hospital, "Missing"))
 ```
 
-　注意： `na_if()`は論理的条件（例：" "all values \> 99""）には使用できません。これには`replace()`または`case_when()`を使用してください。
+注意： `na_if()` は論理的条件（例："all values \> 99"）には使用できません。このような論理的条件には、`replace()` または `case_when()` を使用してください。
 
 ```{r, eval=F}
-#40以上の温度をNAに変換。 
+# 40度以上の温度をNAに変換する 
 linelist <- linelist %>% 
   mutate(temp = replace(temp, temp > 40, NA))
 
-# 2000年1月1日以前の発症日を欠損に変換する。
+# 2000年1月1日以前の発症日を欠損に変換する
 linelist <- linelist %>% 
   mutate(date_onset = replace(date_onset, date_onset > as.Date("2000-01-01"), NA))
 ```
 
-### クリーニング辞書 {.unnumbered}
+### クリーニングディクショナリ（Cleaning dictionary） {.unnumbered}
 
-　Rパッケージ **linelist** とその関数 `clean_variable_spelling()`を使って、データフレームをクリーニング辞書でクリーニングします。 **linelis**t は[RECON](https://github.com/reconhub/linelist) - the R Epidemics Consortiumによって開発されたパッケージです。
+R の **linelist** パッケージに含まれる関数 `clean_variable_spelling()` を使用し、データフレームをクリーニングディクショナリを用いて前処理します。 **linelist** は [RECON](https://github.com/reconhub/linelist)（R Epidemics Consortium）によって開発されたパッケージです。
 
-1.  3つの列でクリーニング辞書を作成します。
+1.  まず、クリーニングディクショナリを作成します。クリーニングディクショナリは、以下の 3 つの列で構成される必要があります。
 
--   from "カラム（不正な値）
+-   from 列（不正な値）
 
--   to "カラム（正しい値）
+-   to 列（正しい値）
 
--   変更を適用する列を指定する列（または、すべての列に適用する場合は".global"）。
+-   変更を適用する列を指定する列（すべての列に変更を適用する場合は、".global" と記入する）
 
-注意：.globalの辞書項目は、列固有の辞書項目によって上書きされます。
+注意：.globalのディクショナリ項目は、列固有のディクショナリ項目によって上書きされます。
 
 ```{r, fig.align = "center", out.width = "100%", echo=F}
 knitr::include_graphics(here::here("images", "cleaning_dict.png"))
 ```
 
-2)  この例題は、[Download handbook and data](https://epirhandbook.com/en/download-handbook-and-data.html#download-handbook-and-data)のページにある手順でダウンロードできます。
+2)  本章では、[ハンドブックとデータのダウンロード](#data-used) の章にあるクリーニングディクショナリを例として使用しますので、上のリンクからダウンロードし、インポートしてください。
 
 ```{r, echo=F}
 cleaning_dict <- rio::import(here("data", "case_linelists", "cleaning_dict.csv"))
@@ -1009,32 +1013,33 @@ cleaning_dict <- rio::import(here("data", "case_linelists", "cleaning_dict.csv")
 cleaning_dict <- import("cleaning_dict.csv")
 ```
 
-3)  未加工のラインリストを `clean_variable_spelling()`に渡し、wordlists = クリーニング辞書データフレームに指定します。spelling_vars = 引数は、辞書のどの列を参照するかを指定するために使用することができます（デフォルトでは3番目）。また、辞書をすべてのcharactor列とfactor列に適用するためにNULLを設定することもできます。この関数の実行には時間がかかることに注意してください。
+3)  [未加工の]{.ul}ラインリストを `clean_variable_spelling()` に渡し、`wordlists =` 引数にインポートしたクリーニングディクショナリを指定します。`spelling_vars =` 引数は、ディクショナリのどの列を参照するかを指定するために使用できます（デフォルトでは3番目）。また、ディクショナリを文字列型の列と因子型の列すべてに適用するために、`spelling_vars =` 引数を `NULL` に設定することもできます。この関数の実行には時間がかかることに注意してください。
 
 ```{r}
 linelist <- linelist %>% 
   linelist::clean_variable_spelling(
     wordlists = cleaning_dict,
     spelling_vars = "col",        
-     #列名を含むdict列、デフォルトではdictの3番目の列になる。
+     # 参照する列名を含む列を指定する
+     #（デフォルトではディクショナリの3番目の列になる）
   )
 ```
 
-　右側にスクロールすると、値がどのように変化したかがわかります。特に性別（小文字→大文字）や、すべての症状の列がYes/noから1/0に変化しています。
+以下の表を右側にスクロールすると、上のコマンドを実行後に値がどのように変化したかがわかります。特に、性別の変化（小文字から大文字に変換された）や、すべての症状の列が yes/no の 2 択から 1/0 の 2 択に変化したことに注目してください。
 
 ```{r message=FALSE, echo=F}
 # ラインリストのデータを表として表示する
 DT::datatable(head(linelist,50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-　クリーニング辞書の列名は、クリーニングスクリプトのこの時点での名前に対応していなければならないことに注意してください。詳細については、linelistパッケージの[online reference for the linelist package](https://www.repidemicsconsortium.org/linelist/reference/clean_data.html)を参照してください。
+クリーニングディクショナリの `col` 列に記入される列名は、クリーニングする時点での列名と同一でなければならないことに注意してください。詳細については、[こちら](https://www.repidemicsconsortium.org/linelist/reference/clean_data.html) の **linelist** パッケージのドキュメントを参照してください。
 
 #### パイプチェーンへの追加 {.unnumbered}
 
 以下では、いくつかの新しい列と列変換がパイプチェーンに追加されています。
 
 ```{r}
-#クリーニングパイプチェーン (未加工データから始まり、クリーニングステップを経てパイプに送られる)
+#クリーニングパイプチェーン (未加工データから始まり、クリーニングステップ経由してパイプで処理される)
 ##################################################################################
 
 # パイプチェーンの処理開始
@@ -1070,10 +1075,10 @@ linelist <- linelist_raw %>%
      # 列の追加: 入院の遅れ
     mutate(days_onset_hosp = as.numeric(date_hospitalisation - date_onset)) %>% 
     
-     # 上記は、すでに説明した上流側のクリーニング方法です。
+     # ここまでは、すでに説明したクリーニング手順
    ###################################################
 
-　　# 病院の列の値をきれいにする。
+　　# 病院の列の値をクリーニングする
     mutate(hospital = recode(hospital,
                       # OLD = NEW
                       "Mitylira Hopital"  = "Military Hospital",
@@ -1087,7 +1092,7 @@ linelist <- linelist_raw %>%
     
     mutate(hospital = replace_na(hospital, "Missing")) %>% 
 
-       # age_yearsカラムの作成(from age and age_unit)
+       # age_years 列を新しく作成する (age 列と age_unit 列を使用する)
     mutate(age_years = case_when(
           age_unit == "years" ~ age,
           age_unit == "months" ~ age/12,
@@ -1101,31 +1106,31 @@ linelist <- linelist_raw %>%
 
 <!-- ======================================================= -->
 
-## 数値カテゴリー {#num_cats}
+## 数値カテゴリ {#num_cats}
 
-　ここでは、数値列からカテゴリを作成するための特別なアプローチを説明します。一般的な例としては、年齢のカテゴリー、検査値のグループなどがあります。ここでは、以下について説明します。
+ここでは、数値データをカテゴリ化する方法を説明します。一般的な例としては、年齢のカテゴリー化や、検査結果のグループ化などがあります。ここでは、以下について説明します。
 
--   `age_categories()`( **epikit** パッケージより)
+-   `age_categories()` ( **epikit** パッケージより)
 
--   `cut()`, base Rより
+-   `cut()`（**base** Rより）
 
 -   `case_when(`)
 
--   `quantile()`と`ntile()`を使った分位値分割
+-   `quantile()` と `ntile()` を使った分位数による分割
 
-### レビュー分布 {.unnumbered}
+### 分布を確認する {.unnumbered}
 
-この例では、`age_years`列を使って`age_cat`列を作成します。
+例として、`age_years` 列を使用して新たに `age_cat` 列を作成していきます。
 
 ```{r}
-#linelist変数ageの列をチェックする。
+# linelistのage列のデータ型をチェックする
 class(linelist$age_years)
 ```
 
-　まず、データの分布を調べて、適切なカットポイントを作ります。[ggplot basics](https://epirhandbook.com/en/ggplot-basics.html#ggplot-basics) のページをご覧ください。
+まずデータの分布を確認し、適切な分割点（カットポイント）を作ります。詳しくは [ggplot の基礎](#ggplot-basics) の章をご覧ください。
 
 ```{r, out.height='50%'}
-# 分布を調べる。
+# 分布を確認する
 hist(linelist$age_years)
 ```
 
@@ -1133,13 +1138,13 @@ hist(linelist$age_years)
 summary(linelist$age_years, na.rm=T)
 ```
 
-[**注意**：数値の変数型が"character"としてインポートされることがあります。これは、値の一部に数字以外の文字が含まれている場合に発生します。例えば、年齢を"2ヶ月"と入力した場合や、（Rのロケール設定にもよりますが）小数点以下の位置にコンマが使用されている場合などです（例："4.5"は4年半の意味）。]{style="color: orange;"}
+[**注意**：数値型のデータが文字列型としてインポートされることがあります。これは、値の一部に数字以外の文字が含まれている場合に発生します。例えば、年齢を「2ヶ月」と入力した場合や、（R のロケール設定にもよりますが）小数点の代わりにコンマが使用されている場合などです（例："4,5" が 4 年半の意味で使われている場合）。]{style="color: orange;"}
 
 <!-- ======================================================= -->
 
 ### `age_categories()` {.unnumbered}
 
-**epikit** パッケージでは、`age_categories()`関数を使って、数値列の分類やラベル付けを簡単に行うことができます（注：この関数は、年齢以外の数値変数にも適用できます）。その結果、出力される列は自動的に順序付けられたカテゴリーとなります。
+**epikit** パッケージでは、`age_categories()` 関数を使って、数値列の分類やラベル付けを簡単に行うことができます（注：この関数は、年齢以外の数値変数にも適用できます）。その結果、出力される列は自動的に順序付けられたカテゴリーとなります。
 
 必要な入力は以下の通りです。
 
@@ -1167,7 +1172,7 @@ linelist <- linelist %>%
 table(linelist$age_cat, useNA = "always")
 ```
 
-　指定したブレーク値は、デフォルトでは下限含めます。つまり、"上位"のグループに含まれ、グループが下/左に"開いて"いる状態になります。下図のように、各ブレーク値に1を加えることで、上/右で開いたグループにすることができます。
+指定したブレーク値は、デフォルトでは下限含めます。つまり、"上位"のグループに含まれ、グループが下/左に"開いて"いる状態になります。下図のように、各ブレーク値に1を加えることで、上/右で開いたグループにすることができます。
 
 ```{r}
 # 同じカテゴリーの上端を含める
@@ -1184,7 +1189,7 @@ table(linelist$age_cat, useNA = "always")
 
 `separator =` で、ラベルの表示方法を調整できます。 デフォルトは "-" です。
 
-`ceiling =`で、上位の数字の扱い方を調整できます。上限値を設定するには `ceiling = TRUE` とします。この使用方法では、提供された最も高いブレーク値は"上限"であり、カテゴリー"XX+"は作成されません。ブレーク値の上限（または定義されている場合は上限＝）を超える値は、`NA`に分類されます。以下は、`ceiling = TRUE`の例で、XX+のカテゴリーはなく、70（最も高いブレーク値）を超える値は`NA`として割り当てられます。
+`ceiling =` で、上位の数字の扱い方を調整できます。上限値を設定するには `ceiling = TRUE` とします。この使用方法では、提供された最も高いブレーク値は"上限"であり、カテゴリー"XX+"は作成されません。ブレーク値の上限（または定義されている場合は上限＝）を超える値は、`NA` に分類されます。以下は、`ceiling = TRUE` の例で、XX+のカテゴリーはなく、70（最も高いブレーク値）を超える値は`NA`として割り当てられます。
 
 ```{r}
 # 上限をTRUEに設定した場合
@@ -1200,13 +1205,13 @@ linelist <- linelist %>%
 table(linelist$age_cat, useNA = "always")
 ```
 
-また、`breakers＝`の代わりに、`lower＝`、`upper＝`、`by＝`のすべてを指定することもできます。
+また、`breakers =` の代わりに、`lower＝`、`upper＝`、`by＝` のすべてを指定することもできます。
 
--   `lower =`考慮したい最低の数値 - デフォルトは0
+-   `lower =` 考慮したい最低の数値 - デフォルトは0
 
--   `upper =`考慮したい最も高い数値
+-   `upper =` 考慮したい最も高い数値
 
--   `by =`グループ間の年の数
+-   `by =` グループ間の年の数
 
 ```{r}
 linelist <- linelist %>% 
