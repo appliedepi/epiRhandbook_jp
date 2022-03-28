@@ -837,13 +837,13 @@ linelist <- linelist %>%
                       ))
 ```
 
-上のコードを実行すると、 `hospital` 列内で間違ったスペルの値が修正され、正しいスペルの値のグループに統合されていることがわかります。
+上のコードを実行すると、 `hospital` 列内で間違った綴りの値が修正され、正しい綴りの値のグループに統合されていることがわかります。
 
 ```{r}
 table(linelist$hospital, useNA = "always")
 ```
 
-[[**ヒント**]{.ul}：等号（=）の前後には、スペースをいくつか入れても問題ありません。コードを読みやすくするために、すべての行またはほとんどの行で等号（=）の場所を揃えてください。また、ハッシュタグでコメント行を追加し、どちらが古い値でどちらが新しい値なのかを、第三者に明確にわかるようにすることも大事なポイントです。]{style="color: darkgreen;"}
+[[**ヒント**]{.ul}：等号（=）の前後には、スペースをいくつか入れても問題ありません。コードを読みやすくするために、すべての行またはほとんどの行で等号（=）の場所を揃えることをおすすめします。また、ハッシュタグでコメント行を追加し、どちらが古い値でどちらが新しい値なのかを、第三者に明確にわかるようにすることも大事なポイントです。]{style="color: darkgreen;"}
 
 [[**ヒント**]{.ul}：データセットの中には、空白文字の値が存在することがあります（これは、R の欠損値である NA として認識されません）。このような値を参照するためには、2 つの引用符をスペースを空けずに（""）使用します。]{style="color: darkgreen;"}
 
@@ -851,27 +851,27 @@ table(linelist$hospital, useNA = "always")
 
 以下では、論理条件を使用して列の値を再定義する方法を説明します。
 
--   単純な論理条件 - `replace()`、`ifelse()`、`if_else()` を使う
+-   単純な論理条件：`replace()`、`ifelse()`、`if_else()` を使う
 
--   複雑な論理条件 - `case_when()` を使う
+-   複雑な論理条件：`case_when()` を使う
 
 ### 単純な論理条件 {.unnumbered}
 
 #### `replace()` {.unnumbered}
 
-`replace()` は **base** R の関数で、論理条件を使って変更する行を指定します。一般的な構文は次のとおりです：
+`replace()` は **base** R の関数で、論理条件を使って変更する行を指定します。一般的な構文は以下の通りです。
 
 `mutate(col_to_change = replace(col_to_change, criteria for rows, new value))`
 
-`replace()` を使用する一般的な状況としては、一意の行識別子を使用して、1つの行の1つの値だけを変更する場合です。下の例では、`case_id`が "2195 "である行で、性別を "Female "に変更しています。
+`replace()` を使用する一般的な状況としては、一意の行識別子（症例ごとの ID 番号など）を使用して、1 つの行の 1 つの値だけを変更する場合です。下の例では、`case_id` が「2195」である行の性別を "Female "に変更しています。
 
 ```{r, eval=F}
-# 例：ある特定の観測データの性別を "Female "に変更する。
+# 例：ある特定の観測データの性別を "Female" に変更する
 linelist <- linelist %>% 
   mutate(gender = replace(gender, case_id == "2195", "Female"))
 ```
 
-　Rの基本的な構文と索引括弧[ ]を使った同等のコマンドは以下の通りです。データフレームの `linelist`の列 `gender`の値を（`linelist`の列 `case_id`の値が'2195'である行について）'Female'に変更する"と読めます。
+R の基本的な構文と角括弧 [ ] を使った同等のコマンドは、以下の通りです。`linelist` データフレームの `gender` 列の値を（`linelist` の `case_id` 列の値が「2195」である行について）"Female" に変更する、と読めます。
 
 ```{r, eval=F}
 linelist$gender[linelist$case_id == "2195"] <- "Female"
@@ -879,63 +879,66 @@ linelist$gender[linelist$case_id == "2195"] <- "Female"
 
 #### `ifelse()` と `if_else()` {.unnumbered}
 
-　 簡潔な論理条件のためのツールとして、`ifelse()`とそのパートナーである`if_else()`があります。しかし、ほとんどの場合、再定義のためには`case_when()`（以下に詳述）を使ったほうがわかりやすいでしょう。これらの"if else"コマンドは、`if`と`else`のプログラミング文を簡略化したものです。一般的な構文は次のとおりです： `ifelse(condition, value to return if condition evaluates to TRUE, value to return if condition evaluates to FALSE)`
+簡潔な論理条件のためのツールとして、`ifelse()` とそのパートナーである `if_else()` があります。しかし、ほとんどの場合、再定義のためには`case_when()`（以下に詳述）を使ったほうがわかりやすいでしょう。これらの "if else" コマンドは、`if` と`else` のプログラミング文を簡略化したものです。一般的な構文は以下の通りです。
 
-　下の例では、`source_known`という列が定義されています。ある行の列 `source`の値が欠損していなければ、その値は "known" に設定されます。sourceの値が欠落している場合、`source_known`の値は "unknown " に設定されます。
+`ifelse(condition, value to return if condition evaluates to TRUE, value to return if condition evaluates to FALSE)`
+
+下の例では、`source_known` という列が新しく定義されています。既存の列 `source` の値が欠損していなければ、`source_known` 列の値は "known" に設定され、`source` 列の値が欠落している場合は、 "unknown " に設定されます。
 
 ```{r, eval=F}
 linelist <- linelist %>% 
   mutate(source_known = ifelse(!is.na(source), "known", "unknown"))
 ```
 
-`if_else()`は、日付を扱う **dplyr** の特別バージョンです。真の値が日付の場合、"偽"の値も日付でなければならないことに注意してください。そのため、単に NA ではなく NA_real\_ という特別な値を使用しています。
+`if_else()` は、日付を扱う **dplyr** の特別バージョンです。真（TRUE）の値が日付の場合、「偽（FALSE）」の値も日付でなければならないことに注意してください。そのため、単に NA ではなく NA_real\_ という特別な値を使用しています。
 
 ```{r, eval=F}
-#  患者が死亡していない場合はNAとなる死亡日列を作成。
+#  患者が死亡していない場合はNAとなる死亡日の列を作成する
 linelist <- linelist %>% 
   mutate(date_death = if_else(outcome == "Death", date_outcome, NA_real_))
 ```
 
-**ifelseコマンドをたくさん並べるのは避けましょう...**代わりに`case_when()`を使ってください！`case_when()`はずっと読みやすく、エラーも少なくなります。
+**ifelseコマンドをたくさん並べるのは避けましょう...**代わりに`case_when()`を使ってください！`case_when()` の方がずっと読みやすく、エラーも少なくなります。
 
 ```{r, fig.align = "center", out.width = "100%", echo=F}
 knitr::include_graphics(here::here("images", "ifelse bad.png"))
 ```
 
-　データフレーム以外で、コード内で使用するオブジェクトの値を切り替えたい場合は、**base** R の`switch()`の使用を検討してください。
+データフレーム以外で、コード内で使用するオブジェクトの値を切り替えたい場合は、**base** R の`switch()` の使用を検討してください。
 
 ### 複雑な論理条件 {#clean_case_when .unnumbered}
 
-　多数の新しいグループに再定義する場合や、複雑な論理条件文を使って値を再定義する必要がある場合は、**dplyr** の `case_when()`を使用します。この関数は、データフレーム内のすべての行を計算し、その行が指定された基準を満たしているかどうかを評価して、正しい新しい値を割り当てます。
+ある変数を複数のグループに分ける場合や、複雑な論理条件文を使って値を再定義する必要がある場合は、**dplyr** の `case_when()` を使用します。この関数は、データフレーム内のすべての行を計算し、その行が指定された基準を満たしているかどうかを評価して、正しい値を新しく割り当てます。
 
-`case_when()`コマンドは、右手側(RHS)と左手側(LHS)を"チルダ"～で区切ったステートメントで構成されています。各ステートメントの左側には論理条件が、右側には準拠値が記述されています。ステートメントはコンマで区切られています。
+`case_when()` コマンドは、右側（Right-Hand Side: RHS）左側（Left-Hand Side: LHS）をチルダ `~` で区切ったコードで構成されています。各コードの左側には論理条件が、右側には準拠値が記述されて、コンマで区切られています。
 
-例えば、ここでは`age`と`age_unit`の列を利用して`age_years`の列を作成しています。
+例えば、ここでは `age` と `age_unit` の列を利用して `age_years` の列を作成しています。
 
 ```{r}
 linelist <- linelist %>% 
   mutate(age_years = case_when(
             age_unit == "years"  ~ age,       # 年齢が年単位の場合
             age_unit == "months" ~ age/12,    # 年齢が月単位の場合
-            is.na(age_unit)      ~ age,       #年齢の単位が見つからない場合は、年を仮定
-            TRUE                 ~ NA_real_)) #その他の状況では、不足分を割り当る。
+            is.na(age_unit)      ~ age,       
+            # 年齢の単位が見つからない場合は、年を仮定
+            TRUE                 ~ NA_real_)) #その他の状況では、欠損値とする
 ```
 
-　データの各行が計算されるとき、基準は `case_when()`ステートメントが書かれた順に、上から下へと適用/評価されます。ある行で一番上の基準が `TRUE`と評価された場合、RHSの値が割り当てられ、残りの基準はその行では確認されません。したがって、最も明確な基準を最初に書き、最も一般的な基準を最後に書くのがよいでしょう。
+データの各行が評価されるとき、`case_when()` 内に書かれたコードの順に、上から下へと適用・評価されます。ある行で一番上の基準が `TRUE`と評価された場合、右側（RHS）の値が割り当てられ、残りの基準はその行では確認されません。したがって、最も明確な基準を最初に書き、最も一般的な基準を最後に書くのがよいでしょう。
 
-　このようにして、最後の文では、左側に`TRUE`を置くことで、前の基準のどれにも当てはまらない行を捕捉することができます。この文の右側には、 "check me!" や missing のような値を割り当てることができます。
+このようにして、最後の文では、左側（LHS）に `TRUE` を置くことで、前の基準のどれにも当てはまらない行を評価することができます。この文の右側（RHS）は、 "check me!" のような値や欠損値を割り当てることができます。
 
-[要注意：右辺のVvalues はすべて同じクラスでなければなりません。欠落（NA）を割り当てるには、`NA_character_`、`NA_real_`（数値やPOSIXの場合）、`as.Date(NA)`など、NAの特別なバリエーションを使用する必要があるかもしれません。詳しくは[Working with dates](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1)をご覧ください]{style="color: red;"}
+[要注意：右側の値はすべて同じデータ型でなければなりません。欠損値（NA）を割り当てるには、NA_character\_、`NA_real_`（数値や POSIX の場合）、`as.Date(NA)`など、データ型によって異なる NA を使用する必要があるかもしれません。詳しくは 9章 日付型データの [Working with dates](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1) のページをご覧ください。]{style="color: red;"}
 
 ### 欠損値 {.unnumbered}
 
-　以下は、データクリーニングの観点から欠損値を処理するための特別な関数です。
+以下は、データクリーニングの観点から欠損値を処理するための特別な関数です。
 
-　欠損値の識別と処理に関するより詳細なヒントは、[Missing data](https://epirhandbook.com/en/missing-data.html#missing-data) のページを参照してください。例えば、論理的に欠損をテストする`is.na()`関数などです。
+論理的に欠損値をテストする `is.na()` などの関数について知りたい場合など、欠損値の識別と処理に関して詳しく学びたい方は、[欠損データの処理](missing-data) のページを参照してください。
 
 **`replace_na()`**
 
-欠損値（NA）を"Missing"などの特定の値に変更するには、`mutate()`内の**dply**r関数`replace_na()`を使用します。これは、上記の`recode`と同じ方法で使用されることに注意してください 。変数の名前は`replace_na()`内で繰り返されなければなりません。
+欠損値（NA）を "Missing" などの特定の値に変更する場合は、**dplyr** パッケージに含まれる `replace_na()` を`mutate()` 内で使用します。これは、上記の `recode` と同じように使用されることに注意してください 。対象となる変数の名前は、`replace_na()` 内で再度明記される必要があります。
 
 ```{r}
 linelist <- linelist %>% 
@@ -944,7 +947,7 @@ linelist <- linelist %>%
 
 **fct_explicit_na()**
 
-　これは、**forcats** パッケージの関数です。**forcats** パッケージはFactor型の列を扱います。ファクターは、`c("First", "Second", "Third")`のような順序付きの値を扱うためのRの方法であり、表やプロットに表示される値（病院など）の順序を設定します。[Factors](https://epirhandbook.com/en/factors.html#factors)のページを参照してください。
+これは、**forcats** パッケージの関数です。**forcats** パッケージは、ファクタ（factor）型の列を扱います。ファクターは、`c("First", "Second", "Third")`のような順序付きの値を扱うためのRの方法であり、表やプロットに表示される値（病院など）の順序を設定します。[Factors](https://epirhandbook.com/en/factors.html#factors)のページを参照してください。
 
 データがFactor型で、`replace_na()`を使ってNAを "Missing "に変換しようとすると、次のようなエラーが表示されます： `invalid factor level, NA generated.` 因子の可能なレベルとして定義されていない "Missing" を値として追加しようとしたため、拒否されます。
 
