@@ -1493,32 +1493,32 @@ linelist <- linelist %>%
 
 <!-- ======================================================= -->
 
-## 行のフィルタリング
+## 行の抽出（フィルタリング）
 
-　列を整理し、値を再定義した後の典型的なクリーニングステップは、**dplyr**の動詞 `filter()` を使ってデータフレームの特定の行をフィルタリングすることです。
+列を整理し、値を再定義した後の典型的なクリーニングステップは、**dplyr** の `filter()` を使ってデータフレームの特定の行を抽出（フィルタリング）することです。
 
-`filter()` では、データセット内のある行を抜き出すために `TRUE` でなければならない論理を指定します。以下では、単純な論理条件と複雑な論理条件に基づいて行をフィルタリングする方法を示します。
+`filter()` では、データセット内の特定の行を抜き出すために、`TRUE` でなければならない論理を指定します。以下では、単純な論理条件と複雑な論理条件に基づいて行を抽出する方法を示します。
 
 <!-- ======================================================= -->
 
-### 単純なフィルタ {.unnumbered}
+### 単純なフィルタリング {.unnumbered}
 
-　この単純な例では、論理的な条件を満たすように行をフィルタリングした上で、データフレームのラインリストを自分自身として再定義します。括弧内の論理条件が評価されて`TRUE`となる行のみが保持されます。
+以下の単純な例では、論理的な条件を満たすように行を抽出した上で、`linelist` データフレームを再定義します。括弧内の論理条件が評価され、 `TRUE` となる行のみが残ります。
 
-この例では、論理条件は `gender == "f "` で、列 `gender` の値が `"f "` に等しいかどうかを問いています（大文字小文字を区別します）。
+この例では、論理条件は `gender == "f"` で、列 `gender` の値が `"f"` に等しいかどうかを問いています（大文字と小文字は区別されます）。
 
 フィルタを適用する前の `linelist` の行数は `nrow(linelist)` です。
 
 ```{r, eval=F}
 linelist <- linelist %>% 
-  filter(gender == "f")   # 性別が "f "である行だけを残す。
+  filter(gender == "f")   # 性別が "f" である行だけを残す
 ```
 
 フィルタを適用した後の `linelist` の行数は `linelist %>% filter(gender == "f") %>% nrow()` となります。
 
 ### 欠損値のフィルタリング {.unnumbered}
 
-　欠損値のある行をフィルタリングしたいというのはよくあることです。`filter(!is.na(column) & !is.na(column))` と書きたい気持ちを抑えて、代わりにこの目的のためにカスタマイズされた **tidyr** の関数、`drop_na()` を使いましょう。空の括弧をつけて実行すると、欠損値のある行を削除します。あるいは、欠落を評価する特定の列の名前を指定したり、[上述の](https://epirhandbook.com/en/cleaning-data-and-core-functions.html#clean_tidyselect)"tidyselect "ヘルパー関数を使用することもできます。
+欠損値のある行をフィルタリングしたいことはよくあります。`filter(!is.na(column) & !is.na(column))` と書きたい気持ちを抑えて、代わりにこのためにカスタマイズされた **tidyr** の関数である `drop_na()` を使いましょう。空の括弧をつけて実行すると、欠損値のある行を削除します。あるいは、欠落があるか評価したい特定の列の名前を指定したり、[上述の](https://epirhandbook.com/en/cleaning-data-and-core-functions.html#clean_tidyselect) "tidyselect "ヘルパー関数を使用することもできます。
 
 ```{r, eval=F}
 linelist %>% 
@@ -1526,39 +1526,39 @@ linelist %>%
 # case_idやage_yearsの値が欠損している行を削除する。
 ```
 
-　データの欠落を分析・管理するための多くのテクニックについては、[Missing data](https://epirhandbook.com/en/missing-data.html#missing-data) のページをご覧ください。
+データの欠落の分析や管理の詳細ついては、[欠損データの処理](#missing-data) の章をご覧ください。
 
 ### 行番号によるフィルタリング {.unnumbered}
 
-　データフレームや Tibble では、各行には通常"行番号"があり、R Viewerで見ると最初の列の左側に表示されます。これは、それ自体はデータの真の列ではありませんが、`filter()` のステートメントで使用することができます。
+データフレームや Tibble では、各行には通常「行番号（row number）」があり、R Viewer で見ると最初の列の左側に表示されます。これは、それ自体はデータの列ではありませんが、`filter()` を使用する際に参照することができます。
 
-"行番号"に基づいてフィルタリングするには、論理的なフィルタリング文の一部として、**dplyr** の関数`row_number()` を開いた括弧で囲んで使用します。多くの場合、以下のように、論理的なステートメントの一部として、`%in%` 演算子と数値の範囲を使用します。最初のN行を表示するには、特別な **dplyr** 関数 `head()` を使用することもできます。
+「行番号」に基づいてフィルタリングしたい場合は、フィルタリングの論理条件のとして、**dplyr** の関数 `row_number()` を空括弧付きで使用します。多くの場合、以下のように、論理条件文の一部として、`%in%` 演算子を使用して数値の範囲を指定します。[最初の]{.ul} N 行を表示するには、特別な **dplyr** 関数 `head()` を使用することもできます。
 
 ```{r, eval=F}
-# 最初の100行を表示。
+# 最初の100行を表示する
 linelist %>% head(100)     
-# またはtail()を使って最後のn行を見る。
+# またはtail()を使って最後のn行を見る
 
-# 5列目のみ表示。
+# 5列目のみ表示する
 linelist %>% filter(row_number() == 5)
 
-# 2行目から20行目までと、3つの特定の列を見る。
+# 2行目から20行目までと、3つの特定の列を見る
 linelist %>% filter(row_number() %in% 2:20) %>% select(date_onset, outcome, age)
 ```
 
-また、データフレームを **tibble** 関数 `rownames_to_column()` にパイプすることで、行番号を真の列に変換することができます（括弧の中には何も入れないでください）。
+また、データフレームを **tibble** 関数 `rownames_to_column()` にパイプすることで、行番号を列として変換することができます（括弧の中には何も入れないでください）。
 
 <!-- ======================================================= -->
 
-### 複雑なフィルタ {.unnumbered}
+### 複雑なフィルタリング {.unnumbered}
 
-　括弧 `（）`、OR `｜`、ネゲート `！`、`％in％`、AND `＆` の各演算子を使って、より複雑な論理条件を作ることができます。その例を以下に示します。
+括弧 `（）`、OR `｜`、ネゲート `！`、`％in％`、AND `＆` の各演算子を使って、より複雑な論理条件を作ることができます。その例を以下に示します。
 
-注： 論理的条件の前に `!` 演算子を使うと、それを否定することができます。例えば、`！is.na(column)` は、列の値が欠損していない場合に真と評価されます。同様に、`！column %in% c("a", "b", "c")` は、列の値がベクトルに含まれていない場合に真と評価されます。
+注： 論理的条件の前に `!` 演算子を使うと、その後の論理的条件が否定されます。例えば、`！is.na(column)` は、列の値が欠損していない場合に真（TRUE）と評価されます。同様に、`！column %in% c("a", "b", "c")` は、列の値がベクトルに含まれていない場合に真（TRUE）と評価されます。
 
 #### データを調べる {.unnumbered}
 
-　以下は、発症日のヒストグラムを作成するためのシンプルな1のコマンドです。2012～2013年に発生した2つ目の小規模なアウトブレイクもこの未加工データセットに含まれていることがわかります。今回の分析では、この初期アウトブレイクを削除したいと思います。
+以下は、発症日のヒストグラムを作成するためのシンプルなコマンドです。この未加工データセットには、二つのアウトブレイクが含まれていることはわかります（2012～2013 年に発生した小規模なアウトブレイクと 2014～2015 年に発生した大規模なアウトブレイク）。今回の分析では、最初の小規模なアウトブレイクをラインリストから削除していきます。
 
 ```{r, out.width = "50%"}
 hist(linelist$date_onset, breaks = 50)
@@ -1566,15 +1566,15 @@ hist(linelist$date_onset, breaks = 50)
 
 #### 数値や日付の欠損をフィルターで処理する方法 {.unnumbered}
 
-　date_onsetで2013年6月以降の行をフィルタリングすることはできるでしょうか。注意してください。`filter(date_onset > as.Date("2013-06-01")))` というコードを適用すると、発症日が欠落している後期流行の行がすべて削除されてしまいます!
+`date_onset` 列で 2013 年 6 月以降の行を抽出することはできるでしょうか。これには、注意が必要です。`filter(date_onset > as.Date("2013-06-01")))` というコードを適用すると、発症日が欠落している後期流行の行がすべて削除されてしまいます！
 
-[要注意：日付や数値の"大"（\>）または"小"（\<）にフィルタリングすると、欠損値（NA）のある行が削除されてしまいます。これは、NAが無限に大きい、または小さいものとして扱われるためです。]{style="color: red;"}
+[要注意：日付や数値の「大（\>）」または「小（\<）」にフィルタリングすると、欠損値（`NA`）のある行が削除されてしまいます。これは、`NA` が無限に大きい、または小さいものとして扱われるためです。]{style="color: red;"}
 
-[(日付とパッケージ**lubridate**を使った作業については、[Working with dates](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1)のページを参照してください）。]{.ul}
+[(日付データと **lubridat**e パッケージを使用した処理については、日付データの章の [Working with dates](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1)のページを参照してください。）]{.ul}
 
-#### フィルターの設計 {.unnumbered}
+#### フィルターを作成する {.unnumbered}
 
-　クロス集計を見て、正しい行だけを除外していることを確認して下さい。
+クロス集計を行い、正しい行だけを除外していることを確認して下さい。
 
 ```{r}
 table(Hospital  = linelist$hospital,                     #病院名
@@ -1582,33 +1582,33 @@ table(Hospital  = linelist$hospital,                     #病院名
       useNA     = "always")                              #欠損値の表示
 ```
 
-　データセットから最初の発生（2012年と2013年）を除外するために、他にどのような基準でフィルタリングできるでしょうか。次のことがわかりました。
+データセットから最初のアウトブレイク（2012～2013 年に発生したアウトブレイク）を除外するために、他にどのような基準でフィルタリングできるでしょうか。次のことがわかりました。
 
--   2012年と2013年に発生した最初の流行は、A病院とB病院で発生し、ポート病院でも10件の症例がいます。
+-   2012 年と 2013 年に発生した最初のアウトブレイクは、A 病院（Hospital A）と B 病院（Hospital B）で発生し、ポート病院（Port Hospital）でも10件の症例が確認されました。
 
--   2回目の流行では、A病院とB病院には患者がいませんでしたが、ポート病院には患者がいました。
+-   2 回目のアウトブレイク（2014～2015 年に発生したアウトブレイク）では、A 病院（Hospital A）と B 病院（Hospital B）には症例は確認されませんでしたが、ポート病院（Port Hospital）には症例が確認されました。
 
 除外したい項目：
 
--   病院A、B、Portのいずれかで2012年と2013年に発症した `nrow(linelist %>% filter(hospital %in% c("Hospital A", "Hospital B") | date_onset < as.Date("2013-06-01")))` の行。
+-   A 病院（Hospital A）、 B 病院（Hospital B）、ポート病院（Port Hospital）のいずれかで 2012 年と 2013 年に発症した `nrow(linelist %>% filter(hospital %in% c("Hospital A", "Hospital B") | date_onset < as.Date("2013-06-01")))` の行。
 
--   2012年および2013年に発症した `nrow(linelist %>% filter(date_onset < as.Date("2013-06-01"))` の行。
+    -   2012 年および 2013 年に発症した `nrow(linelist %>% filter(date_onset < as.Date("2013-06-01"))` の行を除外する。
 
--   `nrow(linelist %>% filter(hospital %in% c('Hospital A', 'Hospital B') & is.na(date_onset)))` 発症日が欠落している病院AおよびBの行。
+    -   `nrow(linelist %>% filter(hospital %in% c('Hospital A', 'Hospital B') & is.na(date_onset)))` 発症日が欠落している A 病院および B 病院の行を除外する。
 
--   `nrow(linelist %>% filter(!hospital %in% c('Hospital A', 'Hospital B') & is.na(date_onset))` 発症日が見つからない他の行。
+    -   `nrow(linelist %>% filter(!hospital %in% c('Hospital A', 'Hospital B') & is.na(date_onset))` 発症日が見つからない他の行は除外**しない**。
 
-nrow(linelist)\`のラインリストを用意から始めます。これがフィルター文です。
+`` `r nrow(linelist)` `` のラインリストから始めます。以下がフィルタリングのコードです。
 
 ```{r}
 linelist <- linelist %>% 
- # 発症日が2013年6月1日以降の行、または発症日が不明でA病院またはB病院以外の病院であった行を残す。
+ # 発症日が2013年6月1日以降の行、または発症日が不明でA病院またはB病院以外の病院であった行を残す
   filter(date_onset > as.Date("2013-06-01") | (is.na(date_onset) & !hospital %in% c("Hospital A", "Hospital B")))
 
 nrow(linelist)
 ```
 
-　クロス集計を作り直すと、A病院とB病院が完全に取り除かれ、2012年と2013年の港区の病院の10件が取り除かれ、その他の値はすべて同じになっていることがわかります。
+再度クロス集計を行うと、A 病院と B 病院が完全に取り除かれ、2012 年と 2013 年のポート病院で発生した 10 件が取り除かれ、その他の値はすべて同じになっていることがわかります。
 
 ```{r}
 table(Hospital  = linelist$hospital,                     # 病院名
@@ -1616,13 +1616,13 @@ table(Hospital  = linelist$hospital,                     # 病院名
       useNA     = "always")                              # 欠損値の表示
 ```
 
-　複数のステートメントを1つのfilterコマンドの中に含めることができます（カンマで区切ってください）。また、分かりやすくするために、常に別のfilter()コマンドにパイプすることもできます。
+複数のステートメントを 1 つの `filter()` コマンドの中に含めることができます（カンマで区切ってください）。または、分かりやすくするために、常に別の `filter()` コマンドにパイプすることもできます。
 
-注：読者の中には、`date_hospitalisation` でフィルタリングする方が簡単だと思われる方もいるかもしれません。これは事実です。しかし、`date_onset` は複雑なフィルタを実際に見せる目的で使用されています。
+注：`date_hospitalisation` には欠損値がないことから、読者の中には `date_hospitalisation` でフィルタリングする方が簡単だと思われる方もいるかもしれません。これは事実です。ここでは、複雑なフィルタを理解するために `date_onset` を使用しました。
 
 ### 独立型 {.unnumbered}
 
-　フィルタリングは、（パイプチェーンの一部ではなく）独立したコマンドとしても実行できます。他の `dplyr` の動詞と同様に、この場合、第1引数はデータセットそのものでなければなりません。
+フィルタリングは、（パイプチェーンの一部ではなく）独立したコマンドとしても実行できます。他の **dplyr** 系の関数と同様に、この場合、一番最初の引数はデータセットそのものでなければなりません。
 
 ```{r, eval=F}
 # dataframe <- filter(dataframe, condition(s) for rows to keep)
@@ -1630,7 +1630,7 @@ table(Hospital  = linelist$hospital,                     # 病院名
 linelist <- filter(linelist, !is.na(case_id))
 ```
 
-**base** Rを使って、保持したい[行、列]を反映した角括弧を使ってサブセットすることもできます。
+**base** Rを使う場合、保持したい [行、列] を、角括弧 [] を使ってサブセット（フィルタリング）することもできます。
 
 ```{r, eval=F}
 # dataframe <- dataframe[row conditions, column conditions] (blank means keep all)
@@ -1638,21 +1638,21 @@ linelist <- filter(linelist, !is.na(case_id))
 linelist <- linelist[!is.na(case_id), ]
 ```
 
-### レコードを素早く確認 {.unnumbered}
+### データを素早く確認 {.unnumbered}
 
-　数列だけのレコードを素早く確認したいことがよくあります。R の基本関数である `View()` は、RStudio で表示できるようにデータフレームを表示します。
+数少ない行や列のデータを素早く確認したいことがよくあります。**base** R の `View()` を使用すると、RStudio データフレームが表示されます。
 
-RStudio でラインリストを表示します。
+以下のコマンドを実行すると、RStudio でラインリストが表示されます。
 
 ```{r, eval=F}
 View(linelist)
 ```
 
-特定のセル（特定の行、特定の列）を表示する2つの例を紹介します。
+特定のセル（特定の行、特定の列）を表示する 2 つの例を紹介します。
 
-**dplyrの関数 `filter()`と`select()`を使用します。**
+**dplyrの関数 `filter()` と `select()` を使用する**
 
-`View()`の中で、データセットを　`filter()` にパイプして特定の行を残し、`select()` にパイプして特定の列を残します。例えば、3つの特定のケースの発症日と入院日を確認する場合です。
+`View()` の中で、データセットを `filter()` にパイプして特定の行を残し、`select()` にパイプして特定の列を残します。例えば、特定の 3 つの症例の発症日と入院日を確認する場合です。
 
 ```{r, eval=F}
 View(linelist %>%
@@ -1660,7 +1660,7 @@ View(linelist %>%
        select(date_onset, date_hospitalisation))
 ```
 
-Rの基本的な構文でも同じことができ、見たいサブセットには[ ]を使ってください。
+**base** R でも [ ] を使用してサブセットすると、同じことができます。
 
 ```{r, eval=F}
 View(linelist[linelist$case_id %in% c("11f8ea", "76b97a", "47a5f5"), c("date_onset", "date_hospitalisation")])
@@ -1669,7 +1669,7 @@ View(linelist[linelist$case_id %in% c("11f8ea", "76b97a", "47a5f5"), c("date_ons
 #### パイプチェーンに追加 {.unnumbered}
 
 ```{r}
-# パイプチェーン処理 (未加工データから始まり、クリーニングステップを経てパイプに送られる)
+# パイプチェーン処理 (未加工データから始まり、クリーニングステップを経由してパイプで処理される)
 ##################################################################################
 
 
@@ -1717,8 +1717,7 @@ linelist <- linelist_raw %>%
     
     mutate(hospital = replace_na(hospital, "Missing")) %>% 
 
-    # create age_years column (from age and age_unit)
-      # age_years 列を作成 (ageとage_unit列から)
+      # age_years 列を作成する (age列とage_unit列から)
     mutate(age_years = case_when(
           age_unit == "years" ~ age,
           age_unit == "months" ~ age/12,
@@ -1726,20 +1725,19 @@ linelist <- linelist_raw %>%
           TRUE ~ NA_real_)) %>% 
   
     mutate(
-         # 年齢別カテゴリー: 慣例
+         # 年齢別カテゴリ：カスタマイズする
           age_cat = epikit::age_categories(age_years, breakers = c(0, 5, 10, 15, 20, 30, 50, 70)),
         
-　　　# 年齢カテゴリー 0～85歳までの5段階
+　　　# 年齢カテゴリ：0～85歳までの5段階
           age_cat5 = epikit::age_categories(age_years, breakers = seq(0, 85, 5)))%>% 
     
-      # 上記は既に説明した上流側のクリーニング方法です。
-   
+      # ここまでは、既に説明したクリーニング手順
     ###################################################
     filter(
          # case_idが欠落していない行のみを残す
           !is.na(case_id),  
           
-           #2回目の感染発生分だけを残すようにフィルターをかける
+           # 2回目のアウトブレイクだけを残すようにフィルタリングする
           date_onset > as.Date("2013-06-01") | (is.na(date_onset) & !hospital %in% c("Hospital A", "Hospital B")))
 ```
 
@@ -1751,7 +1749,7 @@ linelist <- linelist_raw %>%
 
 ## 行単位の計算
 
-　行内で計算を行いたい場合は、**dplyr** の `rowwise()` を利用することができます。例えば、このコードでは `rowwise()` を適用し、行リストの各行について、値が"はい"である指定された症状の列の数を合計する新しい列を作成しています。`rowwise()` は本質的に特別な種類の `group_by()` であるため、終わったら `ungroup()` を使うのがベストです（ [Grouping data](https://epirhandbook.com/en/grouping-data.html#grouping-data) ページを参照）。
+行内で計算を行いたい場合は、**dplyr** の `rowwise()` を利用することができます。例えば、以下のコードでは `rowwise()` を使用し、ラインリストの各行について、値が "yes" である指定された症状の列の数を合計する新しい列を作成しています。`rowwise()` は本質的には特殊な `group_by()` であるため、終わったら `ungroup()` を使うのがベストです（詳細は、[データのグループ化](#grouping) の章を参照ください）。
 
 ```{r,}
 linelist %>%
@@ -1761,13 +1759,13 @@ linelist %>%
   select(fever, chills, cough, aches, vomit, num_symptoms) # 表示のため
 ```
 
-　評価する列を指定する際に、このページの `select()` セクションで説明されている "tidyselect" ヘルパー関数を使用したいと思うかもしれません。1つだけ調整が必要です（ `select()` や `summarise()` のような dplyr関数内で使用していないため）。
+評価する列を指定する際に、このページの `select()` セクションで説明されている "tidyselect" ヘルパー関数を使用したいと思うかもしれません。その場合は、1 つだけ調整が必要です（ `select()` や `summarise()` のような **dplyr** 関数内で使用していないため）。
 
-　列指定の基準を **dply**r 関数の `c_across()` の中に入れます。これは、`c_across（`[documentation](https://dplyr.tidyverse.org/reference/c_across.html)`）`が、特に `rowwise()` と連動するように設計されているからです。例えば、次のようなコードです。
+列指定の基準を **dplyr** の `c_across()` の中に入れます。これは、`c_across`（[ドキュメントはこちら](https://dplyr.tidyverse.org/reference/c_across.html)）が、特に `rowwise()` と連動するように設計されているからです。例えば、次のようなコードです。
 
 -   `rowwise()` を適用して、各行の中で以下の演算（`sum()`）が適用されます（列全体の合計ではありません）。
 
--   新しい列 `num_NA_dates` を作成します。これは、各行について、`is.na()` が TRUE と評価された列 (名前が "date" を含むもの) の数として定義されます (これらはデータが欠損しています)。
+-   新しい列 `num_NA_dates` を作成します。これは、各行について、`is.na()` が TRUE と評価された列 （列名に "date" を含むもの） の数として定義されます（これらはデータが欠損しています）。
 
 -   `ungroup()` により、後続のステップで `rowwise()` の影響を取り除きます。
 
@@ -1779,7 +1777,7 @@ linelist %>%
   select(num_NA_dates, contains("date")) # for display
 ```
 
-また、`max()` のような他の関数を用意して、各行の最新または直近の日付を取得することもできます。
+また、`max()` のような他の関数を使用し、各行の最新または直近の日付を取得することもできます。
 
 ```{r}
 linelist %>%
@@ -1789,17 +1787,17 @@ linelist %>%
   select(latest_date, contains("date"))  # for display
 ```
 
-## アレンジとソート（並び替え）
+## 並び替え（アレンジとソート）
 
-**dplyr**の関数 `arrange()`を使って、列の値で行を並べ替えたり、順番に並べたりします。
+**dplyr** の `arrange()`を使用し、列の値で行を並べ替えたり、順番に並べたりします。
 
-　単純に、ソートされるべき順に列を列挙します。データに適用されたグループ化によって最初にソートを行いたい場合は、`.by_group = TRUE` を指定します（ [Grouping data](https://epirhandbook.com/en/grouping-data.html#grouping-data) のページを参照）。
+単純に、並び替えたい順に列を列挙します。データに適用されたグループ化を最初並べ替えたい場合は、`.by_group = TRUE` と指定します（[データのグループ化](#grouping) の章を参照）。
 
-デフォルトでは、列は "昇順 "でソートされます（これは、数字や文字の列にも適用されます）。変数を`desc()` で囲むと、"降順"でソートできます。
+デフォルトでは、列は「昇順」で並び替えされます（これは、数字や文字の列にも適用されます）。変数を `desc()` で囲むと、「降順」で並び替えできます。
 
-`arrange()` によるデータのソートは、[プレゼンテーション用のテーブル]を作成するときや、`slice()` を使ってグループごとに"上位"の行を取り出すとき、あるいはファクタレベルの順序を出現順に設定するときなどに特に便利です。
+`arrange()` によるデータの並び替えは、[プレゼンテーション用のテーブルを作成するとき](#tables-presentation) や、`slice()` を使ってグループごとに「上位」の行を抽出するとき、あるいはファクタレベルの順序を出現順に設定するときなどに特に便利です。
 
-例えば、linelistの行を病院別にソートし、次にdate_onsetで降順にソートするには、次のようにします。
+例えば、`linelist` デーフレームの行を病院別（`hospital` 列）に並び替え、次に出現日（`date_onset` 列）の降順で並び替える場合は、次のようになります。
 
 ```{r, eval=F}
 linelist %>% 
@@ -1809,7 +1807,7 @@ linelist %>%
 ```{r, echo=F}
 # HIDDEN
 #
-# 残りの既存の感染発生行を簡単にmissingに変換します。
+# 残りの既存の感染発生行を簡単にmissingに変換する
 linelist <- linelist %>% 
   mutate(
     date_hospitalisation = case_when(
