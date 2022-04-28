@@ -22,7 +22,7 @@ knitr::include_graphics(here::here("images", "deduplication.png"))
 pacman::p_load(
   tidyverse,   # 重複排除、グループ化、スライスの関数
   janitor,     # 重複部分の確認をする関数
-  stringr)      # 文字列検索で、値の「ロールアップ」に使用
+  stringr)     # 文字列検索で、値の「ロールアップ」に使用
 ```
 
 ### データのインポート {.unnumbered}
@@ -265,7 +265,7 @@ obs %>% slice(c(2,4))  # 2番目と4番目の行を返す
 -   `slice_sample()` は、行をランダムに抽出します。
 
 ```{r}
-obs %>% slice_max(encounter, n = 1)  # encounter列で最大値を持つ行を返す
+obs %>% slice_max(encounter, n = 1)  # 調査番号（encounter）で最大値を持つ行を返す
 ```
 
 保持する行の数または割合を指定するには、引数 `n =` または `prop =` を使用します。この関数をパイプの中で使用しない場合は、第一引数にデータセットの名前を指定してください（例：`slice(data, n = 2)`）。詳細は `?slice` を参照してください。
@@ -347,7 +347,7 @@ obs %>%
   DT::datatable(rownames = FALSE, options = list(pageLength = 8, scrollX = T), class = 'white-space: nowrap')
 ```
 
-[上の例では `encounter` 列の値でスライスすることも可能ですが、例として `date` 列と `time` 列でスライスしています。]{.ul}
+[上の例では、調査番号（`encounter` 列）の値でスライスすることも可能ですが、例として `date` 列と `time` 列でスライスしています。]{.ul}
 
 [[**ヒント：**]{.ul}`slice_max()` や `slice_min()` を文字型（character）の列に使用する場合は、まずその列を順序付けられた因子型（factor）に変換する必要があります！]{style="color: darkgreen;"}
 
@@ -357,7 +357,7 @@ obs %>%
 
 ### すべてを残すが、目印をつける {.unnumbered}
 
-すべての記録を残しつつ、一部の記録だけを分析対象として目印をつけたい場合は、一意の recordID / encounter の番号を利用した 2 段階のアプローチを検討します。
+すべての記録を残しつつ、一部の記録だけを分析対象として目印をつけたい場合は、一意の recordID と 調査番号（encounter）を利用した 2 段階のアプローチを検討します。
 
 1)  元のデータフレームから分析に必要な行だけをスライス（抽出）し、別のデータフレームとして保存する。\
 2)  元のデータフレームの一意の識別子（ここでは recordID）がステップ 1. で作成したデータフレームに存在するかどうか判定した列を、元のデータフレームに `case_when()` で新たに作成する。
@@ -366,7 +366,7 @@ obs %>%
 # 1. 分析のために保持する行をデータフレームとして定義する
 obs_keep <- obs %>%
   group_by(name) %>%
-  slice_max(encounter, n = 1, with_ties = FALSE) # 各被調査者の最新の encounter のみを残す
+  slice_max(encounter, n = 1, with_ties = FALSE) # 各被調査者の最新の調査番号（ encounter）のみを残す
 
 
 # 2. 元のデータフレームに目印をつける
