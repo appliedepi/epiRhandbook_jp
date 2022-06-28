@@ -1,5 +1,5 @@
 
-# Demographic pyramids and Likert-scales {}  
+# 人口ピラミッドとリッカート尺度 {#age-pyramid}  
 
 
 
@@ -10,69 +10,69 @@ knitr::include_graphics(here::here("images", "likert.png"))
 ```
 
 
-Demographic pyramids are useful to show distributions of age and gender. Similar code can be used to visualize the results of Likert-style survey questions (e.g. "Strongly agree", "Agree", "Neutral", "Disagree", "Strongly disagree"). In this page we cover the following:  
+人口ピラミッドは、年齢や性別の分布を示すのに有効です。同様のコードは、リッカート尺度によるアンケート調査の結果（例：「強く同意する」、「やや同意する」、「どちらでもない」、「あまり同意しない」、「まったく同意しない」）を可視化するために使用することができます。この章では、以下を取り上げます。  
 
-* Fast & easy pyramids using the **apyramid** package  
-* More customizeable pyramids using `ggplot()`  
-* Displaying "baseline" demographics in the background of the pyramid  
-* Using pyramid-style plots to show other types of data (e.g responses to **Likert-style** survey questions)  
+* **apyramid** パッケージを使った速くて簡単なピラミッドの作成
+* `ggplot()` を使った、よりカスタマイズ可能なピラミッドの作成
+* ピラミッドの背景に「ベースライン」の集団全体を表示する
+* ピラミッド型の図示を用いて他の種類のデータを表示する（例：リッカート尺度によるアンケート調査の回答など）。
 
 
 
 
 
 <!-- ======================================================= -->
-## Preparation {}
+## 準備 {}
 
 
 
-### Load packages {.unnumbered}
+### パッケージの読み込み {.unnumbered}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの `p_load()` を主に使用しています。`p_load()` は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** （以下、base R）の `library()` を使用して読み込むこともできます。R のパッケージに関する詳細は [R の基礎](#basics) の章をご覧ください。
 
 ```{r}
-pacman::p_load(rio,       # to import data
-               here,      # to locate files
-               tidyverse, # to clean, handle, and plot the data (includes ggplot2 package)
-               apyramid,  # a package dedicated to creating age pyramids
-               janitor,   # tables and cleaning data
-               stringr)   # working with strings for titles, captions, etc.
+pacman::p_load(rio,       # データのインポート
+               here,      # データの場所を指定する
+               tidyverse, # データのクリーニングと成形と図示（ggplot2 パッケージを含む）
+               apyramid,  # 年齢ピラミッドの作成に特化したパッケージ
+               janitor,   # 表とデータのクリーニング
+               stringr)   # タイトルや見出しなどの文字列操作
 ```
 
 
 
 
-### Import data {.unnumbered}  
+### データのインポート {.unnumbered}  
 
-To begin, we import the cleaned linelist of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは **rio** パッケージの `import()` を利用してインポートしましょう（**rio** パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）
 
 ```{r, echo=F}
-# import the linelist into R
+# R にラインリストをインポートする
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
-# import case linelist 
+# 発症数ラインリストをインポートする 
 linelist <- import("linelist_cleaned.rds")
 ```
 
-The first 50 rows of the linelist are displayed below.
+最初の 50 行が以下に表示されます。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストデータを表形式で表示する
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-### Cleaning {.unnumbered}  
+### クリーニング {.unnumbered}  
 
-To make a traditional age/gender demographic pyramid, the data must first be cleaned in the following ways:  
+従来の年齢・性別による人口ピラミッドを作るには、まずデータを以下のようにクリーニングする必要があります。
 
-* The gender column must be cleaned.  
-* Depending on your method, age should be stored as either a numeric or in an *age category* column.  
+* 性別の列のクリーニング
+* 解析方法に応じて、年齢を数値または<u>年齢カテゴリ</u>として保存
 
-If using age categories, the column values should be corrected ordered, either by default alpha-numeric or intentionally set by converting to class factor.  
+年齢カテゴリを使用する場合、列の値はデフォルトの英数字か、因子型に変換することで、意図的に設定する順序に修正する必要があります。
 
-Below we use `tabyl()` from **janitor** to inspect the columns `gender` and `age_cat5`.  
+以下では、**janitor** パッケージの `tabyl()` を使用して、`gender` と `age_cat5` 列を確認します。
 
 ```{r}
 linelist %>% 
@@ -80,7 +80,7 @@ linelist %>%
 ```
 
 
-We also run a quick histogram on the `age` column to ensure it is clean and correctly classified:  
+また、`age` のヒストグラムを簡単に図示し、きれいに正しく分類されていることを確認します。
 
 ```{r}
 hist(linelist$age)
@@ -88,18 +88,18 @@ hist(linelist$age)
 
 
 <!-- ======================================================= -->
-## **apyramid** package {}
+## **apyramid** パッケージ {}
 
-The package **apyramid** is a product of the [R4Epis](https://r4epis.netlify.com/) project. You can read more about this package [here](https://cran.r-project.org/web/packages/apyramid/vignettes/intro.html). It allows you to quickly make an age pyramid. For more nuanced situations, see the section below [using `ggplot()`](#demo_pyr_gg). You can read more about the **apyramid** package in its Help page by entering `?age_pyramid` in your R console. 
+**apyramid** パッケージは、[R4Epis](https://r4epis.netlify.com/) プロジェクトの製品です。このパッケージについて、詳しくは[こちら](https://cran.r-project.org/web/packages/apyramid/vignettes/intro.html)でご覧いただけます。このパッケージを使うと、年齢ピラミッドを素早く作ることができます。より細かな差異のある状況については、以下の [`ggplot()` を使ったセクション](#demo_pyr_gg)をご参照ください。**apyramid** パッケージについては、R のコンソールに `?age_pyramid` と入力することで、そのヘルプページをさらに詳しく読むことができます。 
 
-### Linelist data {.unnumbered}  
+### ラインリストのデータ {.unnumbered}   
 
 
-Using the cleaned `linelist` dataset, we can create an age pyramid with one simple `age_pyramid()` command. In this command:  
+クリーニングされた `linelist` データセットを使うことにより、`age_pyramid()` コマンド 1 つで年齢ピラミッドを作成することができます。このコマンドでは
 
-* The `data = ` argument is set as the `linelist` data frame  
-* The `age_group = ` argument (for y-axis) is set to the name of the categorical age column (in quotes)  
-* The `split_by = ` argument (for x-axis) is set to the gender column  
+* `data =` の引数には、`linelist` データフレームを設定します。
+* `age_group =` の引数 (Y 軸) には、カテゴリカルな年齢の列名 (引用符で囲む) を設定します。
+* `split_by =` の引数（X 軸）には、性別の列を設定します。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(data = linelist,
@@ -108,7 +108,7 @@ apyramid::age_pyramid(data = linelist,
 ```
 
 
-The pyramid can be displayed with percent of all cases on the x-axis, instead of counts, by including `proportional = TRUE`.  
+`proportional = TRUE` を含めることで、X 軸を発症数ではなく、発症数全体に対するパーセントで表示することができます。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(data = linelist,
@@ -118,7 +118,7 @@ apyramid::age_pyramid(data = linelist,
 ```
 
 
-When using **agepyramid** package, if the `split_by` column is binary (e.g. male/female, or yes/no), then the result will appear as a pyramid. However if there are more than two values in the `split_by` column (not including `NA`), the pyramid will appears as a faceted bar plot with grey bars in the "background" indicating the range of the un-faceted data for that age group. In this case, values of `split_by = ` will appear as labels at top of each facet panel. For example, below is what occurs if the `split_by = ` is assigned the column `hospital`.  
+**agepyramid** パッケージを使用する際に、`split_by` 列が 2 値（例：男性・女性、はい・いいえ）である場合は、結果はピラミッドとして表示されます。しかし、`split_by` 列に 3 つ以上の値（`NA` を除く）がある場合、ピラミッドは、年齢層ごとに、ファセット（注目する因子型の値を部分集合として抽出したもの）とそれ以外のファセットを示す灰色の棒を「背景」に持つファセット棒グラフとして表示されます。この場合、`split_by =` の値は、各ファセットのパネルの上部にラベルとして表示されます。例えば、`split_by =` に `hospital` という列を指定した場合、以下のようになります。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(data = linelist,
@@ -126,57 +126,57 @@ apyramid::age_pyramid(data = linelist,
                       split_by = "hospital")  
 ```
 
-#### Missing values {.unnumbered}  
+#### 欠測値 {.unnumbered}  
 
-Rows that have `NA` missing values in the `split_by = ` or `age_group = ` columns, if coded as `NA`, will not trigger the faceting shown above. By default these rows will not be shown. However you can specify that they appear, in an adjacent barplot and as a separate age group at the top, by specifying `na.rm = FALSE`.  
+`split_by =` または `age_group =` の列に欠測値 `NA` がある行は、欠測値ロジカル型定数 `NA` として定義されている場合、上記のファセット化は実行されません。デフォルトではこの行は表示されません。しかし、`na.rm = FALSE` を指定することで、棒グラフの隣とグラフの上部に別の年齢層として表示させることができます。  
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(data = linelist,
                       age_group = "age_cat5",
                       split_by = "gender",
-                      na.rm = FALSE)         # show patients missing age or gender
+                      na.rm = FALSE)         # 患者の年齢と性別の欠測値を表示する
 ```
 
-#### Proportions, colors, & aesthetics {.unnumbered}  
+#### 割合、色、見た目 {.unnumbered}  
 
-By default, the bars display counts (not %), a dashed mid-line for each group is shown, and the colors are green/purple. Each of these parameters can be adjusted, as shown below:  
+デフォルトでは、棒グラフは発症数（% ではない）で、各年齢層内の破線は中央値を示し、グラフの色は緑と紫で表示されます。これらの引数はそれぞれ、以下のように調整することができます。
 
-You can also add additional `ggplot()` commands to the plot using the standard `ggplot()` "+" syntax, such as aesthetic themes and label adjustments: 
+また、外観 (aesthetic) テーマやラベルの調整など、標準の `ggplot()` "+" シンタックスを使用して、追加の `ggplot()` コマンドをプロットに追加することができます。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(
   data = linelist,
   age_group = "age_cat5",
   split_by = "gender",
-  proportional = TRUE,              # show percents, not counts
-  show_midpoint = FALSE,            # remove bar mid-point line
-  #pal = c("orange", "purple")      # can specify alt. colors here (but not labels)
+  proportional = TRUE,              # 発症数ではなく、パーセントで表示する
+  show_midpoint = FALSE,            # 中央値の破線を削除する
+  #pal = c("orange", "purple")      # ここでのグラフの色指定ができる（ラベルは不可）
   )+                 
   
-  # additional ggplot commands
-  theme_minimal()+                               # simplfy background
-  scale_fill_manual(                             # specify colors AND labels
+  # 追加の ggplot コマンド
+  theme_minimal()+                               # 背景をシンプルにする
+  scale_fill_manual(                             # グラフの色とラベルを指定する
     values = c("orange", "purple"),              
     labels = c("m" = "Male", "f" = "Female"))+
-  labs(y = "Percent of all cases",              # note x and y labs are switched
+  labs(y = "Percent of all cases",              # X 軸と Y 軸を入れ替える
        x = "Age categories",                          
        fill = "Gender", 
        caption = "My data source and caption here",
        title = "Title of my plot",
        subtitle = "Subtitle with \n a second line...")+
   theme(
-    legend.position = "bottom",                          # legend to bottom
-    axis.text = element_text(size = 10, face = "bold"),  # fonts/sizes
+    legend.position = "bottom",                          # 凡例を下へ移動する
+    axis.text = element_text(size = 10, face = "bold"),  # フォント・サイズ
     axis.title = element_text(size = 12, face = "bold"))
 ```
 
 
 
-### Aggregated data {.unnumbered}  
+### 集計データ {.unnumbered}  
 
-The examples above assume your data are in a linelist format, with one row per observation. If your data are already aggregated into counts by age category, you can still use the **apyramid** package, as shown below.  
+上記の例では、データがラインリスト形式であり、1 つの観測が 1 行であることを想定しています。もし、データがすでに年齢カテゴリごとの発症数に集約されている場合でも、以下に示すように、**apyramid** パッケージを使用することができます。
 
-For demonstration, we aggregate the linelist data into counts by age category and gender, into a "wide" format. This will simulate as if your data were in counts to begin with. Learn more about [Grouping data] and [Pivoting data] in their respective pages.  
+例示のため、ラインリストデータを年齢カテゴリごと、性別ごとの発症数に集約し、「横長」 形式にします。これにより、データがもともと集約されていたかのように、擬似的に作り出すことができます。[データのグループ化](#grouping)と[データの縦横変換](#pivoting)については、それぞれの章で詳しく解説しています。
 
 ```{r, warning=F, message=F}
 demo_agg <- linelist %>% 
@@ -188,41 +188,41 @@ demo_agg <- linelist %>%
   rename(`missing_gender` = `NA`)
 ```
 
-...which makes the dataset looks like this: with columns for age category, and male counts, female counts, and missing counts.  
+...これによりデータセットは、年齢カテゴリの列、男性の発症数の列、女性の発症数の列、欠測の数の列で表示されます。
 
 ```{r, echo=F, warning=F, message=F}
-# View the aggregated data
+# 集計データを確認する
 DT::datatable(demo_agg, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-To set-up these data for the age pyramid, we will pivot the data to be "long" with the `pivot_longer()` function from **dplyr**. This is because `ggplot()` generally prefers "long" data, and **apyramid** is using `ggplot()`.  
+このデータを年齢ピラミッドに設定するために、**dplyr** パッケージの `pivot_longer()` 関数で「縦長」のデータになるようにピボットします。なぜなら、`ggplot()` が一般的に「縦長」のデータを好み、**apyramid** パッケージは `ggplot()` を使用しているためです。
 
 ```{r, warning=F, message=F}
-# pivot the aggregated data into long format
+# 集計されたデータを縦長形式にピボットする
 demo_agg_long <- demo_agg %>% 
   pivot_longer(
-    col = c(f, m, missing_gender),            # cols to elongate
-    names_to = "gender",                # name for new col of categories
-    values_to = "counts") %>%           # name for new col of counts
+    col = c(f, m, missing_gender),            # 列を長くする
+    names_to = "gender",                # カテゴリの新しい列名
+    values_to = "counts") %>%           # 発症数の新しい列名
   mutate(
-    gender = na_if(gender, "missing_gender")) # convert "missing_gender" to NA
-``` 
+    gender = na_if(gender, "missing_gender")) # "missing_gender" を NA に変換する
+```
 
 ```{r, echo=F, warning=F, message=F}
-# View the aggregated data
+# 集計データを確認する
 DT::datatable(demo_agg_long, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Then use the `split_by = ` and `count = ` arguments of `age_pyramid()` to specify the respective columns in the data:  
+次に `age_pyramid()` の `split_by =` と `count =` の引数で、データ中のそれぞれの列を指定します。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(data = demo_agg_long,
-                      age_group = "age_cat5",# column name for age category
-                      split_by = "gender",   # column name for gender
-                      count = "counts")      # column name for case counts
+                      age_group = "age_cat5",# 年齢カテゴリの列名
+                      split_by = "gender",   # 性別の列名
+                      count = "counts")      # 発症数の列名
 ```
 
-Note in the above, that the factor order of "m" and "f" is different (pyramid reversed). To adjust the order you must re-define gender in the aggregated data as a Factor and order the levels as desired. See the [Factors] page.  
+上記では、"m" と "f" の因子の順序が異なる（ピラミッドが逆）ことに注意してください。順序を調整するには、集計データの性別を因子型として再定義し、希望するレベルの順序に修正する必要があります。[因子（ファクタ）型データ](#factors)の章をご参照ください。
 
 
 
@@ -231,87 +231,87 @@ Note in the above, that the factor order of "m" and "f" is different (pyramid re
 ## `ggplot()` {#demo_pyr_gg}
 
 
-Using `ggplot()` to build your age pyramid allows for more flexibility, but requires more effort and understanding of how `ggplot()` works. It is also easier to accidentally make mistakes.  
+`ggplot()` を使って年齢ピラミッドを作ると、より柔軟に対応できますが、手間がかかるうえ、`ggplot()` の動作への理解が必要です。また、うっかりミスをしやすくなります。
 
-To use `ggplot()` to make demographic pyramids, you create two bar plots (one for each gender), convert the values in one plot to negative, and finally flip the x and y axes to display the bar plots vertically, their bases meeting in the plot middle.  
+`ggplot()` を用いて人口ピラミッドを作るために、2 つの棒グラフ（性別ごとに 1 つ）を作成し、一方のプロットの値を負に変換します。そして棒グラフを垂直に表示するために X 軸と Y 軸を反転し、それらの基準点を中央で合わせてプロットを合体させます。
 
 
-### Preparation {.unnumbered}
+### 準備 {.unnumbered}
 
-This approach uses the *numeric* age column, not the *categorical* column of `age_cat5`. So we will check to ensure the class of this column is indeed numeric.  
+この方法では、年齢<u>カテゴリ</u>である `age_cat5` の列ではなく、年齢の<u>数値型</u>列を使用します。そこで、この年齢の数値型列の型が本当に数値型であることを確認します。
 
 ```{r}
 class(linelist$age)
 ```
 
-You could use the same logic below to build a pyramid from categorical data using `geom_col()` instead of `geom_histogram()`.  
+以下のようなロジックで、`geom_histogram()` の代わりに `geom_col()` を使って、カテゴリデータからピラミッドを作ることができます。
 
 <!-- ======================================================= -->
-### Constructing the plot {.unnumbered} 
+### プロットの作成 {.unnumbered} 
 
-First, understand that to make such a pyramid using `ggplot()` the approach is as follows:
+まず、`ggplot()` を使ってこのようなピラミッドを作るには、以下のようなアプローチになることを理解してください。
 
-* Within the `ggplot()`, create **two** histograms using the numeric age column. Create one for each of the two grouping values (in this case genders male and female). To do this, the data for each histogram are specified within their respective `geom_histogram()` commands, with the respective filters applied to `linelist`.    
+* `ggplot()` 内で、年齢の数値型列を使用して **2 つの**ヒストグラムを作成します。2 つのグループ化された値（ここでは、性別の男性と女性）それぞれについて 1 つずつ作成します。これを行うには、性別ごとのヒストグラムのデータを `geom_histogram()` コマンドの中で指定し、それぞれのフィルターを `linelist` に適用します。
 
-* One graph will have positive count values, while the other will have its counts converted to negative values - this creates the "pyramid" with the `0` value in the middle of the plot. The negative values are created using a special **ggplot2** term `..count..` and multiplying by -1.  
+* 一方のグラフは正の値を持ち、もう一方のグラフは負の値に変換します。これにより、プロットの中央に `0` の値を持つ「ピラミッド」が形成されます。負の値は、**ggplot2** パッケージ特有の用語である `..count..` を使用して - 1 をかけることにより作成されます。
 
-* The command `coord_flip()` switches the X and Y axes, resulting in the graphs turning vertical and creating the pyramid.
+* `coord_flip()` コマンドは、X 軸と Y 軸を切り替え、その結果、グラフは垂直になり、ピラミッドを作成することができます。
 
-* Lastly, the counts-axis value labels must be altered so they appear as "positive" counts on both sides of the pyramid (despite the underlying values on one side being negative). 
+* 最後に、counts 軸の値のラベルを変更して、ピラミッドの両側で<u>正</u>の値として見えるようにしなければなりません（一方のグラフ描画用の値は負の値であるにもかかわらず）。
 
-A **simple** version of this, using `geom_histogram()`, is below:
+`geom_histogram()` を使った**簡単な**バージョンは以下のとおりです。
 
 ```{r, warning=F, message=F}
-  # begin ggplot
+  # ggplot を開始する
   ggplot(mapping = aes(x = age, fill = gender)) +
   
-  # female histogram
+  # 女性のヒストグラム
   geom_histogram(data = linelist %>% filter(gender == "f"),
                  breaks = seq(0,85,5),
                  colour = "white") +
   
-  # male histogram (values converted to negative)
+  # 男性のヒストグラム (負に変換された値)
   geom_histogram(data = linelist %>% filter(gender == "m"),
                  breaks = seq(0,85,5),
                  mapping = aes(y = ..count..*(-1)),
                  colour = "white") +
   
-  # flip the X and Y axes
+  # X 軸と Y 軸を切り替える
   coord_flip() +
   
-  # adjust counts-axis scale
+  # 発症数の軸目盛りの調整
   scale_y_continuous(limits = c(-600, 900),
                      breaks = seq(-600,900,100),
                      labels = abs(seq(-600, 900, 100)))
 ```
 
-<span style="color: red;">**_DANGER:_** If the **limits** of your counts axis are set too low, and a counts bar exceeds them, the bar will disappear entirely or be artificially shortened! Watch for this if analyzing data which is routinely updated. Prevent it by having your count-axis limits auto-adjust to your data, as below.</span>  
+<span style="color: red;">**<u>警告</u>**：発症数を示す軸の**上（下）限の設定**が低すぎる場合、棒グラフの値がそれを超えると、棒グラフが完全に消えるか、`ggplot()` の機能により自動的に短縮され、不自然なグラフになってしまいます。日常的に更新されるデータを分析する場合は、この点に注意してください。以下のように、発症数を示す軸の上（下）限をデータに合わせて自動調整することで、防げます。</span>  
 
-There are many things you can change/add to this simple version, including:  
+このシンプルな図に変更・追加できることは、以下を含めたくさんあります。
 
-* Auto adjust counts-axis scale to your data (avoid errors discussed in warning below)  
-* Manually specify colors and legend labels  
+* データに合わせて発症数の軸の目盛りを自動調整する（前述の警告にあるエラーを回避する）
+* 色と凡例のラベルを手動で指定する
 
-**Convert counts to percents**  
+**発症数をパーセンテージに変換する**
 
-To convert counts to percents (of total), do this in your data prior to plotting. Below, we get the age-gender counts, then `ungroup()`, and then `mutate()` to create new percent columns. If you want percents by gender, skip the ungroup step.  
+発症数を（全体に対する）パーセントに変換するには、プロットする前にデータ上でこの作業を行います。以下では、年齢と性別の発症数を取得し、次に `ungroup()` を実行し、そして新しいパーセント列を作成するために `mutate()` を実行しています。もし、男女別のパーセンテージが必要な場合は、ungroup のステップはスキップしてください。
 
 
 ```{r, warning=F, message=F}
-# create dataset with proportion of total
+# 割合のデータセットを作成する
 pyramid_data <- linelist %>%
   count(age_cat5,
         gender,
         name = "counts") %>% 
-  ungroup() %>%                 # ungroup so percents are not by group
+  ungroup() %>%                 # グループ化解除、そのためパーセンテージはグループごとではない
   mutate(percent = round(100*(counts / sum(counts, na.rm=T)), digits = 1), 
          percent = case_when(
             gender == "f" ~ percent,
-            gender == "m" ~ -percent,     # convert male to negative
-            TRUE          ~ NA_real_))    # NA val must by numeric as well
+            gender == "m" ~ -percent,     # 男性を負の数に変換
+            TRUE          ~ NA_real_))    # NA 値の型も数値型でなければならない
 ```
 
-Importantly, we save the max and min values so we know what the limits of the scale should be. These will be used in the `ggplot()` command below.    
+重要なのは、最大値と最小値を保存し、目盛りの上（下）限を把握することです。これらの変数はこの後の `ggplot()` コマンド内で使用します。
 
 ```{r}
 max_per <- max(pyramid_data$percent, na.rm=T)
@@ -321,43 +321,43 @@ max_per
 min_per
 ```
 
-Finally we make the `ggplot()` on the percent data. We specify `scale_y_continuous()` to extend the pre-defined lengths in each direction (positive and "negative"). We use `floor()` and `ceiling()` to round decimals the appropriate direction (down or up) for the side of the axis.  
+最後に、パーセントのデータに対して `ggplot()` を作成します。`scale_y_continuous()` を指定して、あらかじめ決まっていた長さをそれぞれの方向（正または「負」）に伸ばします。また、`floor()` と `ceiling()` を使って、軸目盛り上で適切な方向（下か上）に小数点以下を丸めています。
 
 ```{r, warning=F, message=F}
-# begin ggplot
-  ggplot()+  # default x-axis is age in years;
+# ggplot を開始する
+  ggplot()+  # デフォルトの X 軸は年齢(年)
 
-  # case data graph
+  # 発症数データのグラフ
   geom_col(data = pyramid_data,
            mapping = aes(
              x = age_cat5,
              y = percent,
              fill = gender),         
-           colour = "white")+       # white around each bar
+           colour = "white")+       # それぞれの棒グラフの枠は白にする
   
-  # flip the X and Y axes to make pyramid vertical
+  # X 軸と Y 軸を反転してピラミッドを縦にする
   coord_flip()+
   
 
-  # adjust the axes scales
+  # 軸の目盛りを調整する
   # scale_x_continuous(breaks = seq(0,100,5), labels = seq(0,100,5)) +
   scale_y_continuous(
     limits = c(min_per, max_per),
-    breaks = seq(from = floor(min_per),                # sequence of values, by 2s
+    breaks = seq(from = floor(min_per),                # 値は 2 単位ずつ並べる
                  to = ceiling(max_per),
                  by = 2),
-    labels = paste0(abs(seq(from = floor(min_per),     # sequence of absolute values, by 2s, with "%"
+    labels = paste0(abs(seq(from = floor(min_per),     # 絶対値に％をつけて 2 単位ずつ表示する
                             to = ceiling(max_per),
                             by = 2)),
                     "%"))+  
 
-  # designate colors and legend labels manually
+  # 色や凡例のラベルを手動で指定する
   scale_fill_manual(
     values = c("f" = "orange",
                "m" = "darkgreen"),
     labels = c("Female", "Male")) +
   
-  # label values (remember X and Y flipped now)
+  # 値のラベル（現在は X 軸と Y 軸が反転していることを忘れずに）
   labs(
     title = "Age and gender of cases",
     x = "Age group",
@@ -365,7 +365,7 @@ Finally we make the `ggplot()` on the percent data. We specify `scale_y_continuo
     fill = NULL,
     caption = stringr::str_glue("Data are from linelist \nn = {nrow(linelist)} (age or sex missing for {sum(is.na(linelist$gender) | is.na(linelist$age_years))} cases) \nData as of: {format(Sys.Date(), '%d %b %Y')}")) +
   
-  # display themes
+  # 表示用のテーマ
   theme(
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
@@ -380,168 +380,168 @@ Finally we make the `ggplot()` on the percent data. We specify `scale_y_continuo
 
 
 <!-- ======================================================= -->
-### Compare to baseline  {.unnumbered} 
+### ベースラインとの比較 {.unnumbered} 
 
-With the flexibility of `ggplot()`, you can have a second layer of bars in the background that represent the "true" or "baseline" population pyramid. This can provide a nice visualization to compare the observed with the baseline.  
+`ggplot()` の柔軟性を利用すれば、「真の」または「ベースラインの」人口ピラミッドを表す 2 つめの棒グラフを背景に表示することができます。これは、観測値とベースラインの比較に適した視覚化を可能にします。
 
-Import and view the population data (see [Download handbook and data] page):
+人口のデータをインポートして表示します（[ハンドブックとデータのダウンロード](#data-used)の章をご参照ください）。
 
 ```{r echo=F}
-# import the population demographics data
+# 国 A の人口データのインポート
 pop <- rio::import(here::here("data", "standardization", "country_demographics.csv"))
 ```
 
 ```{r eval=F}
-# import the population demographics data
+# 国 A の人口データのインポート
 pop <- rio::import("country_demographics.csv")
 ```
 
 ```{r, echo=F, warning=F, message=F}
-# display the linelist data as a table
+# ラインリストデータを表形式で表示する
 DT::datatable(pop, rownames = FALSE, options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-First some data management steps:  
+はじめにいくつかのデータ管理の手順を説明します。
 
-Here we record the order of age categories that we want to appear. Due to some quirks the way the `ggplot()` is implemented, in this specific scenario it is easiest to store these as a character vector and use them later in the plotting function.  
+表示させたい年齢カテゴリの順番を記録します。`ggplot()` の実装にはいくつかの癖があるため、今回の具体例では、年齢カテゴリを文字列型ベクトルとして保存し、プロット関数で使用する方法が最も簡単です。
 
 ```{r}
-# record correct age cat levels
+# 年齢の正しいカテゴリレベルを記録する
 age_levels <- c("0-4","5-9", "10-14", "15-19", "20-24",
                 "25-29","30-34", "35-39", "40-44", "45-49",
                 "50-54", "55-59", "60-64", "65-69", "70-74",
                 "75-79", "80-84", "85+")
 ```
 
-Combine the population and case data through the **dplyr** function `bind_rows()`:  
+**dplyr** パッケージの `bind_rows()` 関数を使って、人口のデータと発症数のデータを結合します。
 
-* First, ensure they have the *exact same* column names, age categories values, and gender values  
-* Make them have the same data structure: columns of age category, gender, counts, and percent of total  
-* Bind them together, one on-top of the other (`bind_rows()`)  
+* まず、両者が<u>まったく同じ</u>列名、年齢カテゴリの値、および性別の値を持つことを確認します。
+* 両者が同じデータ構造を持つようにします。年齢カテゴリ、性別、人数、全体に対する発症数の割合の列
+* 一方をもう一方の上に重ねて結合します (`bind_rows()`)
 
 
 
 ```{r, warning=F, message=F}
-# create/transform populaton data, with percent of total
+# 人口データ（集団全体に対するパーセント）の作成・変換
 ########################################################
 pop_data <- pop %>% 
-  pivot_longer(      # pivot gender columns longer
+  pivot_longer(      # 性別をピボットして列を縦長形式にする
     cols = c(m, f),
     names_to = "gender",
     values_to = "counts") %>% 
   
   mutate(
-    percent  = round(100*(counts / sum(counts, na.rm=T)),1),  # % of total
+    percent  = round(100*(counts / sum(counts, na.rm=T)),1),  # 集団全体に対するパーセント
     percent  = case_when(                                                        
      gender == "f" ~ percent,
-     gender == "m" ~ -percent,               # if male, convert % to negative
+     gender == "m" ~ -percent,               # 男性の場合、パーセントを負に変換する
      TRUE          ~ NA_real_))
 ```
 
-Review the changed population dataset
+変更された人口のデータセットを確認します。
 
 ```{r, echo=F, warning=F, message=F}
-# display the linelist data as a table
+# ラインリストデータを表形式で表示する
 DT::datatable(pop_data, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Now implement the same for the case linelist.  Slightly different because it begins with case-rows, not counts.  
+今度は、同じデータ処理を発症数のラインリストにも適用してみましょう。全体の数ではなく、発症数の行から始まるので、少し異なります。
 
 ```{r, warning=F, message=F}
-# create case data by age/gender, with percent of total
+# 年齢別・男女別の発症数データを作成し、全体に占める割合を表示する
 #######################################################
 case_data <- linelist %>%
-  count(age_cat5, gender, name = "counts") %>%  # counts by age-gender groups
+  count(age_cat5, gender, name = "counts") %>%  # 年齢と性別による発症数
   ungroup() %>% 
   mutate(
-    percent = round(100*(counts / sum(counts, na.rm=T)),1),  # calculate % of total for age-gender groups
-    percent = case_when(                                     # convert % to negative if male
+    percent = round(100*(counts / sum(counts, na.rm=T)),1),  # 年齢と性別の層による全体の数に対するパーセントを計算する
+    percent = case_when(                                     # 男性の場合、パーセントを負に変換する
       gender == "f" ~ percent,
       gender == "m" ~ -percent,
       TRUE          ~ NA_real_))
 ```
 
-Review the changed case dataset  
+変更された発症数のデータセットを確認します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストデータを表形式で表示する
 DT::datatable(case_data, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Now the two data frames are combined, one on top of the other (they have the same column names). We can "name" each of the data frame, and use the `.id = ` argument to create a new column "data_source" that will indicate which data frame each row originated from. We can use this column to filter in the `ggplot()`.  
+これで 2 つのデータフレームのデータ構造がそろい、一方がもう一方の上に重なっている状態です（列名は同じです）。それぞれのデータフレームに「名前」を付け、`.id =` 引数を使用して新しい列「data_source」を作成し、各行がどのデータフレーム由来であるかを示します。この列を使用して、`ggplot()` でフィルターをかけられます。
 
 
 
 ```{r, warning=F, message=F}
-# combine case and population data (same column names, age_cat values, and gender values)
+# 発症数のデータと人口のデータを結合する（同じ列名、年齢カテゴリの値、性別の値）
 pyramid_data <- bind_rows("cases" = case_data, "population" = pop_data, .id = "data_source")
 ```
 
-Store the maximum and minimum percent values, used in the plotting function to define the extent of the plot (and not cut short any bars!)  
+プロット関数でプロットの範囲を定義するために使用するパーセントの最大値と最小値を保存します。
 
 ```{r}
-# Define extent of percent axis, used for plot limits
+# パーセント軸の範囲を定義し、プロットの上（下）限に用いる
 max_per <- max(pyramid_data$percent, na.rm=T)
 min_per <- min(pyramid_data$percent, na.rm=T)
 ```
 
-Now the plot is made with `ggplot()`: 
+`ggplot()` を用いてプロットします。
 
-* One bar graph of population data (wider, more transparent bars)
-* One bar graph of case data (small, more solid bars)  
+* 人口データの棒グラフ 1 本（幅が広く、透明度の高い棒）
+* 発症数データの棒グラフ 1 本（幅が小さく、濃い棒グラフ）
 
 
 ```{r, warning=F, message=F}
 
-# begin ggplot
+# ggplot を開始する
 ##############
-ggplot()+  # default x-axis is age in years;
+ggplot()+  # X 軸のデフォルトは年齢(年)
 
-  # population data graph
+  # 人口データのグラフ
   geom_col(
     data = pyramid_data %>% filter(data_source == "population"),
     mapping = aes(
       x = age_cat5,
       y = percent,
       fill = gender),
-    colour = "black",                               # black color around bars
-    alpha = 0.2,                                    # more transparent
-    width = 1)+                                     # full width
+    colour = "black",                               # 棒グラフの枠は黒にする
+    alpha = 0.2,                                    # 透過度を高くする
+    width = 1)+                                     # 棒グラフの幅は全幅にする
   
-  # case data graph
+  # 症例データのグラフ
   geom_col(
     data = pyramid_data %>% filter(data_source == "cases"), 
     mapping = aes(
-      x = age_cat5,                               # age categories as original X axis
-      y = percent,                                # % as original Y-axis
-      fill = gender),                             # fill of bars by gender
-    colour = "black",                               # black color around bars
-    alpha = 1,                                      # not transparent 
-    width = 0.3)+                                   # half width
+      x = age_cat5,                               # 年齢カテゴリを X 軸とする
+      y = percent,                                # ％ は元の Y 軸と同じ
+      fill = gender),                             # 男女別棒グラフ
+    colour = "black",                               # 棒グラフの枠は黒にする
+    alpha = 1,                                      # 透過しない 
+    width = 0.3)+                                   # 棒グラフの幅を小さくする
   
-  # flip the X and Y axes to make pyramid vertical
+  # X 軸と Y 軸を反転してピラミッドを縦にする
   coord_flip()+
   
-  # manually ensure that age-axis is ordered correctly
-  scale_x_discrete(limits = age_levels)+     # defined in chunk above
+  # 年齢軸の順序が正しいことを手動で確認する
+  scale_x_discrete(limits = age_levels)+     # 前述のコードで定義したもの
   
-  # set percent-axis 
+  # パーセントの軸を設定する 
   scale_y_continuous(
-    limits = c(min_per, max_per),                                          # min and max defined above
-    breaks = seq(floor(min_per), ceiling(max_per), by = 2),                # from min% to max% by 2 
-    labels = paste0(                                                       # for the labels, paste together... 
+    limits = c(min_per, max_per),                                          # 上記で定義された最小値と最大値
+    breaks = seq(floor(min_per), ceiling(max_per), by = 2),                # 最小値の % から最大値の % まで 2 単位ずつ表示する 
+    labels = paste0(                                                       # ラベルについても同様に貼り付ける... 
               abs(seq(floor(min_per), ceiling(max_per), by = 2)), "%"))+                                                  
 
-  # designate colors and legend labels manually
+  # 色と凡例ラベルを手動で指定する
   scale_fill_manual(
-    values = c("f" = "orange",         # assign colors to values in the data
+    values = c("f" = "orange",         # データに色をつける
                "m" = "darkgreen"),
     labels = c("f" = "Female",
-               "m"= "Male"),      # change labels that appear in legend, note order
+               "m"= "Male"),      # 凡例に表示されるラベルと記載順を変更する
   ) +
 
-  # plot labels, titles, caption    
+  # プロットのラベル、タイトル、見出し   
   labs(
     title = "Case age and gender distribution,\nas compared to baseline population",
     subtitle = "",
@@ -550,9 +550,9 @@ ggplot()+  # default x-axis is age in years;
     fill = NULL,
     caption = stringr::str_glue("Cases shown on top of country demographic baseline\nCase data are from linelist, n = {nrow(linelist)}\nAge or gender missing for {sum(is.na(linelist$gender) | is.na(linelist$age_years))} cases\nCase data as of: {format(max(linelist$date_onset, na.rm=T), '%d %b %Y')}")) +
   
-  # optional aesthetic themes
+  # 表示用のテーマのオプション
   theme(
-    legend.position = "bottom",                             # move legend to bottom
+    legend.position = "bottom",                             # 凡例をグラフ下に移動する
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
     panel.background = element_blank(),
@@ -564,9 +564,9 @@ ggplot()+  # default x-axis is age in years;
 
 
 <!-- ======================================================= -->
-## Likert scale {}
+## リッカート尺度 {}
 
-The techniques used to make a population pyramid with `ggplot()` can also be used to make plots of Likert-scale survey data.  
+`ggplot()` を使って人口ピラミッドを作成する方法は、リッカート尺度を用いた調査データのプロット作成にも使えます。
 
 ```{r, eval=F, echo=F}
 data_raw <- import("P:/Shared/equateur_mve_2020/lessons learned/Ebola After-Action Survey - HQ epi team (form responses).csv")
@@ -595,31 +595,31 @@ table(likert_data$status)
 rio::export(likert_data, here::here("data", "likert_data.csv"))
 ```
 
-Import the data (see [Download handbook and data] page if desired).  
+データを取り込みます（必要に応じて[ハンドブックとデータのダウンロード](#data-used)章をご参照ください）。
 
 ```{r echo=F}
-# import the likert survey response data
+# リッカート尺度による回答データを取り込む
 likert_data <- rio::import(here::here("data", "likert_data.csv"))
 ```
 
 ```{r, eval=F}
-# import the likert survey response data
+# リッカート尺度による回答データを取り込む
 likert_data <- rio::import("likert_data.csv")
 ```
 
-Start with data that looks like this, with a categorical classification of each respondent (`status`) and their answers to 8 questions on a 4-point Likert-type scale ("Very poor", "Poor", "Good", "Very good").  
+各回答者のカテゴリ分類（`status`）と、8 つの質問に対する4 段階のリッカート尺度（「非常に悪い」、「悪い」、「良い」、「非常に良い」）による 回答からなる、以下のようなデータからスタートします。
 
 ```{r, echo=F, message=FALSE}
-# display the linelist data as a table
+# ラインリストデータを表形式で表示する
 DT::datatable(likert_data, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-First, some data management steps:  
+まず、データ管理の手順をいくつか紹介します。
 
-* Pivot the data longer  
-* Create new column `direction` depending on whether response was generally "positive" or "negative"  
-* Set the Factor level order for the `status` column and the `Response` column  
-* Store the max count value so limits of plot are appropriate  
+* データを縦長形式にピボットする
+* 回答が概ね「肯定的」か「否定的」かによって、新しい列の `direction` を作成する
+* `status` の列と `Response` の列の因子レベルの順序を設定する
+* 最大値を保存し、プロットの上（下）限が適切になるよう設定する
 
 
 ```{r, warning=F, message=F}
@@ -637,37 +637,37 @@ melted <- likert_data %>%
     
     status = fct_relevel(status, "Junior", "Intermediate", "Senior"),
     
-    # must reverse 'Very Poor' and 'Poor' for ordering to work
+    # 「Very Poor」と「Poor」を逆にしないと実行できない
     Response = fct_relevel(Response, "Very Good", "Good", "Very Poor", "Poor")) 
 
-# get largest value for scale limits
+# 軸の目盛りの上（下）限を設定するために最大値を保存する
 melted_max <- melted %>% 
-  count(status, Question) %>% # get counts
-  pull(n) %>%                 # column 'n'
-  max(na.rm=T)                # get max
+  count(status, Question) %>% # 回答の値を得る
+  pull(n) %>%                 # n 列
+  max(na.rm=T)                # 最大値を得る
 ```
 
 
-Now make the plot. As in the age pyramids above, we are creating two bar plots and inverting the values of one of them to negative. 
+プロットを作ってみましょう。上記の年齢ピラミッドのように、2 つの棒グラフを作成し、そのうちの 1 つの値を負に反転させます。
 
-We use `geom_bar()` because our data are one row per observation, not aggregated counts. We use the special **ggplot2** term `..count..` in one of the bar plots to invert the values negative (*-1), and we set `position = "stack"` so the values stack on top of each other.  
+用いるデータは、集計された値ではなく、観測ごとに 1 行であるため、`geom_bar()` を使用します。値を負（\*-1）に反転するために棒グラフの 1 つで特別な **ggplot2** の用語 `..count..` を使用し、値がお互いに重なるように `position = "stack"` を設定します。
 
 ```{r, warning=F, message=F}
-# make plot
+# プロットの作成
 ggplot()+
      
-  # bar graph of the "negative" responses 
+  # 「否定的」な回答の棒グラフ 
      geom_bar(
        data = melted %>% filter(direction == "Negative"),
        mapping = aes(
          x = status,
-         y = ..count..*(-1),    # counts inverted to negative
+         y = ..count..*(-1),    # 値を負に反転する
          fill = Response),
        color = "black",
        closed = "left",
        position = "stack")+
      
-     # bar graph of the "positive responses
+     # 「肯定的」な回答の棒グラフ 
      geom_bar(
        data = melted %>% filter(direction == "Positive"),
        mapping = aes(
@@ -677,62 +677,62 @@ ggplot()+
        closed = "left",
        position = "stack")+
      
-     # flip the X and Y axes
+     # X 軸と Y 軸を反転させる
      coord_flip()+
   
-     # Black vertical line at 0
+     # 0 の位置に黒い縦線をひく
      geom_hline(yintercept = 0, color = "black", size=1)+
      
-    # convert labels to all positive numbers
+    # ラベルをすべて正の数に変換する
     scale_y_continuous(
       
-      # limits of the x-axis scale
-      limits = c(-ceiling(melted_max/10)*11,    # seq from neg to pos by 10, edges rounded outward to nearest 5
+      # X 軸の目盛りの上限
+      limits = c(-ceiling(melted_max/10)*11,    # 否定から肯定まで 10 ずつ並べ、端は外側に丸め、最も近い 5 にする
                  ceiling(melted_max/10)*10),   
       
-      # values of the x-axis scale
+      # X 軸の目盛りの値
       breaks = seq(from = -ceiling(melted_max/10)*10,
                    to = ceiling(melted_max/10)*10,
                    by = 10),
       
-      # labels of the x-axis scale
+      # X 軸の目盛りのラベル
       labels = abs(unique(c(seq(-ceiling(melted_max/10)*10, 0, 10),
                             seq(0, ceiling(melted_max/10)*10, 10))))) +
      
-    # color scales manually assigned 
+    # 目盛りに色を手動で割り当てる  
     scale_fill_manual(
-      values = c("Very Good"  = "green4", # assigns colors
+      values = c("Very Good"  = "green4", # 色分けする
                 "Good"      = "green3",
                 "Poor"      = "yellow",
                 "Very Poor" = "red3"),
-      breaks = c("Very Good", "Good", "Poor", "Very Poor"))+ # orders the legend
+      breaks = c("Very Good", "Good", "Poor", "Very Poor"))+ # 凡例を指定する
      
     
      
-    # facet the entire plot so each question is a sub-plot
+    # プロット全体をファセット化し、各質問はサブプロットにする
     facet_wrap( ~ Question, ncol = 3)+
      
-    # labels, titles, caption
+    # ラベル、タイトル、見出し
     labs(
       title = str_glue("Likert-style responses\nn = {nrow(likert_data)}"),
       x = "Respondent status",
       y = "Number of responses",
       fill = "")+
 
-     # display adjustments 
+     # 表示の調整 
      theme_minimal()+
      theme(axis.text = element_text(size = 12),
            axis.title = element_text(size = 14, face = "bold"),
-           strip.text = element_text(size = 14, face = "bold"),  # facet sub-titles
+           strip.text = element_text(size = 14, face = "bold"),  # ファセットのサブタイトル
            plot.title = element_text(size = 20, face = "bold"),
-           panel.background = element_rect(fill = NA, color = "black")) # black box around each facet
+           panel.background = element_rect(fill = NA, color = "black")) # 各ファセットを黒枠で囲む
 ```
 
 
 <!-- ======================================================= -->
-## Resources {}
+## 参考資料 {}
 
-[apyramid documentation](https://cran.r-project.org/web/packages/apyramid/vignettes/intro.html)
+[apyramid ドキュメント](https://cran.r-project.org/web/packages/apyramid/vignettes/intro.html)
 
 
 
