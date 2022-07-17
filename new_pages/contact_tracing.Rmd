@@ -1,59 +1,59 @@
 
-# Contact tracing { }
+# 接触者の追跡{#contact-tracing}
 
 
-This page demonstrates descriptive analysis of contact tracing data, addessing some key considerations and approaches unique to these kinds of data.  
+この章では、実地疫学調査で収集された追跡データの記述統計を行い、接触者追跡データ（以下、追跡データ）を分析する際に考慮すべき重要事項、ならびに課題に直面した時の対処法を説明します。
 
-This page references many of the core R data management and visualisation competencies covered in other pages (e.g. data cleaning, pivoting, tables, time-series analyses), but we will highlight examples specific to contact tracing that have been useful for operational decision making. For example, this includes visualizing contact tracing follow-up data over time or across geographic areas, or producing clean Key Performance Indicator (KPI) tables for contact tracing supervisors.
+この章で扱う内容は、他の章で取り扱われているデータ管理と可視化の基礎（データ前処理や整備、表の作り方や、時系列分析など）を参照していますが、その中でも特に、実地疫学調査業務における意思決定に役立つ追跡データに特有の例を取り上げます。例えば、追跡データを時系列や地域ごとに可視化する図や、調査の責任者に報告するための重要業績評価指標（Key Performance Indicator: KPI）の表などを作成します。
 
-For demonstration purposes we will use sample contact tracing data from the [Go.Data](https://www.who.int/tools/godata) platform. The principles covered here will apply for contact tracing data from other platforms - you may just need to undergo different data pre-processing steps depending on the structure of your data.  
+本章では、[Go.Data](https://www.who.int/tools/godata) プロジェクトのウェブサイトからダウンロードできる追跡データを例として使用しますが、本章で扱う内容は、他のウェブサイトから取得した追跡データを使用しても再現可能です。その場合は、データの構造によって、必要な前処理が異なる可能性があります。
 
-You can read more about the Go.Data project on the [Github Documentation site](https://worldhealthorganization.github.io/godata/) or [Community of Practice](https://community-godata.who.int/). 
+Go.Data の詳細については、Go.Data [公式ドキュメント](https://worldhealthorganization.github.io/godata/) や [公式ウェブサイト](https://community-godata.who.int/) をご覧ください。
 
-## Preparation
+## データ準備
 
 
-### Load packages {.unnumbered}  
+### パッケージの読み込み {.unnumbered}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、pacman パッケージの p_load() を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** （以下、**base** R）の library() を使用して読み込むこともできます。R のパッケージに関する詳細は [R の基礎](#basics) の章をご覧ください。
 
 ```{r, message = F}
 pacman::p_load(
-  rio,          # importing data  
-  here,         # relative file pathways  
-  janitor,      # data cleaning and tables
-  lubridate,    # working with dates
-  epikit,       # age_categories() function
-  apyramid,     # age pyramids
-  tidyverse,    # data manipulation and visualization
-  RColorBrewer, # color palettes
-  formattable,  # fancy tables
-  kableExtra    # table formatting
+  rio,          # データのインポート  
+  here,         # 相対パスの設定  
+  janitor,      # データクリーニング
+  lubridate,    # 日付型データ
+  epikit,       # age_categories() 
+  apyramid,     # 人口ピラミッド
+  tidyverse,    # データの処理と可視化
+  RColorBrewer, # 配色デザイン
+  formattable,  # 見やすい表の作成
+  kableExtra    # 表のフォーマットの整備
 )
 ```
 
 
-### Import data {.unnumbered}
+### データのインポート {.unnumbered}
 
-We will import sample datasets of contacts, and of their "follow-up". These data have been retrieved and un-nested from the Go.Data API and stored as ".rds" files.  
+まず、接触者と接触者追跡状況（フォローアップ）のサンプルデータセットをインポートします。この章で使用するサンプルデータは、ネストされていない形で Go.Data API から取得され、".rds" ファイル形式です。
 
-You can download all the example data for this handbook from the [Download handbook and data] page. 
+[ハンドブックとデータのダウンロード](#data-used) の章から、このハンドブックで使用するすべてのデータをダウンロードできます。
 
-If you want to download the example contact tracing data specific to this page, use the three download links below:  
+この章で使用するサンプルデータのみをダウンロードする場合は、以下のリンクをご利用ください。
 
-<a href='https://github.com/WorldHealthOrganization/godata/blob/master/analytics/r-reporting/data/cases_clean.rds?raw=true' class='download-button'>
-	Click to download
-	<span>the case investigation data (.rds file)</span>
+<a href='https://github.com/WorldHealthOrganization/godata/blob/master/analytics/r-reporting/data/cases_clean.rds?raw=true' class='download-button'> 
+  クリックしてダウンロード
+  <span>感染症例サンプルデータ（.rds ファイル）</span>
 </a>
 
 <a href='https://github.com/WorldHealthOrganization/godata/blob/master/analytics/r-reporting/data/contacts_clean.rds?raw=true' class='download-button'>
-	Click to download
-	<span>the contact registration data (.rds file)</span>
+  クリックしてダウンロード
+  <span>接触者サンプルデータ （.rds ファイル）</span>
 </a>
 
-<a href='https://github.com/WorldHealthOrganization/godata/blob/master/analytics/r-reporting/data/followups_clean.rds?raw=true' class='download-button'>
-	Click to download
-	<span>the contact follow-up data (.rds file)</span>
+<a href='https://github.com/WorldHealthOrganization/godata/blob/master/analytics/r-reporting/data/followups_clean.rds?raw=true' class='download-button'> 
+  クリックしてダウンロード
+  <span>追跡サンプルデータ （.rds ファイル） </span>
 </a>
 
 <!-- ```{r out.width = "100%", fig.align = "center", echo=F} -->
@@ -61,13 +61,13 @@ If you want to download the example contact tracing data specific to this page, 
 <!-- ``` -->
 
 
-In their original form in the downloadable files, the data reflect data as provided by the Go.Data API (learn about [APIs here](#import_api)). For example purposes here, we will clean the data to make it easier to read on this page. If you are using a Go.Data instance, you can view complete instructions on how to retrieve your data [here](https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting).  
+上のリンクからダウンロードしたファイルは、Go.Data API（API の詳細については[こちら](#import_api)）が提供するデータであり、加工されていないため、データをインポートした後、この章で使いやすいようにデータの前処理を行います。Go.Data データの取得について、詳細が知りたい方は、[こちら](https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting) をご覧ください。
 
-Below, the datasets are imported using the `import()` function from the **rio** package. See the page on [Import and export] for various ways to import data. We use `here()` to specify the file path - you should provide the file path specific to your computer. We then use `select()` to select only certain columns of the data, to simplify for purposes of demonstration.  
+以下のコードでは、**rio** パッケージの `import()` を使用してサンプルデータセットをインポートしていますが、データをインポートする方法は他にも数多くあります。詳細を知りたい方は、 [インポートとエクスポート](#importing) の章を参照してください。以下のコードでは、`here()` を使用してファイルパスを指定していますが、コードを実行する際は、使用しているコンピュータ固有のファイルパスに変更してください。データをインポートした後、`select()` を使用して特定の列のみを選択し、必要のない変数を除外します。
 
-#### Case data {.unnumbered}  
+#### 感染症例データ {.unnumbered}
 
-These data are a table of the cases, and information about them.  
+このサンプルデータ（`cases` データセット）には、感染者の情報が含まれています。
 
 ```{r}
 cases <- import(here("data", "godata", "cases_clean.rds")) %>% 
@@ -75,19 +75,19 @@ cases <- import(here("data", "godata", "cases_clean.rds")) %>%
          occupation, classification, was_contact, hospitalization_typeid)
 ```
 
-Here are the ` nrow(cases)` cases:  
+以下は、このデータセットに含まれている `nrow(cases)` 人の感染者登録データの一覧です。
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(cases, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Contacts data {.unnumbered}  
+#### 接触者データ {.unnumbered}
 
-These data are a table of all the contacts and information about them. Again, provide your own file path. After importing we perform a few preliminary data cleaning steps including:  
+このサンプルデータ（`contacts` データセット）は、接触者に関わる情報が含まれた表です。以下のコードを実行する際も、お手元の環境に適したファイルパスを指定してください。データをインポート後、以下の順に従ってデータクリーニングを行います。
 
-* Set age_class as a factor and reverse the level order so that younger ages are first  
-* Select only certain column, while re-naming a one of them  
-* Artificially assign rows with missing admin level 2 to "Djembe", to improve clarity of some example visualisations  
+* `age_class` 変数を因子（ファクタ）型に設定し、レベルを逆にならべ、若い年齢が最初に来るようにする
+* 特定の列のみを選択し、選択した列のうち1つの列の名前を変更する
+* `admin_2_name` 変数で空欄があった場合、 "Djembe" を割り当て、後ほど作成するデータ可視化の例をわかりやすくする
 
 
 ```{r}
@@ -100,17 +100,17 @@ contacts <- import(here("data", "godata", "contacts_clean.rds")) %>%
   mutate(admin_2_name = replace_na(admin_2_name, "Djembe"))
 ```
 
-Here are the ` nrow(contacts)` rows of the `contacts` dataset:  
+以下は、このデータセットに含まれている `nrow(contacts)` 人の接触者データの一覧です。
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(contacts, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Follow-up data {.unnumbered}  
+#### 追跡データ {.unnumbered}
 
-These data are records of the "follow-up" interactions with the contacts. Each contact is supposed to have an encounter each day for 14 days after their exposure.  
+このサンプルデータ（`followups` データセット）には、「フォローアップ」の記録が含まれています。各接触者は、感染への曝露後 14 日間、毎日 1 回、連絡を取る必要があります。
 
-We import and perform a few cleaning steps. We select certain columns, and also convert a character column to all lowercase values.  
+データをインポートした後、いくつかのデータ加工を行います。特定の列を選択し、文字列変数である `followup_status` をすべて小文字に変換します。
 
 ```{r}
 followups <- rio::import(here::here("data", "godata", "followups_clean.rds")) %>% 
@@ -119,15 +119,15 @@ followups <- rio::import(here::here("data", "godata", "followups_clean.rds")) %>
   mutate(followup_status = str_to_lower(followup_status))
 ```
 
-Here are the first 50 rows of the ` nrow(followups)`-row `followups` dataset (each row is a follow-up interaction, with outcome status in the `followup_status` column):  
+以下では、追跡データの最初の `nrow(followups)` 人を表示しています。 （各行は 追跡調査の 1 回の記録を表し、追跡調査の結果は `followup_status` 列に記録されています。）
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(head(followups, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-#### Relationships data {.unnumbered}  
+#### 関連データ {.unnumbered}
 
-Here we import data showing the relationship between cases and contacts. We select certain column to show.  
+ここでは、感染症例と接触の関係性を表すデータをインポートします。表示する列を絞り込んでおきましょう。
 
 ```{r}
 relationships <- rio::import(here::here("data", "godata", "relationships_clean.rds")) %>% 
@@ -136,7 +136,7 @@ relationships <- rio::import(here::here("data", "godata", "relationships_clean.r
          target_age, exposure_type)
 ```
 
-Below are the first 50 rows of the `relationships` dataset, which records all relationships between cases and contacts.  
+以下は、「関連データ」の最初の 50 行です。感染症例と接触の関係がすべて含まれています。
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(head(relationships, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
@@ -149,74 +149,74 @@ DT::datatable(head(relationships, 50), rownames = FALSE, options = list(pageLeng
 
 
 
-## Descriptive analyses  
+## 記述統計
 
-You can use the techniques covered in other pages of this handbook to conduct descriptive analyses of your cases, contacts, and their relationships. Below are some examples.  
-
-
-### Demographics {.unnumbered}  
-
-As demonstrated in the page covering [Demographic pyramids][Demographic pyramids and Likert-scales], you can visualise the age and gender distribution (here we use the **apyramid** package).  
+このハンドブックの他の章で説明されている分析手法や R コードを使用し、感染者、接触者、そして感染者と接触者の関連について記述的な分析を行うことができます。以下に、いくつか例を示します。
 
 
-#### Age and Gender of contacts {.unnumbered}  
+### 人口統計 {.unnumbered}
 
-The pyramid below compares the age distribution of contacts, by gender. Note that contacts missing age are included in their own bar at the top. You can change this default behavior, but then consider listing the number missing in a caption.  
+[人口ピラミッドとリッカート尺度](#age-pyramid) の章で紹介したように、年齢や性別の分布を可視化することができます（ここでは、**apyramid** パッケージを使用しています）。
+
+
+#### 接触者の年齢と性別 {.unnumbered}
+
+以下の人口ピラミッドは、接触者の年齢分布を男女別に比較したものです。年齢が不明の接触者は、一番上の `unknown` に含まれていることに注意してください。年齢不明の接触者を人口ピラミッドから除外することもできますが、その場合は、何人除外されたのかを、プロット下部に注意書きとして記すことをおすすめします。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(
-  data = contacts,                                   # use contacts dataset
-  age_group = "age_class",                           # categorical age column
-  split_by = "gender") +                             # gender for halfs of pyramid
+  data = contacts,                                   # 接触者サンプルデータを使用
+  age_group = "age_class",                           # 年齢変数（因子型）を指定
+  split_by = "gender") +                             # 性別による比較
   labs(
-    fill = "Gender",                                 # title of legend
-    title = "Age/Sex Pyramid of COVID-19 contacts")+ # title of the plot
-  theme_minimal()                                    # simple background
+    fill = "Gender",                                 # 凡例のタイトル
+    title = "Age/Sex Pyramid of COVID-19 contacts")+ # 図のタイトル
+  theme_minimal()                                    # 背景テーマの設定
 ```
 
 
-With the Go.Data data structure, the `relationships` dataset contains the ages of both cases and contacts, so you could use that dataset and create an age pyramid showing the differences between these two groups of people. The `relationships` data frame will be mutated to transform the numberic age columns into categories (see the [Cleaning data and core functions] page). We also pivot the dataframe longer to facilitate easy plotting with **ggplot2** (see [Pivoting data]).  
+他にも、感染者と接触者両方の年齢が含まれている Go.Data の関連データ（`relationships` データセット）を使用すると、感染者と接触者の年齢層の違いを表す人口ピラミッドを作成することもできます。関連データを用いて人口ピラミッドを作成する場合は、年齢変数をカテゴリー化し、数値型から因子（ファクタ）型にする必要があります（詳しくは、[データクリーニングと主要関数](#cleaning)の章を参照ください）。また、**ggplot2** パッケージで図をプロットしやすくするために、データを縦型（long型）に変換する必要があります（詳細は、[データの縦横変換](#pivoting)をご覧ください）。
 
 ```{r}
 relation_age <- relationships %>% 
   select(source_age, target_age) %>% 
-  transmute(                              # transmute is like mutate() but removes all other columns not mentioned
+  transmute(                              # transmute() は mutate() と基本は同じだが、言及されていないすべての列を排除する機能を含む
     source_age_class = epikit::age_categories(source_age, breakers = seq(0, 80, 5)),
     target_age_class = epikit::age_categories(target_age, breakers = seq(0, 80, 5)),
     ) %>% 
-  pivot_longer(cols = contains("class"), names_to = "category", values_to = "age_class")  # pivot longer
+  pivot_longer(cols = contains("class"), names_to = "category", values_to = "age_class")  # データを縦型（long 型）に変換する
 
 
 relation_age
 ```
 
 
-Now we can plot this transformed dataset with `age_pyramid()` as before, but replacing `gender` with `category` (contact, or case).  
+前処理した関連データ（`relationships` データセット）を使用し、先ほどと同じように `age_pyramid()` を使用して人口ピラミッドをプロットしてみましょう。ただし、 `gender` 変数を使用するのではなく、 `category` 変数（感染者か接触者のどちらであるかを示す変数）を使用する必要があります。
 
 ```{r, warning=F, message=F}
 apyramid::age_pyramid(
-  data = relation_age,                               # use modified relationship dataset
-  age_group = "age_class",                           # categorical age column
-  split_by = "category") +                           # by cases and contacts
+  data = relation_age,                               # 上のコードで作成したデータセットを使用
+  age_group = "age_class",                           # 年齢変数（因子型）を指定
+  split_by = "category") +                           # 感染者と接触者でグループ分け
   scale_fill_manual(
-    values = c("orange", "purple"),                  # to specify colors AND labels
+    values = c("orange", "purple"),                  # 各グループの色と名前を指定
     labels = c("Case", "Contact"))+
   labs(
-    fill = "Legend",                                           # title of legend
-    title = "Age/Sex Pyramid of COVID-19 contacts and cases")+ # title of the plot
-  theme_minimal()                                              # simple background
+    fill = "Legend",                                           # 凡例のタイトル
+    title = "Age Pyramid of COVID-19 contacts and cases")+ # 図のタイトル
+  theme_minimal()                                              # 背景テーマの設定
 ```
 
-We can also view other characteristics such as occupational breakdown (e.g. in form of a pie chart).
+他にも、感染者の職業の内訳などの特徴も可視化することができます（ここでは、感染症例データ（`cases` のデータセット）を使用し、円グラフを作成します）。
 
 ```{r, warning=F, message=F}
-# Clean dataset and get counts by occupation
+# データを前処理し、職業ごとの感染者数を産出する
 occ_plot_data <- cases %>% 
-  mutate(occupation = forcats::fct_explicit_na(occupation),  # make NA missing values a category
-         occupation = forcats::fct_infreq(occupation)) %>%   # order factor levels in order of frequency
-  count(occupation)                                          # get counts by occupation
+  mutate(occupation = forcats::fct_explicit_na(occupation),  # 欠損値を可視化する（NA をカテゴリーとする）
+         occupation = forcats::fct_infreq(occupation)) %>%   # 頻度順で因子型のレベルを並べかえる
+  count(occupation)                                          # 職業ごとの感染者数を算出する
   
-# Make pie chart
+# 円グラフを作成する
 ggplot(data = occ_plot_data, mapping = aes(x = "", y = n, fill = occupation))+
   geom_bar(width = 1, stat = "identity") +
   coord_polar("y", start = 0) +
@@ -230,15 +230,15 @@ ggplot(data = occ_plot_data, mapping = aes(x = "", y = n, fill = occupation))+
 ```
 
 
-### Contacts per case {.unnumbered}  
+### 感染者一人当たりの接触者数 {.unnumbered}
 
-The number of contacts per case can be an important metric to assess quality of contact enumeration and the compliance of the population toward public health response. 
+接触者を見つけるための疫学調査の質や、市民がどの程度公衆衛生施策を遵守しているかを評価するための重要な指標として、感染者一人当たりの接触者数があげられます。
 
-Depending on your data structure, this can be assessed with a dataset that contains all cases and contacts. In the Go.Data datasets, the links between cases ("sources") and contacts ("targets") is stored in the `relationships` dataset.  
+データ構造にもよりますが、すべての感染者と接触者を含むデータセットがあれば、感染者一人当たりの接触者数を算出し、評価を行うことができます。Go.Data のデータでは、関連データ（`relationships` データセット）に、感染者（`sources`）と接触者（`targets`）の関連に関する情報が含まれています。
 
-In this dataset, each row is a contact, and the source case is listed in the row. There are no contacts who have relationships with multiple cases, but if this exists you may need to account for those before plotting (and explore them too!).  
+関連データ（`relationships` データセット）では、各行が接触者の記録を示し、感染元となった感染者についての情報が記載されています。このデータセットには、複数の感染者と関連している接触者はありませんが、もし複数の感染者と関連している接触者がいる場合には、そのような接触者データを精査し、事前に処理を行う必要があります（この章では触れていません）。
 
-We begin by counting the number of rows (contacts) per source case. This is saved as a data frame.  
+まず、感染者一人当たりの接触者数を算出し、データフレーム（data frame）として保存します。
 
 ```{r}
 contacts_per_case <- relationships %>% 
@@ -247,13 +247,13 @@ contacts_per_case <- relationships %>%
 contacts_per_case
 ```
 
-We use `geom_histogram()` to plot these data as a histogram.  
+`geom_histogram()` を使用し、ヒストグラムを作成します。
 
 ```{r, warning=F, message=F}
-ggplot(data = contacts_per_case)+        # begin with count data frame created above
-  geom_histogram(mapping = aes(x = n))+  # print histogram of number of contacts per case
-  scale_y_continuous(expand = c(0,0))+   # remove excess space below 0 on y-axis
-  theme_light()+                         # simplify background
+ggplot(data = contacts_per_case)+        # 上のコードで作成したデータセットを使用
+  geom_histogram(mapping = aes(x = n))+  # 感染者一人当たりの接触者数のヒストグラムを作成
+  scale_y_continuous(expand = c(0,0))+   # y軸の0より下の余分なスペースを削除
+  theme_light()+                         # 図の背景テーマの設定
   labs(
     title = "Number of contacts per case",
     y = "Cases",
@@ -265,55 +265,55 @@ ggplot(data = contacts_per_case)+        # begin with count data frame created a
 
 
 
-## Contact Follow Up  
+## 接触者追跡調査（フォローアップ）
 
 
-Contact tracing data often contain "follow-up" data, which record outcomes of daily symptom checks of persons in quarantine. Analysis of this data can inform response strategy, identify contacts at-risk of loss-to-follow-up or at-risk of developing disease.  
+ほとんどの追跡データには、隔離された人の毎日の症状チェックの結果を記録した接触者調査（フォローアップ）のデータが含まれています。接触者調査の記録を分析することで、今後の公衆衛生施策の策定に役立ち、追跡できなくなる危険性のある接触者や、疾患を発症する危険性のある接触者を特定することができます。
 
 
 
 
-### Data cleaning {.unnumbered}  
+### データの前処理 {.unnumbered}
 
-These data can exist in a variety of formats. They may exist as a "wide" format Excel sheet with one row per contact, and one column per follow-up "day". See [Pivoting data] for descriptions of "long" and "wide" data and how to pivot data wider or longer.  
+接触者調査に関する情報は、様々なフォーマットで記録されています。例えば、Excel シートに各接触者を 1 行ごとに記録し、調査の結果を1日ごとに列に記録した、横型（wide 型）データなどです。縦型（long 型）データと横型（wide 型）の詳細や、データの縦横変換の方法については、 [データの縦横変換](#pivoting) の章を参照してください。
 
-In our Go.Data example, these data are stored in the `followups` data frame, which is in a "long" format  with one row per follow-up interaction. The first 50 rows look like this:   
+Go.Data からダウンロードしたデータは、追跡データ（`followups` データセット）に含まれており、調査の記録が各行に記載されている縦型データとなっています。以下では、接触者追跡調査データの最初の50行を表示しています。
 
 ```{r, message=FALSE, echo=FALSE}
-# display the first 50 rows of contact linelist data as a table
+# 接触者追跡調査データの最初の50行を表として表示する
 DT::datatable(head(followups, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-<span style="color: orange;">**_CAUTION:_** Beware of duplicates when dealing with followup data; as there could be several erroneous followups on the same day for a given contact. Perhaps it seems to be an error but reflects reality - e.g. a contact tracer could submit a follow-up form early in the day when they could not reach the contact, and submit a second form when they were later reached. It will depend on the operational context for how you want to handle duplicates - just make sure to document your approach clearly. </span>
+<style="color:orange;"><u>**注意**</u>**:** 接触者調査（フォローアップ）に関するデータを扱う際は、重複した調査記録に注意してください。ある接触者に対し、同じ日に複数の調査（フォローアップ）が誤って行われる可能性があります。例えば、調査員が接触者と連絡がとれなかった際にその記録を午前中に提出し、後に連絡できた際に 2 つ目の記録を提出することが起こりえます。重複した記録をどのように処理するかについては、調査の運用状況によりますが、重複記録を含んだデータを提示する際は、重複記録をどのように処理したかを明確に記載してください。</style>
 
-Let's *see* how many instances of "duplicate" rows we have:  
+追跡データ（`followups` データセット）に、重複している記録がいくつあるのか、チェックしてみましょう。
 
 ```{r}
 followups %>% 
-  count(contact_id, date_of_followup) %>%   # get unique contact_days
-  filter(n > 1)                             # view records where count is more than 1  
+  count(contact_id, date_of_followup) %>%   # 接触者ID毎に、調査日の頻度を算出
+  filter(n > 1)                             # 1日2回以上調査が行われた日を表示
 ```
 
-In our example data, the only records that this applies to are ones missing an ID! We can remove those. But, for purposes of demonstration we will go show the steps for de-duplication so there is only one follow-up encoutner per person per day. See the page on [De-duplication] for more detail. We will assume that the most recent encounter record is the correct one. We also take the opportunity to clean the `followup_number` column (the "day" of follow-up which should range 1 - 14).  
+ここで扱っているサンプルデータでは、ID のない記録だけが該当しています。下のコードで、重複した記録を排除していきます。重複記録を排除することで、1 日に 1 人につき 1 回の調査記録のみ残るようになります。 詳細は、[重複データの排除](#deduplication)の章をご覧ください。ここでは、最新の調査記録が正しいものであると仮定します。また、下のコードでは、一緒に `followup_number` 列（調査の「日」ごとに作成され、1 ～ 14 日まである。）をクリーニングします。
 
 ```{r, warning=F, message=F}
 followups_clean <- followups %>%
   
-  # De-duplicate
-  group_by(contact_id, date_of_followup) %>%        # group rows per contact-day
-  arrange(contact_id, desc(date_of_followup)) %>%   # arrange rows, per contact-day, by date of follow-up (most recent at top)
-  slice_head() %>%                                  # keep only the first row per unique contact id  
+  # 重複記録の排除
+  group_by(contact_id, date_of_followup) %>%        #接触者ID、調査日ごとに記録をグループ化する
+  arrange(contact_id, desc(date_of_followup)) %>%   # 接触者ID毎に、調査日の降順で記録を並び替える（日付の新しい順）
+  slice_head() %>%                                  # 接触者ID毎に、最新の調査日の記録のみ残す  
   ungroup() %>% 
   
-  # Other cleaning
-  mutate(followup_number = replace(followup_number, followup_number > 14, NA)) %>% # clean erroneous data
-  drop_na(contact_id)                               # remove rows with missing contact_id
+  # 他の前処理
+  mutate(followup_number = replace(followup_number, followup_number > 14, NA)) %>% # 調査日のエラーの処理
+  drop_na(contact_id)                               # 接触者IDが欠損してる記録を排除する
 ```
 
-For each follow-up encounter, we have a follow-up status (such as whether the encounter occurred and if so, did the contact have symptoms or not). To see all the values we can run a quick `tabyl()` (from **janitor**) or `table()` (from **base** R) (see [Descriptive tables]) by `followup_status` to see the frequency of each of the outcomes.  
+それぞれの調査記録には、調査の結果（接触者と連絡が取れたか、また、連絡が取れた場合は接触者に症状があったか、など）が記録されています。**janitor** パッケージの `tabyl()` 、または **base** R の `table()` に `followup_status` 変数を指定して実行すると、調査結果の分布が確認できます（詳細は、[記述統計表の作り方](#tables-descriptive)の章をご覧ください）。
 
-In this dataset, "seen_not_ok" means "seen with symptoms", and "seen_ok" means "seen without symptoms".  
+このデータセットでは、"seen_not_ok" は「いくつか症状がある」、"seen_ok" は「症状がない」という意味です。
 
 ```{r}
 followups_clean %>% 
@@ -321,63 +321,63 @@ followups_clean %>%
 ```
 
 
-### Plot over time {.unnumbered}  
+### 追跡調査状況を時系列でプロットする {.unnumbered}
 
-As the dates data are continuous, we will use a histogram to plot them with `date_of_followup` assigned to the x-axis. We can achieve a "stacked" histogram by specifying a `fill = ` argument within `aes()`, which we assign to the column `followup_status`. Consequently, you can set the legend title using the `fill = ` argument of `labs()`.  
+日付データは連続しているため、`date_of_followup` を x 軸に指定したヒストグラムを使用し、追跡データ（`followups` のデータセット）を時系列でプロットできます。`aes()` 内の `fill =` 引数に `followup_status` 変数を指定することで、「積み上げ型」のヒストグラムを作成し、`labs()` 内の `fill =` 引数を使用して凡例のタイトルを作成することができます。
 
-We can see that the contacts were identified in waves (presumably corresponding with epidemic waves of cases), and that follow-up completion did not seemingly improve over the course of the epidemic.  
+このデータセットを使用して作成したヒストグラムでは、接触者の分布が波状に確認され（おそらく感染者の流行の波と連動している）、追跡調査が行われていない場合が多く、流行の過程で調査の達成状況が改善されていないことがわかります。
 
 ```{r, warning=F, message=F}
 ggplot(data = followups_clean)+
   geom_histogram(mapping = aes(x = date_of_followup, fill = followup_status)) +
-  scale_fill_discrete(drop = FALSE)+   # show all factor levels (followup_status) in the legend, even those not used
+  scale_fill_discrete(drop = FALSE)+   # followup_status 変数のすべての値を凡例に表示する（図に表示されていないものも含めて）
   theme_classic() +
   labs(
     x = "",
     y = "Number of contacts",
     title = "Daily Contact Followup Status",
     fill = "Followup Status",
-    subtitle = str_glue("Data as of {max(followups$date_of_followup, na.rm=T)}"))   # dynamic subtitle
+    subtitle = str_glue("Data as of {max(followups$date_of_followup, na.rm=T)}"))   # 動的なサブタイトルをつける
   
 ```
 
 
-<span style="color: orange;">**_CAUTION:_** If you are preparing many plots (e.g. for multiple jurisdictions) you will want the legends to appear identically even with varying levels of data completion or data composition. There may be plots for which not all follow-up statuses are present in the data, but you still want those categories to appear the legends. In ggplots (like above), you can specify the `drop = FALSE` argument of the `scale_fill_discrete()`. In tables, use `tabyl()` which shows counts for all factor levels, or if using `count()` from **dplyr** add the argument `.drop = FALSE` to include counts for all factor levels.</span>  
+<style="color: orange;"><u>**注意**</u>**:** 同一コードで複数のプロットを作成する場合（複数の管轄区域に同じプロットを提示する場合など）、データの完成度やデータの構成が異なっていても、凡例は同じように表示されるようにする必要があります。例えば、作成した複数の図の中に `followup_status` 変数（調査結果変数）のすべてのカテゴリーがデータに含まれていない図があるかもしれませんが、含まれていない結果のカテゴリーについても凡例に表示したい場合です。上のような ggplot を使用した図では、`scale_fill_discrete()` 内で `drop = FALSE` に指定すると、図に表示されていないカテゴリーを含むすべてのカテゴリーを凡例に表示することができます。表の場合は、すべてのカテゴリーのカウントを表示する `tabyl()` を使用するか、または、**dplyr** パッケージの `count()` に`.drop = FALSE` を追加し、すべてのカテゴリーのカウントを含めることができます。</style>
 
 
-### Daily individual tracking  {.unnumbered}  
+### 追跡調査状況を接触者別にプロットする {.unnumbered}
 
-If your outbreak is small enough, you may want to look at each contact individually and see their status over the course of their follow-up. Fortunately, this `followups` dataset already contains a column with the day "number" of follow-up (1-14). If this does not exist in your data, you could create it by calculating the difference between the encounter date and the date follow-up was intended to begin for the contact.  
+調査対象のアウトブレイクの規模が小さい場合は、各接触者のフォローアップ状況を個別に確認したい場合があります。この追跡データ（`followups` データセット）には、調査の日にち「番号」を示す列がすでに含まれています（1 ～ 14 日まで一日ごとに列が作成してあります）。調査日ごとの列がデータにない場合は、曝露日（調査対象の接触者が感染者と接触した日）とその接触者に対して調査を開始した日の差を計算し、1 ～ 14 日まで一日ごとに列を作成する必要があります。
 
-A convenient visualisation mechanism (if the number of cases is not too large) can be a heat plot, made with `geom_tile()`. See more details in the [heat plot] page.  
+データのわかりやすい視覚化の例として（アウトブレイクの規模が大きくなければ）、`geom_tile()` を用いたヒートマップがあります。詳細は、[ヒートマップ](#heatmaps) の章をご覧ください。
 
 ```{r, warning=F, message=F}
 ggplot(data = followups_clean)+
   geom_tile(mapping = aes(x = followup_number, y = contact_id, fill = followup_status),
-            color = "grey")+       # grey gridlines
+            color = "grey")+       # 灰色のグリッド線をひく
   scale_fill_manual( values = c("yellow", "grey", "orange", "darkred", "darkgreen"))+
   theme_minimal()+
   scale_x_continuous(breaks = seq(from = 1, to = 14, by = 1))
 ```
 
 
-### Analyse by group {.unnumbered}  
+### 追跡調査状況をクループ別にプロットする {.unnumbered}
 
-Perhaps these follow-up data are being viewed on a daily or weekly basis for operational decision-making. You may want more meaningful disaggregations by geographic area or by contact-tracing team. We can do this by adjusting the columns provided to `group_by()`.  
+このような接触者追跡調査に関するデータは、疫学調査の業務的意思決定のために日ごとまたは週ごとに閲覧されていることが多いと思います。`group_by()` で指定する列を調整することにより、地域別や調査チーム別など、より意味のある集計結果をプロットすることができます。
 
 ```{r, warning=F, message=F}
 
-plot_by_region <- followups_clean %>%                                        # begin with follow-up dataset
-  count(admin_1_name, admin_2_name, followup_status) %>%   # get counts by unique region-status (creates column 'n' with counts)
+plot_by_region <- followups_clean %>%                                        # 前処理した followups のデータセットを使用する
+  count(admin_1_name, admin_2_name, followup_status) %>%   # 地域別、調査チーム別のカウントを算出する (新たに 'n' 列を作成する)
   
-  # begin ggplot()
-  ggplot(                                         # begin ggplot
-    mapping = aes(x = reorder(admin_2_name, n),     # reorder admin factor levels by the numeric values in column 'n'
-                  y = n,                            # heights of bar from column 'n'
-                  fill = followup_status,           # color stacked bars by their status
-                  label = n))+                      # to pass to geom_label()              
-  geom_col()+                                     # stacked bars, mapping inherited from above 
-  geom_text(                                      # add text, mapping inherited from above
+  # ggplot() を使用して図を作成する
+  ggplot(                                         # ggplot
+    mapping = aes(x = reorder(admin_2_name, n),     # admin_2_name の因子（ファクタ）レベルを 'n' 列のカウントをもとに並び替える
+                  y = n,                            # 'n' 列のカウントをy軸に指定する
+                  fill = followup_status,           # フォローアップの結果カテゴリーごとに色付けする
+                  label = n))+                      # geom_label() 用              
+  geom_col()+                                     # 積み上げ型棒グラフ
+  geom_text(                                      # テキストを追加する
     size = 3,                                         
     position = position_stack(vjust = 0.5), 
     color = "white",           
@@ -390,8 +390,8 @@ plot_by_region <- followups_clean %>%                                        # b
     title = "Contact Followup Status, by Region",
     fill = "Followup Status",
     subtitle = str_glue("Data as of {max(followups_clean$date_of_followup, na.rm=T)}")) +
-  theme_classic()+                                                                      # Simplify background
-  facet_wrap(~admin_1_name, strip.position = "right", scales = "free_y", ncol = 1)      # introduce facets 
+  theme_classic()+                                                                      # 図の背景のテーマの設定
+  facet_wrap(~admin_1_name, strip.position = "right", scales = "free_y", ncol = 1)      # facet_wrap で図の右側に admin_1_name を表示する 
 
 plot_by_region
 ```
@@ -407,47 +407,47 @@ plot_by_region
 
 
 
-## KPI Tables  
+## 重要業績評価指標（KPI）
 
-There are a number of different Key Performance Indicators (KPIs) that can be calculated and tracked at varying levels of disaggregations and across different time periods to monitor contact tracing performance. Once you have the calculations down and the basic table format; it is fairly easy to swap in and out different KPIs. 
+接触者追跡調査の成果を評価するために、進捗や目標達成状況を様々なレベルで細分化された期間で算出し、モニターする重要業績評価指標（Key Performance Indicator: KPI）があります。KPI には多くの種類がありますが、計算方法と基本的な表のフォーマットを理解すると、様々な KPI を入れたり外したりすることが簡単にできます。
 
-There are numerous sources of contact tracing KPIs, such as this one from [ResolveToSaveLives.org](https://contacttracingplaybook.resolvetosavelives.org/checklists/metrics). The majority of the work will be walking through your data structure and thinking through all of the inclusion/exclusion criteria. We show a few examples below; using Go.Data metadata structure:
+接触者調査の KPI については、[ResolveToSaveLives.org](https://contacttracingplaybook.resolvetosavelives.org/checklists/metrics) など、参考となる資料がたくさんあります。KPI 作成作業の多くは、データ構造を確認し、すべての選択・除外基準を考えることです。以下に、Go.Data を使用した KPI の例を示します。
 
-Category          | Indicator                | Go.Data Numerator         | Go.Data Denominator
-------------------|--------------------------|---------------------------|--------------------
-Process Indicator - Speed of Contact Tracing|% cases interviewed and isolated within 24h of case report |COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_data_entry`) < 1 day AND (`isolation_startdate` - `date_of_data_entry`) < 1 day|COUNT OF  `case_id`
-Process Indicator - Speed of Contact Tracing|% contacts notified and quarantined within 24h of elicitation|COUNT OF `contact_id` WHERE `followup_status` == "SEEN_NOT_OK" OR "SEEN_OK" AND `date_of_followup` -  `date_of_reporting` < 1 day|COUNT OF `contact_id`
-Process Indicator - Completeness of Testing|% new symptomatic cases tested and interviewed within 3 days of onset of symptoms|COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_onset`) < =3 days|COUNT OF  `case_id`
-Outcome Indicator - Overall|% new cases among existing contact list|COUNT OF `case_id` WHERE `was_contact` == "TRUE"|COUNT OF  `case_id`
+カテゴリー                            | KPI                                                                           | 分子                                                                                                                 | 分母 
+--------------------------------------|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|-------------------
+プロセスの評価 - 接触者追跡調査の迅速さ | 全感染者のうち、感染報告から24時間以内に疫学調査が行われ、隔離された感染者の割合 | COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_data_entry`) \< 1 day AND (`isolation_startdate` - `date_of_data_entry`) < 1 day | COUNT OF `case_id`
+プロセスの評価 - 接触者追跡調査の迅速さ | 全接触者のうち、感染者の接触報告から24時間以内に通知され、隔離された接触者の割合 | COUNT OF `contact_id` WHERE `followup_status` == "SEEN_NOT_OK" OR "SEEN_OK" AND `date_of_followup` - `date_of_reporting`  < 1 day          | COUNT OF `contact_id`
+プロセスの評価 - 感染症検査の完了率     | 全感染者のうち、症状発現から3日以内に検査され、疫学調査が行われた者の割合        | COUNT OF `case_id` WHERE (`date_of_reporting` - `date_of_onset`) < =3 days                                                                | COUNT OF `case_id`
+アウトカムの評価 - 全体評価            | 全感染者のうち、感染報告前に接触者として報告されていた者の割合                   | COUNT OF `case_id` WHERE `was_contact` == "TRUE"                                                                                           | COUNT OF `case_id`
 
-Below we will walk through a sample exercise of creating a nice table visual to show contact follow-up across admin areas. At the end, we will make it fit for presentation with the **formattable** package (but you could use other packages like **flextable** - see [Tables for presentation]).  
+このセクションでは、接触者追跡調査状況を複数の管轄区域にわたって表示する表を作成していきます。表を作成した後、**formattable** パッケージを使用し、更に見やすく表を編集していきます（**flextable** などの他のパッケージを使用することもできます。詳細は、[見やすい表の作り方](#tables-presentation) の章を参照してください）。
 
-How you create a table like this will depend on the structure of your contact tracing data. Use the [Descriptive tables] page to learn how to summarise data using **dplyr** functions. 
+表の作成手順は、接触者追跡調査に関するデータの構造によりって変わります。 **dplyr** パッケージを使用してデータを要約する方法についての詳細は、[記述統計表の作り方](#tables-descriptive) の章をご覧ください。
 
-We will create a table that will be dynamic and change as the data change. To make the results interesting, we will set a `report_date` to allow us to simulate running the table on a certain day (we pick 10th June 2020). The data are filtered to that date.  
+ここでは、データの変化に合わせて連動する表を作成します。結果を面白くするために、特定の日に `report_date` （この表を提示し、追跡調査の進捗を報告する日）を設定し、表を作成します（この例では、2020年6月10日を選びます）。データは `report_date` でフィルタリングされ、`report_date` の日、または、`report_date` より以前に報告された記録のみ残ります。
 
 ```{r, warning=F, message=F}
-# Set "Report date" to simulate running the report with data "as of" this date
+# report_date (報告日)を設定する
 report_date <- as.Date("2020-06-10")
 
-# Create follow-up data to reflect the report date.
+# report_date (報告日)でデータセットをフィルタリングする
 table_data <- followups_clean %>% 
   filter(date_of_followup <= report_date)
 ```
 
 
-Now, based on our data structure, we will do the following:  
+`report_date` でフィルタリング後、以下の手順でデータを整理し、表を作成していきます。
 
-1) Begin with the `followups` data and summarise it to contain, for each unique contact:  
-  * The date of latest record (no matter the status of the encounter)  
-  * The date of latest encounter where the contact was "seen"  
-  * The encounter status at that final "seen" encounter (e.g. with symptoms, without symptoms)  
-2) Join these data to the contacts data, which contains other information such as the overall contact status, date of last exposure to a case, etc. Also we will calculate metrics of interest for each contact such as days since last exposure  
-3) We group the enhanced contact data by geographic region (`admin_2_name`) and calculate summary statistics per region  
-4) Finally, we format the table nicely for presentation  
+1)  追跡データ（`followups` データセット）を選択し、各接触者について、以下 3 つの関心のある指標を算出します。
+  * 一番最近行った調査の日付（接触者と連絡が取れたかなどの調査結果は問わない）
+  * 接触者と連絡が取れた調査のうち、最も新しい日付
+  * 接触者と連絡が取れた最新の調査での、接触者の状況（例：症状あり又は症状なし）
+2)  ステップ 1 で作成したデータを、曝露日（感染者と接触した日）などの接触者に関する他の情報を含む接触データに結合します。次に、各接触者について、曝露日からの日数など、関心のある指標を算出します。
+3)  結合したデータを、管轄区域別（`admin_2_name`）にグループ化し、管轄区域別の要約統計量を算出します。
+4)  最後に、作成した表の形式を整えます。
 
 
-First we summarise the follow-up data to get the information of interest:  
+では、以上の手順を実際に R で実行していきましょう。ステップ 1：追跡データ（`followups` データセット）を整備し、必要な指標を算出する。
 
 ```{r, warning=F, message=F}
 followup_info <- table_data %>% 
@@ -459,14 +459,14 @@ followup_info <- table_data %>%
   ungroup()
 ```
 
-Here is how these data look:  
+作成したデータセットを以下に表示します。
 
 ```{r, echo=F}
 DT::datatable(followup_info, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-Now we will add this information to the `contacts` dataset, and calculate some additional columns.  
+ステップ 2：次に、作成したデータセットを接触者データ（`contacts` データセット）に結合し、他に必要な指標を算出します。
 
 ```{r}
 contacts_info <- followup_info %>% 
@@ -478,14 +478,14 @@ contacts_info <- followup_info %>%
     )
 ```
 
-Here is how these data look. Note `contacts` column to the right, and new calculated column at the far right.  
+2 つのデータセットを結合すると、データは以下のようになります。接触データに含まれていた列は右側に、算出した関心のある指標は一番右に表示されます。
 
 ```{r, echo=F}
 DT::datatable(contacts_info, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-Next we summarise the contacts data by region, to achieve a concise data frame of summary statistic columns.    
+ステップ 3：結合したデータを、管轄区域別にグループ化し、区域別に要約統計量を算出します。
 
 ```{r}
 contacts_table <- contacts_info %>% 
@@ -515,7 +515,7 @@ contacts_table <- contacts_info %>%
 DT::datatable(contacts_table, rownames = FALSE, options = list(pageLength = 12, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-And now we apply styling from the **formattable** and **knitr** packages, including a footnote that shows the "as of" date.  
+ステップ 4：**formattable** と **knitr** パッケージを使用し、見やすいように表を整えていきます。また、`report_date` （報告日）に関する脚注を追記します。
 
 
 ```{r}
@@ -541,28 +541,28 @@ contacts_table %>%
 ```
 
 
-## Transmission Matrices  
+## 感染連鎖の可視化
 
-As discussed in the [Heat plots] page, you can create a matrix of "who infected whom" using `geom_tile()`.
+[ヒートマップ](#heatmaps) の章で解説したように、`geom_tile()` を使用して「誰が誰から感染したか」を可視化するヒートマップを作成することができます。
 
-When new contacts are created, Go.Data stores this relationship information in the `relationships` API endpoint; and we can see the first 50 rows of this dataset below. This means that we can create a heat plot with relatively few steps given each contact is already joined to it's source case.
+Go.Data では、接触者データ（`contacts` データセット）に新しい接触者が追加されると、API によって、関連データ（`relationships` データセット）に、その接触者と接触した感染者の関係情報が追加されます。`relationships` データセットには、各接触者と接触した感染者の情報が含まれているので、このデータセットを使用すると比較的簡単にヒートマップを作成することができます。以下に、関連データ（`relationships` データセット）の最初の 50 行を表示します。
 
 ```{r, warning=F, message=F, echo=F}
-# display the first 50 rows of relationships data as a table
+# 最初の50行を表として表示する
 DT::datatable(head(relationships, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-As done above for the age pyramid comparing cases and contacts, we can select the few variables we need and create columns with categorical age groupings for both sources (cases) and targets (contacts).
+接触者と感染者の年齢を比較した人口ピラミッドを 25.2 記述統計のセクションで作成したように、必要な変数以外を除外し、接触者と感染者の両方について、年齢をカテゴリー化する必要があります。
 
 ```{r}
 heatmap_ages <- relationships %>% 
   select(source_age, target_age) %>% 
-  mutate(                              # transmute is like mutate() but removes all other columns
+  mutate(                            # transmuteはmutateと似ていますが、他の列をすべて除外します
     source_age_class = epikit::age_categories(source_age, breakers = seq(0, 80, 5)),
     target_age_class = epikit::age_categories(target_age, breakers = seq(0, 80, 5))) 
 ```
 
-As described previously, we create cross-tabulation; 
+まず、[ヒートマップ](#heatmaps) の章で解説したように、クロス集計表を作成します。
 
 ```{r, warning=F, message=FALSE}
 
@@ -573,7 +573,7 @@ cross_tab <- table(
 cross_tab
 ```
 
-convert into long format with proportions;
+次に、クロス集計表を縦型（long 型）データに変換します。
 
 ```{r, warning=FALSE, message=FALSE}
 
@@ -581,36 +581,36 @@ long_prop <- data.frame(prop.table(cross_tab))
 
 ```
 
-and create a heat-map for age.
+最後に、接触者がどの年齢層の感染者から感染したかを年齢層別に表すヒートマップを作成します。
 
 
 ```{r, warning=F, message=F}
 
-ggplot(data = long_prop)+       # use long data, with proportions as Freq
-  geom_tile(                    # visualize it in tiles
+ggplot(data = long_prop)+       # long型データを使用（Freq変数を割合として使用）
+  geom_tile(                    # タイルで可視化
     aes(
-      x = target_cases,         # x-axis is case age
-      y = source_cases,     # y-axis is infector age
-      fill = Freq))+            # color of the tile is the Freq column in the data
-  scale_fill_gradient(          # adjust the fill color of the tiles
+      x = target_cases,         # x軸を接触者の年齢層に指定
+      y = source_cases,     # y軸を感染者の年齢層に指定
+      fill = Freq))+            # Freq変数でタイルを色付け
+  scale_fill_gradient(          # タイルの色の調整
     low = "blue",
     high = "orange")+
   theme(axis.text.x = element_text(angle = 90))+
-  labs(                         # labels
+  labs(                         # プロット、軸、凡例のタイトルを指定
     x = "Target case age",
     y = "Source case age",
     title = "Who infected whom",
     subtitle = "Frequency matrix of transmission events",
-    fill = "Proportion of all\ntranmsission events"     # legend title
+    fill = "Proportion of all\ntranmsission events"     # 凡例のタイトル
   )
 
 ```
 
 
-## Resources  
+## 参考資料
 
-https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting
+<https://github.com/WorldHealthOrganization/godata/tree/master/analytics/r-reporting>
 
-https://worldhealthorganization.github.io/godata/
+<https://worldhealthorganization.github.io/godata/>
 
-https://community-godata.who.int/
+<https://community-godata.who.int/>
