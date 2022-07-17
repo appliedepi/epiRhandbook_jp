@@ -1,8 +1,10 @@
+<!-- ======================================================= -->
 
 <!-- ======================================================= -->
+
 <!-- ======================================================= -->
-<!-- ======================================================= -->
-# Pivoting data {}
+
+# データの縦横変換 {#pivoting}
 
 ```{r, warning=F, message=F, out.height = c('50%'), fig.align="center", fig.show='hold', echo=F}
 knitr::include_graphics(here::here("images", "pivoting", "Pivoting_500x500.png"))
@@ -12,42 +14,33 @@ knitr::include_graphics(here::here("images", "pivoting", "Pivoting_500x500.png")
 #knitr::include_graphics(here::here("images", "pivoting", "pivot_wider_new.png"))
 ```
 
+データを管理する上で、<u>ピボットする</u>とは次の 2 つの工程のどちらかを指しています。
 
+1.  <u>ピボットテーブル</u>（大きなデータテーブルを要約した統計表）を作成すること。
+2.  表を縦長形式から横長形式へ、またはその逆へ変換すること。
 
-When managing data, *pivoting* can be understood to refer to one of two processes:  
+**このページでは、後者の定義に焦点をあてます。**前者はデータ解析の重要なステップであり、[データのグループ化](#grouping) および [記述統計表の作り方](#tables-descriptive) の章で別に取り上げています。
 
-1. The creation of *pivot tables*, which are tables of statistics that summarise the data of a more extensive table  
-2. The conversion of a table from **long** to **wide** format, or vice versa. 
+本章では、データの形式について説明します。個々の変数が 1 つの列を持ち、個々の観測値が 1 つの行を持ち、個々の値が 1 つのセルを持つという「整然データ（tidy data）」の考え方を知っておくと便利です。このトピックについて詳しくは、R for Data Science の [こちら](https://r4ds.had.co.nz/tidy-data.html) の章をご参照ください。
 
-**In this page, we will focus on the latter definition.** The former is a crucial step in data analysis, and is covered elsewhere in the [Grouping data] and [Descriptive tables] pages. 
+## 準備
 
-This page discusses the formats of data. It is useful to be aware of the idea of "tidy data", in which each variable has it's own column, each observation has it's own row, and each value has it's own cell. More about this topic can be found [at this online chapter in R for Data Science](https://r4ds.had.co.nz/tidy-data.html). 
+### パッケージの読み込み {.unnumbered}
 
-
-
-
-
-## Preparation  
-
-### Load packages {.unnumbered}  
-
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの `p_load()` を主に使用しています。`p_load()` は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** の `library()` を使用して読み込むこともできます。R のパッケージについて詳しくは [R の基礎](#basics) のページをご参照ください。
 
 ```{r}
 pacman::p_load(
-  rio,          # File import
-  here,         # File locator
-  tidyverse)    # data management + ggplot2 graphics
+  rio,          # ファイルをインポートする
+  here,         # ファイルの場所を指定する
+  tidyverse)    # データ管理と ggplot2 を使用したデータ可視化のパッケージ
 ```
 
+### データのインポート {.unnumbered}
 
+### マラリア症例数のデータ {.unnumbered}
 
-### Import data {.unnumbered}
-
-
-### Malaria count data {-}  
-
-In this page, we will use a fictional dataset of daily malaria cases, by facility and age group. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/malaria_facility_count_data.rds' class='download-button'>click here to download (as .rds file)<span></a>. Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details).  
+この章では、日ごとのマラリアの症例数について、施設別、年齢層別の架空のデータセットを使用します。お手元の環境でこの章の内容を実行したい方は、<a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/malaria_facility_count_data.rds' class='download-button'>ここをクリックしてダウンロードしてください（rds ファイル）<span></a>。**rio** パッケージの `import()` を使用してデータをインポートします（**rio** パッケージは .xlsx, .csv, .rds など様々な種類のファイルを取り扱うことができます。詳細は、[データのインポート・エクスポート](#importing) の章をご覧ください）。
 
 ```{r, echo=F}
 count_data <- rio::import(here::here("data", "malaria_facility_count_data.rds")) %>% 
@@ -55,94 +48,81 @@ count_data <- rio::import(here::here("data", "malaria_facility_count_data.rds"))
 ```
 
 ```{r, eval=F}
-# Import data
+# データをインポートする
 count_data <- import("malaria_facility_count_data.rds")
 ```
 
-The first 50 rows are displayed below.
+最初の 50 行を以下に表示します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストデータを表形式で表示する
 DT::datatable(head(count_data, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
+### 症例データのラインリスト
 
-### Linelist case data {-}  
-
-In the later part of this page, we will also use the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import your data with the `import()` function from the **rio** package (it accepts many file types like .xlsx, .rds, .csv - see the [Import and export] page for details).  
+このページの後半では、エボラ出血熱の流行をシミュレーションした症例データセットも使用します。お手元の環境で同じ内容を実行したい方は、<a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>ここをクリックして「前処理された」ラインリストをダウンロードしてください（.rds 形式で取得できます）。**rio** パッケージの `import()` を使用してデータをインポートします（**rio** パッケージは .xlsx, .csv, .rds など様々な種類のファイルを取り扱うことができます。詳細は、[データのインポート・エクスポート](#importing) の章をご覧ください）。
 
 ```{r, echo=F}
-# import the linelist into R
+# R にラインリストをインポートする
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
-
 ```{r, eval=F}
-# import your dataset
+# データセットをインポートする
 linelist <- import("linelist_cleaned.xlsx")
 ```
 
-
-
-
-
-
-
 <!-- ======================================================= -->
-## Wide-to-long {}
+
+## 横長から縦長へ
 
 ```{r, warning=F, message=F, echo=F}
 knitr::include_graphics(here::here("images", "pivoting", "pivot_longer_new.png"))
 ```
 
-
 <!-- ======================================================= -->
-### "Wide" format {.unnumbered}
 
-Data are often entered and stored in a "wide" format - where a subject's characteristics or responses are stored in a single row. While this may be useful for presentation, it is not ideal for some types of analysis.  
+### 「横長」形式
 
-Let us take the `count_data` dataset imported in the Preparation section above as an example. You can see that each row represents a "facility-day". The actual case counts (the right-most columns) are stored in a "wide" format such that the information for every age group on a given facility-day is stored in a single row.  
+データは「横長」形式で入力・保存されることがよくあります。つまり、研究対象者の特性や回答が 1 つの行に保存されるのです。この形式は表示する上では便利かもしれませんが、一部の分析には適していません。
+
+先述の準備のセクションでインポートした `count_data` のデータセットを例にとってみましょう。各行が「施設利用日」を表していることがわかります。実際の症例数（1 番右の列）は「横長」形式で格納されており、ある施設利用日のすべての年齢層の情報が 1 行に格納されています。
 
 ```{r, echo=F}
 DT::datatable(count_data, rownames = FALSE, options = list(pageLength = 5, scrollX=T) )
 ```
 
-Each observation in this dataset refers to the malaria counts at one of 65 facilities on a given date, ranging from ` count_data$data_date %>% min()` to ` count_data$data_date %>% max()`. These facilities are located in one `Province` (North) and four `District`s (Spring, Bolo, Dingo, and Barnard). The dataset provides the overall counts of malaria, as well as age-specific counts in each of three age groups - <4 years, 5-14 years, and 15 years and older.
+このデータセットのそれぞれの観測値は、 `r count_data$data_date %>% min()` から `r count_data$data_date %>% max()` までのある日付の、 65 施設のうちの 1 施設におけるマラリアの症例数を指しています。これらの施設は、1 つの `Province` （North）と 4 つの`District`（Spring、Bolo、Dingo、Barnard）に位置しています。このデータセットでは、マラリアの 総症例数と、3 つの年齢層（4 歳未満、5 ～ 14 歳、15 歳以上）におけるマラリアの症例数が含まれています。
 
-"Wide" data like this are not adhering to "tidy data" standards, because the column headers do not actually represent "variables" - they represent *values* of a hypothetical "age group" variable. 
+このような「横長」のデータは、列見出しが実際には「変数」を表しておらず、仮想的な「年齢層」の<u>値</u>を表しているため、「整然データ」の基準に従っているとは言えません。
 
+この形式は、情報を表で表示したり、症例報告書からデータを入力（Excel など）する際に便利です。しかし、解析段階においては、通常、これらのデータは「整然データ」基準に沿った「縦長」形式に変換した方が扱いやすいです。特に R パッケージの **ggplot2** は、データが 「縦長」形式である場合に最適に機能します。
 
-This format can be useful for presenting the information in a table, or for entering data (e.g. in Excel) from case report forms. However, in the analysis stage, these data typically should be transformed to a "longer" format more aligned with "tidy data" standards. The plotting R package **ggplot2** in particular works best when data are in a "long" format.  
-
-
-Visualising the *total* malaria counts over time poses no difficulty with the data in it's current format:
+マラリアの<u>総</u>症例数を時系列で視覚化することは、現在のデータ形式でも難しくありません。
 
 ```{r, warning=F, message=F}
 ggplot(count_data) +
   geom_col(aes(x = data_date, y = malaria_tot), width = 1)
 ```
 
-However, what if we wanted to display the relative contributions of each age group to this total count? In this case, we need to ensure that the variable of interest (age group), appears in the dataset in a single column that can be passed to `{ggplot2}`'s "mapping aesthetics" `aes()` argument.
-
-
-
+しかし、この総症例数に対する各年齢層の相対的な寄与を表示したいとしたらどうでしょうか。この場合、関心のある変数（年齢層）が単一の列としてデータセットに含まれていることを確認する必要があります。関心のある変数が単一の列であれば、[ggplot2](https://ggplot2.tidyverse.org/) で図の「見栄え」を調整する `aes()` 引数で指定することができます。
 
 <!-- ======================================================= -->
+
 ### `pivot_longer()` {.unnumbered}
 
-The **tidyr** function `pivot_longer()` makes data "longer". **tidyr** is part of the **tidyverse** of R packages.  
+**tidyr** の関数 `pivot_longer()` は、データを「長く」します。**tidyr** は、R パッケージの **tidyverse** の一部です。
 
-It accepts a range of columns to transform (specified to `cols = `). Therefore, it can operate on only a part of a dataset. This is useful for the malaria data, as we only want to pivot the case count columns.  
+`pivot_longer()` は、変換する列の範囲（`= cols` に指定）を受け取ります。したがって、データセットの一部だけを操作することが可能です。ここでは、症例数の列だけをピボットしたいので、この関数は、マラリアのデータに適しています。
 
-In this process, you will end up with two "new" columns - one with the categories (the former column names), and one with the corresponding values (e.g. case counts). You can accept the default names for these new columns, or you can specify your own to `names_to = ` and `values_to = ` respectively.  
+この処理では、2 つの「新しい」列が作成されます。1 つはカテゴリ（以前の列名）で、もう 1 つは対応する値（例：症例数）で構成されます。これらの新しい列の名前は、初期値のままでも構いませんが、`names_to =` や `values_to =` を用いて独自の名前を指定することもできます。
 
-Let's see `pivot_longer()` in action... 
+それでは、`pivot_longer()` を実際に使ってみましょう。
 
+### 標準的な縦横変換
 
-
-### Standard pivoting {.unnumbered}  
-
-We want to use **tidyr**'s `pivot_longer()` function to convert the "wide" data to a "long" format. Specifically, to convert the four numeric columns with data on malaria counts to two new columns: one which holds the *age groups* and one which holds the corresponding *values*.  
+**tidyr** の `pivot_longer()` を使用し、「横長」データを 「縦長」 形式に変換していきます。具体的には、マラリアの症例数のデータを表す 4 つの数値列を、<u>年齢層</u>を保持する列と対応する<u>値</u>を保持する列の 2 つの新しい列に変換します。
 
 ```{r, eval=F}
 df_long <- count_data %>% 
@@ -153,43 +133,41 @@ df_long <- count_data %>%
 df_long
 ```
 
-Notice that the newly created data frame (`df_long`) has more rows (12,152 vs 3,038); it has become *longer*. In fact, it is precisely four times as long, because each row in the original dataset now represents four rows in df_long, one for each of the malaria count observations (<4y, 5-14y, 15y+, and total).
+新しく作成されたデータフレーム（`df_long`）は行数が増え（12,152 vs 3,038）、縦に<u>長く</u>なっていることに注目してください。元のデータセットの各行が、`df_long` では 4 行に別れ、`df_long` の長さは元のデータセットの 4 倍の長さになっています。4 行に別れた行はそれぞれ、年齢層（4 歳未満、5 ～ 14 歳、15 歳以上、総数）ごとのマラリア症例数を表しています。
 
-In addition to becoming longer, the new dataset has fewer columns (8 vs 10), as the data previously stored in four columns (those beginning with the prefix `malaria_`) is now stored in two. 
+新しいデータセットは、長くなっただけでなく、列の数が 10 から 8 に減っています。元のデータセットでは 4 つの列（`malaria_` で始まる列）に格納されていたデータが、新しいデータセットでは 2 つの列に格納されているためです。
 
-Since the names of these four columns all begin with the prefix `malaria_`, we could have made use of the handy "tidyselect" function `starts_with()` to achieve the same result (see the page [Cleaning data and core functions] for more of these helper functions).  
+これらの 4 つの列の列名はすべて `malaria_` で始まるので、便利な "tidyselect" 関数である `starts_with()` を使用しても同じ結果を得ることができます（これらのヘルパー関数についての詳細は、[データクリーニングと主要関数](#cleaning) の章をご参照ください）。
 
 ```{r}
-# provide column with a tidyselect helper function
+# tidyselectのヘルパー関数で列を指定する
 count_data %>% 
   pivot_longer(
     cols = starts_with("malaria_")
   )
 ```
 
-or by position: 
+位置による指定
 
 ```{r, eval=F}
-# provide columns by position
+# 位置で列を指定する
 count_data %>% 
   pivot_longer(
     cols = 6:9
   )
 ```
 
-or by named range:
+列名の範囲による指定
 
 ```{r, eval=F}
-# provide range of consecutive columns
+# 連続する列の範囲を指定する
 count_data %>% 
   pivot_longer(
     cols = `malaria_rdt_0-4`:malaria_tot
   )
 ```
 
-
-
-These two new columns are given the default names of `name` and `value`, but we can override these defaults to provide more meaningful names, which can help remember what is stored within, using the `names_to` and `values_to` arguments. Let's use the names `age_group` and `counts`:
+この 2 つの新しい列には `name` と `value` という初期値の列名が与えられていますが、`names_to` と `values_to` という引数を使うことで、これらを上書きして、より意味のある列名を付けることができます。そうしておくと、その列に何の変数が格納されているかを思い出すのに便利です。ここでは、`age_group` と `counts` という列名をつけてみましょう。
 
 ```{r}
 df_long <- 
@@ -203,7 +181,7 @@ df_long <-
 df_long
 ```
 
-We can now pass this new dataset to `{ggplot2}`, and map the new column `count` to the y-axis and new column `age_group` to the `fill = ` argument (the column internal color). This will display the malaria counts in a stacked bar chart, by age group:
+この新しいデータセットを [ggplot2](https://ggplot2.tidyverse.org/) に渡して、新しい列 `count` を Y 軸に、もう一つの新しい列 `age_group` を `fill =` 引数（列の色）に指定することができます。以下のコードを実行すると、マラリアの症例数を年齢層ごとに積み上げた棒グラフが作成されます。
 
 ```{r, warning=F, message=F}
 ggplot(data = df_long) +
@@ -213,11 +191,11 @@ ggplot(data = df_long) +
   )
 ```
 
-Examine this new plot, and compare it with the plot we created earlier - *what has gone wrong?*  
+この新しいプロットと先ほど作ったプロットを比較してみてください。<u>問題点に気づきましたか？</u>
 
-We have encountered a common problem when wrangling surveillance data - we have also included the total counts from the `malaria_tot` column, so the magnitude of each bar in the plot is twice as high as it should be. 
+調査データを扱うときによくある問題に遭遇しました。`malaria_tot` 列からの総症例数も含まれているため、プロットの各棒の大きさは、実際の大きさの 2 倍になっています。
 
-We can handle this in a number of ways. We could simply filter these totals from the dataset before we pass it to `ggplot()`:
+この問題はいくつかの方法で対処することができます。一つの方法としては、`ggplot()` に渡す前に、データセットから総症例数を単純に抽出することです。
 
 ```{r, warning=F, message=F}
 df_long %>% 
@@ -229,31 +207,26 @@ df_long %>%
   )
 ```
 
-Alternatively, we could have excluded this variable when we ran `pivot_longer()`, thereby maintaining it in the dataset as a separate variable. See how its values "expand" to fill the new rows. 
+また、もう一つの方法として、`pivot_longer()` を実行する際にこの変数（`malaria_tot` 列）を除くことで、別の変数としてデータセットに保持することも可能です。新しい行を埋めるために、この変数の値がどのように「拡張」されるかを見てみましょう。
 
 ```{r, warning=F, message=F}
 count_data %>% 
   pivot_longer(
-    cols = `malaria_rdt_0-4`:malaria_rdt_15,   # does not include the totals column
+    cols = `malaria_rdt_0-4`:malaria_rdt_15,   # 総症例数の列は含まない
     names_to = "age_group",
     values_to = "counts"
   )
 ```
 
+### 複数のデータ型を含むデータのピボット
 
+上記の例は、「縦長変換する」列がすべて同じデータ型（文字型、数字型、論理型など）である場合にうまく機能します。
 
+しかし、疫学者や疫学業務担当者が扱う仕事の領域では、非専門家によって作成され、独特で標準的ではない論理に従ったデータを扱う場合が多くあります。Hadley Wickham は、**Tidy Data** の原則に関する彼の[重要な論文](https://vita.had.co.nz/papers/tidy-data.pdf)で（Tolstoy の一文を参照して）次のように指摘しています。「整然データセットは家族のように、どれも似ているが、乱雑なデータセットは乱雑のあり方がそれぞれ異なっている。」
 
+特によくある問題は、異なるデータ型のデータを含む列をピボットする必要があることです。このピボットでは、これらの異なるデータ型を 1 つの列に格納することになりますが、これは好ましい状況ではありません。このような混乱を回避するためには様々なアプローチがありますが、`pivot_longer()` を使用して、自分でこのような状況を作らないようにするための重要なステップがあります。
 
-### Pivoting data of multiple classes {.unnumbered}
-
-The above example works well in situations in which all the columns you want to "pivot longer" are of the same class (character, numeric, logical...). 
-
-However, there will be many cases when, as a field epidemiologist, you will be working with data that was prepared by non-specialists and which follow their own non-standard logic - as Hadley Wickham noted (referencing Tolstoy) in his [seminal article](https://vita.had.co.nz/papers/tidy-data.pdf) on **Tidy Data** principles: "Like families, tidy datasets are all alike but every messy dataset is messy in its own way."
-
-One particularly common problem you will encounter will be the need to pivot columns that contain different classes of data. This pivot will result in storing these different data types in a single column, which is not a good situation. There are various approaches one can take to separate out the mess this creates, but there is an important step you can take using `pivot_longer()` to avoid creating such a situation yourself.
-
-Take a situation in which there have been a series of observations at different time steps for each of three items A, B and C. Examples of such items could be individuals (e.g. contacts of an Ebola case being traced each day for 21 days) or remote village health posts being monitored once per year to ensure they are still functional. Let's use the contact tracing example. Imagine that the data are stored as follows:
-
+3 つの項目 A 、B、C のそれぞれについて、異なる時点で時系列による観測が行われた状況を考えてみましょう。例えば、個人（エボラ出血熱患者の接触者を 21 日間毎日追跡する）や、遠隔地の村の保健所がまだ機能しているかどうか年に 1 回確認することなどが挙げられます。接触者追跡の例を使ってみましょう。データが以下のように保存されているとします。
 
 ```{r, message=FALSE, echo=F}
 
@@ -269,11 +242,11 @@ DT::datatable(df, rownames = FALSE)
 
 ```
 
-As can be seen, the data are a bit complicated. Each row stores information about one item, but with the time series running further and further away to the right as time progresses. Moreover, the column classes alternate between date and character values.  
+見ての通り、少し複雑なデータになっています。各行には 1 つの項目に関する情報が格納されていますが、時間が進むにつれて時系列がどんどん右に流れています。さらに、列のデータ型は日付型と文字型が交互になっています。
 
-One particularly bad example of this encountered by this author involved cholera surveillance data, in which 8 new columns of observations were added *each day* over the course of __4 years__. Simply opening the Excel file in which these data were stored took >10 minuntes on my laptop!
+筆者が遭遇した特にひどい例は、コレラの調査データで、**4 年間**<u>毎日</u> 8 列の新しい観測値が追加されたものでした。筆者のノートパソコンでは、このデータが保存されている Excel ファイルを開くだけで 10 分以上かかりました！
 
-In order to work with these data, we need to transform the data frame to long format, but keeping the separation between a `date` column and a `character` (status) column, for each observation for each item. If we don't, we might end up with a mixture of variable types in a single column (a very big "no-no" when it comes to data management and tidy data):
+このデータを扱うには、データフレームを縦長形式に変換する必要がありますが、各項目の観測ごとに、日付型の列（`date` 列）と文字型の列（`character` 列; status を表す列）の分離を維持する必要があります。そうしないと、1 つの列の中に変数の種類が混在してしまう可能性があるからです（データ管理や整然データにおいて、一番「やってはいけないこと」です）。
 
 ```{r}
 df %>% 
@@ -284,16 +257,17 @@ df %>%
 
 ```
 
-Above, our pivot has merged *dates* and *characters* into a single `value` column. R will react by converting the entire column to class character, and the utility of the dates is lost.  
+上記では、ピボットによって日付列と文字列が 1 つの列の `value` に統合されています。R は列全体を文字型に変換することで対応し、日付の機能は失われています。
 
-To prevent this situation, we can take advantage of the syntax structure of the original column names. There is a common naming structure, with the observation number, an underscore, and then either "status" or "date". We can leverage this syntax to keep these two data types in separate columns after the pivot. 
+このような事態を防ぐには、元の列名の構文構造を利用します。このデータセットでは、観測番号、アンダースコア、そして "status" または "date" のいずれかを用いた共通の命名構造があります。この構文を利用して、ピボットした後にこれら 2 つのデータ型を別々の列に保持することが可能です。
 
-We do this by:  
+この操作を行う手順は、以下の通りです。
 
-* Providing a character vector to the `names_to = ` argument, with the second item being (`".value"` ). This special term indicates that the pivoted columns will be split based on a character in their name...  
-* You must also provide the "splitting" character to the `names_sep = ` argument. In this case, it is the underscore "_".  
+-   `names_to =` 引数に文字ベクトルを指定し、2 番目の項目に (`".value"`) を指定する。この特別な用語は、ピボットした列がその列名に含まれる文字に基づいて分割されることを示します。
 
-Thus, the naming and split of new columns is based around the underscore in the existing variable names.  
+-   また、`names_sep =` の引数には、「分割」する文字を指定する必要があります。ここでは、アンダースコア "\_" です。
+
+このように、新しい列の命名と分割は、既存の列名のアンダースコア "\_" を中心に行われる。
 
 ```{r}
 
@@ -309,11 +283,11 @@ df_long
 
 ```
 
-__Finishing touches__:
+**仕上げに**
 
-Note that the `date` column is currently in *character* class - we can easily convert this into it's proper date class using the `mutate()` and `as_date()` functions described in the [Working with dates] page.  
+`date` 列は現在<u>文字型</u>であることに注意してください。[日付型データ](#dates) の章で説明した `mutate()` と `as_date()` 関数を使用すると、適切な日付型に簡単に変換できます。
 
-We may also want to convert the `observation` column to a `numeric` format by dropping the "obs" prefix and converting to numeric. We cando this with `str_remove_all()` from the **stringr** package (see the [Characters and strings] page).  
+また、**stringr** パッケージの `str_remove_all()` を使用し、"obs" を削除して数値形式に変換することで、 `observation` 列も数字型（`numeric`）に変換できます（詳しくは、[文字型データ](#characters-strings) の章をご参照ください）。
 
 ```{r}
 
@@ -331,7 +305,7 @@ df_long
 
 ```
 
-And now, we can start to work with the data in this format, e.g. by plotting a descriptive heat tile:  
+そして、この形式のデータを用いることにより、例えば、記述的なヒートマップをプロットするなどの作業を始めることができます。
 
 ```{r}
 ggplot(data = df_long, mapping = aes(x = date, y = id, fill = status)) +
@@ -345,35 +319,30 @@ ggplot(data = df_long, mapping = aes(x = date, y = id, fill = status)) +
 
 ```
 
-
-
-
-
 <!-- ======================================================= -->
-## Long-to-wide {}
+
+## 縦長から横長へ
 
 ```{r, warning=F, message=F, echo=F}
 knitr::include_graphics(here::here("images", "pivoting", "pivot_wider_new.png"))
 ```
 
+場合によっては、データセットを横長形式に変換したいことがあります。このような場合は、`pivot_wider()` 関数を使用します。
 
-In some instances, we may wish to convert a dataset to a wider format. For this, we can use the `pivot_wider()` function.
+典型的な使用例としては、分析結果を読み手にとって理解しやすい形式（[見やすい表の作り方](#tables-presentation) の章を参照）に変換する場合です。つまり、1 つの主題に関する情報が複数の行にまたがっているデータセットを、その情報が 1 つの行に格納される形式に変換することが必要な場合です。
 
-A typical use-case is when we want to transform the results of an analysis into a format which is more digestible for the reader (such as a [Table for presentation][Tables for presentation]). Usually, this involves transforming a dataset in which information for one subject is are spread over multiple rows into a format in which that information is stored in a single row.
+### データ {.unnumbered}
 
-### Data {.unnumbered}
+この章では、1 つの症例が1 行に含まれる症例ラインリスト（[準備](#pivot_prep) のセクションを参照）を使用することにします。
 
-For this section of the page, we will use the case linelist (see the [Preparation](#pivot_prep) section), which contains one row per case.  
-
-Here are the first 50 rows:  
+以下に、最初の 50 行を示します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストのデータを表形式で表示する
 DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-
-Suppose that we want to know the counts of individuals in the different age groups, by gender:
+例えば、性別で年齢層ごとの個体数を知りたいとします。
 
 ```{r}
 df_wide <- 
@@ -383,18 +352,17 @@ df_wide <-
 df_wide
 ```
 
-This gives us a long dataset that is great for producing visualisations in **ggplot2**, but not ideal for presentation in a table:
+これは縦長のデータセットで、**ggplot2** での視覚化には最適ですが、表での表示には適していません。
 
 ```{r}
 ggplot(df_wide) +
   geom_col(aes(x = age_cat, y = n, fill = gender))
 ```
 
-### Pivot wider {.unnumbered}  
+### `pivot_wider()` {.unnumbered}
 
-Therefore, we can use `pivot_wider()` to transform the data into a better format for inclusion as tables in our reports.  
-
-The argument `names_from` specifies the column *from* which to generate the new column *names*, while the argument `values_from` specifies the column *from* which to take the *values* to populate the cells. The argument `id_cols = ` is optional, but can be provided a vector of column names that should not be pivoted, and will thus identify each row.  
+そのため、`pivot_wider()` を使用し、データを報告書に表として載せるのに適した形式に変換していきます。\
+引数 `names_from` は、新しい<u>列名</u>を生成する<u>ための</u>列を指定し、引数 `values_from` は、セルに入力する<u>値</u>を取得する<u>ための</u>列を指定します。`id_cols =` はオプションですが、ピボット化されるべきでない列名のベクトルを提供することができ、これによって各行を識別することができます。
 
 ```{r}
 table_wide <- 
@@ -408,28 +376,27 @@ table_wide <-
 table_wide
 ```
 
-This table is much more reader-friendly, and therefore better for inclusion in our reports. You can convert into a pretty table with several packages including **flextable** and **knitr**. This process is elaborated in the page [Tables for presentation].  
+この表は、より読みやすいので、報告書に掲載するのに適しています。さらに、**flextable** や **knitr** などのパッケージを使うと、よりきれいな表に編集することができます。編集する方法は、[見やすい表の作り方](#tables-presentation) の章で詳しく説明されています。
 
 ```{r}
 table_wide %>% 
-  janitor::adorn_totals(c("row", "col")) %>% # adds row and column totals
+  janitor::adorn_totals(c("row", "col")) %>% # 行と列の合計を表示する
   knitr::kable() %>% 
   kableExtra::row_spec(row = 10, bold = TRUE) %>% 
   kableExtra::column_spec(column = 5, bold = TRUE) 
 ```
 
----
-
-
-<!-- ======================================================= -->
-## Fill 
-
-In some situations after a `pivot`, and more commonly after a `bind`, we are left with gaps in some cells that we would like to fill.  
+------------------------------------------------------------------------
 
 <!-- ======================================================= -->
-### Data {.unnumbered}
 
-For example, take two datasets, each with observations for the measurement number, the name of the facility, and the case count at that time. However, the second dataset also has a variable `Year`. 
+## 欠損値の穴埋め
+
+`pivot` の後、そしてより一般的には `bind` の後、いくつかのセルに空白ができてしまい、それを埋めたいと思うことがあります。 <!-- ======================================================= -->
+
+### データ {.unnumbered}
+
+例えば、2 つのデータセットがあり、それぞれ測定番号、施設名、その時点の症例数の観測値があるとします。しかし、2 番目のデータセットには、最初のデータセットには含まれていない変数 `Year` が含まれています。
 
 ```{r}
 df1 <- 
@@ -459,9 +426,7 @@ df2 <-
 df2
 ```
 
-
-When we perform a `bind_rows()` to join the two datasets together, the `Year` variable is filled with `NA` for those rows where there was no prior information (i.e. the first dataset):
-
+`bind_rows()` でこの 2 つのデータセットを結合すると、最初のデータセットに作成された `Year` 変数は、`NA` で埋められます。
 
 ```{r}
 df_combined <- 
@@ -473,16 +438,17 @@ df_combined
 ```
 
 <!-- ======================================================= -->
+
 ### `fill()` {.unnumbered}
 
-In this case, `Year` is a useful variable to include, particularly if we want to explore trends over time. Therefore, we use `fill()` to *fill* in those empty cells, by specifying the column to fill and the direction (in this case **up**):
+`Year` は特に時間的な傾向を調べるのに有効な変数であるため、`NA` を埋めたいとしましょう。この場合、`fill()` を使用し、埋める列と方向（この場合は**上 "up"**）を指定することで、空白のセルを<u>埋める</u>ことができます。
 
 ```{r}
 df_combined %>% 
   fill(Year, .direction = "up")
 ```
 
-Alternatively, we can rearrange the data so that we would need to fill in a downward direction:
+あるいは、下方向に埋めるため、データを並べ替えることもできます。
 
 ```{r}
 df_combined <- 
@@ -498,7 +464,7 @@ df_combined <-
 df_combined
 ```
 
-We now have a useful dataset for plotting:
+これで、図を作成するのに便利なデータセットができました。
 
 ```{r}
 ggplot(df_combined) +
@@ -506,7 +472,7 @@ ggplot(df_combined) +
   geom_col()
 ```
 
-But less useful for presenting in a table, so let's practice converting this long, untidy dataframe into a wider, tidy dataframe:
+しかし、報告書に表として掲載するには向いていないデータセットですので、この縦長形式で整頓されていないデータフレームを、横長形式で整頓されたデータフレームに変換する練習をしてみましょう。
 
 ```{r}
 df_combined %>% 
@@ -522,7 +488,7 @@ df_combined %>%
   kableExtra::column_spec(column = 5, bold = TRUE) 
 ```
 
-N.B. In this case, we had to specify to only include the three variables `Facility`, `Year`, and `Cases` as the additional variable `Measurement` would interfere with the creation of the table:
+この場合、変数 `Measurement` を追加すると表の作成に支障が出るため、`Facility` 、`Year` 、`Cases` の 3 つの変数のみを含めるように指定する必要があります。
 
 ```{r}
 df_combined %>% 
@@ -533,7 +499,6 @@ df_combined %>%
   knitr::kable()
 ```
 
-## Resources  
+## 参考資料
 
-Here is a helpful [tutorial](https://datacarpentry.org/r-socialsci/03-dplyr-tidyr/index.html)
-
+便利な [チュートリアル](https://datacarpentry.org/r-socialsci/03-dplyr-tidyr/index.html) はこちら
