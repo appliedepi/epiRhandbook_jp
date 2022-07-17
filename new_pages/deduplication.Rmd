@@ -1,39 +1,37 @@
-
-# De-duplication {}  
+# 重複データの排除 {#deduplication}
 
 ```{r, out.width=c("50%"), echo=F}
 knitr::include_graphics(here::here("images", "deduplication.png"))
 ```
 
-This page covers the following de-duplication techniques:  
+この章では、重複データの排除に関する以下の手法について説明します。
 
-1. Identifying and removing duplicate rows  
-2. "Slicing" rows to keep only certain rows (e.g. min or max) from each group of rows  
-3. "Rolling-up", or combining values from multiple rows into one row  
-
+1.  重複する行の特定と削除\
+2.  複数行を含むグループから特定の行（最小値や最大値など）のみを残す「行のスライス」\
+3.  複数の行の値を 1 つの行にまとめる「ロールアップ」
 
 <!-- ======================================================= -->
-## Preparation { }
 
+## 準備
 
-### Load packages {.unnumbered}
+### パッケージの読み込み {.unnumbered}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの p_load() を主に使用しています。`p_load()` は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** の `library()` を使用して読み込むこともできます。R のパッケージについては、[R の基礎](#basics) の章を参照してください。
 
 ```{r}
 pacman::p_load(
-  tidyverse,   # deduplication, grouping, and slicing functions
-  janitor,     # function for reviewing duplicates
-  stringr)      # for string searches, can be used in "rolling-up" values
+  tidyverse,   # 重複排除、グループ化、スライスの関数
+  janitor,     # 重複部分の確認をする関数
+  stringr)     # 文字列検索で、値の「ロールアップ」に使用
 ```
 
-### Import data {.unnumbered}
+### データのインポート {.unnumbered}
 
-For demonstration, we will use an example dataset that is created with the R code below.  
+ここでは、以下の R コードで作成された、新型コロナウイルス感染症（COVID-19）に関する電話調査の記録のデータセット `obs` を例として使用します。
 
-The data are records of COVID-19 phone encounters, including encounters with contacts and with cases. The columns include `recordID` (computer-generated), `personID`, `name`, `date` of encounter, `time` of encounter, the `purpose` of the encounter (either to interview as a case or as a contact), and `symptoms_ever` (whether the person in that encounter reported *ever* having symptoms).  
+データセットには、接触者と感染者の調査内容が記録されており、`recordID`（コンピュータで生成された番号）、`personID`、`name`、`date`（調査が行われた日）、`time`（調査が行われた時間）、`purpose`（調査の目的、調査の回答者が接触者か感染者のどちらであるか）、`symptoms_ever`（調査対象者が、症状があったことを<u>一度でも</u>報告したかどうか）といった列が含まれています。
 
-Here is the code to create the `obs` dataset:  
+以下は、`obs` データセットを作成するコードです。
 
 ```{r}
 obs <- data.frame(
@@ -54,47 +52,44 @@ obs <- data.frame(
   mutate(date = as.Date(date, format = "%d/%m/%Y"))
 ```
 
+### 作成したデータセットを以下に表示します {#dedup_data .unnumbered}
 
-#### Here is the data frame {#dedup_data .unnumbered}  
-
-Use the filter boxes along the top to review the encounters for each person.  
+上部のフィルターボックスを使って、電話調査に回答した人の各記録を確認することができます。
 
 ```{r message=FALSE, echo=F}
 DT::datatable(obs, rownames = FALSE, filter = "top", options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
 ```
 
+データを確認する際、次の点に注意してください。
 
-A few things to note as you review the data:  
+-   最初の 2 行は完全に同じ記録（100% 重複）で、`recordID` も重複している（コンピュータの不具合により重複した記録が作成されたと考えられる）\
+-   2 番目の 2 行は、<u>`recordID` を除く</u>すべての列で重複している\
+-   何人かの被調査者（調査回答者）は、調査を複数回受けている（接触者として調査を受けたこともあれば、感染者として調査を受けたこともある）\
+-   被調査者は、電話調査を受けた際に「**今まで**症状があったかどうか」を尋ねられるが、情報の一部が欠損している（`symptoms_ever` 列）
 
-* The first two records are 100% complete duplicates including duplicate `recordID` (must be a computer glitch!)  
-* The second two rows are duplicates, in all columns *except for `recordID`*  
-* Several people had multiple phone encounters, at various dates and times, and as contacts and/or cases  
-* At each encounter, the person was asked if they had **ever** had symptoms, and some of this information is missing.  
-
-
-And here is a quick summary of the people and the purposes of their encounters, using `tabyl()` from **janitor**:  
+以下に、**janitor** の `tabyl()` を使って、被調査者の名前と調査の目的（被調査者が接触者か感染者のどちらであるか）を簡単に集計しました。
 
 ```{r}
 obs %>% 
   tabyl(name, purpose)
 ```
-<!-- ======================================================= -->
-## Deduplication { }
-
-
-This section describes how to review and remove duplicate rows in a data frame. It also show how to handle duplicate elements in a vector.  
-
 
 <!-- ======================================================= -->
-### Examine duplicate rows {.unnumbered}  
 
+## 重複排除
 
-To quickly review rows that have duplicates, you can use `get_dupes()` from the **janitor** package. *By default*, all columns are considered when duplicates are evaluated - rows returned by the function are 100% duplicates considering the values in *all* columns.  
+ここでは、データフレーム内の重複する行を確認し、削除する方法を説明します。また、ベクトル内の重複する要素を処理する方法も紹介します。
 
-In the `obs` data frame, the first two rows are *100% duplicates* - they have the same value in every column (including the `recordID` column, which is *supposed* to be unique - it must be some computer glitch). The returned data frame automatically includes a new column `dupe_count` on the right side, showing the number of rows with that combination of duplicate values. 
+<!-- ======================================================= -->
+
+### 重複する行を調べる {.unnumbered}
+
+重複している行を素早く確認するには、 **janitor** パッケージの `get_dupes()` を使います。<u>デフォルトでは</u>、この関数が返す行は、<u>すべての</u>列の値が重複している行（100% 重複の行）です。
+
+`obs` データフレームの最初の 2 行では、本来一意であるべき `recordID` 列を含むすべての列が同じ値となっており、この 2 列は <u>100% 重複</u> しています。以下のコマンドを実行して出力されたデータフレームには、新しい列 `dupe_count` が右側に自動的に追加され、重複した値の組み合わせを持つ行の数が表示されます。
 
 ```{r, eval=F}
-# 100% duplicates across all columns
+# すべての列で 100％ 重複
 obs %>% 
   janitor::get_dupes()
 ```
@@ -102,31 +97,31 @@ obs %>%
 ```{r message=FALSE, echo=F}
 obs %>% 
   janitor::get_dupes() %>% 
-  DT::datatable(rownames = FALSE, options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
+  DT::datatable(rownames = FALSE, options = list(pageLength = nrow(obs), scrollX = T), class = 'white-space: nowrap')
 ```
 
-See the [original data](#dedup_data)  
+[元のデータセット](#dedup_data) と比較してみてください。
 
-However, if we choose to ignore `recordID`, the 3rd and 4th rows rows are also duplicates of each other. That is, they have the same values in all columns *except* for `recordID`. You can specify specific columns to be ignored in the function using a `-` minus symbol.  
+しかし、`recordID` を無視して考えると、元データの 3 行目と 4 行目の行も重複していることになります。つまり、3 行目と 4 行目は `recordID` を<u>除く</u>すべての列に同じ値が記録されています。このような行を確認したい場合は、 `get_dupes()` の中でマイナス記号 - を使って無視する列を指定します。
 
 ```{r, eval=F}
-# Duplicates when column recordID is not considered
+# recordID 列を除くすべての列で値が重複している
 obs %>% 
-  janitor::get_dupes(-recordID)         # if multiple columns, wrap them in c()
+  janitor::get_dupes(-recordID)         # 除きたい列が複数ある場合は c() で囲む
 ```
 
 ```{r message=FALSE, echo=F}
 obs %>% 
   janitor::get_dupes(-recordID) %>% 
-  DT::datatable(rownames = FALSE, options = list(pageLength = nrow(obs), scrollX=T), class = 'white-space: nowrap' )
+  DT::datatable(rownames = FALSE, options = list(pageLength = nrow(obs), scrollX = T), class = 'white-space: nowrap')
 ```
 
-You can also positively specify the columns to consider. Below, only rows that have the same values in the `name` and `purpose` columns are returned. Notice how "amrish" now has `dupe_count` equal to 3 to reflect his three "contact" encounters.  
+重複として考慮する列を明示的に指定することもできます。以下では、`name` と `purpose` という列のみに同じ値を持つ行が返されます。`name` 列に "amrish" という値をもつ行の `dupe_count` が 3 になっていることに注目してください。これは、"amrish" という人物が「接触者（"contact"）」として 3 回電話調査を受けたことを示しています。
 
-*Scroll left for more rows**  
+<u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u>
 
 ```{r, eval=F}
-# duplicates based on name and purpose columns ONLY
+# name と purpose の列の値が重複する行のみ
 obs %>% 
   janitor::get_dupes(name, purpose)
 ```
@@ -134,306 +129,285 @@ obs %>%
 ```{r message=FALSE, echo=F}
 obs %>% 
   janitor::get_dupes(name, purpose) %>% 
-  DT::datatable(rownames = FALSE, options = list(pageLength = 7, scrollX=T), class = 'white-space: nowrap' )
+  DT::datatable(rownames = FALSE, options = list(pageLength = 7, scrollX = T), class = 'white-space: nowrap')
 ```
 
-See the [original data](#dedup_data).  
+[元のデータセット](#dedup_data) と比較してみてください。
 
-See `?get_dupes` for more details, or see this [online reference](https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#explore-records-with-duplicated-values-for-specific-combinations-of-variables-with-get_dupes)  
-
-
-
-
-
+`get_dupes()` に関する詳細は、`?get_dupes` をご覧ください。また、[こちら](https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#explore-records-with-duplicated-values-for-specific-combinations-of-variables-with-get_dupes) のドキュメントもご参照ください。
 
 <!-- ======================================================= -->
-### Keep only unique rows  {.unnumbered}
 
+### 一意の行のみを保持する {.unnumbered}
 
-To keep only unique rows of a data frame, use `distinct()` from **dplyr** (as demonstrated in the [Cleaning data and core functions] page). Rows that are duplicates are removed such that only the first of such rows is kept. By default, "first" means the highest `rownumber` (order of rows top-to-bottom). Only unique rows remain.  
+データフレームの一意の行のみ（重複しない行のみ）を保持するには、**dplyr** の `distinct()` を使います（[データクリーニングと主要関数](#cleaning) の章でさらに詳しく説明しています）。重複している行のうち、最初の行のみが保持され、それ以外の行は削除されます。デフォルトでは、「最初」とは最も上位の `rownumber` （行の順序、上から下へ番号が振られている）を意味します。その結果、一意の行だけが残ります。
 
-In the example below, we run `distinct()` such that the column `recordID` is excluded from consideration - thus **two duplicate rows are removed**. The first row (for "adam") was 100% duplicated and has been removed. Also row 3 (for "amrish") was a duplicate in every column *except* `recordID` (which is not being considered) and so is also removed. The `obs` dataset n is now ` nrow(obs)-2`, not ` nrow(obs)` rows).  
+以下の例では、`recordID` という列を除いて `distinct()` を実行して、**2 つの重複した行を削除**しています。上の表の最初の行（`name` 列の値が "adam" の行）は 100% 重複しており、削除されます（訳注：最初の行ではなく、2 番目の行が削除される、の誤り。deuplicate() は重複する行のうち、最初の行が保持されそれ以外の重複行が削除される）。また、3 行目（"amrish" の行）は、`recordID` を*除く*すべての列で 4 行目と重複しており、削除されます（訳注：削除されるのは 4 行目）。その結果、`obs` データセットの n （調査記録の数）は `r nrow(obs)` ではなく、`r nrow(obs) - 2` になります。
 
-*Scroll to the left to see the entire data frame*  
-
+<u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u>
 
 ```{r, eval=F}
-# added to a chain of pipes (e.g. data cleaning)
+# 既存のパイプラインに加える（データクリーニング）
 obs %>% 
-  distinct(across(-recordID), # reduces data frame to only unique rows (keeps first one of any duplicates)
+  distinct(across(-recordID), # データフレームを一意の行だけにする（重複している最初の行は残す）
            .keep_all = TRUE) 
 
-# if outside pipes, include the data as first argument 
+# パイプを使わない場合は、以下のように第一引数にデータセットの名前を入れる 
 # distinct(obs)
 ```
 
 ```{r message=FALSE, echo=F}
 obs %>% 
-  distinct(across(-recordID), # reduces data frame to only unique rows (keeps first one of any duplicates)
+  distinct(across(-recordID), # データフレームを一意の行だけにする（重複している最初の行は残す）
            .keep_all = TRUE) %>% 
-  DT::datatable(rownames = FALSE, options = list(pageLength = 6, scrollX=T), class = 'white-space: nowrap' )
+  DT::datatable(rownames = FALSE, options = list(pageLength = 6, scrollX = T), class = 'white-space: nowrap')
 ```
 
-<span style="color: orange;">**_CAUTION:_** If using `distinct()` on grouped data, the function will apply to each group.</span>
+[<u>**注意：**</u> グループ化されたデータに `distinct()` を使う場合は、各グループごとに適用されます。]{style="color: orange;"}
 
+**特定の列に基づいて重複排除する**
 
-**Deduplicate based on specific columns**  
+重複排除の基準となる列を指定することもできます。これにより、指定した列の値のみ重複している行に重複排除が適用されます。また `.keep_all = TRUE` を設定しない限り、指定されていないすべての列が削除されます。
 
-You can also specify columns to be the basis for de-duplication. In this way, the de-duplication only applies to rows that are duplicates within the specified columns. Unless you set `.keep_all = TRUE`, all columns not mentioned will be dropped.  
+以下のコマンドでは、`name` 列と `purpose` 列の値が同じ行にのみ重複排除が適用されます。したがって、`name` 列 が "brian" である行は 3 行から 2 行になります。残された 2 行は、"brain" が<u>最初に</u>「接触者（"contact"）」として受けた調査記録と、彼が「感染者（"case"）」として受けた唯一の調査記録です。調査の目的別に（接触者か感染者であるか）"brian" が受けた最後の調査記録（複数ある記録のうち、最も新しい記録）を保持したい場合は、本章の「グループ内のスライス」のセクションを参照してください。
 
-In the example below, the de-duplication only applies to rows that have identical values for `name` and `purpose` columns. Thus, "brian" has only 2 rows instead of 3 - his *first* "contact" encounter and his only "case" encounter. To adjust so that brian's *latest* encounter of each purpose is kept, see the tab on Slicing within groups.  
-
-*Scroll to the left to see the entire data frame*  
+<u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u>
 
 ```{r, eval=F}
-# added to a chain of pipes (e.g. data cleaning)
+# 既存のパイプラインに加える（データクリーニング）
 obs %>% 
-  distinct(name, purpose, .keep_all = TRUE) %>%  # keep rows unique by name and purpose, retain all columns
-  arrange(name)                                  # arrange for easier viewing
+  distinct(name, purpose, .keep_all = TRUE) %>%  # name と purpose 列によって重複を排除して一意の行にし、すべての列を保持する
+  arrange(name)                                  # 見やすさのために並び替える
 ```
 
 ```{r message=FALSE, echo=F}
 obs %>% 
-  distinct(name, purpose, .keep_all = TRUE) %>%  # keep rows unique by name and purpose, retain all columns
+  distinct(name, purpose, .keep_all = TRUE) %>%  # name と purpose 列によって重複を排除して一意の行にし、すべての列を保持する
   arrange(name) %>% 
-  DT::datatable(rownames = FALSE, options = list(pageLength = 6, scrollX=T), class = 'white-space: nowrap' )
+  DT::datatable(rownames = FALSE, options = list(pageLength = 6, scrollX = T), class = 'white-space: nowrap')
 ```
 
-See the [original data](#dedup_data).  
+[元のデータセット](#dedup_data) と比較してみてください。
 
 <!-- ======================================================= -->
-### Deduplicate elements in a vector {.unnumbered}  
 
+### ベクトル内の要素の重複排除 {.unnumbered}
 
-The function `duplicated()` from **base** R will evaluate a vector (column) and return a logical vector of the same length (TRUE/FALSE). The first time a value appears, it will return FALSE (not a duplicate), and subsequent times that value appears it will return TRUE. Note how `NA` is treated the same as any other value.    
+**base** R に含まれている関数の `duplicated()` は、ベクトル（列）を評価して、同じ長さの論理ベクトル（TRUE または FALSE）を返します。重複する値のうち、最初の値が現れたときは FALSE（重複していない）を返し、それ以降に値が現れたときは TRUE （重複している）を返します。`NA` も他の値と同じように重複しているか判断されることに注意してください。
 
 ```{r}
 x <- c(1, 1, 2, NA, NA, 4, 5, 4, 4, 1, 2)
 duplicated(x)
 ```
 
-To return only the duplicated elements, you can use brackets to subset the original vector: 
+重複した要素だけを返したい場合は、角括弧 `[ ]` を使って、以下のように元のベクトルをから重複した要素のみを抜き出すことができます。
 
 ```{r}
 x[duplicated(x)]
 ```
 
-To return only the unique elements, use `unique()` from **base** R. To remove `NA`s from the output, nest `na.omit()` within `unique()`.  
+一意の要素だけを返すには、**base** Rの `unique()` を使います。`NA` を出力から取り除くには、`unique()` の中に `na.omit()` を入れます。
 
 ```{r}
-unique(x)           # alternatively, use x[!duplicated(x)]
-unique(na.omit(x))  # remove NAs 
+unique(x)           # 代わりに x[!duplicated(x)] を使うこともできる
+unique(na.omit(x))  # NAを除外する
 ```
-
 
 <!-- ======================================================= -->
-### Using **base** R {.unnumbered}
 
-**To return duplicate rows**  
+### **base** R を使う {.unnumbered}
 
-In **base** R, you can also see which rows are 100% duplicates in a data frame `df` with the command `duplicated(df)` (returns a logical vector of the rows).  
+**重複する行を返す**
 
-Thus, you can also use the base subset `[ ]` on the data frame to see the *duplicated* rows with `df[duplicated(df),]` (don't forget the comma, meaning that you want to see all columns!). 
+**base** R では、データフレーム `df` の中でどの行が 100% 重複しているかを、`duplicated(df)` というコマンドで確認できます（行の論理ベクトルを返します）。
 
-**To return unique rows**  
+したがって、基本のサブセット `[ ]` コマンドをデータフレームに使用して、`df[duplicated(df),]` で<u>重複した行</u>を表示して確認することもできます（すべての列を見るという意味のコンマを忘れないでください！）。
 
-See the notes above. To see the *unique* rows you add the logical negator `!` in front of the `duplicated()` function:  
-`df[!duplicated(df),]`  
+**一意の行を返す**
 
+上述を参照してください。<u>一意の行</u>を表示して確認したい場合は、`duplicated()` の前に論理否定演算子 `!` を加え、以下のように書きます。\
+`df[!duplicated(df),]`
 
-**To return rows that are duplicates of only certain columns**  
+**特定の列の値だけが重複している行を返す**
 
-Subset the `df` that is *within the `duplicated()` parentheses*, so this function will operate on only certain columns of the `df`.  
+`duplicated()` の<u>括弧内</u>で `df` をサブセットし（重複判定の対象となる範囲を定義し）、`duplicated()` が `df` の特定の列のみを考慮するようにします。
 
-To specify the columns, provide column numbers or names after a comma (remember, all this is *within* the `duplicated()` function).  
+重複判定の対象となる列を指定するには、コンマの後に列番号または列名を入力してください（これらはすべて `duplicated()` 関数の<u>中で</u>行ってください）。
 
-Be sure to keep the comma `,` *outside* after the `duplicated()` function as well! 
+`duplicated()` の後には、必ずコンマ `,` を<u>外側に</u>置くようにしてください。
 
-For example, to evaluate only columns 2 through 5 for duplicates:  `df[!duplicated(df[, 2:5]),]`  
-To evaluate only columns `name` and `purpose` for duplicates: `df[!duplicated(df[, c("name", "purpose)]),]`  
-
-
-
-
+例えば、2 列目から 5 列目の値のみ重複の評価をする場合は、`df[!duplicated(df[, 2:5]),]`\
+また、`name` と `purpose` の列の値のみ重複の評価をする場合は、`df[!duplicated(df[, c("name", "purpose")]),]` のように書きます。
 
 <!-- ======================================================= -->
-## Slicing { }
 
+## スライシング（抽出）
 
-To "slice" a data frame to apply a filter on the rows by row number/position. This becomes particularly useful if you have multiple rows per functional group (e.g. per "person") and you only want to keep one or some of them. 
+データフレームの「スライス」とは、行番号・位置によってデータにフィルタリングを適用し、指定した行を抽出することです。これは、グループごとに複数の行があり（例えば、一人の被調査者（"person"）に複数の調査記録があるなど）、そのうちの 1 つまたはいくつかだけを残したい場合に特に便利です。
 
-The basic `slice()` function accepts numbers and returns rows in those positions. If the numbers provided are positive, only they are returned. If negative, those rows are *not* returned. Numbers must be either all positive or all negative.     
+基本的な `slice()` 関数は、数値を受け取り、その数値で表された位置にある行を返します。指定された数値が正の値であれば、その値のみが返されます。負の値で指定された行は返されません。複数のすうを指定する場合は、数値はすべて正またはすべて負でなければなりません。
 
 ```{r}
-obs %>% slice(4)  # return the 4th row
+obs %>% slice(4)  # 4番目の行を返す
 ```
 
 ```{r}
-obs %>% slice(c(2,4))  # return rows 2 and 4
-#obs %>% slice(c(2:4))  # return rows 2 through 4
+obs %>% slice(c(2,4))  # 2番目と4番目の行を返す
+#obs %>% slice(c(2:4))  # 2～4番目の行を返す
 ```
 
+[元のデータセット](#dedup_data) と比較してみてください。
 
-See the [original data](#dedup_data). 
+`slice()` には、他にいくつかの応用的な関数があり、以下で紹介します。 このような関数を使用する際は、対象となる列を指定し、返す行の数を `n =` に書く必要があります。
 
-There are several variations:  These should be provided with a column and a number of rows to return (to `n = `).  
-
-* `slice_min()` and `slice_max()`  keep only the row(s) with the minimium or maximum value(s) of the specified column. This also works to return the "min" and "max" of ordered factors.    
-* `slice_head()` and `slice_tail()` - keep only the *first* or *last* row(s).  
-* `slice_sample()`  - keep only a random sample of the rows.  
-
+-   `slice_min()` と `slice_max()` は、指定した列の最小値や最大値を持つ行のみを保持します。これは、順序付き因子の "min"と "max"を返すのにも使えます。\
+-   `slice_head()` と `slice_tail()` は、<u>最初</u>または<u>最後</u>の行のみを保持します。\
+-   `slice_sample()` は、行をランダムに抽出します。
 
 ```{r}
-obs %>% slice_max(encounter, n = 1)  # return rows with the largest encounter number
+obs %>% slice_max(encounter, n = 1)  # 調査番号（encounter）で最大値を持つ行を返す
 ```
 
-Use arguments `n = ` or `prop = ` to specify the number or proportion of rows to keep. If not using the function in a pipe chain, provide the data argument first (e.g. `slice(data, n = 2)`). See `?slice` for more information. 
+保持する行の数または割合を指定するには、引数 `n =` または `prop =` を使用します。この関数をパイプの中で使用しない場合は、第一引数にデータセットの名前を指定してください（例：`slice(data, n = 2)`）。詳細は `?slice` を参照してください。
 
-Other arguments:  
+他にも以下の引数が使用できます。
 
-`.order_by = ` used in `slice_min()` and `slice_max()` this is a column to order by before slicing.  
-`with_ties = ` TRUE by default, meaning ties are kept.  
-`.preserve = ` FALSE by default. If TRUE then the grouping structure is re-calculated after slicing.  
-`weight_by = ` Optional, numeric column to weight by (bigger number more likely to get sampled).  Also `replace = ` for whether sampling is done with/without replacement.  
+`.order_by =` - `slice_min()` や `slice_max()` の中でスライスする前に順序付ける列を指定するのに使用されます。\
+`with_ties =` - デフォルトは TRUE で、関数の条件に該当する行が複数あった場合（「タイ（"ties"）」と呼ばれる状況）、そのすべての行が保持されます。\
+`.preserve =` - デフォルトは FALSE です。TRUE の場合、スライス後にグループの構造が再計算されます。\
+`weight_by =` - オプションで、重み付けのための数値列を指定します（数字が大きいほどサンプリングされる可能性が高い）。 また、サンプリングが復元・非復元で行われるかを示す `replace =` もあります。
 
-<span style="color: darkgreen;">**_TIP:_** When using `slice_max()` and `slice_min()`, be sure to specify/write the `n = `  (e.g. `n = 2`, not just `2`). Otherwise you may get an error `Error: `...` is not empty.` </span>
+[<u>***ヒント：***</u> `slice_max()` や `slice_min()` を使用する際には、必ず `n =` を指定し記述してください（例：`2` だけでなく、`n = 2`）。`n =` を指定せずか関数を実行すると、`Error:`...`is not empty.` というエラーが発生することがあります。]{style="color: darkgreen;"}
 
-<span style="color: black;">**_NOTE:_** You may encounter the function [`top_n()`](https://dplyr.tidyverse.org/reference/top_n.html), which has been superseded by the `slice` functions.</span>
-
- 
-
+<u>**注意：**</u>[[`top_n()`]{style="color: black;"}](https://dplyr.tidyverse.org/reference/top_n.html)[という関数を目にすることがあるかもしれませんが、これは各 slice 関数に取って代わられました。]{style="color: black;"}
 
 <!-- ======================================================= -->
-### Slice with groups  {.unnumbered}
 
-The `slice_*()` functions can be very useful if applied to a grouped data frame because the slice operation is performed on each group separately. Use the **function** `group_by()` in conjunction with `slice()` to group the data to take a slice from each group.  
+### グループごとのスライス {.unnumbered}
 
-This is helpful for de-duplication if you have multiple rows per person but only want to keep one of them. You first use `group_by()` with key columns that are the same per person, and then use a slice function on a column that will differ among the grouped rows.  
+`slice_*()` をグループ化されたデータフレームに適用すると、スライス操作が各グループに対して個別に実行されるので、非常に便利です。`group_by()` と `slice()` という**関数**を併用してデータをグループ化し、各グループから行をスライス（抽出）します。
 
-In the example below, to keep only the *latest* encounter *per person*, we group the rows by `name` and then use `slice_max()` with `n = 1` on the `date` column. Be aware! To apply a function like `slice_max()` on dates, the date column must be class Date.   
+これは、被調査者（人）ごとに複数の記録（行）があり、そのうちの 1 つの記録（行）だけを残したい場合の重複排除に便利です。まず、グループ化に使用したい列を `group_by()` に指定し、次に異なる列でスライス関数を使用します。
 
-By default, "ties" (e.g. same date in this scenario) are kept, and we would still get multiple rows for some people (e.g. adam). To avoid this we set `with_ties = FALSE`. We get back only one row per person.  
+以下の例では、被調査者ごとに最新の調査記録のみを保持するために、`name` 列で行をグループ化し、`date` 列に `n = 1` で `slice_max()` を使用します。`slice_max()` のような関数を日付に適用するには、適用される日付の列は日付型（Date）にあらかじめ変換されていなければならないことに注意してください。
 
-<span style="color: orange;">**_CAUTION:_** If using `arrange()`, specify `.by_group = TRUE` to have the data arranged within each group.</span>
+デフォルトでは、関数の条件に該当する行が複数あった場合（この例では最新の日付が複数ある場合）はすべての行が保持されるため、一部の被調査者（"adam" など）には複数の行が表示されてしまいます。これを避けるために、`with_ties = FALSE` とします。これにより、1 人につき 1 つの行のみが返されます。
 
-<span style="color: red;">**_DANGER:_** If `with_ties = FALSE`, the first row of a tie is kept. This may be deceptive. See how for Mariah, she has two encounters on her latest date (6 Jan) and the first (earliest) one was kept. Likely, we want to keep her later encounter on that day. See how to "break" these ties in the next example. </span>  
+[<u>**注意：**</u> `arrange()`を使用する場合は、`.by_group = TRUE` を指定すると、各グループごとにデータが並び替えられます。]{style="color: orange;"}
 
-
-
+[<u>警告：</u>with_ties = FALSE の 場合、条件に該当する複数行の最初の行が保持されます。わかりづらいかもしれませんが、例えば、Mariah（`name` 列が "mariah" である行）の場合には最新の日付 （1 月 6 日）で 2 つの調査記録があり、最初の調査記録（データフレームを上から見て一番最初に現れる記録）が保持されています。同じ日の後の方の記録を保持したい場合は、次の例（「タイ」を壊す）をご覧ください。]{style="color: red;"}
 
 ```{r, eval=F}
 obs %>% 
-  group_by(name) %>%       # group the rows by 'name'
-  slice_max(date,          # keep row per group with maximum date value 
-            n = 1,         # keep only the single highest row 
-            with_ties = F) # if there's a tie (of date), take the first row
+  group_by(name) %>%       # 行を name 列でグループ化
+  slice_max(date,          # グループごとに最大の日付の値を持つ行を保持 
+            n = 1,         # 最上位の行のみを残す 
+            with_ties = F) # 同じ日付が複数ある場合、最初の列を残す
 ```
 
 ```{r message=FALSE, echo=F}
 obs %>% 
-  group_by(name) %>%       # group the rows by 'name'
-  slice_max(date,          # keep row per group with maximum date value 
-            n = 1,         # keep only the single highest row 
-            with_ties = F) %>%  # if there's a tie (of date), take the first row
-  DT::datatable(rownames = FALSE, options = list(pageLength = 8, scrollX=T), class = 'white-space: nowrap' )
+  group_by(name) %>%       # 行を name 列でグループ化
+  slice_max(date,          # グループごとに最大の日付の値を持つ行を保持 
+            n = 1,         # 最上位の行のみを残す 
+            with_ties = F) %>%  # 同じ日付が複数ある場合、最初の列を残す
+  DT::datatable(rownames = FALSE, options = list(pageLength = 8, scrollX = T), class = 'white-space: nowrap')
 ```
 
-Above, for example we can see that only Amrish's row on 5 Jan was kept, and only Brian's row on 7 Jan was kept. See the [original data](#dedup_data).  
+上の例では、Amrish の記録（`name` 列が "amrish" である行）では 1 月 5 日の行だけ、また Brian の記録（`name` 列が "brian" である行）では 1 月 7 日の行だけが保持されています。[元のデータセット](#dedup_data) と比較してみてください。
 
+**「タイ」を壊す**
 
-**Breaking "ties"**  
-
-Multiple slice statements can be run to "break ties". In this case, if a person has multiple encounters on their latest *date*, the encounter with the latest *time* is kept (`lubridate::hm()` is used to convert the character times to a sortable time class).  
-Note how now, the one row kept for "Mariah" on 6 Jan is encounter 3 from 08:32, not encounter 2 at 07:25.  
+複数のスライス文を実行することで、「タイ（"ties"）を壊す」ことができます。上述の例では、最新の<u>日付（date）</u>に複数の調査記録がある場合、最新の<u>時間（time）</u>の調査記録が保持されます（文字型の時間を並べ替えるために、`lubridate::hm()` で time 型に変換しました）。\
+以下のコマンドを実行すると、Mariah （`name` 列が "mariah" である行）の 1 月 6 日の行は、時間が07:25 の 2 回目の調査記録ではなく、08:32 の 3 回目の調査記録が残されたことに注意してください。
 
 ```{r, eval=F}
-# Example of multiple slice statements to "break ties"
+# 「タイを壊す」ため、複数のスライスを使用する例
 obs %>%
   group_by(name) %>%
   
-  # FIRST - slice by latest date
+  # まず、最新の日付でスライスする
   slice_max(date, n = 1, with_ties = TRUE) %>% 
   
-  # SECOND - if there is a tie, select row with latest time; ties prohibited
+  # 次に、複数行が該当する場合は最新の時刻の行を選択する（タイは認められない）
   slice_max(lubridate::hm(time), n = 1, with_ties = FALSE)
 ```
 
 ```{r message=FALSE, echo=F}
-# Example of multiple slice statements to "break ties"
+# 「タイを壊す」ため、複数のスライスを使用する例
 obs %>%
   group_by(name) %>%
   
-  # FIRST - slice by latest date
+  # まず、最新の日付でスライスする
   slice_max(date, n = 1, with_ties = TRUE) %>% 
   
-  # SECOND - if there is a tie, select row with latest time; ties prohibited
+  # 次に、タイの場合は最新の時刻の行を選択する（タイは認められない）
   slice_max(lubridate::hm(time), n = 1, with_ties = FALSE) %>% 
   
-  DT::datatable(rownames = FALSE, options = list(pageLength = 8, scrollX=T), class = 'white-space: nowrap' )
+  DT::datatable(rownames = FALSE, options = list(pageLength = 8, scrollX = T), class = 'white-space: nowrap')
 ```
 
-*In the example above, it would also have been possible to slice by `encounter` number, but we showed the slice on `date` and `time` for example purposes.*  
+<u>上の例では、調査番号（`encounter` 列）の値でスライスすることも可能ですが、例として `date` 列と `time` 列でスライスしています。</u>
 
-<span style="color: darkgreen;">**_TIP:_** To use `slice_max()` or `slice_min()` on a "character" column, mutate it to an *ordered* factor class!</span>
+[<u>**ヒント：**</u>`slice_max()` や `slice_min()` を文字型（character）の列に使用する場合は、まずその列を順序付けられた因子型（factor）に変換する必要があります！]{style="color: darkgreen;"}
 
-See the [original data](#dedup_data).  
-
+[元のデータセット](#dedup_data) と比較してみてください。
 
 <!-- ======================================================= -->
-### Keep all but mark them  {.unnumbered}
 
-If you want to keep all records but mark only some for analysis, consider a two-step approach utilizing a unique recordID/encounter number:  
+### すべてを残すが、目印をつける {.unnumbered}
 
-1) Reduce/slice the orginal data frame to only the rows for analysis. Save/retain this reduced data frame.  
-2) In the original data frame, mark rows as appropriate with `case_when()`, based on whether their record unique identifier (recordID in this example) is present in the reduced data frame.  
+すべての記録を残しつつ、一部の記録だけを分析対象として目印をつけたい場合は、一意の recordID と 調査番号（encounter）を利用した 2 段階のアプローチを検討します。
 
+1)  元のデータフレームから分析に必要な行だけをスライス（抽出）し、別のデータフレームとして保存する。\
+2)  元のデータフレームの一意の識別子（ここでは recordID）がステップ 1. で作成したデータフレームに存在するかどうか判定した列を、元のデータフレームに `case_when()` で新たに作成する。
 
 ```{r}
-# 1. Define data frame of rows to keep for analysis
+# 1. 分析のために保持する行をデータフレームとして定義する
 obs_keep <- obs %>%
   group_by(name) %>%
-  slice_max(encounter, n = 1, with_ties = FALSE) # keep only latest encounter per person
+  slice_max(encounter, n = 1, with_ties = FALSE) # 各被調査者の最新の調査番号（ encounter）のみを残す
 
 
-# 2. Mark original data frame
+# 2. 元のデータフレームに目印をつける
 obs_marked <- obs %>%
 
-  # make new dup_record column
+  # 新しい dup_record 列の作成
   mutate(dup_record = case_when(
     
-    # if record is in obs_keep data frame
+    # レコードが obs_keep のデータフレームにある場合
     recordID %in% obs_keep$recordID ~ "For analysis", 
     
-    # all else marked as "Ignore" for analysis purposes
+    # それ以外は、分析のために「無視（"Ignore"）」とマークする
     TRUE                            ~ "Ignore"))
 
-# print
+# 出力
 obs_marked
 ```
 
-
 ```{r, echo=F}
-DT::datatable(obs_marked, rownames = FALSE, options = list(pageLength = 8, scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(obs_marked, rownames = FALSE, options = list(pageLength = 8, scrollX = T), class = 'white-space: nowrap')
 ```
 
-See the [original data](#dedup_data).  
+[元のデータセット](#dedup_data) と比較してみてください。
 
 <!-- ======================================================= -->
-### Calculate row completeness {.unnumbered} 
 
-Create a column that contains a metric for the row's completeness (non-missingness). This could be helpful when deciding which rows to prioritize over others when de-duplicating/slicing.  
+### 行の完全性の計算 {.unnumbered}
 
-In this example, "key" columns over which you want to measure completeness are saved in a vector of column names.  
+行の完全性（非欠損性）の指標を含む列を作成します。このような列は、重複排除やスライスの際に、どの行を他の行よりも優先させるかを決定する際に役立ちます。
 
-Then the new column `key_completeness` is created with `mutate()`. The new value in each row is defined as a calculated fraction: the number of non-missing values in that row among the key columns, divided by the number of key columns.  
+以下の例では、完全性を測定したい「キー（"key"）」となる列の列名を、ベクトルに保存します。
 
-This involves the function `rowSums()` from **base** R. Also used is `.`, which within piping refers to the data frame at that point in the pipe (in this case, it is being subset with brackets `[]`).  
+そして、`mutate()` で `key_completeness` という新しい列を作成します。新しく作成された各行の値は、計算された割合として定義されます。各行、「キー（"key"）」とした列のうち欠落していない列の数を、「キー（"key"）」とした列の数で割ったものです。
 
-*Scroll to the right to see more rows**  
+これには **base** R の `rowSums()` が使われています。また、`.` も使われています。パイプの中で使用された `.` は、その時点でのデータフレームを参照します（この場合は角括弧 `[ ]` で囲んでサブセットされたデータ範囲）。
+
+<u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u>
 
 ```{r, eval=F}
-# create a "key variable completeness" column
-# this is a *proportion* of the columns designated as "key_cols" that have non-missing values
+# 「キー（"key"）」とする列をベクトルとして作成する
+# 結果を "key_cols" として指定された列のうち、値が欠損していない割合として表示する
 
 key_cols = c("personID", "name", "symptoms_ever")
 
@@ -446,178 +420,164 @@ key_cols = c("personID", "name", "symptoms_ever")
 
 obs %>% 
   mutate(key_completeness = rowSums(!is.na(.[,key_cols]))/length(key_cols)) %>% 
-  DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+  DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-See the [original data](#dedup_data).  
-
-
-
+[元のデータセット](#dedup_data)をご覧ください。
 
 <!-- ======================================================= -->
-## Roll-up values {#str_rollup}
 
+## ロールアップした値 {#str_rollup}
 
-This section describes:  
+このセクションでは、以下の項目について説明します。
 
-1) How to "roll-up" values from multiple rows into just one row, with some variations  
-2) Once you have "rolled-up" values, how to overwrite/prioritize the values in each cell  
+1)  複数の行の値を 1 つの行に「ロールアップする（"roll-up"）」（まとめる）方法\
+2)  値をロールアップした後、各セルの値を上書き・優先させる方法
 
-This tab uses the example dataset from the Preparation tab.  
-
-
+このタブでは、本章の「準備」セクションで作成したサンプルデータセットを使用します。
 
 <!-- ======================================================= -->
-### Roll-up values into one row {.unnumbered}  
 
-The code example below uses `group_by()` and `summarise()` to group rows by person, and then paste together all unique values within the grouped rows. Thus, you get one summary row per person. A few notes:  
+### ロールアップした値を一列に並べる {.unnumbered}
 
-* A suffix is appended to all new columns ("_roll" in this example)  
-* If you want to show only unique values per cell, then wrap the `na.omit()` with `unique()`  
-* `na.omit()` removes `NA` values, but if this is not desired it can be removed `paste0(.x)`...  
+以下のコマンドでは、`group_by()` と `summarise()` を使って行を被調査者ごとにグループ化し、グループ化された行の中の一意な値を 1 つの行にすべて貼り付けています。このようにして、被調査者 1 人につき 1 つの要約行を作成できます。ここでは、要約行を作成する際のいくつかの注意点があります。
 
-
+-   新しく作成された列すべてに接尾辞を追加することができます（この例では "\_roll"）。\
+-   セルごとに一意の値だけを表示したい場合は、`na.omit()` を `unique()` で囲みます。\
+-   `na.omit()` は `NA` 値を削除しますが、残したい場合は `paste0(.x)` を削除します。
 
 ```{r, eval=F}
-# "Roll-up" values into one row per group (per "personID") 
+# 値を「personID」ごとに1行にロールアップ（まとめる）
 cases_rolled <- obs %>% 
   
-  # create groups by name
+  # personID でグループ化
   group_by(personID) %>% 
   
-  # order the rows within each group (e.g. by date)
+  # 各グループ内で行を並べ替え（例：日付順）
   arrange(date, .by_group = TRUE) %>% 
   
-  # For each column, paste together all values within the grouped rows, separated by ";"
+  # グループ化された行のすべての値を、各列に "; " で区切って貼り付ける
   summarise(
-    across(everything(),                           # apply to all columns
-           ~paste0(na.omit(.x), collapse = "; "))) # function is defined which combines non-NA values
+    across(everything(),                           # すべての列に適用
+           ~paste0(na.omit(.x), collapse = "; "))) # 欠損値でない値を結合する関数
 ```
 
-The result is one row per group (`ID`), with entries arranged by date and pasted together. *Scroll to the left to see more rows*    
+結果として、グループ（`personID`）ごとに 1 つの行が作成され、日付で並べ替えられた値が貼り合わされます。<u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u>
 
 ```{r message=FALSE, echo=F}
-# "Roll-up" values into one row per group (per "personID") 
+# 値を「personID」ごとに1行にロールアップ 
 obs %>% 
   
-  # create groups by name
+  # 名前でグループ化
   group_by(personID) %>% 
   
-  # order the rows within each group (e.g. by date)
+  # 各グループ内で行を並べ替え（例：日付順）
   arrange(date, .by_group = TRUE) %>% 
   
-  # For each column, paste together all values within the grouped rows, separated by ";"
+  # 各列で、グループ化された行のすべての値を"; "で区切って貼り付け
   summarise(
-    across(everything(),                                # apply to all columns
-           ~paste0(na.omit(.x), collapse = "; "))) %>%  # function is defined which combines non-NA values
+    across(everything(),                                # すべての列に適用
+           ~paste0(na.omit(.x), collapse = "; "))) %>%  # 欠損値でない値を結合する関数
 
-  DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
+  DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-See the [original data](#dedup_data).  
+[元のデータセット](#dedup_data) と比較してみてください。
 
-
-**This variation shows unique values only:**  
+**次に、以下では、一意の値のみを表示します。**
 
 ```{r}
-# Variation - show unique values only 
+# バリエーション - 一意の値のみを表示 
 cases_rolled <- obs %>% 
   group_by(personID) %>% 
   arrange(date, .by_group = TRUE) %>% 
   summarise(
-    across(everything(),                                   # apply to all columns
-           ~paste0(unique(na.omit(.x)), collapse = "; "))) # function is defined which combines unique non-NA values
+    across(everything(),                                   # すべての列に適用
+           ~paste0(unique(na.omit(.x)), collapse = "; "))) # 欠損値でない値を結合する関数
 ```
 
 ```{r message=FALSE, echo=F}
-# Variation - show unique values only 
+# バリエーション - 一意の値のみを表示 
 obs %>% 
   group_by(personID) %>% 
   arrange(date, .by_group = TRUE) %>% 
   summarise(
-    across(everything(),                                   # apply to all columns
-           ~paste0(unique(na.omit(.x)), collapse = "; "))) %>%  # function is defined which combines unique non-NA values
+    across(everything(),                                   # すべての列に適用
+           ~paste0(unique(na.omit(.x)), collapse = "; "))) %>%  # 欠損値でない値を結合する関数
 
-  DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+  DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-
-**This variation appends a suffix to each column.**  
-In this case "_roll" to signify that it has been rolled:  
+**そして、各列に接尾辞を追加します。**\
+この例では「\_roll」と追加し、ロールアップされた（まとめられた）ことを表します。
 
 ```{r, eval=F}
-# Variation - suffix added to column names 
+# バリエーション - 列名に接尾辞を追加 
 cases_rolled <- obs %>% 
   group_by(personID) %>% 
   arrange(date, .by_group = TRUE) %>% 
   summarise(
     across(everything(),                
-           list(roll = ~paste0(na.omit(.x), collapse = "; ")))) # _roll is appended to column names
+           list(roll = ~paste0(na.omit(.x), collapse = "; ")))) # 列名に「_roll」を付加
 ```
 
 ```{r message=FALSE, echo=F}
-# display the linelist data as a table
-# Variation - suffix added to column names 
+# ラインリストのデータを表形式で表示
+# バリエーション - カラム名に接尾辞を追加 
 obs %>% 
   group_by(personID) %>% 
   arrange(date, .by_group = TRUE) %>% 
   summarise(
     across(everything(),                
-           list(roll = ~paste0(na.omit(.x), collapse = "; ")))) %>%  # _roll is appended to column names
-  DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+           list(roll = ~paste0(na.omit(.x), collapse = "; ")))) %>%  # 列名に「_roll」を付加
+  DT::datatable(rownames = FALSE, options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-
 <!-- ======================================================= -->
-### Overwrite values/hierarchy {.unnumbered} 
 
+### 値と階層の上書き {.unnumbered}
 
-If you then want to evaluate all of the rolled values, and keep only a specific value (e.g. "best" or "maximum" value), you can use `mutate()` across the desired columns, to implement `case_when()`, which uses `str_detect()` from the **stringr** package to sequentially look for string patterns and overwrite the cell content.  
+ある列のロールアップされた値（まとめられた値）をすべて評価して、特定の値（例えば、「最も重要な値（"best"）」や「最大値｛"maximum"）」など）だけを残したい場合は、その列で `mutate()` を使用し、 **stringr** パッケージの `str_detect()` で文字列パターンを順に探し、セルの内容を上書きするように `case_when()` を使用します。
 
 ```{r}
-# CLEAN CASES
+# クリーンなケース
 #############
 cases_clean <- cases_rolled %>% 
     
-    # clean Yes-No-Unknown vars: replace text with "highest" value present in the string
-    mutate(across(c(contains("symptoms_ever")),                     # operates on specified columns (Y/N/U)
-             list(mod = ~case_when(                                 # adds suffix "_mod" to new cols; implements case_when()
+    # クリーンな Yes-No-Unknown 列: 文字列に存在する "highest" の値（最も重要な値）でテキストを置き換える
+    mutate(across(c(contains("symptoms_ever")),                     # 指定された列を操作（Y/N/U）
+             list(mod = ~case_when(                                 # 新しい列に接尾辞 "_mod" を追加し、case_when() を実装
                
-               str_detect(.x, "Yes")       ~ "Yes",                 # if "Yes" is detected, then cell value converts to yes
-               str_detect(.x, "No")        ~ "No",                  # then, if "No" is detected, then cell value converts to no
-               str_detect(.x, "Unknown")   ~ "Unknown",             # then, if "Unknown" is detected, then cell value converts to Unknown
-               TRUE                        ~ as.character(.x)))),   # then, if anything else if it kept as is
-      .keep = "unused")                                             # old columns removed, leaving only _mod columns
+               str_detect(.x, "Yes")       ~ "Yes",                 # "Yes"が検出された場合、セルの値が "Yes" に変換される
+               str_detect(.x, "No")        ~ "No",                  # "No "が検出された場合、セルの値が "No" に変換される
+               str_detect(.x, "Unknown")   ~ "Unknown",             # "Unknown" が検出された場合、セルの値が "Unknown" に変換される
+               TRUE                        ~ as.character(.x)))),   # それ以外の場合はそのままの値とする
+      .keep = "unused")                                             # 古い列は削除し、_mod 列のみを残す
 ```
 
-
-Now you can see in the column `symptoms_ever` that if the person EVER said "Yes" to symptoms, then only "Yes" is displayed.  
+これで、`symptoms_ever` という列に、その人が症状に対して「Yes」と答えたことがある場合、「Yes」だけが表示されるようになりました。
 
 ```{r message=FALSE, echo=F}
-# display the linelist data as a table
-DT::datatable(cases_clean, rownames = FALSE, options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap')
+# ラインリストのデータを表形式で表示
+DT::datatable(cases_clean, rownames = FALSE, options = list(pageLength = 10, scrollX = T), class = 'white-space: nowrap')
 ```
 
+[元のデータセット](#dedup_data) と比較してみてください。
 
-See the [original data](#dedup_data).  
+## 確率的重複排除
 
+名前、年齢、性別、生年月日などの複数の列にわたる類似性（文字列の「距離（どのくらい類似しているか）」など）に基づいて、重複している「可能性が高い」ものを特定したい場合があります。このような場合は、確率的マッチングアルゴリズム（probabilistic matching algorithm）を適用することが可能です。
 
-## Probabilistic de-duplication  
-
-Sometimes, you may want to identify "likely" duplicates based on similarity (e.g. string "distance") across several columns such as name, age, sex, date of birth, etc. You can apply a probabilistic matching algorithm to identify likely duplicates.  
-
-See the page on [Joining data] for an explanation on this method. The section on Probabilistic Matching contains an example of applying these algorithms to compare a data frame to *itself*, thus performing probabilistic de-duplication.  
-
-
+重複している可能性が高いものを特定する方法についての説明は、[データの結合](#joining-matching) の章を参照してください。「確率的マッチング」のセクションでは、確率的マッチングアルゴリズムを適用して、データフレームを*それ*<u>自体</u>と比較し、確率的な重複排除を行う例を紹介しています。
 
 <!-- ======================================================= -->
-## Resources { }
 
-Much of the information in this page is adapted from these resources and vignettes online:  
+## 参考資料
+
+本章に掲載されている内容の多くは、以下の資料やウェブサイトを参考に作成されました。
 
 [datanovia](https://www.datanovia.com/en/lessons/identify-and-remove-duplicate-data-in-r/)
 
-[dplyr tidyverse reference](https://dplyr.tidyverse.org/reference/slice.html)  
+[dplyr tidyverse reference](https://dplyr.tidyverse.org/reference/slice.html)
 
-[cran janitor vignette](https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#explore-records-with-duplicated-values-for-specific-combinations-of-variables-with-get_dupes)  
-
+[cran janitor vignette](https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#explore-records-with-duplicated-values-for-specific-combinations-of-variables-with-get_dupes)
