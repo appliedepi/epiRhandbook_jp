@@ -1,45 +1,42 @@
-
-# Working with dates {}
-
+# 日付型データ {#dates}
 
 ```{r, out.width=c('50%'), fig.align='center', echo=F, message=F}
 knitr::include_graphics(here::here("images", "Dates_500x500.png"))
 ```
 
+R で日付データを扱う際には、他のデータ型のデータを扱うときよりも注意が必要です。本章では、日付データを扱いやすくするツールや例を紹介します。練習すれば日付データを簡単に扱えるようになりますし、**lubridate** のような便利なパッケージもあります。
 
-Working with dates in R requires more attention than working with other object classes. Below, we offer some tools and example to make this process less painful. Luckily, dates can be wrangled easily with practice, and with a set of helpful packages such as **lubridate**.  
+R に未加工のデータをインポートすると、日付データが文字型として解釈されることがあります。その場合、時系列の作成や時間間隔の計算など、日付データの一般的な操作が行えません。さらに日付には様々な書式があるため、日付のどの部分が何を表しているのか（月、日、時間など）を R に伝える必要があります。
 
-Upon import of raw data, R often interprets dates as character objects - this means they cannot be used for general date operations such as making time series and calculating time intervals. To make matters more difficult, there are many ways a date can be formatted and you must help R know which part of a date represents what (month, day, hour, etc.). 
+R における日付データは独自のデータ型である 日付型（`Date`）です。また、日付と時刻両方を持つオブジェクトを格納するデータ型もあるので、注意が必要です。日付と時刻の両方を格納するオブジェクトは、正式には `POSIXt` 型, `POSIXct` 型, `POSIXlt` 型 と呼ばれます（三つの型がどのように違うのかは重要ではありません）。これらの三つの型は、非公式に <u>日時型（datetime）</u>と呼ばれています。
 
-Dates in R are their own class of object - the `Date` class. It should be noted that there is also a class that stores objects with date *and* time. Date time objects are formally referred to as `POSIXt`, `POSIXct`, and/or `POSIXlt` classes (the difference isn't important). These objects are informally referred to as *datetime* classes.
-
-* It is important to make R recognize when a column contains dates.  
-* Dates are an object class and can be tricky to work with.  
-* Here we present several ways to convert date columns to Date class.  
-
+-   日付データが含まれる場合、それを R に伝えることが重要です。\
+-   日付はオブジェクトクラスであり、扱うのが難しい場合があります。\
+-   ここでは、日付の列を日付型（Date）に変換するいくつかの方法を紹介します。
 
 <!-- ======================================================= -->
-## Preparation
 
-### Load packages {.unnumbered}  
+## 準備
 
-This code chunk shows the loading of packages required for this page. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+### パッケージの読み込み {.unnumbered}
+
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの `p_load()` を主に使用しています。`p_load()` は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** の `library()` を使用して読み込むこともできます。R のパッケージについては、[R の基礎](#basics) の章を参照してください。
 
 ```{r dates_packages, warning=F, message=F}
-# Checks if package is installed, installs if necessary, and loads package for current session
+# パッケージがインストールされているか確認し、必要に応じてパッケージをインストールし、ロードする
 
 pacman::p_load(
-  lubridate,  # general package for handling and converting dates  
-  linelist,   # has function to "guess" messy dates
-  aweek,      # another option for converting dates to weeks, and weeks to dates
-  zoo,        # additional date/time functions
-  tidyverse,  # data management and visualization  
-  rio)        # data import/export
+  lubridate,  # 日付の扱いと変換のための一般的なパッケージ  
+  linelist,   # 厄介な日付を「推測」する関数を持つ
+  aweek,      # 日付を週に、週を日付に変換する別のオプション
+  zoo,        # 日付と時間に関する追加の関数
+  tidyverse,  # データマネジメントと可視化  
+  rio)        # データのインポートとエクスポート
 ```
 
-### Import data {.unnumbered}  
+### データのインポート {.unnumbered}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to download the data to follow along step-by-step, see instruction in the [Download handbook and data] page. We assume the file is in the working directory so no sub-folders are specified in this file path.  
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、[ハンドブックとデータのダウンロード](#data_used) の章を参照してください。ここではデータのファイルが作業ディレクトリにあると仮定し、ファイルパスにはサブフォルダを指定しません。
 
 ```{r,  echo=F}
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
@@ -51,202 +48,189 @@ linelist <- import("linelist_cleaned.xlsx")
 
 ```
 
-
-
 <!-- ======================================================= -->
-## Current date  
 
-You can get the current "system" date or system datetime of your computer by doing the following with **base** R.  
+## 現在の日付
+
+コンピュータの「システム」における現在の日付や日時を取得するには、**base** R を使って次のように行います。
 
 ```{r}
-# get the system date - this is a DATE class
+# システムの日付を取得（日付型:DATE）
 Sys.Date()
 
-# get the system time - this is a DATETIME class
+# システム時刻の取得（日時型:DATETIME）
 Sys.time()
 ```
 
-
-With the **lubridate** package these can also be returned with `today()` and `now()`, respectively. `date()` returns the current date and time with weekday and month names.  
-  
-  
+**lubridate** パッケージでは、それぞれを `today()` と `now()` で返すことができます。 `date()` は現在の日付と時刻を、曜日と月名とともに返します。
 
 <!-- ======================================================= -->
-## Convert to Date  
 
-After importing a dataset into R, date column values may look like "1989/12/30", "05/06/2014", or "13 Jan 2020". In these cases, R is likely still treating these values as Character values. R must be *told* that these values are dates... and what the format of the date is (which part is Day, which is Month, which is Year, etc).  
+## 日付型（Date）に変換
 
-Once told, R converts these values to class Date. In the background, R will store the dates as numbers (the number of days from its "origin" date 1 Jan 1970). You will not interface with the date number often, but this allows for R to treat dates as continuous variables and to allow special operations such as calculating the distance between dates.  
+データセットを R にインポートすると、日付列の値が「1989/12/30」、「05/06/2014」、「13 Jan 2020」のようになることがあります。このような場合、R はこれらの値を文字として扱っている可能性が高いです。これらの値が日付であること、そしてその日付のフォーマット（どの部分が日で、どこが月で、どこが年であるかなど）を R に<u>伝える</u>必要があります。
 
-By default, values of class Date in R are displayed as YYYY-MM-DD. Later in this section we will discuss how to change the display of date values.  
+R に伝えることで、このような値を日付型（Date）に変換します。日付型（Date）に変更された日付は、システム内部では数値（「起点日」の 1970 年 1 月 1 日からの日数）として保存されています。日付を数値として扱うことはあまりありませんが、これにより日付を連続変数として扱い、日付間の距離を計算するなどの特殊な操作が可能になります。
 
-Below we present two approaches to converting a column from character values to class Date.  
+デフォルトでは、日付型（Date）の値は YYYY-MM-DD で表示されます。このセクションでは、日付の値の表示方式を変更する方法について説明します。
 
+以下では、列を文字型（character）から日付型（Date）型に変換する 2 つのアプローチを紹介します。
 
-<span style="color: darkgreen;">**_TIP:_** You can check the current class of a column with **base** R function `class()`, like `class(linelist$date_onset)`.</span>  
+<u>**ヒント：**</u> `class(linelist$date_onset)` のように、**base** R の `class()` で現在のデータ型を確認することができます。
 
-  
+### **base** R {.unnumbered}
 
-### **base** R {.unnumbered}  
+`as.Date()` （"D" が大文字であることに注意）は、オブジェクトや列を日付型（Date）に変換する標準的な **base** R の関数です。
 
-`as.Date()` is the standard, **base** R function to convert an object or column to class Date (note capitalization of "D").  
+`as.Date()` を使用する際には、以下が必要です。
 
-Use of `as.Date()` requires that:  
+-   <u>文字型（character）としてインポートされた日付データの**現在の**形式を指定</u>*します*。または、日付を数値として扱う場合は、元の日付の形式を指定します（9.4 Excel における日付 のセクションを参照）。\
+-   文字型（character）の日付データに使用する場合、すべての日付値は同じフォーマットでなければなりません（そうでない場合は、**linelist** パッケージの `guess_dates()` をお試しください）。
 
-* You *specify the **existing** format of the raw character date* or the origin date if supplying dates as numbers (see section on Excel dates)  
-* If used on a character column, all date values must have the same exact format (if this is not the case, try `guess_dates()` from the **linelist** package)  
+**まず**、**base** R の `class()` で列のデータ型を確認してください。データ型がわからない場合や表示されたデータ型が見慣れない場合（例えば "POSIXct"と表示される場合など）は、まず `as.character()` で文字型（character）に変換し、その後に日付型（Date）に変換するのが最も簡単です。
 
-**First**, check the class of your column with `class()` from **base** R. If you are unsure or confused about the class of your data (e.g. you see "POSIXct", etc.) it can be easiest to first convert the column to class Character with `as.character()`, and then convert it to class Date.  
+**次に**、`as.Date()` 内で、`format =` 引数を使って、文字型（character）の日付データの<u>現在の</u>フォーマット、つまり、どの文字が月、日、年を表すのか、どのように分けられているのかを R に伝えます。現在のフォーマットがすでに R の標準的な日付フォーマット（"YYYY-MM-DD" または "YYYY/MM/DD"）である場合は、`format =` 引数は必要ありません。
 
-**Second**, within the `as.Date()` function, use the `format =` argument to tell R the *current* format of the character date components - which characters refer to the month, the day, and the year, and how they are separated. If your values are already in one of R's standard date formats ("YYYY-MM-DD" or "YYYY/MM/DD") the `format =` argument is not necessary.  
-
-To `format = `, provide a character string (in quotes) that represents the *current* date format using the special "strptime" abbreviations below. For example, if your character dates are currently in the format "DD/MM/YYYY", like "24/04/1968", then you would use `format = "%d/%m/%Y"` to convert the values into dates. **Putting the format in quotation marks is necessary. And don't forget any slashes or dashes!**  
+`format =`　には、以下の特殊な "strptime" の略語を使用して、<u>現在の</u>日付フォーマットを表す文字列を（引用符で囲んで）指定します。例えば、"24/04/1968" のように、現時点での日付データが '"DD/MM/YYYY" のフォーマットである文字型（character）である場合、`format = "%d/%m/%Y"` を使用して値を日付型（Date）に変換します。**フォーマットを引用符で囲む必要があることに注意してください。また、スラッシュやダッシュも忘れずにつけてくださいね！**
 
 ```{r eval=F}
-# Convert to class date
+# Date 型に変換
 linelist <- linelist %>% 
   mutate(date_onset = as.Date(date_of_onset, format = "%d/%m/%Y"))
 ```
 
-Most of the strptime abbreviations are listed below. You can see the complete list by running `?strptime`.  
+以下のリストは、strptime のほぼすべての略語を含んでいます。ここにない略語をご覧になりたい方は、`?strptime` を実行すると、すべての略語を含むリストを見ることができます。
 
-%d = Day number of month (5, 17, 28, etc.)  
-%j = Day number of the year (Julian day 001-366)  
-%a = Abbreviated weekday (Mon, Tue, Wed, etc.)  
-%A = Full weekday (Monday, Tuesday, etc.)
-%w = Weekday number (0-6, Sunday is 0)  
-%u = Weekday number (1-7, Monday is 1)  
-%W = Week number (00-53, Monday is week start)  
-%U = Week number (01-53, Sunday is week start)  
-%m = Month number (e.g. 01, 02, 03, 04)  
-%b = Abbreviated month (Jan, Feb, etc.)  
-%B = Full month (January, February, etc.)  
-%y = 2-digit year  (e.g. 89)  
-%Y = 4-digit year  (e.g. 1989)  
-%h = hours (24-hr clock)  
-%m = minutes  
-%s = seconds
-%z = offset from GMT  
-%Z = Time zone (character)  
+%d = 月の日にち（5、17、28 など）\
+%j = 年の日にち（ユリウス通日 001-366）\
+%a = 曜日の省略形（Mon、Tue、Wed など）\
+%A = 完全な曜日表示（Monday、Tuesday など）\
+%w = 曜日番号（0-6、日曜日が 0）\
+%u = 曜日番号（1-7、月曜日が 1）\
+%W = 週の番号（00-53、月曜日が週の始まり）\
+%U = 週の番号（01-53、日曜日が週の始まり）\
+%m = 月の番号（例：01、02、03、04）\
+%b = 月の省略形（Jan、Feb など）\
+%B = 完全な月表示（January、February など）\
+%y = 2桁の年（例：89）\
+%Y = 4桁の年（例：1989）\
+%h = 時間（24 時間表示）\
+%m = 分\
+%s = 秒\
+%z = GMT（グリニッジ標準時）からの差\
+%Z = タイムゾーン（文字型）
 
-<span style="color: darkgreen;">**_TIP:_** The `format =` argument of `as.Date()` is *not* telling R the format you want the dates to be, but rather how to identify the date parts as they are *before* you run the command.</span>  
+<u>**ヒント：**</u>`as.Date()` の `format =` 引数は、R にコマンド実行後の日付のフォーマットを伝えるため<u>ではなく</u>、コマンド<u>実行前</u>の日付を識別するために指定します。
 
-<span style="color: darkgreen;">**_TIP:_** Be sure that in the `format =` argument you use the *date-part separator* (e.g. /, -, or space) that is present in your dates.</span>  
+<u>**ヒント：**</u>`format =` の引数には、対象の日付に使われているセパレータ（例えば、/ や - 、またはスペース）を含めることを忘れないでください。
 
-Once the values are in class Date, R will by default display them in the standard format, which is YYYY-MM-DD.
+日付が日付型（Date）に変換されると、YYYY-MM-DD というデフォルトの標準フォーマットで表示されます。
 
+### **lubridate** {.unnumbered}
 
+文字型のオブジェクトを日付に変換するには、**lubridate** パッケージを使用すると簡単です。**lubridate** パッケージは **base** R よりもシンプルで一貫性があり、日付と時刻を扱うために開発された**tidyverse** のパッケージです。**lubridate** は日付と時刻の最も標準的な手法とされ、常に推奨されます。
 
-### **lubridate** {.unnumbered}  
-
-Converting character objects to dates can be made easier by using the **lubridate** package. This is a **tidyverse** package designed to make working with dates and times more simple and consistent than in **base** R. For these reasons, **lubridate** is often considered the gold-standard package for dates and time, and is recommended whenever working with them.
-
-The **lubridate** package provides several different helper functions designed to convert character objects to dates in an intuitive, and more lenient way than specifying the format in `as.Date()`. These functions are specific to the rough date format, but allow for a variety of separators, and synonyms for dates (e.g. 01 vs Jan vs January) - they are named after abbreviations of date formats. 
-
+**lubridate** パッケージは、文字型オブジェクトを日付に変換するためのヘルパー関数をいくつか提供しています。このヘルパー関数は、`as.Date()` でフォーマットを指定ことに比べ、直観的かつ柔軟に文字型オブジェクトを変換することができます。ヘルパー関数は、柔軟な日付フォーマットに対応し、さまざまなセパレータを使用できることに加え、日付フォーマットの略語に由来した日付の同義語（例えば、January を意味する "01" や "Jan"）を使用することもできます。
 
 ```{r, }
-# install/load lubridate 
+# lubridate をインストールし、読み込む
 pacman::p_load(lubridate)
 ```
 
-The `ymd()` function flexibly converts date values supplied as **year, then month, then day**.  
+`ymd()` は、対象となる日付の値を**年、月、日**の順に柔軟に変換します。
 
 ```{r}
-# read date in year-month-day format
+# 「年月日」のフォーマットで日付を読み込み
 ymd("2020-10-11")
 ymd("20201011")
 ```
 
-The `mdy()` function flexibly converts date values supplied as **month, then day, then year**.  
+`mdy()` は、対象となる日付の値を**月、日、年**の順に柔軟に変換します。
 
 ```{r}
-# read date in month-day-year format
+# 「月日年」のフォーマットで日付を読み込み
 mdy("10/11/2020")
 mdy("Oct 11 20")
 ```
 
-The `dmy()` function flexibly converts date values supplied as **day, then month, then year**.  
+`dmy()` は、対象となる日付の値を**日、月、年**の順に柔軟に変換します。
 
 ```{r}
-# read date in day-month-year format
+# 「日月年」のフォーマットで日付を読み込み
 dmy("11 10 2020")
 dmy("11 October 2020")
 ```
 
-<!-- The `as.character()` and `as.Date()` commands can optionally be combined as:   -->
+<!-- `as.character()` と `as.Date()` コマンドはオプションとして以下のように組み合わせる   -->
 
 <!-- ```{r eval=F} -->
+
 <!-- linelist_cleaned$date_of_onset <- as.Date(as.character(linelist_cleaned$date_of_onset), format = "%d/%m/%Y") -->
+
 <!-- ``` -->
 
-If using piping, the conversion of a character column to dates with **lubridate** might look like this:  
+パイプ（`%>%`）を使って文字型（character）の列から日付型（Date）の列への変換を **lubridate** で行うと、以下のようになります。
 
 ```{r, eval=F}
 linelist <- linelist %>%
   mutate(date_onset = lubridate::dmy(date_onset))
 ```
 
-Once complete, you can run `class()` to verify the class of the column  
+コマンド実行後、`class()` を実行して列のデータ型を確認します。
 
 ```{r, eval=F}
-# Check the class of the column
+# 列のデータ型を確認
 class(linelist$date_onset)  
 ```
 
+日付が日付型（Date）に変換されると、YYYY-MM-DD というデフォルトの標準フォーマットで表示されます。
 
-Once the values are in class Date, R will by default display them in the standard format, which is YYYY-MM-DD.  
+上記の関数は、年が 4 桁のときに最も期待通りに機能します。2 桁の年は、**lubridate** が世紀として推測するため、予想外の結果になることがあります。
 
-Note that the above functions work best with 4-digit years. 2-digit years can produce unexpected results, as lubridate attempts to guess the century.  
-
-To convert a 2-digit year into a 4-digit year (all in the same century) you can convert to class character and then combine the existing digits with a pre-fix using `str_glue()` from the **stringr** package (see [Characters and strings]). Then convert to date.  
+2 桁の年を（すべて同じ世紀の 4 桁の年に変換するには、文字型（character）に変換した後、 **stringr** パッケージの `str_glue()` を用いて、既存の数字と接頭辞（prefix）を組み合わせ（[文字型・文字列型データ](#characters_strings) の章を参照）、その後日付型（Date）に変換します。
 
 ```{r}
 two_digit_years <- c("15", "15", "16", "17")
 str_glue("20{two_digit_years}")
 ```
 
+### 列の結合 {.unnumbered}
 
-
-### Combine columns {.unnumbered}  
-
-You can use the **lubridate** functions `make_date()` and `make_datetime()` to combine multiple numeric columns into one date column. For example if you have numeric columns `onset_day`, `onset_month`, and `onset_year` in the data frame `linelist`:  
+複数の数値型（numeric）の列を一つの日付型（Date）の列にまとめるには、**lubridate** 関数の `make_date()` と `make_datetime()` を利用します。例えば、データフレーム `linelist` に 数値列 `onset_day`, `onset_month`, `onset_year` がある場合、以下のようなコマンドを実行してください。
 
 ```{r, eval=F}
 linelist <- linelist %>% 
   mutate(onset_date = make_date(year = onset_year, month = onset_month, day = onset_day))
 ```
 
-
-
-
 <!-- ======================================================= -->
-## Excel dates
 
-In the background, most software store dates as numbers. R stores dates from an origin of 1st January, 1970. Thus, if you run `as.numeric(as.Date("1970-01-01))` you will get `0`. 
+## Excel における日付
 
-Microsoft Excel stores dates with an origin of either December 30, 1899 (Windows) or January 1, 1904 (Mac), depending on your operating system. See this [Microsoft guidance](https://docs.microsoft.com/en-us/office/troubleshoot/excel/1900-and-1904-date-system) for more information.  
+多くのソフトウェアでは、内部では日付を数字として保存します。R は 1970 年 1 月 1 日を起点として日付を格納します。したがって、`as.numeric(as.Date("1970-01-01))` を実行すると `0` となります。
 
-Excel dates often import into R as these numeric values instead of as characters. If the dataset you imported from Excel shows dates as numbers or characters like "41369"... use `as.Date()` (or **lubridate**'s `as_date()` function) to convert, but **instead of supplying a "format" as above, supply the Excel origin date** to the argument `origin = `.  
+Microsoft Excel では、お使いの OS に応じて、Windows の場合は 1899年12月30日、Mac の場合は 1904 年 1 月 1 日を起点として日付が保存されます。詳しくは [Microsoft の公式ドキュメント](https://docs.microsoft.com/en-us/office/troubleshoot/excel/1900-and-1904-date-system) をご覧ください。
 
-This will not work if the Excel date is stored in R as a character type, so be sure to ensure the number is class Numeric!
+このように、Excel では日付が数値として保存されているため、Excel ファイルを R でインポートすると、日付が文字ではなく数値としてインポートされることがよくあります。Excel からインポートしたデータセットで、日付が "41369" のような数字や文字として表示されている場合は `as.Date()` （または **lubridate** の `as_date()`）を使って変換しますが、先述のように**フォーマットを指定する代わりに、Excel の日付の起点日**を引数 `origin =` に指定します。
 
-<span style="color: black;">**_NOTE:_** You should provide the origin date in R's default date format ("YYYY-MM-DD").</span>
+これは、Excel の日付が文字型（character）として R に保存されている場合には機能しないため、日付が数値型（numeric）であることを必ず確認してください。
+
+<u>**注釈：**</u>起点日は、R の標準の日付形式（YYYY-MM-DD）で入力してください。
 
 ```{r, eval = FALSE}
-# An example of providing the Excel 'origin date' when converting Excel number dates
+# Excel の数字の日付を変換する際、Excel の「起点日」を入力する例
 data_cleaned <- data %>% 
-  mutate(date_onset = as.numeric(date_onset)) %>%   # ensure class is numeric
-  mutate(date_onset = as.Date(date_onset, origin = "1899-12-30")) # convert to date using Excel origin
+  mutate(date_onset = as.numeric(date_onset)) %>%   # 数値型であることを確認
+  mutate(date_onset = as.Date(date_onset, origin = "1899-12-30")) # Excelの起点日で日付に変換
 ```
 
-
-
 <!-- ======================================================= -->
-## Messy dates  
 
-The function `guess_dates()` from the **linelist** package attempts to read a "messy" date column containing dates in many different formats and convert the dates to a standard format. You can [read more online about `guess_dates()`](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html). If `guess_dates()` is not yet available on CRAN for R 4.0.2, try install via `pacman::p_load_gh("reconhub/linelist")`.
+## 厄介な日付
 
-For example `guess_dates` would see a vector of the following character dates "03 Jan 2018", "07/03/1982", and "08/20/85" and convert them to class Date as: `2018-01-03`, `1982-03-07`, and `1985-08-20`.  
+**linelist** パッケージの `guess_dates()` は、複数の異なる形式の日付を含む「厄介な」日付列を読み込んで、その日付を標準的な形式に変換してくれます。`guess_dates()` については、[こちら](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html) でさらに詳しく学ぶことができます。R 4.0.2 の CRAN に `guess_dates()` がない場合は、 `pacman::p_load_gh("reconhub/linelist")` でインストールしてください。
+
+例えば `guess_dates` は、文字の日付"03 Jan 2018", "07/03/1982", "08/20/85"のベクトルを、"2018-01-03", "1982-03-07", "1985-08-20"のように、一律で日付（Date）型に変換します。
 
 ```{r, }
 linelist::guess_dates(c("03 Jan 2018",
@@ -254,87 +238,84 @@ linelist::guess_dates(c("03 Jan 2018",
                         "08/20/85"))
 ```
 
-Some optional arguments for `guess_dates()` that you might include are:  
+`guess_dates()` のオプションの引数には、以下があります。
 
-* `error_tolerance` - The proportion of entries which cannot be identified as dates to be tolerated (defaults to 0.1 or 10%)
-* `last_date` - the last valid date (defaults to current date)  
-* `first_date` - the first valid date. Defaults to fifty years before the last_date.
-
+-   `error_tolerance` - 日付が特定できない行が許容される割合 (デフォルトは 0.1、つまり10%)
+-   `last_date` - 最も新しい有効な日付（デフォルトは現在の日付）\
+-   `first_date` - 最も古い有効な日付（デフォルトは last_date の 50 年前）
 
 ```{r eval = FALSE}
-# An example using guess_dates on the column dater_onset
-linelist <- linelist %>%                 # the dataset is called linelist
+# dater_onset 列に guess_dates を使用した例
+linelist <- linelist %>%                 # linelist というデータセット
   mutate(
-    date_onset = linelist::guess_dates(  # the guess_dates() from package "linelist"
+    date_onset = linelist::guess_dates(  # "linelist" パッケージの guess_dates()
       date_onset,
       error_tolerance = 0.1,
       first_date = "2016-01-01"
     )
 ```
 
-
-
-
 <!-- ======================================================= -->
-## Working with date-time class  
 
-As previously mentioned, R also supports a `datetime` class - a column that contains date **and** time information. As with the `Date` class, these often need to be converted from `character` objects to `datetime` objects. 
+## 日時型（datetime）に変換
 
-### Convert dates with times {.unnumbered}  
+先に述べたように、R では日付と時間の**両方の**情報を含む、日時型（datetime）もサポートしています。日付型（Date）と同様に、文字型（character）オブジェクトから日時型（datetime）オブジェクトに変換する必要があります。
 
-A standard `datetime` object is formatted with the date first, which is followed by a time component - for example  _01 Jan 2020, 16:30_. As with dates, there are many ways this can be formatted, and there are numerous levels of precision (hours, minutes, seconds) that can be supplied.  
+### 日付と時刻の変換 {.unnumbered}
 
-Luckily, **lubridate** helper functions also exist to help convert these strings to `datetime` objects. These functions are extensions of the date helper functions, with `_h` (only hours supplied), `_hm` (hours and minutes supplied), or `_hms` (hours, minutes, and seconds supplied) appended to the end (e.g. `dmy_hms()`). These can be used as shown:
+標準的な日時型（datetime）は、最初に日付があり、その後に時間要素が続く形式です（ *01 Jan 2020, 16:30* など）。日付と同様に、このフォーマットには様々な方法があり、また、提供できる精度（時、分、秒）のレベルも様々です。
 
-Convert datetime with only hours to datetime object  
+これらの文字列を日時型（datetime）に変換するための **lubridate** ヘルパー関数も存在します。これらの関数は、日付ヘルパー関数を拡張したもので、末尾に `_h`（時のみを指定）、`_hm`（時と分を指定）、`_hms`（時、分、秒を指定）を付けます（例: `dmy_hms()`）。以下のように使用します。
+
+時間のみの日時データを日時型（datetime）に変換する
 
 ```{r}
 ymd_h("2020-01-01 16hrs")
 ymd_h("2020-01-01 4PM")
 ```
 
-Convert datetime with hours and minutes to datetime object  
+時と分を含む日時データを日時型（datetime）に変換する
 
 ```{r}
 dmy_hm("01 January 2020 16:20")
 ```
 
-Convert datetime with hours, minutes, and seconds to datetime object  
+時、分、秒を含む日時データを日時型（datetime）に変換する
 
 ```{r}
 mdy_hms("01 January 2020, 16:20:40")
 ```
 
-You can supply time zone but it is ignored. See section later in this page on time zones.  
+タイムゾーンを指定することもできますが、有効ではありません。タイムゾーンについては、この章の後半、「9.11 日付・タイムゾーンの変換」のセクションを参照してください。
 
 ```{r}
 mdy_hms("01 January 2020, 16:20:40 PST")
 
 ```
 
-When working with a data frame, time and date columns can be combined to create a datetime column using `str_glue()` from **stringr** package and an appropriate **lubridate** function. See the page on [Characters and strings] for details on **stringr**.  
+データフレームを扱う場合は、**stringr** パッケージの `str_glue()` と **lubridate** パッケージの関数を用いて、日付の列と時間の列を組み合わせて日時型（datetime）の列を作成できます。**stringr** の詳細については、[文字型・文字列型データ](#characters_strings) の章を参照してください。
 
-In this example, the `linelist` data frame has a column in format "hours:minutes". To convert this to a datetime we follow a few steps:  
+以下では、`linelist` データフレームを例として使用します。`linelist` データフレームには、 "hours : minutes" という時間と分がコロン（:）で区切られているフォーマットの列があり、これを日時型（datetime）に変換していきます。
 
-1) Create a "clean" time of admission column with missing values filled-in with the column median. We do this because **lubridate** won't operate on missing values. Combine it with the column `date_hospitalisation`, and then use the function `ymd_hm()` to convert.  
+1)  まず、"hours : minutes" 列の欠損値を列の中央値で埋め、「きれいな」入院時刻の列（`time_admission_clean`）を作成します。これは **lubridate** が欠損値を処理できないためです。`time_admission_clean` 列を `date_hospitalisation` 列に結合し、 最後に `ymd_hm()` 関数を使って日時型（datetime）に変換します。
 
 ```{r, eval = FALSE}
-# packages
+# パッケージ
 pacman::p_load(tidyverse, lubridate, stringr)
 
-# time_admission is a column in hours:minutes
+# time_admission 列は hours:minutes というフォーマット
 linelist <- linelist %>%
   
-  # when time of admission is not given, assign the median admission time
+  # 入院時刻が欠損している場合は、中央値の入院時刻を割り当てる
   mutate(
     time_admission_clean = ifelse(
-      is.na(time_admission),         # if time is missing
-      median(time_admission),        # assign the median
-      time_admission                 # if not missing keep as is
+      is.na(time_admission),         # 時刻が欠損している場合、
+      median(time_admission),        # 中央値を割り当て、
+      time_admission                 # 欠損していない場合はそのままにする
   ) %>%
   
-    # use str_glue() to combine date and time columns to create one character column
-    # and then use ymd_hm() to convert it to datetime
+    # str_glue() を使用して、日付と時刻の列を結合し、1つの文字型の列を作成
+    # ymd_hm() を使って日時型に変換
   mutate(
     date_time_of_admission = str_glue("{date_hospitalisation} {time_admission_clean}") %>% 
       ymd_hm()
@@ -342,34 +323,33 @@ linelist <- linelist %>%
 
 ```
 
-### Convert times alone {.unnumbered}  
+### 時間のみの変換 {.unnumbered}
 
-If your data contain only a character time (hours and minutes), you can convert and manipulate them as times using `strptime()` from **base** R. For example, to get the difference between two of these times:  
+"hours : minutes" というように、対象となる日付データが文字型（character）で時間（時、分）しか含まれていない場合は、**base** R の `strptime()` を使って時間として変換・操作することができます。例えば、2 つの時間の差を求めるには、
 
 ```{r}
-# raw character times
+# 直接、文字で時間を入力
 time1 <- "13:45" 
 time2 <- "15:20"
 
-# Times converted to a datetime class
+# 日時型（datetime）に変換した時刻
 time1_clean <- strptime(time1, format = "%H:%M")
 time2_clean <- strptime(time2, format = "%H:%M")
 
-# Difference is of class "difftime" by default, here converted to numeric hours 
-as.numeric(time2_clean - time1_clean)   # difference in hours
+# 差分はデフォルトでは "difftime" クラスだが、ここでは数値に変換
+as.numeric(time2_clean - time1_clean)   # 時間単位（ hour ）での差分
 
 ```
 
-Note however that without a date value provided, it assumes the date is today. To combine a string date and a string time together see how to use **stringr** in the section just above. Read more about `strptime()` [here](https://rdrr.io/r/base/strptime.html).  
+ただし、日付の値が指定されていない場合は、今日の日付として変換されます。文字型の日付列と文字型の時刻列を組み合わせるには、上のセクションの **stringr** の使用方法を参照してください。`strptime()` について詳しくは[こちら](https://rdrr.io/r/base/strptime.html)をご覧ください。
 
-To convert single-digit numbers to double-digits (e.g. to "pad" hours or minutes with leading zeros to achieve 2 digits), see this ["Pad length" section of the Characters and strings page](#str_pad).  
+一桁の数字を二桁に変換するには（例えば、時間や分を先頭のゼロで"埋めて" 2 桁にするなど）、[文字型・文字列型データの章の「文字列を伸長する」のセクション](#str_pad)をご覧ください。
 
+### 時間の抽出 {.unnumbered}
 
-### Extract time {.unnumbered}  
+**lubridate** の `hour()`, `minute()`, `second()` で時刻の要素を抽出できます。
 
-You can extract elements of a time with `hour()`, `minute()`, or `second()` from **lubridate**.  
-
-Here is an example of extracting the hour, and then classifing by part of the day. We begin with the column `time_admission`, which is class Character in format "HH:MM". First, the `strptime()` is used as described above to convert the characters to datetime class. Then, the hour is extracted with `hour()`, returning a number from 0-24. Finally, a column `time_period` is created using logic with `case_when()` to classify rows into Morning/Afternoon/Evening/Night based on their hour of admission.  
+ここでは、時刻を抽出して一日の区分で分類する例を示します。 `time_admission` という入院時刻を表す列 は、"HH:MM" というフォーマットの文字型（character）です。まず、上述した `strptime()` を使って文字を日時型（datetime）に変換します。次に `hour()` で時間を抽出すると、0 ～ 24 の数値が返されます。最後に、`case_when()` を用いて `time_period` という列を作成し、入院時刻に基づいて午前（Morning）、午後（Afternoon）、夕方（Evening）、夜（Night）の 4 つに分類します。
 
 ```{r}
 linelist <- linelist %>%
@@ -381,283 +361,270 @@ linelist <- linelist %>%
     hour_admit >=21 | hour_admit <= 6 ~ "Night"))
 ```
 
-To learn more about `case_when()` see the page on [Cleaning data and core functions].  
+`case_when()` については、[データのクリーニングと主要関数](#cleaning) の章をご覧ください。
 
 <!-- ======================================================= -->
-## Working with dates   
 
-`lubridate` can also be used for a variety of other functions, such as **extracting aspects of a date/datetime**, **performing date arithmetic**, or **calculating date intervals**
+## 日付の操作
 
-Here we define a date to use for the examples:  
+`lubridate` は他にも様々な機能があります。例えば、**日付や日時から一部を抽出**、**日付の演算**、**日付の間隔を計算**などです。
+
+まず、例に用いる日付を定義します。
 
 ```{r, }
-# create object of class Date
+# 日時型（Date）のオブジェクトを作成
 example_date <- ymd("2020-03-01")
 ```
 
-### Extract date components {.unnumbered}  
+### 日付成分の抽出 {.unnumbered}
 
-You can extract common aspects such as month, day, weekday:  
+月、日、曜日などの共通する部分を抽出します。
 
 ```{r}
-month(example_date)  # month number
-day(example_date)    # day (number) of the month
-wday(example_date)   # day number of the week (1-7)
+month(example_date)  # 月番号
+day(example_date)    # 日にち
+wday(example_date)   # 曜日番号（1-7）
 ```
 
-You can also extract time components from a `datetime` object or column. This can be useful if you want to view the distribution of admission times.  
+また、日時型（datetime）のオブジェクトや列から時刻を抽出できます。これは、入院時刻の分布を見たい場合に便利です。
 
 ```{r, eval=F}
 example_datetime <- ymd_hm("2020-03-01 14:45")
 
-hour(example_datetime)     # extract hour
-minute(example_datetime)   # extract minute
-second(example_datetime)   # extract second
+hour(example_datetime)     # 時の抽出
+minute(example_datetime)   # 分の抽出
+second(example_datetime)   # 秒の抽出
 ```
 
-There are several options to retrieve weeks. See the section on Epidemiological weeks below.  
+週を抽出するにはいくつかオプションがあります。以下の「疫学週」のセクションを参照してください。
 
-Note that if you are seeking to *display* a date a certain way (e.g. "Jan 2020" or "Thursday 20 March" or "Week 20, 1977") you can do this more flexibly as described in the section on Date display.  
+特定の表記で日付を表示したい場合（「Jan 2020」や「Thursday 20 March」、「Week 20, 1977」など）は、次の「日付の表示」のセクションで説明するように、より柔軟に対応することができます。
 
+### 日付の計算 {.unnumbered}
 
-### Date math {.unnumbered}  
-
-You can add certain numbers of days or weeks using their respective function from **lubridate**.  
+日数や週数を足すには、**lubridate** の関数を使用します。
 
 ```{r}
-# add 3 days to this date
+# 日付に3日分足す
 example_date + days(3)
   
-# add 7 weeks and subtract two days from this date
+# 日付に7週分足し、2日分引く
 example_date + weeks(7) - days(2)
 ```
 
-### Date intervals {.unnumbered}  
+### 日付の間隔 {.unnumbered}
 
-The difference between dates can be calculated by:  
+日付の間隔は、以下の方法で計算できます。
 
-1. Ensure both dates are of class date  
-2. Use subtraction to return the "difftime" difference between the two dates  
-3. If necessary, convert the result to numeric class to perform subsequent mathematical calculations  
+1.  両方の日付が日付型（Date）であることを確認する\
+2.  引き算で日付の差 "difftime" を返す\
+3.  必要に応じて、結果を数値型（numeric）に変換する
 
-Below the interval between two dates is calculated and displayed. You can find intervals by using the subtraction "minus" symbol on values that are class Date. Note, however that the class of the returned value is "difftime" as displayed below, and must be converted to numeric. 
+以下では、2 つの日付の間隔を計算しています。日付型（Date）の値に減算記号（マイナス）を使用して、間隔を求められます。ただし、返される値のデータ型は "difftime" であり、数値に変換する必要があります。
 
 ```{r}
-# find the interval between this date and Feb 20 2020 
+# example_dateから2020年2月20日までの間隔を求める 
 output <- example_date - ymd("2020-02-20")
-output    # print
+output    # 出力
 class(output)
 ```
 
-To do subsequent operations on a "difftime", convert it to numeric with `as.numeric()`. 
+"difftime" に対して追加の操作を行うには、`as.numeric()` で数値型（numeric）に変換します。
 
-This can all be brought together to work with data - for example:
+パイプ（`%>%`）によって、これらを一連の流れで操作できます。
 
 ```{r, eval = F}
-pacman::p_load(lubridate, tidyverse)   # load packages
+pacman::p_load(lubridate, tidyverse)   # パッケージを読み込む
 
 linelist <- linelist %>%
   
-  # convert date of onset from character to date objects by specifying dmy format
+  # dmy フォーマットを指定して、発症日を文字から日付オブジェクトに変換
   mutate(date_onset = dmy(date_onset),
          date_hospitalisation = dmy(date_hospitalisation)) %>%
   
-  # filter out all cases without onset in march
+  # 3 月に発症していないケースをすべて除外
   filter(month(date_onset) == 3) %>%
     
-  # find the difference in days between onset and hospitalisation
+  # 発症から入院までの日数の差を求める
   mutate(days_onset_to_hosp = date_hospitalisation - date_of_onset)
 ```
 
-
-
-In a data frame context, if either of the above dates is missing, the operation will fail for that row. This will result in an `NA` instead of a numeric value. When using this column for calculations, be sure to set the `na.rm = ` argument to `TRUE`. For example:
+データフレームでは、上記の日付のいずれかが欠損していると操作が失敗し、数値ではなく `NA` が表示されます。この列を計算に使用する場合は、以下のように必ず `na.rm =` 引数を `TRUE` に設定してください。
 
 ```{r, eval = FALSE}
-# calculate the median number of days to hospitalisation for all cases where data are available
+# データが欠損していない症例について、発症から入院までの日数の中央値を算出
 median(linelist_delay$days_onset_to_hosp, na.rm = T)
 ```
 
-
 <!-- ======================================================= -->
-## Date display  
 
-Once dates are the correct class, you often want them to display differently, for example to display as "Monday 05 January" instead of "2018-01-05". You may also want to adjust the display in order to then group rows by the date elements displayed - for example to group by month-year.  
+## 日付の表示
 
-### `format()` {.unnumbered}  
+日付を正しいデータ型にした後、「2018-01-05」ではなく「Monday 05 January」など、データそのものとは異なる表示にしたいことがあります。また表示されている日付の要素でグループ化し、表示を調整することもあります（例：年と月でグループ化）。
 
-Adjust date display with the **base** R function `format()`. This function accepts a character string (in quotes) specifying the *desired* output format in the "%" strptime abbreviations (the same syntax as used in `as.Date()`). Below are most of the common abbreviations.  
+### `format()` {.unnumbered}
 
-Note: using `format()` will convert the values to class Character, so this is generally used towards the end of an analysis or for display purposes only! You can see the complete list by running `?strptime`.  
+日付の表示を調整するには、**base** R に含まれている関数である `format()` を使用します。この関数を使用する際は、"%" で始まる strptime 略語（ `as.Date()` で使用されるのと同じ構文）を用いて、<u>希望の</u>出力フォーマットを文字列（引用符で囲まれたもの）で指定します。以下は、一般的な略語の例です。
 
-%d = Day number of month (5, 17, 28, etc.)  
-%j = Day number of the year (Julian day 001-366)  
-%a = Abbreviated weekday (Mon, Tue, Wed, etc.)  
-%A = Full weekday (Monday, Tuesday, etc.)  
-%w = Weekday number (0-6, Sunday is 0)  
-%u = Weekday number (1-7, Monday is 1)  
-%W = Week number (00-53, Monday is week start)  
-%U = Week number (01-53, Sunday is week start)  
-%m = Month number (e.g. 01, 02, 03, 04)  
-%b = Abbreviated month (Jan, Feb, etc.)  
-%B = Full month (January, February, etc.)  
-%y = 2-digit year  (e.g. 89)  
-%Y = 4-digit year  (e.g. 1989)  
-%h = hours (24-hr clock)  
-%m = minutes  
-%s = seconds  
-%z = offset from GMT  
-%Z = Time zone (character)
+注意：`format()` を使用すると、値が文字型（character）に変換されます。そのため、データ分析や処理が終わった後に使用するか、または、表示のみに使用されます。 strptime のすべての略語の一覧は、`?strptime` を実行してご覧ください。
 
-An example of formatting today's date:  
+%d = 月の日にち（5、17、28 など）\
+%j = 年の日にち（ユリウス通日 001-366）\
+%a = 曜日の省略形（Mon、Tue、Wed など）\
+%A = 完全な曜日表示（Monday、Tuesday など）\
+%w = 曜日番号（0-6、日曜日が 0）\
+%u = 曜日番号（1-7、月曜日が 1）\
+%W = 週の番号（00-53、月曜日が週の始まり）\
+%U = 週の番号（01-53、日曜日が週の始まり）\
+%m = 月の番号（例：01、02、03、04）\
+%b = 月の省略形（Jan、Feb など）\
+%B = 完全な月表示（January、February など）\
+%y = 2桁の年（例：89）\
+%Y = 4桁の年（例：1989）\
+%h = 時間（24 時間表示）\
+%m = 分\
+%s = 秒\
+%z = GMT（グリニッジ標準時）からの差\
+%Z = タイムゾーン（文字型）
+
+以下は、今日の日付のフォーマットの例です。
 
 ```{r}
-# today's date, with formatting
+# フォーマットした今日の日付
 format(Sys.Date(), format = "%d %B %Y")
 
-# easy way to get full date and time (default formatting)
+# 日付と時間を簡単に取得する（デフォルトのフォーマット）
 date()
 
-# formatted combined date, time, and time zone using str_glue() function
+# str_glue() を使って、フォーマットした日付、時刻、タイムゾーンを組み合わせる
 str_glue("{format(Sys.Date(), format = '%A, %B %d %Y, %z  %Z, ')}{format(Sys.time(), format = '%H:%M:%S')}")
 
-# Using format to display weeks
+# フォーマットを使用して週を表示
 format(Sys.Date(), "%Y Week %W")
 ```
 
-Note that if using `str_glue()`, be aware of that within the expected double quotes " you should only use single quotes (as above).  
+なお、`str_glue()` を使用する場合は、二重引用符（`""`）の中では一重引用符（`' '`）を使用することに注意してください。
 
+### 年月 {.unnumbered}
 
-### Month-Year {.unnumbered}  
+日付型（Date）の列を月と年に変換するには、 **zoo** パッケージの `as.yearmon()` を使うことをおすすめします。これは、日付を適切な順序で yearmon 型に変換する関数です。もし `format(column, "%Y %B")` を使用した場合、文字型（character）に変換され、値がアルファベット順に並んでしまいます。
 
-To convert a Date column to Month-year format, we suggest you use the function `as.yearmon()` from the **zoo** package. This converts the date to class "yearmon" and retains the proper ordering. In contrast, using `format(column, "%Y %B")` will convert to class Character and will order the values alphabetically (incorrectly). 
-
-Below, a new column `yearmonth` is created from the column `date_onset`, using the `as.yearmon()` function. The default (correct) ordering of the resulting values are shown in the table.  
+以下では、`as.yearmon()` 関数を使って、`date_onset` 列から `yearmonth` 列を新たに作成しています。デフォルト（正しい）の順序で得られた結果を以下のテーブルに示します。
 
 ```{r}
-# create new column 
+# 新しい列の作成 
 test_zoo <- linelist %>% 
      mutate(yearmonth = zoo::as.yearmon(date_onset))
 
-# print table
+# テーブルの出力
 table(test_zoo$yearmon)
 ```
 
-In contrast, you can see how only using `format()` does achieve the desired display format, but not the correct ordering.  
+一方、`format()` を使うと、希望の表示形式にはなりますが、正しい順序にはなりません。
 
 ```{r}
-# create new column
+# 新しい列の作成
 test_format <- linelist %>% 
      mutate(yearmonth = format(date_onset, "%b %Y"))
 
-# print table
+# テーブルの出力
 table(test_format$yearmon)
 ```
 
-Note: if you are working within a `ggplot()` and want to adjust how dates are *displayed* only, it may be sufficient to provide a strptime format to the `date_labels = ` argument in `scale_x_date()` - you can use `"%b %Y"` or `"%Y %b"`. See the [ggplot tips] page.  
+注意： `ggplot()` を用いる際、日付の<u>表示</u>のみを調整したい場合は、`scale_x_date()` の `date_labels =` 引数に strptime フォーマットを使用するだけで十分な場合があります。この場合 `"%b %Y"` または `"%Y %b"` を使用できます。詳しくは、[ggplot のヒント](#ggplot-tips) の章をご覧ください。
 
-
-**zoo** also offers the function `as.yearqtr()`, and you can use `scale_x_yearmon()` when using `ggplot()`.  
-
-
+**zoo** には `as.yearqtr()` という関数もあります。また、`ggplot()` を用いる際には `scale_x_yearmon()` を使用できます。
 
 <!-- ======================================================= -->
-## Epidemiological weeks {#dates_epi_wks}
 
-### **lubridate** {.unnumbered}  
+## 疫学週 {#dates_epi_wks}
 
-See the page on [Grouping data] for more extensive examples of grouping data by date. Below we briefly describe grouping data by weeks.  
+### **lubridate** {.unnumbered}
 
-We generally recommend using the `floor_date()` function from **lubridate**, with the argument `unit = "week"`. This rounds the date down to the "start" of the week, as defined by the argument `week_start = `. The default week start is 1 (for Mondays) but you can specify any day of the week as the start (e.g. 7 for Sundays). `floor_date()` is versitile and can be used to round down to other time units by setting `unit = ` to "second", "minute", "hour", "day", "month", or "year".  
+日付ごとにデータをグループ化する例は、[データのグループ化](#grouping) の章をご覧ください。以下では、週ごとにデータをグループ化する際の注意点について簡単に説明します。
 
-The returned value is the start date of the week, in Date class. Date class is useful when plotting the data, as it will be easily recognized and ordered correctly by `ggplot()`.
+一般的には、 **lubridate** パッケージに含まれている関数である `floor_date()` に引数 `unit = "week"` を指定して使用することをおすすめします。これは、引数 `week_start =` で定義される週の「開始日」に日付を丸めるものです。デフォルトの週の開始日は 1（月曜日）ですが、週の任意の日を開始日として指定することができます（例：日曜日は 7）。`floor_date()` は汎用性があり、`unit =` を "second", "minute", "hour", "day", "month", "year"に設定することで、他の時間単位への切り捨てに使用することができます。
 
-If you are only interested in adjusting dates to *display* by week in a plot, see the section in this page on Date display. For example when plotting an epicurve you can format the date display by providing the desired strptime "%" nomenclature. For example, use "%Y-%W" or "%Y-%U" to return the year and week number (given Monday or Sunday week start, respectively).  
+返される値は、日付型（Date）の週の開始日です。日付型（Date）はデータをプロットする際に便利で、`ggplot()` に認識されやすく、正しい順序で表示されます。
 
-### Weekly counts {.unnumbered}  
+プロットの中で週ごとに日付を調整して<u>表示</u>するだけなら、この章の「日付の表示」のセクションを参照してください。例えば、エピカーブをプロットする際に、必要な strptime の "%" を指定することで、希望の日付表示をフォーマットすることができます。例えば、"%Y-%W" または "%Y-%U" を使用すると、年と週の番号が返されます（それぞれ月曜または日曜の週の開始日を指定）。
 
-See the page on [Grouping data] for a thorough explanation of grouping data with `count()`, `group_by()`, and `summarise()`. A brief example is below.  
+### 週ごとのカウント {.unnumbered}
 
-1) Create a new 'week' column with `mutate()`, using `floor_date()` with `unit = "week"`  
-2) Get counts of rows (cases) per week with `count()`; filter out any cases with missing date  
-3) Finish with `complete()` from **tidyr** to ensure that *all* weeks appear in the data - even those with no rows/cases. By default the count values for any "new" rows are NA, but you can make them 0 with the `fill = ` argument, which expects a named list (below, `n` is the name of the counts column).  
+`count()`, `group_by()`, `summarise()`によるデータのグループ化については、[データのグループ化](#grouping) の章で詳しく説明しています。以下に簡単な例を示します。
+
+1)  `mutate()` で新しく "week" という列を作成し、`floor_date()` で `unit = "week"` を使用する。\
+2)  週ごとの行数（症例数）を `count()` で取得し、日付が欠損しているケースを除外する。\
+3)  **tidyr** の `complete()` を使用し、行や症例がないものも含めて、<u>すべての</u>週がデータに現れるようにする。デフォルトでは、「新しい」行のカウント値は NA だが、 `fill =` 引数で 0 にすることができる。 `fill =` 引数では、名前付きリストを指定する（以下、`n` はカウント列の名前）。
 
 ```{r}
-# Make aggregated dataset of weekly case counts
+# 毎週の症例数を集計したデータセットの作成
 weekly_counts <- linelist %>% 
-  drop_na(date_onset) %>%             # remove cases missing onset date
-  mutate(weekly_cases = floor_date(   # make new column, week of onset
+  drop_na(date_onset) %>%             # 発症日が欠損のケースを削除
+  mutate(weekly_cases = floor_date(   # 発症週の新しい列を作成
     date_onset,
     unit = "week")) %>%            
-  count(weekly_cases) %>%           # group data by week and count rows per group (creates column 'n')
-  tidyr::complete(                  # ensure all weeks are present, even those with no cases reported
-    weekly_cases = seq.Date(          # re-define the "weekly_cases" column as a complete sequence,
-      from = min(weekly_cases),       # from the minimum date
-      to = max(weekly_cases),         # to the maxiumum date
-      by = "week"),                   # by weeks
-    fill = list(n = 0))             # fill-in NAs in the n counts column with 0
+  count(weekly_cases) %>%           # 週ごとにグループ化し、グループごとの行数をカウント（「n」という列を作成）
+  tidyr::complete(                  # 症例が報告されていない週も含めて、すべての週が存在するようにする
+    weekly_cases = seq.Date(          # "weekly_cases" という列を完全なシーケンスとして再定義
+      from = min(weekly_cases),       # 最小の日付から
+      to = max(weekly_cases),         # 最大の日付まで
+      by = "week"),                   # 週ごとに
+    fill = list(n = 0))             # n という列の NA を 0 で埋める
 ```
 
-Here are the first rows of the resulting data frame:  
+以下に、上のコマンドを実行して出力されたデータフレームの最初の行を示します。
 
 ```{r message=FALSE, echo=F}
-DT::datatable(head(weekly_counts, 20), rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(head(weekly_counts, 20), rownames = FALSE, options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
+### 疫学週 の代替案 {.unnumbered}
 
-### Epiweek alternatives {.unnumbered}  
+なお、**lubridate** には `week()`、 `epiweek()`、`isoweek()` という関数があり、それぞれ開始日などが微妙に異なります。しかし、一般的には `floor_date()` があれば十分です。これらの関数の詳細については、コンソールに `?week` と入力するか、[こちら](https://www.rdocumentation.org/packages/lubridate/versions/1.7.4/topics/week) をご覧ください。
 
-Note that **lubridate** also has functions `week()`, `epiweek()`, and `isoweek()`, each of which has slightly different start dates and other nuances. Generally speaking though, `floor_date()` should be all that you need. Read the details for these functions by entering `?week` into the console or reading the documentation [here](https://www.rdocumentation.org/packages/lubridate/versions/1.7.4/topics/week). 
+疫学週を設定するために、**aweek** パッケージの使用を検討してみてください。このパッケージについては、[RECON のウェブサイト](https://www.repidemicsconsortium.org/aweek/)で詳しく説明されています。このパッケージには、`date2week()` と `week2date()` という関数があり、`week_start = "Monday"` で週の開始日を設定することができます。このパッケージを使用すると、最も簡単に "week" フォーマット（例： "2020-W12"）で日付を出力することができます。もう一つの **aweek** の利点は、`date2week()` を日付列に適用すると、返される列（週形式）が自動的に因子型（factor）になり、対象期間内のすべての週のレベルが含まれることです（これにより、上述の `complete()` の余分なステップを回避できます）。ただし、**aweek** には、日付を月や年などの週以外の時間単位に丸める機能はありません。
 
-
-You might consider using the package **aweek** to set epidemiological weeks. You can read more about it [on the RECON website](https://www.repidemicsconsortium.org/aweek/). It has the functions `date2week()` and `week2date()` in which you can set the week start day with `week_start = "Monday"`. This package is easiest if you want "week"-style outputs (e.g. "2020-W12"). Another advantage of **aweek** is that when `date2week()` is applied to a date column, the returned column (week format) is automatically of class Factor and includes levels for all weeks in the time span (this avoids the extra step of `complete()` described above). However, **aweek** does not have the functionality to round dates to other time units such as months, years, etc.  
-
-
-Another alternative for time series which also works well to show a a "week" format ("2020 W12") is `yearweek()` from the package **tsibble**, as demonstrated in the page on [Time series and outbreak detection].  
-
+時系列の代わりに、"week" フォーマット（"2020 W12"）を表示するのにも適しているのが、パッケージ **tsibble** の `yearweek()` です。これは [時系列分析とアウトブレイクの検出](#time_series) の章で紹介しています。
 
 <!-- ======================================================= -->
-## Converting dates/time zones
 
-When data is present in different time time zones, it can often be important to standardise this data in a unified time zone. This can present a further challenge, as the time zone component of data must be coded manually in most cases.
+## 日付・タイムゾーンの変換
 
-In R, each *datetime* object has a timezone component. By default, all datetime objects will carry the local time zone for the computer being used - this is generally specific to a *location* rather than a named timezone, as time zones will often change in locations due to daylight savings time. It is not possible to accurately compensate for time zones without a time component of a date, as the event a date column represents cannot be attributed to a specific time, and therefore time shifts measured in hours cannot be reasonably accounted for.
+様々なタイムゾーンでデータが記録された場合、そのデータを一つのタイムゾーンで標準化することが重要になります。これには未だ解決されていない課題があり、多くの場合、データのタイムゾーン要素を手作業でコード化しなければなりません。
 
-To deal with time zones, there are a number of helper functions in lubridate that can be used to change the time zone of a datetime object from the local time zone to a different time zone. Time zones are set by attributing a valid tz database time zone to the datetime object. A list of these can be found here - if the location you are using data from is not on this list, nearby large cities in the time zone are available and serve the same purpose. 
+R では、<u>日時型（datetime）</u>オブジェクトはタイムゾーン要素を含んでいます。デフォルトでは、すべての日時型（datetime）オブジェクトには、コンピュータのローカルタイムゾーンが適用されます。これは、サマータイムによりタイムゾーンが変更されることが多いため、通常は名前付きのタイムゾーンではなく<u>場所に</u>固有のものです。日付の列が表すイベントは特定の時間に起因するものではないため、時間単位でのタイムシフトを合理的に説明することはできませんので、日付の時間要素がなければタイムゾーンを正確に補正することはできません。
 
-https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+**lubridate** には日時型（datetime）オブジェクトのタイムゾーンを別のタイムゾーンに変更するためのヘルパー関数がいくつかあります。tz データベースのタイムゾーンを日時型（datetime）オブジェクトに適用することで、タイムゾーンの設定が行えます。データを使用している場所が以下の一覧にない場合は、近隣の大都市のタイムゾーンが利用可能です。
 
+<https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>
 
 ```{r}
-# assign the current time to a column
+# 現在の時刻を列に割り当て
 time_now <- Sys.time()
 time_now
 
-# use with_tz() to assign a new timezone to the column, while CHANGING the clock time
+# with_tz()を使用して、時刻を変更しながら、新しいタイムゾーンをカラムに割り当て
 time_london_real <- with_tz(time_now, "Europe/London")
 
-# use force_tz() to assign a new timezone to the column, while KEEPING the clock time
+# force_tz()を使って、時刻を維持したまま、新しいタイムゾーンをカラムに割り当て
 time_london_local <- force_tz(time_now, "Europe/London")
 
 
-# note that as long as the computer that was used to run this code is NOT set to London time,
-# there will be a difference in the times 
-# (the number of hours difference from the computers time zone to london)
+# このコードを実行したコンピュータがロンドン時間に設定されていない場合は
+# 時間の差が発生する
+# (コンピュータのタイムゾーンとロンドンのタイムゾーンとの差の時間数)
 time_london_real - time_london_local
 
 ```
 
-This may seem largely abstract, and is often not needed if the user isn't working across time zones.  
-
-
-
-
+この作業は抽象的に見えるかもしれません。複数のタイムゾーンにまたがったデータを扱わなければ、このような作業は不要でしょう。
 
 <!-- ======================================================= -->
-## Lagging and leading calculations  
 
-`lead()` and `lag()` are functions from the **dplyr** package which help find previous (lagged) or subsequent (leading) values in a vector - typically a numeric or date vector. This is useful when doing calculations of change/difference between time units.  
+## 前後の値の計算
 
+`lead()` と `lag()` は **dplyr** パッケージの関数で、ベクトル（通常は数値や日付のベクトル）の中から前の値（遅れた値）や後の値（先行する値）を見つけるのに役立ちます。これは、時間単位での変化や差を計算するときに便利です。
 
 ```{r, echo=F}
 counts <- import(here("data", "example", "district_weekly_count_data.xlsx")) %>% 
@@ -665,24 +632,23 @@ counts <- import(here("data", "example", "district_weekly_count_data.xlsx")) %>%
   mutate(Date = as.Date(Date),
          week_start = lubridate::floor_date(Date, "week")) %>%
   group_by(week_start) %>% 
-  summarize(cases_wk = sum(Cases, na.rm=T)) %>% 
+  summarize(cases_wk = sum(Cases, na.rm = T)) %>% 
   complete(week_start = seq.Date(min(week_start), max(week_start), by = "week"), fill = list(cases_wk = 0))
 ```
 
-Let's say you want to calculate the difference in cases between a current week and the previous one. The data are initially provided in weekly counts as shown below.  
+例えば、現在の週と前の週の症例数の差を計算したいとします。元のデータは、以下のように週ごとのカウントになっています。
 
 ```{r message=FALSE, echo=F}
-DT::datatable(counts, rownames = FALSE,  options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(counts, rownames = FALSE,  options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-**When using `lag()` or `lead()` the order of rows in the dataframe is very important! - pay attention to whether your dates/numbers are ascending or descending**  
+**`lag()` や `lead()` を使用する際には、データフレーム内の行の順序が非常に重要です。日付や数字が昇順か降順かに注意してください**。
 
-First, create a new column containing the value of the previous (lagged) week.  
+まず、前週（lagged）の値を含む新しい列を作成します。
 
-* Control the number of units back/forward with `n = ` (must be a non-negative integer)  
-* Use `default = ` to define the value placed in non-existing rows (e.g. the first row for which there is no lagged value). By default this is `NA`.  
-* Use `order_by = TRUE` if your the rows are not ordered by your reference column  
-
+-   `n =` で前後のユニット数（非負の整数）を指定する。\
+-   存在しない行（前の値がない最初の行など）に置かれる値を定義するには、`default =` を使用する。デフォルトは `NA` 。\
+-   参照する列が順序付けられていない場合は、`order_by = TRUE` を使用する。
 
 ```{r}
 counts <- counts %>% 
@@ -690,10 +656,10 @@ counts <- counts %>%
 ```
 
 ```{r message=FALSE, echo=F}
-DT::datatable(counts, rownames = FALSE,  options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(counts, rownames = FALSE,  options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-Next, create a new column which is the difference between the two cases columns:  
+次に、2 つの症例の列の差分となる新しい列を作成します。
 
 ```{r}
 counts <- counts %>% 
@@ -702,18 +668,17 @@ counts <- counts %>%
 ```
 
 ```{r message=FALSE, echo=F}
-DT::datatable(counts, rownames = FALSE,  options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
+DT::datatable(counts, rownames = FALSE,  options = list(pageLength = 5, scrollX = T), class = 'white-space: nowrap')
 ```
 
-
-You can read more about `lead()` and `lag()` in the documentation [here](https://dplyr.tidyverse.org/reference/lead-lag.html) or by entering `?lag` in your console.  
-
+`lead()` と `lag()` については、[こちら](https://dplyr.tidyverse.org/reference/lead-lag.html) をご覧いただくか、コンソールで `?lag` と入力してください。
 
 <!-- ======================================================= -->
-## Resources  
 
-**lubridate** [tidyverse page](https://lubridate.tidyverse.org/)  
-**lubridate** RStudio [cheatsheet](https://rawgit.com/rstudio/cheatsheets/master/lubridate.pdf)  
-R for Data Science page on [dates and times](https://r4ds.had.co.nz/dates-and-times.html)  
-[Online tutorial](https://www.statmethods.net/input/dates.html)
+## 参考資料
+
+**lubridate** [tidyverse page](https://lubridate.tidyverse.org/)\
+**lubridate** RStudio [cheatsheet](https://rawgit.com/rstudio/cheatsheets/master/lubridate.pdf)\
+R for Data Science page on [dates and times](https://r4ds.had.co.nz/dates-and-times.html)\
+[Online tutorial](https://www.statmethods.net/input/dates.html)\
 [Date formats](https://www.r-bloggers.com/2013/08/date-formats-in-r/)
