@@ -1,75 +1,75 @@
 
-# Dashboards with R Markdown { }
+# R Markdownで作るダッシュボード {flexdashboard}
 
 ```{r out.width = "100%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_output.png"))
 ```
 
-This page will cover the basic use of the **flexdashboard** package. This package allows you to easily format R Markdown output as a dashboard with panels and pages. The dashboard content can be text, static figures/tables or interactive graphics.  
+この章では、**flexdashboard** パッケージの基本的な使い方を解説します。このパッケージは、R Markdown の出力形式をパネルやページを持つダッシュボードとして簡単に整形できます。ダッシュボードの表示内容は、文章、図・表、動的表示などで構成できます。
 
-Advantages of **flexdashboard**:  
+**flexdashboard** パッケージを利用するメリットは下記です。
 
-* It requires minimal non-standard R coding - with very little practice you can quickly create a dashboard  
-* The dashboard can usually be emailed to colleagues as a self-contained HTML file - no server required  
-* You can combine **flexdashboard** with **shiny**, **ggplotly**, and other *"html widgets"* to add interactivity  
+* ダッシュボード作成専用の R コード記述は最小限で済むため、わずかな練習ですぐにダッシュボードを作成できます。
+* 作成したダッシュボードは、自己完結型の HTML ファイルとして同僚に電子メールで送信できます。HTML ファイルを表示するための配信サーバは不要です。
+* **flexdashboard** パッケージは、**shiny** パッケージや **ggplotly** パッケージなどの <u>"HTML ウィジェット"</u> と組み合わせて、動的なダッシュボードにできます。
 
-Disadvantages of **flexdashboard**:  
+**flexdashboard** パッケージを利用するデメリットは下記です。
 
-* Less customization as compared to using **shiny** alone to create a dashboard  
-
-
-Very comprehensive tutorials on using **flexdashboard** that informed this page can be found in the Resources section. Below we describe the core features and give an example of building a dashboard to explore an outbreak, using the case `linelist` data.  
+* **shiny** パッケージでダッシュボードを作成するのに比べて、カスタマイズ性に劣ります。
 
 
-## Preparation
+この章で紹介している **flexdashboard** パッケージの使い方に関する包括的なチュートリアルは、参考資料セクションにあります。以降では、パッケージの主要な機能を説明した上で、`linelist` データを使ってアウトブレイクを調査するダッシュボードの構築例を紹介します。  
 
-### Load packages {.unnumbered}  
 
-In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+## 準備
+
+### パッケージの読み込み {.unnumbered}  
+
+このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの `p_load()` を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** （以下、**base** R）の `library()` を使用して読み込むこともできます。R のパッケージに関する詳細は [R の基礎](#basics) の章をご覧ください。
 
 ```{r}
 pacman::p_load(
-  rio,             # data import/export     
-  here,            # locate files
-  tidyverse,       # data management and visualization
-  flexdashboard,   # dashboard versions of R Markdown reports
-  shiny,           # interactive figures
-  plotly           # interactive figures
+  rio,             # データのインポート・エクスポート
+  here,            # ファイルパスの指定
+  tidyverse,       # データの加工と可視化
+  flexdashboard,   # R Markdown レポートのダッシュボード版
+  shiny,           # 動的なダッシュボード、作図
+  plotly           # 動的な作図
 )
 ```
 
-### Import data {.unnumbered}  
+### データのインポート {.unnumbered}  
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import data with the `import()` function from the **rio** package (it handles many file types like .xlsx, .csv, .rds - see the [Import and export] page for details). 
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは **rio** パッケージの `import()` を利用してインポートしましょう（**rio** パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）
 
 ```{r, echo=F}
-# import the linelist into R
+# linelist を R にインポートする
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
-# import the linelist
+# linelist をインポートする
 linelist <- import("linelist_cleaned.rds")
 ```
 
-The first 50 rows of the linelist are displayed below.
+linelist の最初の 50 行を以下に表示します。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# linelist データを表形式で表示する
 DT::datatable(head(linelist, 50), rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
-## Create new R Markdown  
+## 新規 R Markdown ファイルを作成する
 
-After you have installed the package, create a new R Markdown file by clicking through to *File > New file > R Markdown*. 
+パッケージをインストールをした後、<u>File > New file > R Markdown</u> と選択して新規 R Markdown ファイルを作成してください。
 
 ```{r out.width = "100%", fig.align = "center", echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_new1.png"))
 ```
 
 
-In the window that opens, select "From Template" and select the "Flex Dashboard" template. You will then be prompted to name the document. In this page's example, we will name our R Markdown as "outbreak_dashboard.Rmd".  
+開いたウィンドウから "From Template" を選択して、次に、"Flex Dashboard" テンプレートを選んでください。その後、ドキュメントの名前をつけるように促されます。今回の例では、R Markdown ファイルを "outbreak_dashboard.Rmd" と命名しましょう。
   
 
 ```{r out.width = "100%", out.height="75%", fig.align = "center", echo=F}
@@ -79,15 +79,15 @@ knitr::include_graphics(here::here("images", "flexdashboard_new2.png"))
 
 
 
-## The script  
+## スクリプト  
 
-The script is an R Markdown script, and so has the same components and organization as described in the page on [Reports with R Markdown]. We briefly re-visit these and highlight differences from other R Markdown output formats.  
+ファイルに記述するスクリプトは、R Markdown 記法そのものです。そのため、[R Markdown で作るレポート](#rmarkdown) の章で解説した内容や記法と同じです。このセクションで、再度、簡単に記法を紹介し、この章で扱う R Markdown の出力形式との違いを示します。
 
-### YAML {.unnumbered}  
+### YAML ヘッダ {.unnumbered}  
 
-At the top of the script is the "YAML" header. This must begin with three dashes `---` and must close with three dashes `---`. YAML parameters comes in `key:value` pairs. **The indentation and placement of colons in YAML is important** - the `key:value` pairs are separated by colons (not equals signs!). 
+記述するスクリプトの一番上には、"YAML" ヘッダがあります。YAML ヘッダは、3 本のダッシュ（`---`）で始め、3 本のダッシュ（`---`）で閉じる必要があります。YAML ヘッダのパラメータは `key:values` の組み合わせで記述します。**YAML 記法では、半角スペースによるインデントとコロンの記述が大切です**。`key:value` パラメータはイコール記号ではなく、コロンで分けらていることに注意が必要です。
 
-The YAML should begin with metadata for the document. The order of these primary YAML parameters (not indented) does not matter. For example:  
+YAML ヘッダには文書のメタデータを記述する必要があります。YAML ヘッダに記述される（インデントされていない）パラメータの順番は重要ではありません。例えば次のような形です。
 
 ```{r, eval=F}
 title: "My document"
@@ -95,9 +95,9 @@ author: "Me"
 date: "`r Sys.Date()`"
 ```
 
-You can use R code in YAML values by putting it like in-line code (preceeded by `r` within backticks) but also within quotes (see above for Date).  
+インラインコードを書く（`r` に続いてバックティックの中に記述する）ように、YAML ヘッダの中で R コードを記述できます。また、上記 YAML ヘッダ例内の date パラメータにあるように、二重引用符中にも記述できます。  
 
-A required YAML parameter is `output: `, which specifies the type of file to be produced (e.g. `html_document`, `pdf_document`, `word_document`, or `powerpoint_presentation`). For **flexdashboard** this parameter value is a bit confusing - it must be set as `output:flexdashboard::flex_dashboard`. Note the single and double colons, and the underscore. This YAML output parameter is often followed by *an additional colon* and indented sub-parameters (see `orientation: ` and `vertical_layout: ` parameters below).  
+必須の YAML ヘッダパラメータは `output: ` です。このパラメータは、どのような種類のファイルを生成するかを指定します。（例： `html_document`、`pdf_document`、`word_document` や `powerpoint_presentation` など。）**flexdashboard** パッケージにおいて、このパラメータの指定は少し混乱するかもしれません。`output: ` パラメータを必ず `output:flexdashboard::flex_dashboard` と指定する必要があります。コロンの個数とアンダースコアに注意してください。ダッシュボード固有の追加のパラメータは YAML ヘッダ内の `ouput:flexdashboard::flex_dashboard` パラメータの行末に<u>追加のコロン</u>を入力し、その次の行から半角スペースで行頭をインデントして続くことが多いです。（具体例は、以下のコードにある `orientation: ` と `vertical_layout: ` のパラメータを参照してください。）
 
 ```{r, eval=F}
 title: "My dashboard"
@@ -109,74 +109,74 @@ output:
     vertical_layout: scroll
 ```
 
-As shown above, indentations (2 spaces) are used for sub-parameters. In this case, do not forget to put an additional colon after the primary, like `key:value:`.  
+上記に示したように、2 つの半角スペースで作られたインデントがサブパラメータの記述に利用されています。サブパラメータを追加する場合は、`key:values:` のように、上位となるパラメータの行末にコロンを追加で入力するのを忘れないようにしましょう。 
 
-If appropriate, logical values should be given in YAML in lowercase (`true`, `false`, `null`). If a colon is part of your value (e.g. in the title) put the value in quotes. See the examples in sections below.  
-
-
-
-### Code chunks {.unnumbered}  
-
-An R Markdown script can contain multiple code "chunks" - these are areas of the script where you can write multiple-line R code and they function just like mini R scripts.  
-
-Code chunks are created with three back-ticks and curly brackets with a lowercase "r" within. The chunk is closed with three backticks. You can create a new chunk by typing it out yourself, by using the keyboard shortcut "Ctrl + Alt + i" (or Cmd + Shift + r in Mac), or by clicking the green 'insert a new code chunk' icon at the top of your script editor. Many examples are given below.  
-
-
-### Narrative text {.unnumbered}  
-
-Outside of an R code "chunk", you can write narrative text. As described in the page on [Reports with R Markdown], you can italicize text by surrounding it with one asterisk (*), or bold by surrounding it with two asterisks (**). Recall that bullets and numbering schemes are sensitive to newlines, indentation, and finishing a line with two spaces.  
-
-You can also insert in-line R code into text as described in the [Reports with R Markdown] page, by surrounding the code with backticks and starting the command with "r": `` ` 1+1` ``(see example with date above).  
+ロジカル型値をパラメータに与える必要がある場合は、YAML ヘッダ内では小文字で記述される必要があります（`true`、`false`、`null`）。タイトルなど `key:values` 内の `values` の一部に、もしコロンやカッコなど記号を含む場合は `values` 全体を二重引用符で囲んでください。詳しくは以降のセクションで都度例示される YAML ヘッダを参照してください。
 
 
 
-### Headings {.unnumbered}  
+### コードチャンク {.unnumbered}  
 
-Different heading levels are established with different numbers of hash symbols, as described in the [Reports with R Markdown] page.  
+R Markdown は複数の「チャンク（コードチャンク）」を含むことができます。複数行の R コードをチャンク内に書けて、これらのコードは通常の R スクリプトとして動作します。
 
-In **flexdashboard**, a primary heading (#) creates a "page" of the dashboard. Second-level headings (##) create a column or a row depending on your `orientation:` parameter (see details below). Third-level headings (###) create panels for plots, charts, tables, text, etc.   
+コードチャンクは、3 つのバックティックと、小文字の "r" が入った中括弧で作成され、3 つのバックティックで閉じられます。 キーボードショートカット、"Ctrl + Alt + i"（Mac では Cmd + Shift + r）、と入力するか、RStudio スクリプトエディタの上端にある "insert a new code chunk" と表示されている緑のボタンをクリックすることで新しいチャンクを作成してみてください。コードチャンクの例を以降、多数例示しています。
+
+
+### 本文（ナラティブテキスト）{.unnumbered}  
+
+R コード「チャンク」の外には、本文（ナラティブテキスト）を書くことができます。[R Markdown で作るレポート](#rmarkdown)で解説されているように、アスタリスク（*）1 つでテキストを囲むことで斜体にできます。あるいは、アスタリスク 2 つ（**）でテキストを囲むことで強調体にできます。箇条書きや番号付き箇条書きは、改行、行頭インデント、行末にスペースが 2 つ入力された場合などで表示が変わります。
+
+[R Markdown で作るレポート](#rmarkdown) の章に記述されたように、インライン R コードはバックティック（`）で囲まれたコード（`` `1+1` ``）の先頭に "r" をつけることで入力できます（前述した YAML ヘッダ例の date パラメータを参照してください）。
+
+
+
+### 見出し {.unnumbered}  
+
+[R Markdown で作るレポート](#rmarkdown) の章で説明したように、見出しの大小はハッシュ記号の入力個数で表現されます。
+
+**flexdashboard** パッケージでは、見出し 1（#）はダッシュボードの「ページ」を作成します。見出し 2（##）は `orientation:` パラメータに応じてカラム（水平方向の表示枠）やロウ（垂直方向の表示枠）を作ります（詳細は下記を参照ください）。見出し 3（###）は図、表、テキストなど表示のためのパネルを作成します。
 
 ```md
-# First-level heading (page)
+# 見出し１ （ページ）
 
-## Second level heading (row or column)  
+## 見出し２ （垂直方向か水平方向に下位見出し内容を配置する）
 
-### Third-level heading (pane for plot, chart, etc.)
+### 見出し３ （図、表などを表示するパネル）
 ```
 
 
 
 
 
-## Section attributes  
+## セクションの属性
 
-As in a normal R markdown, you can specify attributes to apply to parts of your dashboard by including `key=value` options after a heading, within curly brackets `{ }`. For example, in a typical HTML R Markdown report you might organize sub-headings into tabs with `## My heading {.tabset}`.  
+ダッシュボードの一部に適用する属性を指定するには、通常の R markdown 記法と同様に、見出しの後、中括弧 `{ }` の中に `key=value` オプションを入れます。例えば、典型的な HTML の R markdown レポートでは、`## My heading {.tabset}` とすることで、小見出しをタブにまとめることができます。  
 
-Note that these attributes are written after a *heading* in a text portion of the script. These are different than the **knitr** options inserted within at the top of R code chunks, such as `out.height = `.  
+前段落の例では、<u>見出し</u>のテキスト部分の後に属性が記述されていることに注意してください。これらは、R コードチャンクの上部に入力される **knitr** パッケージのオプション（例えば、 `out.height = `）とは違います。
 
-Section attributes specific to **flexdashboard** include:  
+**flexdashboard** パッケージの特徴的な属性には以下があります。
 
-* `{data-orientation=}` Set to either `rows` or `columns`. If your dashboard has multiple pages, add this attribute to each page to indicate orientation (further explained in [layout section](#layout)).  
-* `{data-width=}` and `{data-height=}` set relative size of charts, columns, rows laid out in the same dimension (horizontal or vertical). Absolute sizes are adjusted to best fill the space on any display device thanks to the [flexbox](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flexible_Box_Layout/Using_CSS_flexible_boxes) engine.  
-     * Height of charts also depends on whether you set the YAML parameter `vertical_layout: fill` or `vertical_layout: scroll`. If set to scroll, figure height will reflect the traditional `fig.height = ` option in the R code chunk.  
-     * See complete size documentation at the [flexdashboard website](https://rmarkdown.rstudio.com/flexdashboard/using.html#sizing)  
-* `{.hidden}` Use this to exclude a specific page from the navigation bar  
-* `{data-navbar=}` Use this in a page-level heading to nest it within a navigation bar drop-down menu. Provide the name (in quotes) of the drop-down menu. See example below.  
-
-
-## Layout {#layout}  
-
-Adjust the layout of your dashboard in the following ways:  
-
-* Add pages, columns/rows, and charts with R Markdown headings (e.g. #, ##, or ###)  
-* Adjust the YAML parameter `orientation:` to either `rows` or `columns`  
-* Specify whether the layout fills the browser or allows scrolling  
-* Add tabs to a particular section heading  
+* `{data-orientation=}`：`rows`（ロウ：垂直方向配置）または `columns`（カラム：水平方向配置）のいずれかを値に設定します。ダッシュボードに複数のページがある場合は、各ページにこの属性を追加して、内容を配置する方向を指定してください (詳細は [レイアウトセクション](#layout) で説明しています)。  
+* `{data-width=}` と `{data-height=}`：同じ表示方向（水平方向配置または垂直方向配置）にレイアウトされたグラフ、カラム、ロウの相対的サイズを設定します。絶対的サイズは、[flexbox](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flexible_Box_Layout/Using_CSS_flexible_boxes) CSS 表示エンジンによって、どのようなディスプレイデバイスでも表示範囲が最適になるように調整されます。
+     * グラフの高さは、YAML ヘッダパラメータの `vertical_layout: fill` と `vertical_layout: scroll` のどちらを設定するかにも依存します。scroll に設定した場合、グラフの高さは R コードチャンクの一般的な `fig.height = ` オプションを反映します。  
+     * サイズ指定に関する完全なドキュメントは [flexdashboard パッケージの公式ウェブサイト](https://rmarkdown.rstudio.com/flexdashboard/using.html#sizing) を参照してください。
+* `{.hidden}`：ページの最上段に表示されるナビゲーションバーから特定のページを除外するために利用します。
+* `{data-navmenu=}`：ページレベルの見出し（`#`）に適用します。該当のページをナビゲーションバーのドロップダウン内のメニューとして表示します。 ドロップダウンメニューの名前を二重引用符で囲んで入力してください。 「レイアウト」セクション内の例をご参考ください。
 
 
-### Pages {.unnumbered}  
+## レイアウト {#layout}  
 
-First-level headings (#) in the R Markdown will represent "pages" of the dashboard. By default, pages will appear in a navigation bar along the top of the dashboard.  
+このセクションではダッシュボードのレイアウトを以下の方法で整形します。  
+
+* R Markdown の見出し記法（#、##、##など）を使用し、ページ、カラム・ロウ、チャートを追加する
+* YAML ヘッダパラメータの `orientation:` を `rows` または` columns` のいずれかに指定する
+* ブラウザの領域いっぱいにレイアウトを表示するか、スクロールさせて表示するかを指定する
+* 特定のセクションの見出しにタブを追加する
+
+
+### ページ {.unnumbered}  
+
+R Markdown で、見出しレベル 1（#）はダッシュボードの「ページ」を意味します。デフォルトの設定では、ページは、一番上に表示されるナビゲーションバーに順番に並んで表示されます。
 
 ```{r, out.height = c('100%'), out.width = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_pages_top_script.png"))
@@ -189,27 +189,27 @@ knitr::include_graphics(here::here("images", "flexdashboard_pages_top_view.png")
 
 
 
-You can group pages into a "menu" within the top navigation bar by adding the attribute `{data-navmenu=}` to the page heading. Be careful - do not include spaces around the equals sign otherwise it will not work!  
+ページの見出しに `{data-navmenu=}` 属性を付けることで、ナビゲーションバー内の「メニュー」としてページをまとめることができます。等号演算子（`=`）の前後にスペースを入れると、うまくいきませんので、気を付けてください！
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_navmenu_script.png"))
 ```
 
 
-Here is what the script produces:  
+上記スクリプトの実行結果です。
 
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_navmenu_view.png"))
 ```
 
-You can also convert a page or a column into a "sidebar" on the left side of the dashboard by adding the `{.sidebar}` attribute. It can hold text (viewable from any page), or if you have integrated **shiny** interactivity it can be useful to hold user-input controls such as sliders or drop-down menus.  
+また、`{.sidebar}` 属性を追加することで、ページやカラムをダッシュボードの左側にある「サイドバー」として表示できます。サイドバーには（どのページからも表示可能な）テキストを表示したり、**shiny** パッケージの動的機能を組み込んでいる場合は、スライダーやドロップダウンメニューなどのユーザ入力用コントローラを表示するのに便利です。  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_sidebar_script.png"))
 ```
 
-Here is what the script produces:  
+上記スクリプトの実行結果です。
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_sidebar_view.png"))
@@ -218,92 +218,92 @@ knitr::include_graphics(here::here("images", "flexdashboard_sidebar_view.png"))
 
 
 
-### Orientation {.unnumbered}  
+### 内容の配置方向指定 {.unnumbered}  
 
-Set the `orientation:` yaml parameter to indicate how your second-level (##) R Markdown headings should be interpreted - as either `orientation: columns` or `orientation: rows`. 
+YAML ヘッダパラメータに `orientation:` を設定して、R Markdown の見出し 2（##）要素以下の内容を水平方向配置または垂直方向配置で並べるか指定します。`orientation: columns`（水平方向配置）または `orientation: rows` （垂直方向配置）のどちらかを設定しましょう。
 
-Second-level headings (##) will be interpreted as new columns or rows based on this `orientation` setting.  
+見出し 2（##） は、YAML ヘッダパラメータの `orientation` 設定に基づいて、新規カラム（水平方向配置）または新規ロウ（垂直方向配置）として解釈されます。  
 
-If you set `orientation: columns`, second-level headers will create new columns in the dashboard. The below dashboard has one page, containing two columns, with a total of three panels. You can adjust the relative width of the columns with `{data-width=}` as shown below.  
+例えば `orientation: columns` と設定すると、見出し 2 がダッシュボードのページに新規カラム（水平方向配置）として追加されます。以下の例のダッシュボードには、1 つのページ内に 2 つのカラムがあり、合計で 3 つのパネルがあります。カラムの相対的な幅は、以下のように `{data-width=}` 属性で調整できます。  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_columns_script.png"))
 ```
 
-Here is what the script produces:  
+上記スクリプトの実行結果です。
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_columns_view.png"))
 ```
 
-If you set `orientation: rows`, second-level headers will create new rows instead of columns. Below is the same script as above, but `orientation: rows` so that second-level headings produce rows instead of columns. You can adjust the relative *height* of the rows with `{data-height=}` as shown below.  
+`orientation: rows` を設定すると、見出し 2 はカラムの代わりに新規ロウを作成します。以下は上記と同じスクリプトですが、`orientation: rows` が設定されており、見出し 2 がカラムではなく ロウを生成するようになります。以下のように、`{data-height=}` で行の相対的な<u>高さ</u>を調整することもできます。 
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_rows_script.png"))
 ```
 
-Here is what the script produces:  
+上記スクリプトの実行結果です。
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_rows_view.png"))
 ```
 
-If your dashboard has multiple pages, you can designate the orientation for each specific page by adding the `{data-orientation=}` attribute the header of each page (specify either `rows` or `columns` without quotes).  
+ダッシュボードに複数のページがある場合、各ページのヘッダーに `{data-orientation=}` 属性を追加することで、各特定ページごとに配置方向を指定できます（引用符なしで `rows` または `columns` のどちらかを指定できます）。  
 
-### Tabs {.unnumbered} 
+### タブ {.unnumbered} 
 
-You can divide content into tabs with the `{.tabset}` attribute, as in other HTML R Markdown outputs.  
+他の HTML R Markdown の出力と同様に、`{.tabset}` 属性で表示内容をタブに分割できます。
 
-Simply add this attribute after the desired heading. Sub-headings under that heading will be displayed as tabs. For example, in the example script below column 2 on the right (##) is modified so that the epidemic curve and table panes (###) are displayed in tabs.  
+この属性を必要な見出しの後に追加するだけです。その見出しの下位にある小見出しは、タブとして表示されるようになります。例えば、下記のスクリプトでは、右の "Colums 2"（##）がタブ化されており、流行曲線（エピカーブ）パネルと表パネル（見出し 3 ###）の内容がタブで表示されるようになりました。
 
-You can do the same with rows if your orientation is rows.  
+配置方向の設定が `row` であれば、垂直配置方向でも同じ分割ができます。  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_tabs_script.png"))
 ```
 
-Here is what the script produces:  
+上記スクリプトの実行結果です。
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_tabs_view.png"))
 ```
 
 
-## Adding content  
+## 表示内容を追加する
 
-Let's begin to build a dashboard. Our simple dashboard will have 1 page, 2 columns, and 4 panels. We will build the panels piece-by-piece for demonstration.  
+それでは、ダッシュボードを作り始めましょう。この章で作成するシンプルなダッシュボードは、1 ページ、2 カラム、4 パネルで構成されます。パネルをひとつひとつ組み立てながら解説します。
 
-You can easily include standard R outputs such as text, ggplots, and tables (see [Tables for presentation] page). Simply code them within an R code chunk as you would for any other R Markdown script.  
+表示内容には、テキスト、ggplot によるプロット、テーブルなど、R の標準的な出力を簡単に含めることができます（詳しくは、[見やすい表の作り方](#tables-presentation)の章を参照してください）。他の R Markdown スクリプトのように、R コードチャンク内に出力を生成するコードを追加するだけです。
 
-Note: you can download the finished Rmd script and HTML dashboard output - see the [Download handbook and data] page.  
+注：この章で作成する R markdown スクリプトの完成形と HTML ダッシュボードの出力をダウンロードできます。詳しくは、[ハンドブックとデータのダウンロード](#data-used)の章をご覧ください。  
 
 
-### Text {.unnumbered}  
+### テキスト {.unnumbered}  
 
-You can type in Markdown text and include *in-line* code as for any other R Markdown output. See the [Reports with R Markdown] page for details. 
+Markdown テキストを入力し、他の R Markdown 出力のように<u>インライン</u>コードを含めることができます。詳細については[R Markdown で作るレポート](#rmarkdown)の章を参照してください。
 
-In this dashboard we include a summary text panel that includes dynamic text showing the latest hospitalisation date and number of cases reported in the outbreak. 
+この章で作成するダッシュボードには、集計した結果を表示するテキストパネルが用意されています。パネル内にはアウトブレイクで報告された最新の入院日と症例数が自動的に変わるテキストを含みます。
 
-### Tables {.unnumbered}  
+### 表 {.unnumbered}  
 
-You can include R code chunks that print outputs such as tables. But the output will look best and respond to the window size if you use the `kable()` function from **knitr** to display your tables. The **flextable** functions may produce tables that are shortened / cut-off.  
+パネルには表などを出力する R コードチャンクを含められます。この場合、テーブルを表示するために **knitr** パッケージの `kable()` 関数を使用すると、出力が最も見栄えよく見え、かつ、ウィンドウサイズに合わせて表示されます。**flextable** パッケージの関数を利用すると、要約表や、一部分を切り落とした表を作成できます。
 
-For example, below we feed the `linelist()` through a `count()` command to produce a summary table of cases by hospital. Ultimately, the table is piped to `knitr::kable()` and the result has a scroll bar on the right. You can read more about customizing your table with `kable()` and **kableExtra** [here](https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html).  
+以下の例では `linelist` オブジェクトに `count()` コマンドを適用して、病院ごとの症例数の要約表を作成しています。最終的に、この要約表は `knitr::kable()` に渡され、ページ上では右側にスクロールバーが表示されます。`kable()` と **kableExtra** パッケージを使った表のカスタマイズについては、[こちらのドキュメント](https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html) を参照してください。  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_tables_script.png"))
 ```
 
-Here is what the script produces:  
+上記スクリプトの実行結果です。
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_tables_view.png"))
 ```
 
 
-If you want to show a dynamic table that allows the user to filter, sort, and/or click through "pages" of the data frame, use the package **DT** and it's function `datatable()`, as in the code below.  
+もし、「ページ」内で、ユーザがデータフレームを抽出、並び変え、操作できるような動的な表を表示したい場合は、以下のコードのように、**DT** パッケージと `datatable()` 関数を使用します。  
 
-The example code below, the data frame `linelist` is printed. You can set `rownames = FALSE` to conserve horizontal space, and `filter = "top"` to have filters on top of every column. A list of other specifications can be provided to `options = `. Below, we set `pageLength = ` so that 5 rows appear and `scrollX = ` so the user can use a scroll bar on the bottom to scroll horizontally. The argument `class = 'white-space: nowrap'` ensures that each row is only one line (not multiple lines). You can read about other possible arguments and values [here](https://rstudio.github.io/DT/?_ga=2.2810736.1321860763.1619286819-369061888.1601594705) or by entering `?datatable`
+以下のサンプルコードで、`linelist` データフレームが表示されます。`rownames = FALSE` を設定すると行番号表示を省略し、水平方向のスペースを節約できます。`filter = "top"` を設定すると、すべての列の一番上にフィルタを配置できます。その他の指定項目はリスト型にまとめて `options = ` に渡します。以下では、options に 5 行ごとにデータフレーム内容が表示されるように `pageLength = ` を設定し、かつ、ユーザが下部のスクロールバーを使って水平方向にスクロールできるように `scrollX = ` を設定しています。引数 `class = 'white-space: nowrap'` は、各行が 1 行表示となることを保証します（各セル内で改行されません）。その他の引数や値については、 [こちら](https://rstudio.github.io/DT/?_ga=2.2810736.1321860763.1619286819-369061888.1601594705)を参照するか、`?datatable` と入力してみてください。
 
 ```{r, eval=F}
 DT::datatable(linelist, 
@@ -312,24 +312,24 @@ DT::datatable(linelist,
               class = 'white-space: nowrap' )
 ```
 
-### Plots {.unnumbered}  
+### プロット {.unnumbered}  
 
-You can print plots to a dashboard pane as you would in an R script. In our example, we use the **incidence2** package to create an "epicurve" by age group with two simple commands (see [Epidemic curves] page). However, you could use `ggplot()` and print a plot in the same manner.  
+通常の R スクリプトでプロットするようにダッシュボードページにプロットを表示できます。以下の例では、**incidence2** パッケージを使用して、2 つの簡単なコマンドで年齢層別の「流行曲線（エピカーブ）」を作成しています（[流行曲線（エピカーブ）](#epicurves) の章を参照してください）。他にも、`ggplot()` を使用して、同じようにプロットを表示できます。  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_plots_script.png"))
 ```
 
-Here is what the script produces:  
+上記スクリプトの実行結果です。
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_plots_view.png"))
 ```
 
 
-### Interactive plots {.unnumbered}  
+### 動的なプロット {.unnumbered}  
 
-You can also pass a standard ggplot or other plot object to `ggplotly()` from the **plotly** package (see the [Interactive plots] page). This will make your plot interactive, allow the reader to "zoom in", and show-on-hover the value of every data point (in this scenario the number of cases per week and age group in the curve).  
+また、標準的な ggplot や他のプロットオブジェクトを **plotly** パッケージの `ggplotly()` に渡すこともできます ([動的な図の作成](#interactive-plots) の章を参照してください)。この関数はプロットを動的にします。つまり、ユーザがプロットを「ズームイン」したり、すべての観測値（この例では、流行曲線（エピカーブ）中の年齢層別、週あたりの症例数）をマウスカーソルをグラフ上に置くことで表示したりできます。  
 
 ```{r, eval=F}
 age_outbreak <- incidence(linelist, date_onset, "week", groups = age_cat)
@@ -337,31 +337,31 @@ plot(age_outbreak, fill = age_cat, col_pal = muted, title = "") %>%
   plotly::ggplotly()
 ```
 
-Here is what this looks like in the dashboard (gif). This interactive functionality will still work even if you email the dashboard as a static file (not online on a server).  
+上記スクリプトをダッシュボードで表示するとこんな感じです（gif）。この動的表示機能は、ダッシュボードを静的ファイルとして電子メールで送信しても機能します（インターネットに接続されていなくても表示可能）。  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_ggplotly.gif"))
 ```
 
-### HTML widgets {.unnumbered}
+### HTML ウイジェット {.unnumbered}
 
-[HTML widgets for R](http://www.htmlwidgets.org/) are a special class of R packages that increases interactivity by utilizing JavaScript libraries. You can embed them in R Markdown outputs (such as a flexdashboard) and in Shiny dashboards.  
+[HTML widgets for R](http://www.htmlwidgets.org/)  ウェブページには、多数の HTML ウィジェットのサンプルがあります。HTML ウィジェットはi JavaScript のライブラリを利用して動的操作性を高める R パッケージの特殊なダッシュボードパーツです。HTML ウィジェットは R Markdown 出力（flexdashboard など）や Shiny ダッシュボードに埋め込むことができます。  
 
-Some common examples of these widgets include:  
+HTML ウィジェットに利用できる R パッケージの一般的な使用例は、以下があります。  
 
-* Plotly (used in this handbook page and in the [Interative plots] page)
-* visNetwork (used in the [Transmission Chains] page of this handbook)  
-* Leaflet (used in the [GIS Basics] page of this handbook)  
-* dygraphs (useful for interactively showing time series data)  
-* DT (`datatable()`) (used to show dynamic tables with filter, sort, etc.)  
+* Plotly パッケージ（この章と、本ハンドブックの[動的な図の作成](#interactive-plots)の章で使用されています。）
+* visNetwork パッケージ（本ハンドブックの[感染連鎖の図式化](#transmission-chains)の章で使用されています。）
+* Leaflet パッケージ（本ハンドブックの[GIS の基礎](#gis)の章で使用されています。
+* dygraphs パッケージ（時系列データを動的に表示するのに便利です）
+* DT (`datatable()`) パッケージ（(フィルタ、ソートなどの機能を持つ動的なテーブルを表示するのに便利です。）  
 
-Below we demonstrate adding an epidemic transmission chain which uses visNetwork to the dashboard. The script shows only the new code added to the "Column 2" section of the R Markdown script. You can find the code in the [Transmission chains] page of this handbook.  
+以下は、visNetwork パッケージを使用した感染連鎖をダッシュボードページに追加する例です。R Markdown スクリプトの「Column 2」見出し 2 に追加する新しいコードのみを表示しています。追加するコード例の詳細は、ハンドブックの[感染連鎖の図式化](#transmission-chains)の章をご参照ください。  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_chain_script.png"))
 ```
 
-Here is what the script produces:  
+上記スクリプトの実行結果です。
 
 ```{r, out.width=c('100%', '100%'), echo=F, fig.show='hold', fig.width = 12, fig.height = 9, message=F, warning=F}
 knitr::include_graphics(here::here("images", "flexdashboard_chain.gif"))
@@ -369,33 +369,33 @@ knitr::include_graphics(here::here("images", "flexdashboard_chain.gif"))
 
 
 
-## Code organization
+## コードの構造化
 
-You may elect to have all code within the R Markdown **flexdashboard** script. Alternatively, to have a more clean and concise dashboard script you may choose to call upon code/figures that are hosted or created in external R scripts. This is described in greater detail in the [Reports with R Markdown] page. 
-
-
-## Shiny  
-
-Integrating the R package **shiny** can make your dashboards even more reactive to user input. For example, you could have the user select a jurisdiction, or a date range, and have panels react to their choice (e.g. filter the data displayed). To embed **shiny** reactivity into **flexdashboard**, you need only make a few changes to your **flexdashboard** R Markdown script.  
-
-You can use **shiny** to produce apps/dashboards *without* flexdashboard too. The handbook page on [Dashboards with Shiny] gives an overview of this approach, including primers on **shiny** syntax, app file structure, and options for sharing/publishing (including free server options). These syntax and general tips translate into the **flexdashboard** context as well.  
-
-Embedding **shiny** in **flexdashboard** is however, a fundamental change to your flexdashboard. It will no longer produce an HTML output that you can send by email and anyone could open and view. Instead, it will be an "app". The "Knit" button at the top of the script will be replaced by a "Run document" icon, which will open an instance of the interactive the dashboard locally on your computer.  
-
-Sharing your dashboard will now require that you either:  
-
-* Send the Rmd script to the viewer, they open it in R on their computer, and run the app, or  
-* The app/dashboard is hosted on a server accessible to the viewer  
-
-Thus, there are benefits to integrating **shiny**, but also complications. If easy sharing by email is a priority and you don't need **shiny** reactive capabilities, consider the reduced interactivity offered by `ggplotly()` as demonstrated above.    
-
-Below we give a very simple example using the same "outbreak_dashboard.Rmd" as above. Extensive documentation on integrating Shiny into **flexdashboard** is available online [here](https://rmarkdown.rstudio.com/flexdashboard/shiny.html).  
+ここまでの例のようにすべてのコードを **flexdashboard** パッケージを利用した R Markdown スクリプト内に記述できます。また、より整理された簡潔なダッシュボード用の R スクリプトを作成するために、他の R スクリプトで管理または作成されたコード・図を呼び出せます。他の R スクリプトの呼び出しについては、[R Markdown で作るレポート](#rmarkdown)の章でより詳細に説明しています。
 
 
+## Shiny パッケージを利用する  
 
-### Settings {.unnumbered}  
+R パッケージの **shiny** パッケージを共に用いると、ユーザの入力をより反映させるダッシュボードを作成できます。例えば、ユーザに管轄地域や日付範囲を選択（例、表示されるデータにフィルターをかけるなど）させ、選択内容に対応してグラフ表示が変化するようにできます。**flexdashboard** パッケージを用いた R スクリプトに **shiny** パッケージの柔軟性を組み込むには、スクリプトに少し変更を加えるだけです。
 
-Enable **shiny** in a **flexdashboard** by adding the YAML parameter `runtime: shiny` at the same indentation level as `output: `, as below:  
+**flexdashboard** パッケージを使わなくても、**shiny** パッケージを使ってアプリ・ダッシュボードを作成できます。ハンドブックの[Shiny で作るダッシュボード](#shiny-basics)の章では、この方法について、**shiny** パッケージ固有の少々の構文、アプリのファイル構造、共有・配信方法の選択肢（無料の配信サーバを含む）についての概要を説明しています。構文と一般的なヒントは、**flexdashboard** パッケージの利用にも当てはまります。  
+
+しかしながら、**flexdashboard** パッケージと **shiny** パッケージの機能を共に用いると、作成されるダッシュボードを根本的に変えることになります。**shiny** パッケージを組み込むと電子メールで送信し、誰でも開いて見ることができるような HTML 出力は生成されません。代わりに「アプリ」になります。スクリプトの上部にある「Knit」ボタンは「Run document」アイコンに置き換えられます。「Run document」アイコンを押すと、あなたのローカルコンピュータに、動的なダッシュボード（アプリ）のための配信サーバ（インスタンス）が動作しはじめます。  
+
+**shiny** パッケージの機能を用いたダッシュボードを共有するには、以下のいずれかが必要となります  
+
+* R markdown スクリプトをユーザに送り、ユーザが自分の PC で R スクリプトを開き、アプリを実行する、または
+* アプリ・ダッシュボードを、ユーザがアクセス可能な配信サーバにホストする
+
+上記のように、**shiny** パッケージの機能を統合することにはメリットもありますが、複雑さもあります。もし、電子メールで簡単に共有することが優先事項であり、**shiny** パッケージの動的機能を必要としないのであれば、「動的なプロット」セクションで例示したような `ggplotly()` による限定された動的機能の採用を考慮してください。    
+
+以下では、ここまでの例で使用した "outbreak_dashboard.Rmd" を使い **shiny** パッケージを導入する簡単な例を紹介します。shiny を **flexdashboard** パッケージと共に用いるための詳細なドキュメントは、[オンライン](https://rmarkdown.rstudio.com/flexdashboard/shiny.html)で入手可能です。 
+
+
+
+### shiny パッケージを利用する設定 {.unnumbered}  
+
+以下のように、YAML ヘッダに `runtime: shiny` パラメータを `output: ` パラメータと同じインデントレベルで追加することで、**flexdashboard** パッケージと **shiny** パッケージの機能を共に用いることができます。
 
 ```md
 ---
@@ -409,38 +409,38 @@ runtime: shiny
 
 ```
 
-It is also convenient to enable a "side bar" to hold the shiny input widgets that will collect information from the user. As explained above, create a column and indicate the `{.sidebar}` option to create a side bar on the left side. You can add text and R chunks containing the **shiny** `input` commands within this column.  
+ユーザからの入力値を集約する入力用ウィジェットの配置に「サイドバー」を有効にすると便利です。「レイアウト」セクションで説明したように、カラム用の見出し 2 を作成し、`{.sidebar}` オプションを定義すると、左側にサイドバーが作成されます。このサイドバー用カラム内に **shiny** パッケージの `input` コマンドを含む、本文テキストと R コードチャンクを追加できます。
 
-If your app/dashboard is hosted on a server and may have multiple simultaneous users, name the first R code chunk as `global`. Include the commands to import/load your data in this chunk. This special named chunk is treated differently, and the data imported within it are only imported once (not continuously) and are available for all users. This improves the start-up speed of the app.  
+アプリやダッシュボードが配信サーバでホストされていて、複数のユーザが同時に使用する可能性がある場合に有用な方法があります。まず、スクリプト内で最初に作成する R コードチャンクに `global` という名前を付けます。このコードチャンクにデータをインポート・ロードするためのコマンドを記述します。この特別な名前のコードチャンクは特別に振る舞い、チャンク中でインポートされたデータは一度だけインポートされ（繰り返されることなく）、アプリやダッシュボードにアクセスするすべてのユーザが利用できます。この設定により、アプリの起動速度が向上します。  
 
-### Worked example {.unnumbered}  
+### shiny パッケージを利用した実際の例 {.unnumbered}  
 
-Here we adapt the flexdashboard script "outbreak_dashboard.Rmd" to include **shiny**. We will add the capability for the user to select a hospital from a drop-down menu, and have the epidemic curve reflect only cases from that hospital, with a dynamic plot title. We do the following:  
+このセクションでは、**flexdashboard** パッケージを利用した R markdown スクリプト "outbreak_dashboard.Rmd" に **shiny** パッケージを追加します。追加する機能は、ユーザがドロップダウンメニューから病院を選択し、選択された病院の症例のみを反映した流行曲線（エピカーブ）を、動的なプロットとタイトルとともに表示する機能です。以下に作成概要を箇条書きにします。
 
-* Add `runtime: shiny` to the YAML  
-* Re-name the setup chunk as `global`  
-* Create a sidebar containing:  
-  * Code to create a vector of unique hospital names  
-  * A `selectInput()` command (**shiny** drop-down menu) with the choice of hospital names. The selection is saved as `hospital_choice`, which can be referenced in later code as `input$hospital_choice`  
-* The epidemic curve code (column 2) is wrapped within `renderPlot({ })`, including:  
-  * A filter on the dataset restricting the column `hospital` to the current value of `input$hospital_choice`  
-  * A dynamic plot title that incorporates `input$hospital_choice`  
+* YAML ヘッダに `runtime: shiny` パラメータを追加する。  
+* スクリプトで最初に作成する R コードチャンク（セットアップチャンク）の名前を `global` に変更する。
+* サイドバーを次の内容で作成する：
+  * 個々の病院名を含むベクトルを作成するコード
+  * 病院名を選択する `selectInput()` コマンド (**shiny** パッケージに含まれるドロップダウンメニュー)。選択内容は `hospital_choice` オブジェクトとして保存され、他のコードから `input$hospital_choice` として参照できます。 
+* 流行曲線（エピカーブ）を表示するコード（Column 2、見出し 2 の下位見出し内）は `renderPlot({ })` 中に記述されており、以下を含みます。  
+  * `linelist` オブジェクト内の `hospital` 変数（列）を `input$hospital_choice` に保存されている値に制限するフィルタ
+  * input$hospital_choice` に保存されている値を反映した動的なプロットとタイトル
   
-Note that any code referencing an `input$` value must be within a `render({})` function (to be reactive).  
+`input$` に保存されている値を参照するコードは、(値に対応して表示（rendering）を変えるために) `render({})` 関数の中になければならないことに注意してください。  
 
-Here is the top of the script, including YAML, global chunk, and sidebar:  
+以下は、YAML ヘッダ、セットアップチャンク、サイドバーなどの記述を含む R markdown スクリプトの最初の部分です：
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_shiny_script1.png"))
 ```
   
-Here is the Column 2, with the reactive epicurve plot:  
+以下は「Colums 2」と下位見出し、動的な流行曲線（エピカーブ）プロットのための記述です。
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_shiny_script2.png"))
 ```
 
-And here is the dashboard:  
+上記を統合したダッシュボードの表示です。  
 
 ```{r, out.width = c('100%'), out.height = c('100%'), echo=F}
 knitr::include_graphics(here::here("images", "flexdashboard_shiny_view.gif"))
@@ -449,23 +449,23 @@ knitr::include_graphics(here::here("images", "flexdashboard_shiny_view.gif"))
 
 
 
-### Other examples {.unnumbered}  
+### shiny パッケージを利用したその他の例 {.unnumbered}  
 
-To read a health-related example of a Shiny-**flexdashboard** using the **shiny** interactivity and the **leaflet** mapping widget, see this chapter of the online book [Geospatial Health Data: Modeling and Visualization with R-INLA and Shiny](https://www.paulamoraga.com/book-geospatial/sec-dashboardswithshiny.html).  
-
-
+**shiny** パッケージの動的機能と **leaflet** パッケージ内の地図を表示するためのウィジェット機能を使い、ダッシュボードに **shiny** パッケージと **flexdashboard** パッケージを利用した、健康関連を扱った例についてはオンラインブック[Geospatial Health Data: Modeling and Visualization with R-INLA and Shiny](https://www.paulamoraga.com/book-geospatial/sec-dashboardswithshiny.html) の該当章をご覧ください。  
 
 
-## Sharing  
-
-Dashboards that do not contain Shiny elements will output an HTML file (.html), which can be emailed (if size permits). This is useful, as you can send the "dashboard" report and not have to set up a server to host it as a website.  
-
-If you have embedded **shiny**, you will not be able to send an output by email, but you can send the script itself to an R user, or host the dashboard on a server as explained above.  
 
 
-## Resources  
+## ユーザとの共有、配信方法  
 
-Excellent tutorials that informed this page can be found below. If you review these, most likely within an hour you can have your own dashboard.  
+**shiny** パッケージの機能を含まないダッシュボードは、HTML ファイル（.html）を出力し、（サイズが許せば）メールで送信できます。この方法は、「ダッシュボード」をレポートとして送ることができ、ウェブサイトとしてホストするための配信サーバを用意する必要がないため、便利です。  
+
+**shiny** パッケージの機能を利用した場合、出力ファイルをメールで送ることはできませんが、スクリプト自体を R ユーザに送ったり、「Shiny パッケージを利用する」セクションで説明したようにダッシュボードを配信サーバでホストすることが可能です。  
+
+
+## 参考資料  
+
+この章で参考にした優れたチュートリアルは、以下のとおりです。これらを参考にすれば、おそらく 1 時間以内にあなた自身でダッシュボードを作成できます。
 
 https://bookdown.org/yihui/rmarkdown/dashboards.html
 
