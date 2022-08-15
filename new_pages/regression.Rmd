@@ -1,93 +1,91 @@
-# Univariate and multivariable regression { }
+# 単変量と多変量回帰 {#regression}
 
 <!-- ======================================================= -->
 
-This page demonstrates the use of **base** R regression functions such as `glm()` and the **gtsummary** package to 
-look at associations between variables (e.g. odds ratios, risk ratios and hazard
-ratios). It also uses functions like `tidy()` from the **broom** package to clean-up regression outputs.  
+この章では、変数間の関連性（オッズ比、リスク比、ハザード比など）を調べるために、`glm()` といった **base** R の基本的な回帰関数と **gtsummary** パッケージの使い方を説明します。また、**broom** パッケージの `tidy()` のような関数を使用して、回帰の出力を整えます。
 
-1.  Univariate: two-by-two tables 
-2.  Stratified: mantel-haenszel estimates  
-3.  Multivariable: variable selection, model selection, final table
-4.  Forest plots
+1.  単変量: 2 ×2 表
+2.  層別：Mantel-Haenszel 推定
+3.  多変量：変数選択、モデル選択、最終的な結果の表
+4.  フォレストプロット
 
-For Cox proportional hazard regression, see the [Survival analysis] page.  
+Cox 比例ハザード回帰分析については、[生存時間解析](#survival-analysis)を参照してください。
 
-<span style="color: black;">**_NOTE:_** We use the term *multivariable* to refer to a regression with multiple explanatory variables. In this sense a *multivariate* model would be a regression with several outcomes - see this [editorial](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3518362/) for detail </span> 
+<span style="color: black;"><u>**注釈:</u>** この章では、複数の説明変数を持つ回帰を<u>多変量（multivariable）</u>と呼びます。この意味で、<u>多変数（multivariate）</u>モデルは、複数のアウトカムを持つ回帰を示します。より詳しくは、アメリカ公衆衛生学会誌に掲載された[論説](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3518362/)を参照してください。</span> 
 
 <!-- ======================================================= -->
 
-## Preparation {  }
+## 準備  {  }
 
 
-### Load packages {.unnumbered}
+### パッケージの読み込み {.unnumbered}
 
-This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with  `library()` from **base** R. See the page on [R basics] for more information on R packages.  
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの `p_load()` を主に使用しています。`p_load()` は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** の `library()` を使用して読み込むこともできます。R のパッケージに関する詳細は [R の基本](#basics) の章をご覧ください。
 
 ```{r}
 pacman::p_load(
-  rio,          # File import
-  here,         # File locator
-  tidyverse,    # data management + ggplot2 graphics, 
-  stringr,      # manipulate text strings 
-  purrr,        # loop over objects in a tidy way
-  gtsummary,    # summary statistics and tests 
-  broom,        # tidy up results from regressions
-  lmtest,       # likelihood-ratio tests
-  parameters,   # alternative to tidy up results from regressions
-  see          # alternative to visualise forest plots
+  rio,          # ファイルのインポート
+  here,         # ファイルパスの指定
+  tidyverse,    # データ管理と ggplot2 での可視化
+  stringr,      # テキストの編集 
+  purrr,        # tidy な方法でのオブジェクトの反復
+  gtsummary,    # 統計量や検定の要約 
+  broom,        # 回帰の結果を整然化
+  lmtest,       # 尤度比検定
+  parameters,   # 回帰の結果を整然化するための代替手段
+  see           # フォレストプロットを可視化するための代替手段
   )
 ```
 
-### Import data {.unnumbered}
+### データの読み込み {.unnumbered}
 
-We import the dataset of cases from a simulated Ebola epidemic. If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file). Import your data with the `import()` function from the **rio** package (it accepts many file types like .xlsx, .rds, .csv - see the [Import and export] page for details).  
+エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、 <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>クリック</a>して「前処理された」ラインリスト（linelist）データをダウンロードしてください>（.rds 形式で取得できます）。データは **rio** パッケージの `import()` を利用してインポートしましょう（**rio** パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを取り扱うことができます。詳細は、[インポートとエクスポート](#importing) の章をご覧ください。）
 
 
 ```{r, echo=F}
-# import the linelist into R
+# ラインリストを R へインポートする
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))
 ```
 
 ```{r, eval=F}
-# import the linelist
+# ラインリストのインポート
 linelist <- import("linelist_cleaned.rds")
 ```
 
-The first 50 rows of the linelist are displayed below.
+ラインリストの始めの 50 行は次のように表示されます。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# ラインリストを表形式で表示
 DT::datatable(head(linelist, 50), rownames = FALSE, options = list(pageLength = 5, scrollX=T) )
 ```
 
-### Clean data {.unnumbered}
+### データの前処理 {.unnumbered}
 
-#### Store explanatory variables {.unnumbered}  
+#### 説明変数を保存 {.unnumbered}  
 
-We store the names of the explanatory columns as a character vector. This will be referenced later.  
+説明変数の列名を文字ベクトルとして保存します。この文字ベクトルは後で使用します。
 
 ```{r}
-## define variables of interest 
+## 関心のある変数を定義
 explanatory_vars <- c("gender", "fever", "chills", "cough", "aches", "vomit")
 ```
 
 
-#### Convert to 1's and 0's  {.unnumbered}   
+#### 1 と 0 に変換 {.unnumbered}
 
-Below we convert the explanatory columns from "yes"/"no", "m"/"f", and "dead"/"alive" to **1 / 0**, to cooperate with the expectations of logistic regression models. To do this efficiently, used `across()` from **dplyr** to transform multiple columns at one time. The function we apply to each column is `case_when()` (also **dplyr**) which applies logic to convert specified values to 1's and 0's. See sections on `across()` and `case_when()` in the [Cleaning data and core functions page](#clean_across)).  
+以下では、説明変数の列（はい・いいえ（"yes"/"no"）、男性・女性（"m"/"f"）と死亡・生存（"dead"/"alive"））をロジスティック回帰モデルの解析がうまくいく形（**1 / 0**）へ変換します。これを効率的に行うために、**dplyr** パッケージの `across()` を使って、複数の列を一度に変換します。それぞれの列に適用する関数は `case_when()` （この関数も **dplyr** パッケージ）です。この関数は、特定の変数に対して 1 と 0 に変換するロジックを適用する。`across()` と `case_when()` については[データクリーニングと主要関数](#cleaning)の章を参照してください。
 
-Note: the "." below represents the column that is being processed by `across()` at that moment.
+注釈: 下記コード中の「.」は、ある時点で `across()` 処理されている列を表します。
 
 ```{r}
-## convert dichotomous variables to 0/1 
+## 2 値変数（yes/no などが格納されている変数）を 0/1 に変換
 linelist <- linelist %>%  
   mutate(across(                                      
-    .cols = all_of(c(explanatory_vars, "outcome")),  ## for each column listed and "outcome"
+    .cols = all_of(c(explanatory_vars, "outcome")),  ## 各列と「アウトカム」に対する処理であることを指定
     .fns = ~case_when(                              
-      . %in% c("m", "yes", "Death")   ~ 1,           ## recode male, yes and death to 1
-      . %in% c("f", "no",  "Recover") ~ 0,           ## female, no and recover to 0
-      TRUE                            ~ NA_real_)    ## otherwise set to missing
+      . %in% c("m", "yes", "Death")   ~ 1,           ## 男性、はい、死亡を 1 に変換
+      . %in% c("f", "no",  "Recover") ~ 0,           ## 女性、いいえ、回復を 0 に変換
+      TRUE                            ~ NA_real_)    ## それ以外は欠測値に変換
     )
   )
 
@@ -95,35 +93,35 @@ linelist <- linelist %>%
       
 ```
 
-#### Drop rows with missing values {.unnumbered}  
+#### 欠測値のある行を削除 {.unnumbered}  
 
-To drop rows with missing values, can use the **tidyr** function `drop_na()`. However, we only want to do this for rows that are missing values in the columns of interest.  
+欠測値を含む行を削除するために、**tidyr** パッケージの関数の `drop_na()` が使用できます。しかし、この処理を行いたいのは、対象となる列の値に欠測がある時だけです。
 
-The first thing we must to is make sure our `explanatory_vars` vector includes the column `age` (`age` would have produced an error in the previous `case_when()` operation, which was only for dichotomous variables). Then we pipe the `linelist` to `drop_na()` to remove any rows with missing values in the `outcome` column or any of the `explanatory_vars` columns.  
+まず行わなければいけないことは、先に作成した `explanatory_vars` ベクトルに列 `age` が含まれるか確認することです（前述の `case_when()` 操作は 2 値変数のみに対応しているため、`age` はエラーになります）。次に、`linelist` を `drop_na()` に渡して、`outcome` 列や `explanatory_vars` のいずれかで値が欠測している行を削除します。
 
-Before running the code, the number of rows in the `linelist` is ` nrow(linelist)`.  
+コードを実行する前に、`linelist` オブジェクトの行数は `nrow(linelist)` で確認できます。
 
 ```{r}
-## add in age_category to the explanatory vars 
+## age_category を説明変数に追加 
 explanatory_vars <- c(explanatory_vars, "age_cat")
 
-## drop rows with missing information for variables of interest 
+## 対象となる変数の情報が欠測している行を削除
 linelist <- linelist %>% 
   drop_na(any_of(c("outcome", explanatory_vars)))
 
 ```
 
-The number of rows remaining in `linelist` is ` nrow(linelist)`.  
+`linelist` オブジェクトに残っている行数は `nrow(linelist)` で確認できます。
 
 
 <!-- ======================================================= -->
 
-## Univariate {  }
+## 単変量 {  }
 
-Just like in the page on [Descriptive tables](https://epirhandbook.com/descriptive-tables.html), your use case will determine which R package you use. We present two options for doing univariate analysis:  
+[記述統計表の作り方](#tables-descriptive)の章と同様に、事例によって使用する R パッケージが決まります。ここでは単変量解析を行うための 2 つのオプションを紹介します。
 
-* Use functions available in **base** R to quickly print results to the console. Use the **broom** package to tidy up the outputs.  
-* Use the **gtsummary** package to model and get publication-ready outputs  
+* **base** R で利用可能な関数を使用して、結果をすぐにコンソールに表示します。また、**broom** パッケージを使用して、出力を整然化します。
+* モデルに対して **gtsummary** パッケージを使用して、出版原稿レベルの出力を得ます。
 
 
 
@@ -131,111 +129,105 @@ Just like in the page on [Descriptive tables](https://epirhandbook.com/descripti
 
 ### **base** R {.unnumbered}
 
-#### Linear regression {.unnumbered}  
+#### 線形回帰 {.unnumbered}  
 
-The **base** R function `lm()` perform linear regression, assessing the relationship between numeric response and explanatory variables that are assumed to have a linear relationship.  
+**base** R 関数の `lm()` は線形回帰を実行し、連続尺度の応答と説明変数との関連を、線形の関係があるという仮定のもとで評価します。
 
-Provide the equation as a formula, with the response and explanatory column names separated by a tilde `~`. Also, specify the dataset to `data = `. Define the model results as an R object, to use later.    
+式を応答と説明変数の列名をチルダ（~）で分けた formula として与え、利用するデータを `data =` で指定しましょう。後で利用するために、実行結果のモデルを R オブジェクトとして定義しておきます。
 
 ```{r lin_reg}
 lm_results <- lm(ht_cm ~ age, data = linelist)
 ```
 
-You can then run `summary()` on the model results to see the coefficients (Estimates), P-value, residuals, and other measures.  
+そうすると、 `summary()` をモデルの結果に対して実行することができ、回帰係数（推定値）、P 値、残差などの統計指標を確認することができます。
 
 ```{r lin_reg_res}
 summary(lm_results)
 ```
 
-Alternatively you can use the `tidy()` function from the **broom** package to pull 
-the results in to a table. What the results tell us is that for each year increase in age the height increases
-by 3.5 cm and this is statistically significant. 
+`summary()` の代わりに、**broom** パッケージの `tidy()` を使って、結果を表にまとめることもできます。結果より、年齢が 1 歳上がるごとに身長が 3.5 cm ずつ高くなり、これは統計的にも有意であることがわかりました。
 
 ```{r lin_reg_res_tidy}
 tidy(lm_results)
 ```
 
-You can then also use this regression to add it to a **ggplot**, to do this we 
-first pull the points for the observed data and the fitted line in to one data frame 
-using the `augment()` function from **broom**. 
+この回帰の結果を **ggplot** パッケージを使って表すこともできます。これを行うためには、まず **broom** パッケージの `argument()` を使って、観測データ点とモデルに当てはめた直線を 1 つのデータフレームに取り込みます。
 
 ```{r lin_reg_res_plot}
 
-## pull the regression points and observed data in to one dataset
+## 回帰した点と観測データを 1 つのデータフレームにまとめる
 points <- augment(lm_results)
 
-## plot the data using age as the x-axis 
+## 年齢を x 軸としてプロット
 ggplot(points, aes(x = age)) + 
-  ## add points for height 
+  ## 身長を追加
   geom_point(aes(y = ht_cm)) + 
-  ## add your regression line 
+  ## 得られた回帰直線を追加
   geom_line(aes(y = .fitted), colour = "red")
 
 ```
 
-It is also possible to add a simple linear regression straight straight in **ggplot** 
-using the `geom_smooth()` function. 
+`geom_smooth()` を使って、**ggplot** パッケージに単純な線形回帰の直線を追加することも可能です。
 
 ```{r geom_smooth}
 
-## add your data to a plot 
+## データをプロット
  ggplot(linelist, aes(x = age, y = ht_cm)) + 
-  ## show points
+  ## 観測データを表示
   geom_point() + 
-  ## add a linear regression 
+  ## 回帰直線を追加
   geom_smooth(method = "lm", se = FALSE)
 ```
 
-See the Resource section at the end of this chapter for more detailed tutorials.  
+より詳細なチュートリアルは、この章の最後にある参考資料を参照してください。
 
 
-#### Logistic regression {.unnumbered}  
+#### ロジスティック回帰 {.unnumbered}
 
-The function `glm()` from the **stats** package (part of **base** R) is used to fit Generalized Linear Models (GLM).  
+**stats** パッケージ（**base** R の一部）の `glm()` は、一般化線形モデル（GLM: Generalized Linear Models）のあてはめに使われます。
 
-`glm()` can be used for univariate and multivariable logistic regression (e.g. to get Odds Ratios). Here are the core parts:  
+`glm()` は単変量および多変量のロジスティック回帰に使われます（例えば、オッズ比が得られる）。核となる部分は次の通りです。
 
 ```{r, eval=F}
-# arguments for glm()
+# glm() の引数
 glm(formula, family, data, weights, subset, ...)
 ```
 
-* `formula = ` The model is provided to `glm()` as an equation, with the outcome on the left and explanatory variables on the right of a tilde `~`.  
-* `family = ` This determines the type of model to run. For logistic regression, use `family = "binomial"`, for poisson use `family = "poisson"`. Other examples are in the table below.  
-* `data = ` Specify your data frame  
+* `formula =` モデルは、アウトカムを左に説明変数をチルダの右に配置した式として `glm()` に設定されます。
+* `family =` この引数は実行するモデルのタイプを決めます。ロジスティック回帰の場合は `family = "binomial"` を、ポアソン回帰の場合は `family = "poisson"` を使います。他の例は下の表に示します。
+* `data =` 使用するデータフレームを設定します。
 
 
-If necessary, you can also specify the link function via the syntax `family = familytype(link = "linkfunction"))`. You can read more in the documentation about other families and optional arguments such as `weights = ` and `subset = ` (`?glm`).  
+必要であれば、`family = familytype(link = "linkfunction"))` 構文を使ってリンク関数を設定します。他の分布族や、`weights =` や `subset =` などのオプション引数については、ヘルプドキュメントで詳しく説明されています（`?glm`）。
 
 
 
-Family                 | Default link function 
------------------------|-------------------------------------------  
-`"binomial"` | `(link = "logit")`  
-`"gaussian"` | `(link = "identity")`  
-`"Gamma"` | `(link = "inverse")`  
-`"inverse.gaussian"` | `(link = "1/mu^2")`  
-`"poisson"` | `(link = "log")`  
-`"quasi"` | `(link = "identity", variance = "constant")`  
-`"quasibinomial"` | `(link = "logit")`  
-`"quasipoisson"` | `(link = "log")`  
+| 分布族               | リンク関数のデフォルト            |
+|----------------------|---------------------------------|
+| `"binomial"`         | `(link = "logit|
+| `"gaussian"`         | `(link = "identity")`                        |
+| `"Gamma"`            | `(link = "inverse")`                         |
+| `"inverse.gaussian"` | `(link = "1/mu^2")`                          |
+| `"poisson"`          | `(link = "log")`                             |
+| `"quasi"`            | `(link = "identity", variance = "constant")` |
+| `"quasibinomial"`    | `(link = "logit")`                           |
+| `"quasipoisson"`     | `(link = "log")`                             |
 
 
-When running `glm()` it is most common to save the results as a named R object. Then you can print the results to your console using `summary()` as shown below, or perform other operations on the results (e.g. exponentiate).  
+`glm()` を実行する際には、結果を名前付きの R オブジェクトとして保存するのが一般的です。そうすることで、以下のように `summary()` を使って結果をコンソールに表示させたり、結果に対して他の操作（例：指数変換）を行ったりすることができます。
 
-If you need to run a negative binomial regression you can use the **MASS** package; the `glm.nb()` uses the same syntax as `glm()`. 
-For a walk-through of different regressions, see the [UCLA stats page](https://stats.idre.ucla.edu/other/dae/). 
+負の二項回帰を実行する必要がある場合は、**MASS** パッケージを使用します。`glm.nb()` は `glm()` と同じ構文を使います。様々な回帰を段階的に知りたい場合は、[UCLA stats のページ](https://stats.idre.ucla.edu/other/dae/)を見てください。
 
-#### Univariate `glm()` {.unnumbered}
+#### 単変量の `glm()` {.unnumbered}
 
-In this example we are assessing the association between different age categories and the outcome of death (coded as 1 in the Preparation section). Below is a univariate model of `outcome` by `age_cat`. We save the model output as `model` and then print it with `summary()` to the console. Note the estimates provided are the *log odds* and that the baseline level is the first factor level of `age_cat` ("0-4").  
+この例では、異なる年齢カテゴリと死亡というアウトカム（準備セクションで死亡を 1 と変換しました）との関連を評価しています。以下は、`age_cat` によるアウトカムの単変量モデルです。モデルの出力を `model` として保存し、`summary()` でコンソールに出力します。出力される推定値は<u>対数オッズ比</u>であり、ベースラインレベルは `age_cat` の 1 番目の因子水準（レベル）（"0 - 4"）です。
 
 ```{r}
 model <- glm(outcome ~ age_cat, family = "binomial", data = linelist)
 summary(model)
 ```
 
-To alter the baseline level of a given variable, ensure the column is class Factor and move the desired level to the first position with `fct_relevel()` (see page on [Factors]). For example, below we take column `age_cat` and set "20-29" as the baseline before piping the modified data frame into `glm()`.  
+与えた変数のベースラインレベルを変更するには、列のクラスが因子であることを確認し、`fct_relevel()` で希望するレベルを最初の位置に移動させます（[因子（ファクタ）型データ](#factors)の章を参照してください）。例えば、下の例では、列 `age_cat` に対して、"20-29" をベースラインとして設定してから、修正したデータフレームを `glm()` に渡しています。
 
 ```{r}
 linelist %>% 
@@ -244,29 +236,29 @@ linelist %>%
   summary()
 ```
 
-#### Printing results {.unnumbered}
+#### 結果の表示 {.unnumbered}
 
-For most uses, several modifications must be made to the above outputs. The function `tidy()` from the package **broom** is convenient for making the model results presentable.  
+ほとんどの用途では、上記の出力にいくつかの修正を加える必要があります。**broom** パッケージの `tidy()` は、モデルの結果を見やすくするために便利です。
 
-Here we demonstrate how to combine model outputs with a table of counts.  
+ここでは、モデルの出力とカウントの表を組み合わせる方法を紹介します。
 
-1) Get the *exponentiated* log odds ratio estimates and confidence intervals by passing the model to `tidy()` and setting `exponentiate = TRUE` and `conf.int = TRUE`.  
+1)  <u>指数変換された</u>対数オッズ比の推定値と信頼区間を得るために、モデルを `tidy()` に渡し、 `exponentiate = TRUE` と `conf.int = TRUE` を設定します。
 
 ```{r odds_base_single}
 
 model <- glm(outcome ~ age_cat, family = "binomial", data = linelist) %>% 
-  tidy(exponentiate = TRUE, conf.int = TRUE) %>%        # exponentiate and produce CIs
-  mutate(across(where(is.numeric), round, digits = 2))  # round all numeric columns
+  tidy(exponentiate = TRUE, conf.int = TRUE) %>%        # 指数変換し信頼区間を算出
+  mutate(across(where(is.numeric), round, digits = 2))  # 全ての数値列を四捨五入
 ```
 
-Below is the outputted tibble `model`:  
+以下の表は、整然化された `model` の出力です:
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# linelist データの結果を表形式で表示
 DT::datatable(model, rownames = FALSE, options = list(pageLength = nrow(model), scrollX=T), class = 'white-space: nowrap' )
 ```
 
-2) Combine these model results with a table of counts. Below, we create the a counts cross-table with the `tabyl()` function from **janitor**, as covered in the [Descriptive tables] page.  
+2)  これらのモデルの結果とカウントの表を組み合わせます。下記では、**janitor**　パッケージの `tabyl()` を使ってクロス集計表を作成します。これは[記述統計表の作り方](#tables-descriptive)の章で説明しています。
 
 ```{r}
 counts_table <- linelist %>% 
@@ -288,24 +280,24 @@ counts_table <- linelist %>%
 <!-- ``` -->
 
 
-Here is what this `counts_table` data frame looks like:  
+この `counts_table` データフレームは、次のように見えます:
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# linelist データの結果を表形式で表示
 DT::datatable(counts_table, rownames = FALSE, options = list(pageLength = nrow(counts_table), scrollX=T), class = 'white-space: nowrap' )
 ```
 
-Now we can bind the `counts_table` and the `model` results together horizontally with `bind_cols()` (**dplyr**). Remember that with `bind_cols()` the rows in the two data frames must be aligned perfectly. In this code, because we are binding within a pipe chain, we use `.` to represent the piped object `counts_table` as we bind it to `model`. To finish the process, we use `select()` to pick the desired columns and their order, and finally apply the **base** R `round()` function across all numeric columns to specify 2 decimal places.  
+これで `bind_cols()`（**dplyr** パッケージ）を使って `counts_table` と結果 `model` を水平方向に結合することができます。`bind_cols()` では、2 つのデータフレームの行数が完全に一致していなければならないことを注意してください。このコードでは、一連の引き渡し過程の中で結合しているので、渡されたオブジェクト `counts_table` を表す `.` を使って、そのオブジェクトと `model` を結合しています。最後に、`select()` を使って必要な列とその順番を選択し、**base** R の `round()` で小数点以下 2 桁に指定した四捨五入を全ての数値列に適用しています。
 
 ```{r, message=F, warning=F}
-combined <- counts_table %>%           # begin with table of counts
-  bind_cols(., model) %>%              # combine with the outputs of the regression 
-  select(term, 2:3, estimate,          # select and re-order cols
+combined <- counts_table %>%           # カウントの集計表から始める
+  bind_cols(., model) %>%              # 回帰の出力と結合
+  select(term, 2:3, estimate,          # 変数を選択し、列の並べ直し
          conf.low, conf.high, p.value) %>% 
-  mutate(across(where(is.numeric), round, digits = 2)) ## round to 2 decimal places
+  mutate(across(where(is.numeric), round, digits = 2)) ## 小数点以下 2 桁に四捨五入
 ```
 
-Here is what the combined data frame looks like, printed nicely as an image with a function from **flextable**. The [Tables for presentation] explains how to customize such tables with **flextable**, or or you can use numerous other packages such as **knitr** or **GT**.  
+結合されたデータフレームの外観は以下の通りです。これは **flextable** パッケージの関数を使って画像として綺麗に印刷されます。[見やすい表の作り方](#tables-presentation)では、**flextable** パッケージを使ったこのような表のカスタマイズ方法を説明していますが、**knitr** や **GT** などの他のさまざまなパッケージを使うこともできます。
 
 ```{r}
 combined <- combined %>% 
@@ -313,97 +305,97 @@ combined <- combined %>%
 ```
 
 
-#### Looping multiple univariate models {.unnumbered}  
+#### 複数の単変量モデルの反復方法 {.unnumbered}  
 
-Below we present a method using `glm()` and `tidy()` for a more simple approach, see the section on **gtsummary**.  
+以下では、`glm()` と `tidy()` を使った方法を紹介します。よりシンプルな方法については、**gtsummary** パッケージのセクションを参照してください。
 
-To run the models on several exposure variables to produce univariate odds ratios (i.e. not controlling for each other), you can use the approach below. It uses `str_c()` from **stringr** to create univariate formulas (see [Characters and strings]), runs the `glm()` regression on each formula, passes each `glm()` output to `tidy()` and finally collapses all the model outputs together with `bind_rows()` from **tidyr**. This approach uses `map()` from the package **purrr** to iterate - see the page on [Iteration, loops, and lists] for more information on this tool.  
+いくつかの曝露変数のモデルを立て、単変量のオッズ比（つまり、変数同士で調整しない）を生成するためには、下記のアプローチが使えます。まず、**stringr** パッケージの `str_c()` を使って単変量のモデル式を作成します（[文字列型データ](#characters-strings)を参照）。次に、それぞれのモデル式に対して `glm()` の回帰を実行し、それぞれの `glm()` の結果を `tidy()` に渡します。最後に **tidyr** パッケージの `bind_rows()` を使って全てのモデルの出力を縦に結合します。このアプローチでは、**purrr** パッケージの `map()` を使って反復処理を行います。このツールのより詳しい情報は[ループと反復処理・リストの操作](#iteration)を参照してください。
 
-1) Create a vector of column names of the explanatory variables. We already have this as `explanatory_vars` from the Preparation section of this page.  
+1)  説明変数の列名のベクトルを作成します。このベクトルはこの章の準備セクションで `explanatory_vars` としてすでに作っています。
 
-2) Use `str_c()` to create multiple string formulas, with `outcome` on the left, and a column name from `explanatory_vars` on the right. The period `.` substitutes for the column name in `explanatory_vars`.  
+2)  `str_c()` を使って複数の文字列としてのモデル式を作成します。ここでは左に `outcome`、右に `explanatory_vars` から得られる列名を指定します。ピリオド `.` が `explanatory_vars` の列名に置き換わります。
 
 ```{r}
 explanatory_vars %>% str_c("outcome ~ ", .)
 ```
 
-3) Pass these string formulas to `map()` and set `~glm()` as the function to apply to each input. Within `glm()`, set the regression formula as `as.formula(.x)` where `.x` will be replaced by the string formula defined in the step above. `map()` will loop over each of the string formulas, running regressions for each one.  
+3)  この文字列としてのモデル式を `map()` に渡して、各入力に適用する関数として `~glm()` に設定します。`glm()` の中では、`as.formula(.x)` を回帰式として設定します。ここで、 `.x` は上のステップで定義した文字列としての式で置き換えられます。`map()` は各文字列の式を反復し、それぞれの回帰を実行します。
 
-4) The outputs of this first `map()` are passed to a second `map()` command, which applies `tidy()` to the regression outputs.  
+4)  この最初の `map()` の出力は 2 番目の `map()` コマンドに渡されることにより、回帰の出力に対して `tidy()` が適用されます。
 
-5) Finally the output of the second `map()` (a list of tidied data frames) is condensed with `bind_rows()`, resulting in one data frame with all the univariate results.  
+5)  最後に、2 番目の `map()` の出力（整然化されたデータフレームのリスト）が `bind_rows()` で縦に結合され、全ての単変量の結果が単一のデータフレームになります。
 
 
 ```{r odds_base_multiple}
 
-models <- explanatory_vars %>%       # begin with variables of interest
-  str_c("outcome ~ ", .) %>%         # combine each variable into formula ("outcome ~ variable of interest")
+models <- explanatory_vars %>%       # 関心のある変数から始める
+  str_c("outcome ~ ", .) %>%         # 各変数を式にする（"アウトカム ~ 関心のある変数"）
   
-  # iterate through each univariate formula
+  # 各単変量の式を反復
   map(                               
-    .f = ~glm(                       # pass the formulas one-by-one to glm()
-      formula = as.formula(.x),      # within glm(), the string formula is .x
-      family = "binomial",           # specify type of glm (logistic)
-      data = linelist)) %>%          # dataset
+    .f = ~glm(                       # 式を一つ一つ glm() に渡す
+      formula = as.formula(.x),      # glm() の中で、文字列としての式は .x である
+      family = "binomial",           # glm のタイプ（ロジスティック）を指定
+      data = linelist)) %>%          # データセット
   
-  # tidy up each of the glm regression outputs from above
+  # 上記から得られた glm 回帰の出力を整然化
   map(
     .f = ~tidy(
       .x, 
-      exponentiate = TRUE,           # exponentiate 
-      conf.int = TRUE)) %>%          # return confidence intervals
+      exponentiate = TRUE,           # 指数変換 
+      conf.int = TRUE)) %>%          # 信頼区間を算出
   
-  # collapse the list of regression outputs in to one data frame
+  # 回帰の出力のリストを一つのデータフレームとして結合
   bind_rows() %>% 
   
-  # round all numeric columns
+  # 全ての数値列を四捨五入
   mutate(across(where(is.numeric), round, digits = 2))
 ```
 
-This time, the end object `models` is longer because it now represents the combined results of several univariate regressions. Click through to see all the rows of `model`.  
+今回は、複数の単変量回帰の結果を結合しているため、`models` の最終的なオブジェクトが長くなっています。クリックすると `model` の全ての行が表示されます。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# linelist データの結果を表形式で表示
 DT::datatable(models, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
-As before, we can create a counts table from the `linelist` for each explanatory variable, bind it to `models`, and make a nice table. We begin with the variables, and iterate through them with `map()`. We iterate through a user-defined function which involves creating a counts table with **dplyr** functions. Then the results are combined and bound with the `models` model results.  
+先に示したように、各説明変数の `linelist` から集計表を作成し、`models` に結合して、見栄えの良い表を作ることができます。まず、変数定義からはじめて、`map()` を使って、その変数を反復処理させます。この反復処理には、**dplyr** パッケージの関数を使って集計表を作成するユーザー定義関数を用います。そして、その結果を組み合わせ、`models` の結果と結合します。
 
 
 ```{r, warning=F, message=F}
 
-## for each explanatory variable
+## それぞれの説明変数に対して処理
 univ_tab_base <- explanatory_vars %>% 
   map(.f = 
-    ~{linelist %>%                ## begin with linelist
-        group_by(outcome) %>%     ## group data set by outcome
-        count(.data[[.x]]) %>%    ## produce counts for variable of interest
-        pivot_wider(              ## spread to wide format (as in cross-tabulation)
+    ~{linelist %>%                ## linelist から始める
+        group_by(outcome) %>%     ## アウトカムごとにデータをグループ化
+        count(.data[[.x]]) %>%    ## 関心のある変数に対して集計
+        pivot_wider(              ## 横長形式に変換（クロス集計表として）
           names_from = outcome,
           values_from = n) %>% 
-        drop_na(.data[[.x]]) %>%         ## drop rows with missings
-        rename("variable" = .x) %>%      ## change variable of interest column to "variable"
-        mutate(variable = as.character(variable))} ## convert to character, else non-dichotomous (categorical) variables come out as factor and cant be merged
+        drop_na(.data[[.x]]) %>%         ## 欠測行を削除
+        rename("variable" = .x) %>%      ## 関心のある列の変数名を "variable" に変更
+        mutate(variable = as.character(variable))} ## 文字列に変換しないと、2 値でない（カテゴリカル）変数が因子として出てきてしまい結合できない
       ) %>% 
   
-  ## collapse the list of count outputs in to one data frame
+  ## 集計結果のリストを 1 つのデータフレームとして結合
   bind_rows() %>% 
   
-  ## merge with the outputs of the regression 
+  ## 回帰の結果と結合
   bind_cols(., models) %>% 
   
-  ## only keep columns interested in 
+  ## 関心のある列のみ抽出
   select(term, 2:3, estimate, conf.low, conf.high, p.value) %>% 
   
-  ## round decimal places
+  ## 四捨五入する小数点位置を指定
   mutate(across(where(is.numeric), round, digits = 2))
 
 ```
 
-Below is what the data frame looks like. See the page on [Tables for presentation] for ideas on how to further convert this table to pretty HTML output (e.g. with **flextable**).  
+以下は、上で作成したデータフレームです。この表を綺麗な HTML 出力に変換する方法（例えば、**flextable** パッケージの使用）については、[見やすい表の作り方](#tables-presentation)の章を参照してください。
 
 ```{r, message=FALSE, echo=F}
-# display the linelist data as a table
+# linelist データの結果を表形式で表示
 DT::datatable(univ_tab_base, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
@@ -413,63 +405,62 @@ DT::datatable(univ_tab_base, rownames = FALSE, options = list(pageLength = 5, sc
 
 <!-- ======================================================= -->
 
-### **gtsummary** package {#reg_gt_uni .unnumbered}
+### **gtsummary** パッケージ {#reg_gt_uni .unnumbered}
 
-Below we present the use of `tbl_uvregression()` from the **gtsummary** package. Just like in the page on [Descriptive tables](https://epirhandbook.com/descriptive-tables.html), **gtsummary** functions do a good job of running statistics *and* producing professional-looking outputs. This function produces a table of univariate regression results.  
+以下では、**gtsummary** パッケージの `tbl_uvregression()` の使い方を紹介します。[記述統計表の作り方](#tables-descriptive)の章に示したように、**gtsummary** パッケージの関数は統計解析を行い、<u>かつ</u>プロフェッショナルな外観の出力を作成するのに良い仕事をします。この関数は単変量の回帰分析の結果の表を作成します。
 
-We select only the necessary columns from the `linelist` (explanatory variables and the outcome variable) and  pipe them into `tbl_uvregression()`. We are going to run univariate regression on each of the columns we defined as `explanatory_vars` in the data Preparation section (gender, fever, chills, cough, aches, vomit, and age_cat).  
+`linelist` から必要な列（説明変数とアウトカム変数）のみ選択し、それを `tbl_uvregression()` に渡します。これにより、準備のセクションで `explanatory_vars` として定義したそれぞれの列（gender、fever、chills、cough、aches、vomit と age_cat）に対して単変量回帰を行います。
 
-Within the function itself, we provide the `method = ` as `glm` (no quotes), the `y = ` outcome column (`outcome`), specify to `method.args = ` that we want to run logistic regression via `family = binomial`, and we tell it to exponentiate the results.  
+この関数に対して、`method =` として `glm` （引用符はいらない）を、`y =` にアウトカム列を、ロジスティック回帰を行いたい場合は `method.args =` に `family = binomial` を指定し、さらに結果を指数変換するように指示しています。
 
-The output is HTML and contains the counts
+出力は HTML で、カウントが含まれます。
 
 ```{r odds_gt, message=F, warning=F}
 
 univ_tab <- linelist %>% 
-  dplyr::select(explanatory_vars, outcome) %>% ## select variables of interest
+  dplyr::select(explanatory_vars, outcome) %>% ## 関心のある変数を選択
 
-  tbl_uvregression(                         ## produce univariate table
-    method = glm,                           ## define regression want to run (generalised linear model)
-    y = outcome,                            ## define outcome variable
-    method.args = list(family = binomial),  ## define what type of glm want to run (logistic)
-    exponentiate = TRUE                     ## exponentiate to produce odds ratios (rather than log odds)
+  tbl_uvregression(                         ## 単変量解析の表を生成
+    method = glm,                           ## 実行したい回帰（一般化線形モデル）を定義
+    y = outcome,                            ## アウトカム変数を定義
+    method.args = list(family = binomial),  ## 実行したい glm のタイプを定義（ここではロジスティック）
+    exponentiate = TRUE                     ## 対数オッズ比ではなくオッズ比を得るために指数変換を指定
   )
 
-## view univariate results table 
+## 単変量の結果の表を出力
 univ_tab
 ```
 
-There are many modifications you can make to this table output, such as adjusting the text labels, bolding rows by their p-value, etc. See tutorials [here](http://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html) and elsewhere online.  
+この表の出力は、テキストラベルを調整したり、P 値によって行を太字にしたりするなど、さまざまな変更を加えることができます。チュートリアルは[こちら](http://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html)やオンラインサイトを参照してください。
 
 
 
 <!-- ======================================================= -->
 
-## Stratified {  }
+## 層別 {  }
 
-Stratified analysis is currently still being worked on for **gtsummary**, 
-this page will be updated in due course. 
-
+**gtsummary** パッケージを使った層別解析は現在も継続して開発しています。この章は追って更新します。
 
 
 
-## Multivariable  
 
-For multivariable analysis, we again present two approaches:  
+## 多変量
 
-* `glm()` and `tidy()`  
-* **gtsummary** package  
+多変量回帰分析をするために、またしても 2 つのアプローチを提案します。
 
-The workflow is similar for each and only the last step of pulling together a final table is different.
+* `glm()` と `tidy()`
+* **gtsummary** パッケージ
 
-
-### Conduct multivariable {.unnumbered}  
+これらのワークフローはそれぞれ似ていて、最後のステップで最終的に表にまとめるところだけが違います。
 
 
-Here we use `glm()` but add more variables to the right side of the equation, separated by plus symbols (`+`). 
+### 多変量回帰分析の実施 {.unnumbered}  
 
 
-To run the model with all of our explanatory variables we would run:  
+ここでは、`glm()` を使います。（単変量解析と違って）プラス記号（ `+` ）で説明変数を区切ることで、式の右辺に変数を追加していきます。
+
+
+全ての説明変数を使ってモデルを実行するには、次のようにします:
 
 ```{r}
 mv_reg <- glm(outcome ~ gender + fever + chills + cough + aches + vomit + age_cat, family = "binomial", data = linelist)
@@ -477,31 +468,31 @@ mv_reg <- glm(outcome ~ gender + fever + chills + cough + aches + vomit + age_ca
 summary(mv_reg)
 ```
 
-If you want to include two variables and an interaction between them you can separate them with an asterisk `*` instead of a `+`. Separate them with a colon `:` if you are only specifying the interaction. For example:  
+2 つの変数とそれらの交互作用項は、`+` の代わりにアスタリスク（ `*` ）で変数を区切ることでモデルに含めることができます。また交互作用項のみを指定する場合は、コロン（ `:` ）で区切ります。例えば次の通りです。
 
 ```{r, eval=F}
 glm(outcome ~ gender + age_cat * fever, family = "binomial", data = linelist)
 ```
 
 
-*Optionally*, you can use this code to leverage the pre-defined vector of column names and re-create the above command using `str_c()`. This might be useful if your explanatory variable names are changing, or you don't want to type them all out again.  
+<u>オプション</u>として、下記コードを使うことで、あらかじめ定義された列名のベクトルと `str_c()` を使って上記コードを再生成することもできます。これは、説明変数の名前が変更される場合や、全てを再入力したくない場合に便利です。
 
 ```{r mv_regression}
 
-## run a regression with all variables of interest 
-mv_reg <- explanatory_vars %>%  ## begin with vector of explanatory column names
-  str_c(collapse = "+") %>%     ## combine all names of the variables of interest separated by a plus
-  str_c("outcome ~ ", .) %>%    ## combine the names of variables of interest with outcome in formula style
-  glm(family = "binomial",      ## define type of glm as logistic,
-      data = linelist)          ## define your dataset
+## 全ての関心のある変数に対して回帰を実行
+mv_reg <- explanatory_vars %>%  ## 説明変数の列名ベクトルから始める
+  str_c(collapse = "+") %>%     ## 全ての関心のある説明変数名をプラス記号で区切って結合
+  str_c("outcome ~ ", .) %>%    ## アウトカムと上記文字列を結合し、モデル式の形にする
+  glm(family = "binomial",      ## glm のタイプをロジスティックとして定義
+      data = linelist)          ## データセットを定義
 ```
 
 
-#### Building the model {.unnumbered}  
+#### モデルの構築 {.unnumbered}  
 
-You can build your model step-by-step, saving various models that include certain explanatory variables. You can compare these models with likelihood-ratio tests using `lrtest()` from the package **lmtest**, as below:  
+任意の説明変数を含む様々なモデルを保存しながら、段階的にモデルを構築することができます。また以下に示すように、**lmtest** パッケージの `lrtest()` を使ってこれらのモデルを尤度比検定で比較することができます:
 
-<span style="color: black;">**_NOTE:_** Using **base** `anova(model1, model2, test = "Chisq)` produces the same results </span> 
+<span style="color: black;">**<u>注釈:</u>** **base** の `anova(model1, model2, test = "Chisq")` を使っても同じ結果を得ることができます。</span> 
 
 ```{r}
 model1 <- glm(outcome ~ age_cat, family = "binomial", data = linelist)
@@ -510,32 +501,32 @@ model2 <- glm(outcome ~ age_cat + gender, family = "binomial", data = linelist)
 lmtest::lrtest(model1, model2)
 ```
 
-Another option is to take the model object and apply the `step()` function from the **stats** package. Specify which variable selection direction you want use when building the model.      
+他の方法は、各モデルのオブジェクトを受け取り、**stats** パッケージの `step()` を適用することです。この関数では、モデルを構築する際に使用したい変数選択の方向を指定します。
 
 ```{r}
-## choose a model using forward selection based on AIC
-## you can also do "backward" or "both" by adjusting the direction
+## AIC に基づいた変数増加法によりモデルを選択
+## "backward" や "both" を指定することで変数選択の方法を調整できる
 final_mv_reg <- mv_reg %>%
   step(direction = "forward", trace = FALSE)
 ```
 
 
-You can also turn off scientific notation in your R session, for clarity:  
+また数値の表示をわかりやすくするために、指数表記をオフにすることもできます:
 
 ```{r}
 options(scipen=999)
 ```
 
-As described in the section on univariate analysis, pass the model output to `tidy()` to exponentiate the log odds and CIs. Finally we round all numeric columns to two decimal places. Scroll through to see all the rows.  
+単変量解析のセクションで説明したように、モデルの出力を `tidy()` に渡して、対数オッズ比と信頼区間を指数変換します。最後に、全ての数値列を小数点以下 2 桁に四捨五入します。スクロールして全ての行を確認してください。
 
 ```{r mv_regression_base}
 
 mv_tab_base <- final_mv_reg %>% 
-  broom::tidy(exponentiate = TRUE, conf.int = TRUE) %>%  ## get a tidy dataframe of estimates 
-  mutate(across(where(is.numeric), round, digits = 2))          ## round 
+  broom::tidy(exponentiate = TRUE, conf.int = TRUE) %>%  ## 推定値の整然化されたデータフレームを得る
+  mutate(across(where(is.numeric), round, digits = 2))          ## 四捨五入
 ```
 
-Here is what the resulting data frame looks like: 
+結果として得られたデータフレームは以下のようになります:
 
 ```{r, message=FALSE, echo=F}
 DT::datatable(mv_tab_base, rownames = FALSE, options = list(pageLength = 10, scrollX=T), class = 'white-space: nowrap' )
@@ -547,50 +538,47 @@ DT::datatable(mv_tab_base, rownames = FALSE, options = list(pageLength = 10, scr
 
 <!-- ======================================================= -->
 
-### Combine univariate and multivariable {.unnumbered}
+### 単変量と多変量の解析結果の結合 {.unnumbered}
 
-#### Combine with **gtsummary**  {.unnumbered}  
+#### **gtsummary** パッケージを使った結合 {.unnumbered}
 
-The **gtsummary** package provides the `tbl_regression()` function, which will 
-take the outputs from a regression (`glm()` in this case) and produce an nice 
-summary table. 
+**gtsummary** パッケージは `tbl_regression()` を提供しており、回帰の結果（この場合は `glm()`）を受け取り、美しくまとめた表を作成します。
 
 ```{r mv_regression_gt}
-## show results table of final regression 
+## 最終的な回帰モデルの結果の表を表示
 mv_tab <- tbl_regression(final_mv_reg, exponentiate = TRUE)
 ```
 
-Let's see the table:  
+表を確認しましょう。
 
 ```{r}
 mv_tab
 ```
 
-You can also combine several different output tables produced by **gtsummary** with 
-the `tbl_merge()` function. We now combine the multivariable results with the **gtsummary** *univariate* results that we created [above](#reg_gt_uni):  
+また、**gtsummary** パッケージで作成したいくつかの異なる表を `tbl_merge()` で結合することができます。ここでは、多変量回帰分析の結果を、[上](#reg_gt_uni)で作成した**gtsummary** パッケージの**単変量**の結果と結合させています。
 
 ```{r}
-## combine with univariate results 
+## 単変量結果を結合 
 tbl_merge(
-  tbls = list(univ_tab, mv_tab),                          # combine
-  tab_spanner = c("**Univariate**", "**Multivariable**")) # set header names
+  tbls = list(univ_tab, mv_tab),                          # 結合
+  tab_spanner = c("**Univariate**", "**Multivariable**")) # ヘッダー名を設定
 ```
 
 
 
-#### Combine with **dplyr** {.unnumbered}  
+#### **dplyr** を使った結合 {.unnumbered}  
 
-An alternative way of combining the `glm()`/`tidy()` univariate and multivariable outputs is with the **dplyr** join functions.  
+`glm()` / `tidy()` の単変量と多変量の出力を結合する別の方法として、**dplyr** パッケージの結合関数があります。
 
-* Join the univariate results from earlier (`univ_tab_base`, which contains counts) with the tidied multivariable results `mv_tab_base`  
-* Use `select()` to keep only the columns we want, specify their order, and re-name them  
-* Use `round()` with two decimal places on all the column that are class Double  
+* 先に示した単変量の結果（カウントを含む `univ_tab_base`）と、整然化された多変量の結果 `mv_tab_base` を結合します。
+* `select()` を使って、必要な列だけを残し、その順序を指定し、名前を変更します。
+* 実数型である全ての列に対して `round()` を適用して、小数点以下 2 桁に四捨五入します。
 
 ```{r, warning=F, message=F}
-## combine univariate and multivariable tables 
+## 単変量と多変量の表を結合
 left_join(univ_tab_base, mv_tab_base, by = "term") %>% 
-  ## choose columns and rename them
-  select( # new name =  old name
+  ## 列を選択し、名前を変更
+  select( # 新しい名前 = 古い名前
     "characteristic" = term, 
     "recovered"      = "0", 
     "dead"           = "1", 
@@ -612,52 +600,50 @@ left_join(univ_tab_base, mv_tab_base, by = "term") %>%
 
 <!-- ======================================================= -->
 
-## Forest plot {  }
+## フォレストプロット {  }
 
-This section shows how to produce a plot with the outputs of your regression.
-There are two options, you can build a plot yourself using **ggplot2** or use a 
-meta-package called **easystats** (a package that includes many packages).  
+このセクションでは、回帰の結果を図示する方法を示します。**ggplot2** パッケージを使って自分自身でプロットを作成する方法と、**easystats** と呼ばれるメタパッケージ（多くのパッケージを含むパッケージ）を使う方法があります。
 
-See the page on [ggplot basics] if you are unfamiliar with the **ggplot2** plotting package.  
+**ggplot2** パッケージに慣れていない方は、[ggplot の基礎](#ggplot-basics)の章をご参照ください。
 
 
 <!-- ======================================================= -->
 
-### **ggplot2** package {.unnumbered}
+### **ggplot2** パッケージ {.unnumbered}
 
-You can build a forest plot with `ggplot()` by plotting elements of the multivariable regression results. Add the layers of the plots using these "geoms":  
+`ggplot()` を使って、多変量回帰の結果の要素をプロットすることで、フォレストプロットを構築できます。下の "geoms" を使ってプロットのレイヤーを追加していきます:
 
-* estimates with `geom_point()`  
-* confidence intervals with `geom_errorbar()`  
-* a vertical line at OR = 1 with `geom_vline()`  
+* `geom_point()` を使った推定値の図示
+* `geom_errorbar()` を使った信頼区間の図示
+* `geom_vline()` を使った OR = 1 を表す垂直線の図示
 
-Before plotting, you may want to use `fct_relevel()` from the **forcats** package to set the order of the variables/levels on the y-axis. `ggplot()` may display them in alpha-numeric order which would not work well for these age category values ("30" would appear before "5"). See the page on [Factors] for more details.  
+プロットする前に、**forcats** パッケージの `fct_relevel()` を使って、y 軸上の変数 / レベルの順序を設定すると良いでしょう。（設定しないと）`ggplot()` は、年齢カテゴリに対して英数字順に表示するといった期待通りの結果を返さないかもしれません。詳しくは[因子（ファクタ）型データ](#factors)を参照してください。
 
 ```{r ggplot_forest}
 
-## remove the intercept term from your multivariable results
+## 多変量の結果から切片項を削除
 mv_tab_base %>% 
   
-  #set order of levels to appear along y-axis
+  # y 軸上に示される変数 / レベルの順序を指定
   mutate(term = fct_relevel(
     term,
     "vomit", "gender", "fever", "cough", "chills", "aches",
     "age_cat5-9", "age_cat10-14", "age_cat15-19", "age_cat20-29",
     "age_cat30-49", "age_cat50-69", "age_cat70+")) %>%
   
-  # remove "intercept" row from plot
+  # "intercept" の行をプロットから削除
   filter(term != "(Intercept)") %>% 
   
-  ## plot with variable on the y axis and estimate (OR) on the x axis
+  ## y 軸に変数を x 軸に推定値（OR）をプロット
   ggplot(aes(x = estimate, y = term)) +
   
-  ## show the estimate as a point
+  ## 点推定値をポイントとして図示
   geom_point() + 
   
-  ## add in an error bar for the confidence intervals
+  ## 信頼区間をエラーバーとして追加
   geom_errorbar(aes(xmin = conf.low, xmax = conf.high)) + 
   
-  ## show where OR = 1 is for reference as a dashed line
+  ## OR = 1 を示す参照をダッシュ線で示す
   geom_vline(xintercept = 1, linetype = "dashed")
   
 ```
@@ -665,18 +651,16 @@ mv_tab_base %>%
 
 <!-- ======================================================= -->
 
-### **easystats** packages {.unnumbered}
+### **easystats** パッケージ {.unnumbered}
 
-An alternative, if you do not want to the fine level of control that **ggplot2** provides, is to use a combination of **easystats** packages.  
+**ggplot2** パッケージが提供する細かいレベルの制御をしたくない場合は、代わりに **easystats** パッケージの組み合わせを使用することができます。
 
-The function `model_parameters()` from the **parameters** package does the equivalent
-of the **broom** package function `tidy()`. The **see** package then accepts those outputs
-and creates a default forest plot as a `ggplot()` object. 
+**parameters** パッケージの `model_parameters()` は **broom** パッケージの `tidy()` と同じ処理を行います。**see** パッケージは、これらの出力を受け取り `ggplot()` オブジェクトとしてデフォルトのフォレストプロットを作成します。
 
 ```{r easystats_forest}
 pacman::p_load(easystats)
 
-## remove the intercept term from your multivariable results
+## 多変量の結果から切片項を削除
 final_mv_reg %>% 
   model_parameters(exponentiate = TRUE) %>% 
   plot()
@@ -686,15 +670,15 @@ final_mv_reg %>%
 
 <!-- ======================================================= -->
 
-## Resources {  }
+## 参考資料 {  }
 
-The content of this page was informed by these resources and vignettes online:  
+この章の内容は、これらの資料やオンラインの動作例を参考にしています。
 
-[Linear regression in R](https://www.datacamp.com/community/tutorials/linear-regression-R)  
+[Linear regression in R](https://www.datacamp.com/community/tutorials/linear-regression-R)
 
-[gtsummary](http://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html)  
+[gtsummary](http://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html)
 
-[UCLA stats page](https://stats.idre.ucla.edu/other/dae/)  
+[UCLA stats page](https://stats.idre.ucla.edu/other/dae/)
 
-[sthda stepwise regression](http://www.sthda.com/english/articles/36-classification-methods-essentials/150-stepwise-logistic-regression-essentials-in-r/)   
+[sthda stepwise regression](http://www.sthda.com/english/articles/36-classification-methods-essentials/150-stepwise-logistic-regression-essentials-in-r/)
 
