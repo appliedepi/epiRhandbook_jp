@@ -4,9 +4,9 @@
 <!-- ======================================================= -->
 ## 概観{  }
 
-このタブでは、時系列分析のためのいくつかのパッケージの使用方法を示します。主に[**tidyverts**]（https://tidyverts.org/）ファミリーのパッケージを使用していますが、感染症疫学に適したモデルをフィットさせるために、RECON [**trending**]（https://github.com/reconhub/trending）パッケージも使用しています。
+このタブでは、時系列分析のためのいくつかのパッケージの使用方法を示します。主に [**tidyverts**](https://tidyverts.org/) ファミリーのパッケージを使用していますが、感染症疫学に適したモデルをフィットさせるために、RECON [**trending**](https://github.com/reconhub/trending) パッケージも使用しています。
 
-以下の例では、ドイツのカンピロバクターに関する**surveillance**パッケージのデータセットを使用していることに注意してください（詳細はハンドブックの[data chapter](https://epirhandbook.com/download-handbook-and-data.html)を参照してください）。しかし、同じコードを複数の国や他の層を持つデータセットで実行したい場合は、[r4epis github repo](https://github.com/R4EPI/epitsa)にコードテンプレートの例がありますので、そちらを参照してください。
+以下の例では、ドイツのカンピロバクターに関する**surveillance**パッケージのデータセットを使用していることに注意してください（詳細はハンドブックの[ハンドブックとデータのダウンロード](#data-used)を参照してください）。しかし、同じコードを複数の国や他の層を持つデータセットで実行したい場合は、[r4epis github repo](https://github.com/R4EPI/epitsa) にコードテンプレートの例がありますので、そちらを参照してください。
 
 扱うトピックは以下の通りです。 
 
@@ -23,7 +23,7 @@
 
 ### パッケージ {.unnumbered}
 
-以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、pacman パッケージの p_load() を主に使用しています。p_load() は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである base （以下、base R）の library() を使用して読み込むこともできます。R のパッケージに関する詳細は [R の基礎](#basics) の章をご覧ください。
+以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、**pacman** パッケージの `p_load()` を主に使用しています。`p_load()` は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである **base** （以下、**base** R）の `library()` を使用して読み込むこともできます。R のパッケージに関する詳細は [R の基礎](#basics) の章をご覧ください。
 
 ```{r load_packages}
 pacman::p_load(rio,          # ファイルのインポート
@@ -326,6 +326,7 @@ ggplot(counts, aes(x = epiweek)) +
 
 まず，関数を定義します．この関数の引数には、`counts`列を持つデータセット、データセットの最初の週を表す`start_week = `、1年に何回の期間があるかを示す数字（例：52, 12）、そして最後に出力スタイルが含まれます（詳細は以下のコードを参照してください）。 
 
+
 ```{r periodogram}
 ## 関数の引数
 #####################
@@ -393,8 +394,7 @@ peak_weeks <- periodogram(counts,
 
 ```
 
-<span style="color: black;">**_注釈：_** 上の週を使って sin と cos の項に追加することも可能ですが、ここではこれらの項を生成する関数を使用します（下記の回帰の項を参照）</span>。
-
+<span style="color: black;">**_注釈：_** 上の週を使って sin と cos の項に追加することも可能ですが、ここではこれらの項を生成する関数を使用します（下記の回帰の項を参照）</span>
 
 <!-- ======================================================= -->
 ### 分解 {.unnumbered}
@@ -649,7 +649,7 @@ counts %>%
 
 このことから、4週間のラグが最も相関性が高いことがわかりますので、ラグ付きの温度変数を作って回帰に含めます。
 
-<span style="color: red;">**_警告：_** 遅延した温度変数のデータの最初の4週間が欠けている（`NA`）ことに注意してください - データを取得するための4週間前のデータがないからです。このデータセットを **トレンド** の `predict()` で使用するためには、 `predict()` の中の `simulate_pi = FALSE` 引数をさらに下の方で使用する必要があります。simulate オプションを使用したい場合は、以下のコードチャンクに `drop_na(t2m_lag4)` を追加することで、これらのミスを削除し、新しいデータセットとして保存しなければなりません。
+<span style="color: red;">**<u>警告：</u>** 遅延した温度変数のデータの最初の4週間が欠けている（`NA`）ことに注意してください - データを取得するための4週間前のデータがないからです。このデータセットを **トレンド** の `predict()` で使用するためには、 `predict()` の中の `simulate_pi = FALSE` 引数をさらに下の方で使用する必要があります。simulate オプションを使用したい場合は、以下のコードチャンクに `drop_na(t2m_lag4)` を追加することで、これらのミスを削除し、新しいデータセットとして保存しなければなりません。</span>  
  
 
 ```{r lag_tempvar}
@@ -666,7 +666,7 @@ counts <- counts %>%
 
 前述のように負の二項回帰を当てはめます。今回は、4週間遅れの温度変数を加えます。
 
-<span style="color: orange;">**_注意：_** `predict()` の引数の中で `simulate_pi = FALSE` を使用していることに注意してください。これは、 **trending** のデフォルトの動作として、 **ciTools** パッケージを使用して予測区間を推定するためです。これは、 `NA` が含まれている場合には機能せず、また、より荒い間隔を生成します。詳細は `?trending::predict.trending_model_fit` を参照してください。</span>
+<span style="color: orange;">**_注意：_** `predict()` の引数の中で `simulate_pi = FALSE` を使用していることに注意してください。これは、 **trending** のデフォルトの動作として、 **ciTools** パッケージを使用して予測区間を推定するためです。これは、 `NA` が含まれている場合には機能せず、また、より荒い間隔を生成します。詳細は `?trending::predict.trending_model_fit` を参照してください。</span>  
 
 ```{r nb_reg_bivar, warning = FALSE}
 
@@ -798,7 +798,8 @@ Box.test(observed$resid, type = "Ljung-Box")
 
 ここでは、開始日（観測を開始した日）とカットオフ日（ベースライン期間の終了日であり、予測したい期間の開始日）を定義します。 また、対象となる年(これから予測するもの)が何週目であるかも定義します。
 
-<span style="color: black;">**_ヒント：_** この例では、現在、2011年9月末（ "2011W39" ）にいることにしています。
+
+<span style="color: black;">**_ヒント：_** この例では、現在、2011年9月末（ "2011W39" ）にいることにしています。</span>  
 
 ```{r cut_off}
 
@@ -889,7 +890,7 @@ counts <- counts %>%
 
 **purrr** パッケージについては[ループと反復処理・リストの操作](#iteration)の章を参照してください。
 
-<span style="color: orange;">**_注意：_** `predict()` の引数で `simulate_pi = FALSE` を使用していることに注意してください。これは、 **trending** パッケージのデフォルトの動作として、 **ciTools** パッケージを使用して予測区間を推定するためです。これは、`NA`カウントがある場合には機能せず、また、より詳細な間隔を生成します。 詳細は `?trending::predict.trending_model_fit` を参照してください。</span>
+<span style="color: orange;">**<u>注意：</u>** `predict()` の引数で `simulate_pi = FALSE` を使用していることに注意してください。これは、 **trending** パッケージのデフォルトの動作として、 **ciTools** パッケージを使用して予測区間を推定するためです。これは、`NA`カウントがある場合には機能せず、また、より詳細な間隔を生成します。 詳細は `?trending::predict.trending_model_fit` を参照してください。</span>  
 
 ```{r forecast_regression, warning = FALSE}
 # 当てはめと予測のためにデータを分割する
@@ -985,7 +986,7 @@ ggplot(data = observed, aes(x = epiweek)) +
 
 以下では、 **purrr** パッケージの `map()` を使用して各データセットをループさせます。次に、推定値を1つのデータセットにまとめ、元の症例数とマージし、 **yardstick** パッケージを使用して精度の測定値を計算します。以下の4つの指標を計算しました。平均平方根誤差（RMSE: root mean square error）、平均絶対誤差（MAE: mean absolute error）、平均絶対尺度誤差（MASE: mean absolute scaled error）、平均絶対パーセント誤差（MAPE: mean absolute percent error）です。
 
-<span style="color: orange;">**_注意：_** `predict()` の引数で `simulate_pi = FALSE` を使用していることに注意してください。これは **trending** のデフォルトの動作が **ciTools** パッケージを使用して予測区間を推定することだからです。これは これは`NA`カウントがある場合には機能せず、また、より荒い間隔を生成します。 詳細は `?trending::predict.trending_model_fit` を参照してください。</span>
+<span style="color: orange;">**<u>注意：</u>** `predict()` の引数で `simulate_pi = FALSE` を使用していることに注意してください。これは **trending** のデフォルトの動作が **ciTools** パッケージを使用して予測区間を推定することだからです。これは これは`NA`カウントがある場合には機能せず、また、より荒い間隔を生成します。 詳細は `?trending::predict.trending_model_fit` を参照してください。</span>  
 
 ```{r cross_validation, warning = FALSE}
 
@@ -1231,9 +1232,9 @@ ggplot(counts, aes(x = epiweek)) +
 
 GLRNB 法の場合も同様に各パラメータを「リスト」で定義します。そしてアルゴリズムを当てはめ、上界を抽出します。
 
-<span style="color: orange;">**_注意：_** この方法は、閾値の計算に「ブルートフォース」（ブートストラップ法に似た方法）を使用するため、長い時間がかかることがあります！</span>。
+<span style="color: orange;">**<u>注意：</u>** この方法は、閾値の計算に「ブルートフォース」（ブートストラップ法に似た方法）を使用するため、長い時間がかかることがあります！</span>
 
-詳細は [GLRNB ビニエット（vignette）] (https://cran.r-project.org/web/packages/surveillance/vignettes/glrnb.pdf) を参照してください。
+詳細は [GLRNB ドキュメント（vignette）](https://cran.r-project.org/web/packages/surveillance/vignettes/glrnb.pdf) を参照してください。
 
 ```{r glrnb, warning = FALSE, message = FALSE}
 
@@ -1338,7 +1339,7 @@ counts <- counts %>%
 次に、これらの項を使って負の二項回帰をあてはめ、変化率の表を作成します。この例では、有意な変化はありませんでした。
 
 <span style="color: orange;">**_注意：_** `predict()` の引数で `simulate_pi = FALSE` を使用していることに注意してください。これは **trending** のデフォルトの動作が **ciTools** パッケージを使用して予測区間を推定することだからです。
-これは これは`NA`カウントがある場合には機能せず、また、より細かい間隔を生成します。詳細は `?trending::predict.trending_model_fit` を参照してください。</span>
+これは`NA`カウントがある場合には機能せず、また、より細かい間隔を生成します。詳細は `?trending::predict.trending_model_fit` を参照してください。</span>  
 
 ```{r interrupted_regression, warning = FALSE}
 
