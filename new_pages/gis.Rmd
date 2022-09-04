@@ -169,14 +169,14 @@ pacman::p_load(
 
 ### 症例データサンプル {.unnumbered}
 
-ここでは分かりやすくするため、シミュレーションされたエボラ出血熱の `linelist` データフレームから1000件のランダムなサンプルを使って作業します（計算上、少ない件数で作業すると、このハンドブックでの表示が容易になります）。続いて、<a href='https://github.com/appliedepi/epirhandbook_eng/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>「きれいな」linelist</a> をクリックしてダウンロードできます（.rdsファイル）。 
+ここでは分かりやすくするため、シミュレーションされたエボラ出血熱の `linelist` データフレームから1000件のランダムなサンプルを使って作業します（計算上、少ない件数で作業すると、このハンドブックでの表示が容易になります）。続いて、<a href='https://github.com/appliedepi/epirhandbook_eng/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>「前処理された」ラインリスト（linelist）</a> をクリックしてダウンロードできます（.rdsファイル）。 
 
-ここではランダムにサンプルを取っているので、実際にコードを実行してみると、ここでデモされているものとは若干異なる結果になるかもしれません。
+ここではランダムにサンプルを取っているので、実際にコードを実行してみると、ここに表示されている結果とは若干異なる結果になるかもしれません。
 
-データを **rio** パッケージ（.xlsx, .csv, .rds など多くのファイルタイプを扱えます - 詳細は[データのインポート・エクスポート](#importing)の章を参照してください）の `import()` を使ってインポートします。 
+データを **rio** パッケージの `import()` を使ってインポートします（**rio** パッケージは、.xlsx、.csv、.rds など様々な種類のファイルを扱えるパッケージです。詳細は[データのインポート・エクスポート](#importing)の章を参照してください）。 
 
 ```{r, echo=F}
-# 前処理済みのlinelistをインポート
+# 前処理済みのラインリストをインポート
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds"))  
 ```
 
@@ -185,17 +185,17 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 linelist <- import("linelist_cleaned.rds")  
 ```
 
-次に、**base** R から `sample()` を使って 1000 行のランダムなサンプルを選択します。  
+次に、**base** R の `sample()` を使って 1000 行のランダムなサンプルを抽出します。  
 
 ```{r}
-# linelistの行数から1000個のランダムな行番号を生成
+# ラインリストの行数から1000個のランダムな行番号を生成
 sample_rows <- sample(nrow(linelist), 1000)
 
-# サンプル行の全ての列だけを保持するlinelistにサブセット化する
+# サンプル行の全ての列だけを保持するラインリストにサブセットする
 linelist <- linelist[sample_rows,]
 ```
 
-このデータフレーム型の `linelist` を "sf"（空間フィーチャ）型のオブジェクトに変換したいと思います。この linelist には、各症例の居住地の経度と緯度を表す "lon" と "lat" の2つの列があるので、これは簡単です。 
+そして、データフレーム型である `linelist` を "sf"（空間フィーチャ）型のオブジェクトに変換していきます。この ラインリストには、各症例の居住地の経度と緯度を表す "lon" と "lat" の2つの列があるので、これは簡単です。 
 
 ここでは、**sf**（空間的フィーチャ）パッケージとその関数、 `st_as_sf()` を使用して、`linelist_sf` という新しいオブジェクトを作成します。この新しいオブジェクトは、基本的には linelist と同じですが、列 `lon` と `lat` を座標列として指定し、点を表示する際の座標参照系 (CRS) を割り当てています。4326では、GPS座標の標準である [World Geodetic System 1984 (WGS84)](https://gisgeography.com/wgs84-world-geodetic-system/) に基づいた座標が指定されています。  
 
@@ -375,7 +375,7 @@ R でのマッピングオプションの比較については、こちらの [�
 ### ポリゴン内の点 {.unnumbered}
 **症例に行政単位を空間割当て**
 
-ここで興味深い問題があります。症例の linelist には、症例の admin 単位に関する情報が含まれていません。このような情報は、最初のデータ収集段階で収集するのが理想的ですが、空間的な関係（つまり、点がポリゴンと交差する）に基づいて、個々の症例に admin 単位を割り当てることもできます。
+ここで興味深い問題があります。症例のラインリストには、症例の admin 単位に関する情報が含まれていません。このような情報は、最初のデータ収集段階で収集するのが理想的ですが、空間的な関係（つまり、点がポリゴンと交差する）に基づいて、個々の症例に admin 単位を割り当てることもできます。
 
 以下では、症例の位置（点）と ADM3 の境界（ポリゴン）を空間的に交差させます。 
 
@@ -390,12 +390,12 @@ linelist_adm <- linelist_sf %>%
   sf::st_join(sle_adm3, join = st_intersects)
 ```
 
-`sle_adms` のすべての列が linelist に追加されました！各症例には、該当する行政区域レベルの詳細を示す列が追加されました。この例では、新しい列のうち 2 つ（admin レベル3）だけを残したいので、古い列名を `select()` して、追加したい2つだけを選択します。 
+`sle_adms` のすべての列がラインリストに追加されました！各症例には、該当する行政区域レベルの詳細を示す列が追加されました。この例では、新しい列のうち 2 つ（admin レベル3）だけを残したいので、古い列名を `select()` して、追加したい2つだけを選択します。 
 
 ```{r, warning=F, message=F}
 linelist_adm <- linelist_sf %>%
   
-  # 空間交差に基づいて、行政境界ファイルを linelist に結合
+  # 空間交差に基づいて、行政境界ファイルをラインリストに結合
   sf::st_join(sle_adm3, join = st_intersects) %>% 
   
   # 古い列名はそのままに、新たに2つの admin の列名を追加
@@ -413,7 +413,7 @@ linelist_adm %>% select(case_id, admin3name, admin3pcod)
 
 ```{r, warning=F, message=F}
 # 行政単位ごとに症例の数を含むデータフレームを新規作成
-case_adm3 <- linelist_adm %>%          # 新しい admin 列を含む linelist で始める
+case_adm3 <- linelist_adm %>%          # 新しい admin 列を含むラインリストで始める
   as_tibble() %>%                      # 見やすいように tibble に変換
   group_by(admin3pcod, admin3name) %>% # 名前と pcode で行政単位をグループ化
   summarise(cases = n()) %>%           # 要約と行数のカウント
@@ -428,7 +428,7 @@ case_adm3
 
 ```{r, warning=F, message=F}
 ggplot(
-    data = linelist_adm,                     # admin unit 情報を含む linelist で始める
+    data = linelist_adm,                     # admin unit 情報を含むラインリストで始める
     mapping = aes(
       x = fct_rev(fct_infreq(admin3name))))+ # x軸は行政単位、件数で並べ替え
   geom_bar()+                                # 帽を作成、高さは行数
@@ -474,7 +474,7 @@ DT::datatable(head(linelist_sf_hf, 50), rownames = FALSE, options = list(pageLen
 
 ```{r}
 # 医療施設ごとに症例を数える
-hf_catchment <- linelist_sf_hf %>%   # 最寄りの診療所データを含むlinelistで始める
+hf_catchment <- linelist_sf_hf %>%   # 最寄りの診療所データを含むラインリストで始める
   as.data.frame() %>%                # shapefile をデータフレームに変換
   count(nearest_clinic,              # （診療所の）"name" で行を数える
         name = "case_n") %>%         # 数えたデータの列に "case_n" と命名
@@ -804,7 +804,7 @@ autoplot.OpenStreetMap(map_latlon)
 ```{r, warning=F, message=F}
 # 地図をプロット。ggplot と使うためには autoplot が必須。
 autoplot.OpenStreetMap(map_latlon)+                 # 基図から始める
-  geom_point(                                       # linelist の経度と緯度の列から xy の点を追加
+  geom_point(                                       # ラインリストの経度と緯度の列から xy の点を追加
     data = linelist,                                
     aes(x = lon, y = lat),
     size = 1, 
