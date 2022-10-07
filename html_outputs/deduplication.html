@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>15 重複データの排除 | 疫学のための R ハンドブック</title>
+<meta name="author" content="the handbook team">
+<meta name="description" content="この章では、重複データの排除に関する以下の手法について説明します。 重複する行の特定と削除 複数行を含むグループから特定の行（最小値や最大値など）のみを残す「行のスライス」 複数の行の値を 1 つの行にまとめる「ロールアップ」  15.1 準備  パッケージの読み込み...">
+<meta name="generator" content="bookdown 0.29 with bs4_book()">
+<meta property="og:title" content="15 重複データの排除 | 疫学のための R ハンドブック">
+<meta property="og:type" content="book">
+<meta property="og:description" content="この章では、重複データの排除に関する以下の手法について説明します。 重複する行の特定と削除 複数行を含むグループから特定の行（最小値や最大値など）のみを残す「行のスライス」 複数の行の値を 1 つの行にまとめる「ロールアップ」  15.1 準備  パッケージの読み込み...">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="15 重複データの排除 | 疫学のための R ハンドブック">
+<meta name="twitter:description" content="この章では、重複データの排除に関する以下の手法について説明します。 重複する行の特定と削除 複数行を含むグループから特定の行（最小値や最大値など）のみを残す「行のスライス」 複数の行の値を 1 つの行にまとめる「ロールアップ」  15.1 準備  パッケージの読み込み...">
+<!-- JS --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://kit.fontawesome.com/6ecbd6c532.js" crossorigin="anonymous"></script><script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link href="libs/bootstrap-4.6.0/bootstrap.min.css" rel="stylesheet">
+<script src="libs/bootstrap-4.6.0/bootstrap.bundle.min.js"></script><script src="libs/bs3compat-0.4.0/transition.js"></script><script src="libs/bs3compat-0.4.0/tabs.js"></script><script src="libs/bs3compat-0.4.0/bs3compat.js"></script><link href="libs/bs4_book-1.0.0/bs4_book.css" rel="stylesheet">
+<script src="libs/bs4_book-1.0.0/bs4_book.js"></script><script src="libs/htmlwidgets-1.5.4/htmlwidgets.js"></script><link href="libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet">
+<script src="libs/datatables-binding-0.25/datatables.js"></script><link href="libs/dt-core-1.11.3/css/jquery.dataTables.min.css" rel="stylesheet">
+<link href="libs/dt-core-1.11.3/css/jquery.dataTables.extra.css" rel="stylesheet">
+<script src="libs/dt-core-1.11.3/js/jquery.dataTables.min.js"></script><link href="libs/nouislider-7.0.10/jquery.nouislider.min.css" rel="stylesheet">
+<script src="libs/nouislider-7.0.10/jquery.nouislider.min.js"></script><link href="libs/selectize-0.12.0/selectize.bootstrap3.css" rel="stylesheet">
+<script src="libs/selectize-0.12.0/selectize.min.js"></script><link href="libs/crosstalk-1.2.0/css/crosstalk.min.css" rel="stylesheet">
+<script src="libs/crosstalk-1.2.0/js/crosstalk.min.js"></script><script src="libs/kePrint-0.0.1/kePrint.js"></script><link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+<link href="libs/tabwid-1.1.0/tabwid.css" rel="stylesheet">
+<link href="libs/tabwid-1.1.0/scrool.css" rel="stylesheet">
+<link href="libs/leaflet-1.3.1/leaflet.css" rel="stylesheet">
+<script src="libs/leaflet-1.3.1/leaflet.js"></script><link href="libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet">
+<script src="libs/proj4-2.6.2/proj4.min.js"></script><script src="libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script><link href="libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet">
+<script src="libs/leaflet-binding-2.1.1/leaflet.js"></script><script src="libs/leaflet-providers-1.9.0/leaflet-providers_1.9.0.js"></script><script src="libs/leaflet-providers-plugin-2.1.1/leaflet-providers-plugin.js"></script><script src="libs/viz-1.8.2/viz.js"></script><link href="libs/DiagrammeR-styles-0.2/styles.css" rel="stylesheet">
+<script src="libs/grViz-binding-1.0.9/grViz.js"></script><script src="libs/d3-4.5.0/d3.min.js"></script><script src="libs/sankey-1/sankey.js"></script><script src="libs/sankeyNetwork-binding-0.4/sankeyNetwork.js"></script><script src="libs/plotly-binding-4.10.0/plotly.js"></script><script src="libs/typedarray-0.1/typedarray.min.js"></script><link href="libs/plotly-htmlwidgets-css-2.5.1/plotly-htmlwidgets.css" rel="stylesheet">
+<script src="libs/plotly-main-2.5.1/plotly-latest.min.js"></script><link href="libs/vis-9.1.0/vis-network.min.css" rel="stylesheet">
+<script src="libs/vis-9.1.0/vis-network.min.js"></script><script src="libs/visNetwork-binding-2.1.0/visNetwork.js"></script><link href="libs/font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<script src="libs/plotly-basic-2.5.1/plotly-basic-2.5.1.min.js"></script><script src="libs/plotly-cartesian-2.5.1/plotly-cartesian-2.5.1.min.js"></script><script src="libs/proj4js-2.3.15/proj4.js"></script><link href="libs/highcharts-9.3.1/css/motion.css" rel="stylesheet">
+<script src="libs/highcharts-9.3.1/highcharts.js"></script><script src="libs/highcharts-9.3.1/highcharts-3d.js"></script><script src="libs/highcharts-9.3.1/highcharts-more.js"></script><script src="libs/highcharts-9.3.1/modules/stock.js"></script><script src="libs/highcharts-9.3.1/modules/map.js"></script><script src="libs/highcharts-9.3.1/modules/data.js"></script><script src="libs/highcharts-9.3.1/modules/exporting.js"></script><script src="libs/highcharts-9.3.1/modules/offline-exporting.js"></script><script src="libs/highcharts-9.3.1/modules/drilldown.js"></script><script src="libs/highcharts-9.3.1/modules/item-series.js"></script><script src="libs/highcharts-9.3.1/modules/overlapping-datalabels.js"></script><script src="libs/highcharts-9.3.1/modules/annotations.js"></script><script src="libs/highcharts-9.3.1/modules/export-data.js"></script><script src="libs/highcharts-9.3.1/modules/funnel.js"></script><script src="libs/highcharts-9.3.1/modules/heatmap.js"></script><script src="libs/highcharts-9.3.1/modules/treemap.js"></script><script src="libs/highcharts-9.3.1/modules/sankey.js"></script><script src="libs/highcharts-9.3.1/modules/dependency-wheel.js"></script><script src="libs/highcharts-9.3.1/modules/organization.js"></script><script src="libs/highcharts-9.3.1/modules/solid-gauge.js"></script><script src="libs/highcharts-9.3.1/modules/streamgraph.js"></script><script src="libs/highcharts-9.3.1/modules/sunburst.js"></script><script src="libs/highcharts-9.3.1/modules/vector.js"></script><script src="libs/highcharts-9.3.1/modules/wordcloud.js"></script><script src="libs/highcharts-9.3.1/modules/xrange.js"></script><script src="libs/highcharts-9.3.1/modules/tilemap.js"></script><script src="libs/highcharts-9.3.1/modules/venn.js"></script><script src="libs/highcharts-9.3.1/modules/gantt.js"></script><script src="libs/highcharts-9.3.1/modules/timeline.js"></script><script src="libs/highcharts-9.3.1/modules/parallel-coordinates.js"></script><script src="libs/highcharts-9.3.1/modules/bullet.js"></script><script src="libs/highcharts-9.3.1/modules/coloraxis.js"></script><script src="libs/highcharts-9.3.1/modules/dumbbell.js"></script><script src="libs/highcharts-9.3.1/modules/lollipop.js"></script><script src="libs/highcharts-9.3.1/modules/series-label.js"></script><script src="libs/highcharts-9.3.1/plugins/motion.js"></script><script src="libs/highcharts-9.3.1/custom/reset.js"></script><script src="libs/highcharts-9.3.1/modules/boost.js"></script><script src="libs/highchart-binding-0.9.4/highchart.js"></script><script type="text/javascript">
+        // window.addEventListener("load", function() {
+        //     document.getElementById('toc').firstChild.innerHTML = "章目次"; 
+        // });
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementsByClassName("d-flex align-items-start justify-content-between")[0].children[0].children[0].innerHTML = "疫学のための R</br>ハンドブック";
+            document.getElementById('toc').firstChild.innerHTML = "章目次"; 
+            document.getElementById('main-nav').children[1].firstChild.innerHTML = "総目次";
+            document.getElementById('search').setAttribute("placeholder", "検索");
+        });
+    </script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- CSS --><style type="text/css">
+    
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  </style>
+<link rel="stylesheet" href="style_bs4.css">
+</head>
+<body data-spy="scroll" data-target="#toc">
+
+<div class="container-fluid">
+<div class="row">
+  <header class="col-sm-12 col-lg-3 sidebar sidebar-book"><a class="sr-only sr-only-focusable" href="#content">Skip to main content</a>
+
+    <div class="d-flex align-items-start justify-content-between">
+      <h1>
+        <a href="index.html" title="">疫学のための R ハンドブック</a>
+      </h1>
+      <button class="btn btn-outline-primary d-lg-none ml-2 mt-1" type="button" data-toggle="collapse" data-target="#main-nav" aria-expanded="true" aria-controls="main-nav"><i class="fas fa-bars"></i><span class="sr-only">Show table of contents</span></button>
+    </div>
+
+    <div id="main-nav" class="collapse-lg">
+      <form role="search">
+        <input id="search" class="form-control" type="search" placeholder="Search" aria-label="Search">
+</form>
+
+      <nav aria-label="Table of contents"><h2>Table of contents</h2>
+        <ul class="book-toc list-unstyled">
+<li><a class="" href="index.html"></a></li>
+<li class="book-part">本書について</li>
+<li><a class="" href="editorial-style.html"><span class="header-section-number">1</span> 編集前記・技術注記</a></li>
+<li><a class="" href="data-used.html"><span class="header-section-number">2</span> ハンドブックとデータのダウンロード</a></li>
+<li class="book-part">基本編</li>
+<li><a class="" href="basics.html"><span class="header-section-number">3</span> R の基礎</a></li>
+<li><a class="" href="transition-to-R.html"><span class="header-section-number">4</span> Excel・Stata・SASとの比較</a></li>
+<li><a class="" href="packages-suggested.html"><span class="header-section-number">5</span> 推奨パッケージ</a></li>
+<li><a class="" href="r-projects.html"><span class="header-section-number">6</span> R プロジェクト</a></li>
+<li><a class="" href="importing.html"><span class="header-section-number">7</span> データのインポート・エクスポート</a></li>
+<li class="book-part">データマネジメント</li>
+<li><a class="" href="cleaning.html"><span class="header-section-number">8</span> データクリーニングと主要関数</a></li>
+<li><a class="" href="dates.html"><span class="header-section-number">9</span> 日付型データ</a></li>
+<li><a class="" href="characters-strings.html"><span class="header-section-number">10</span> 文字型・文字列型データ</a></li>
+<li><a class="" href="factors.html"><span class="header-section-number">11</span> 因子（ファクタ）型データ</a></li>
+<li><a class="" href="pivoting.html"><span class="header-section-number">12</span> データの縦横変換</a></li>
+<li><a class="" href="grouping.html"><span class="header-section-number">13</span> データのグループ化</a></li>
+<li><a class="" href="joining-matching.html"><span class="header-section-number">14</span> データの結合</a></li>
+<li><a class="active" href="deduplication.html"><span class="header-section-number">15</span> 重複データの排除</a></li>
+<li><a class="" href="iteration.html"><span class="header-section-number">16</span> ループと反復処理・リストの操作</a></li>
+<li class="book-part">データ分析</li>
+<li><a class="" href="tables-descriptive.html"><span class="header-section-number">17</span> 記述統計表の作り方</a></li>
+<li><a class="" href="stat-tests.html"><span class="header-section-number">18</span> 基本的な統計的検定</a></li>
+<li><a class="" href="regression.html"><span class="header-section-number">19</span> 単変量と多変量回帰</a></li>
+<li><a class="" href="missing-data.html"><span class="header-section-number">20</span> データの欠損</a></li>
+<li><a class="" href="standardization.html"><span class="header-section-number">21</span> 標準化率</a></li>
+<li><a class="" href="moving-average.html"><span class="header-section-number">22</span> 移動平均</a></li>
+<li><a class="" href="time-series.html"><span class="header-section-number">23</span> 時系列分析とアウトブレイクの検出</a></li>
+<li><a class="" href="epidemic-models.html"><span class="header-section-number">24</span> エピデミックモデリング</a></li>
+<li><a class="" href="contact-tracing.html"><span class="header-section-number">25</span> 接触者の追跡</a></li>
+<li><a class="" href="survey-analysis.html"><span class="header-section-number">26</span> 標本調査データ分析</a></li>
+<li><a class="" href="survival-analysis.html"><span class="header-section-number">27</span> 生存時間解析</a></li>
+<li><a class="" href="gis.html"><span class="header-section-number">28</span> GIS の基本</a></li>
+<li class="book-part">データの可視化</li>
+<li><a class="" href="tables-presentation.html"><span class="header-section-number">29</span> 見やすい表の作り方</a></li>
+<li><a class="" href="ggplot-basics.html"><span class="header-section-number">30</span> ggplot の基本</a></li>
+<li><a class="" href="ggplot-tips.html"><span class="header-section-number">31</span> ggplotのヒント</a></li>
+<li><a class="" href="epicurves.html"><span class="header-section-number">32</span> 流行曲線（エピカーブ）</a></li>
+<li><a class="" href="age-pyramid.html"><span class="header-section-number">33</span> 人口ピラミッドとリッカート尺度</a></li>
+<li><a class="" href="heatmaps.html"><span class="header-section-number">34</span> ヒートマップ</a></li>
+<li><a class="" href="diagrams.html"><span class="header-section-number">35</span> フローチャート・サンキー図・タイムライン</a></li>
+<li><a class="" href="combination-analysis.html"><span class="header-section-number">36</span> 複数回答データの分析</a></li>
+<li><a class="" href="transmission-chains.html"><span class="header-section-number">37</span> 感染連鎖</a></li>
+<li><a class="" href="phylogenetic-trees.html"><span class="header-section-number">38</span> 系統樹</a></li>
+<li><a class="" href="interactive-plots.html"><span class="header-section-number">39</span> 動的な図の作成</a></li>
+<li class="book-part">レポートとダッシュボード</li>
+<li><a class="" href="rmarkdown.html"><span class="header-section-number">40</span> R Markdown で作るレポート</a></li>
+<li><a class="" href="reportfactory.html"><span class="header-section-number">41</span> ルーチンで作成するレポートの整理</a></li>
+<li><a class="" href="flexdashboard.html"><span class="header-section-number">42</span> R Markdownで作るダッシュボード</a></li>
+<li><a class="" href="shiny-basics.html"><span class="header-section-number">43</span> Shiny で作るダッシュボード</a></li>
+<li class="book-part">その他</li>
+<li><a class="" href="writing-functions.html"><span class="header-section-number">44</span> 関数の作成</a></li>
+<li><a class="" href="directories.html"><span class="header-section-number">45</span> ディレクトリの操作</a></li>
+<li><a class="" href="collaboration.html"><span class="header-section-number">46</span> Git と Github を使ったバージョン管理と共同作業</a></li>
+<li><a class="" href="errors.html"><span class="header-section-number">47</span> よくあるエラー</a></li>
+<li><a class="" href="help.html"><span class="header-section-number">48</span> ヘルプ</a></li>
+<li><a class="" href="network-drives.html"><span class="header-section-number">49</span> ネットワークドライブで R を使用する場合</a></li>
+<li><a class="" href="data-table.html"><span class="header-section-number">50</span> data.table パッケージを使用したデータ処理</a></li>
+</ul>
+
+        <div class="book-extra">
+          
+        </div>
+      </nav>
+</div>
+  </header><main class="col-sm-12 col-md-9 col-lg-7" id="content"><div id="deduplication" class="section level1" number="15">
+<h1>
+<span class="header-section-number">15</span> 重複データの排除<a class="anchor" aria-label="anchor" href="#deduplication"><i class="fas fa-link"></i></a>
+</h1>
+<div class="inline-figure"><img src="images/deduplication.png" width="50%"></div>
+<p>この章では、重複データの排除に関する以下の手法について説明します。</p>
+<ol style="list-style-type: decimal">
+<li>重複する行の特定と削除<br>
+</li>
+<li>複数行を含むグループから特定の行（最小値や最大値など）のみを残す「行のスライス」<br>
+</li>
+<li>複数の行の値を 1 つの行にまとめる「ロールアップ」</li>
+</ol>
+<!-- ======================================================= --><div id="準備-6" class="section level2" number="15.1">
+<h2>
+<span class="header-section-number">15.1</span> 準備<a class="anchor" aria-label="anchor" href="#%E6%BA%96%E5%82%99-6"><i class="fas fa-link"></i></a>
+</h2>
+<div id="パッケージの読み込み-6" class="section level3 unnumbered">
+<h3>パッケージの読み込み<a class="anchor" aria-label="anchor" href="#%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E8%AA%AD%E3%81%BF%E8%BE%BC%E3%81%BF-6"><i class="fas fa-link"></i></a>
+</h3>
+<p>以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、<strong>pacman</strong> パッケージの p_load() を主に使用しています。<code><a href="https://rdrr.io/pkg/pacman/man/p_load.html">p_load()</a></code> は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである <strong>base</strong> の <code><a href="https://rdrr.io/r/base/library.html">library()</a></code> を使用して読み込むこともできます。R のパッケージについては、<a href="basics.html#basics">R の基礎</a> の章を参照してください。</p>
+<div class="sourceCode" id="cb719"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">pacman</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pacman/man/p_load.html">p_load</a></span><span class="op">(</span></span>
+<span>  <span class="va">tidyverse</span>,   <span class="co"># 重複排除、グループ化、スライスの関数</span></span>
+<span>  <span class="va">janitor</span>,     <span class="co"># 重複部分の確認をする関数</span></span>
+<span>  <span class="va">stringr</span><span class="op">)</span>     <span class="co"># 文字列検索で、値の「ロールアップ」に使用</span></span></code></pre></div>
+</div>
+<div id="データのインポート-7" class="section level3 unnumbered">
+<h3>データのインポート<a class="anchor" aria-label="anchor" href="#%E3%83%87%E3%83%BC%E3%82%BF%E3%81%AE%E3%82%A4%E3%83%B3%E3%83%9D%E3%83%BC%E3%83%88-7"><i class="fas fa-link"></i></a>
+</h3>
+<p>ここでは、以下の R コードで作成された、新型コロナウイルス感染症（COVID-19）に関する電話調査の記録のデータセット <code>obs</code> を例として使用します。</p>
+<p>データセットには、接触者と感染者の調査内容が記録されており、<code>recordID</code>（コンピュータで生成された番号）、<code>personID</code>、<code>name</code>、<code>date</code>（調査が行われた日）、<code>time</code>（調査が行われた時間）、<code>purpose</code>（調査の目的、調査の回答者が接触者か感染者のどちらであるか）、<code>symptoms_ever</code>（調査対象者が、症状があったことを<u>一度でも</u>報告したかどうか）といった列が含まれています。</p>
+<p>以下は、<code>obs</code> データセットを作成するコードです。</p>
+<div class="sourceCode" id="cb720"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">obs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span></span>
+<span>  recordID  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">2</span>,<span class="fl">3</span>,<span class="fl">4</span>,<span class="fl">5</span>,<span class="fl">6</span>,<span class="fl">7</span>,<span class="fl">8</span>,<span class="fl">9</span>,<span class="fl">10</span>,<span class="fl">11</span>,<span class="fl">12</span>,<span class="fl">13</span>,<span class="fl">14</span>,<span class="fl">15</span>,<span class="fl">16</span>,<span class="fl">17</span>,<span class="fl">18</span><span class="op">)</span>,</span>
+<span>  personID  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">2</span>,<span class="fl">2</span>,<span class="fl">3</span>,<span class="fl">2</span>,<span class="fl">4</span>,<span class="fl">5</span>,<span class="fl">6</span>,<span class="fl">7</span>,<span class="fl">2</span>,<span class="fl">1</span>,<span class="fl">3</span>,<span class="fl">3</span>,<span class="fl">4</span>,<span class="fl">5</span>,<span class="fl">5</span>,<span class="fl">7</span>,<span class="fl">8</span><span class="op">)</span>,</span>
+<span>  name      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"adam"</span>, <span class="st">"adam"</span>, <span class="st">"amrish"</span>, <span class="st">"amrish"</span>, <span class="st">"mariah"</span>, <span class="st">"amrish"</span>, <span class="st">"nikhil"</span>, <span class="st">"brian"</span>, <span class="st">"smita"</span>, <span class="st">"raquel"</span>, <span class="st">"amrish"</span>,</span>
+<span>                <span class="st">"adam"</span>, <span class="st">"mariah"</span>, <span class="st">"mariah"</span>, <span class="st">"nikhil"</span>, <span class="st">"brian"</span>, <span class="st">"brian"</span>, <span class="st">"raquel"</span>, <span class="st">"natalie"</span><span class="op">)</span>,</span>
+<span>  date      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"1/1/2020"</span>, <span class="st">"1/1/2020"</span>, <span class="st">"2/1/2020"</span>, <span class="st">"2/1/2020"</span>, <span class="st">"5/1/2020"</span>, <span class="st">"5/1/2020"</span>, <span class="st">"5/1/2020"</span>, <span class="st">"5/1/2020"</span>, <span class="st">"5/1/2020"</span>,<span class="st">"5/1/2020"</span>, <span class="st">"2/1/2020"</span>,</span>
+<span>                <span class="st">"5/1/2020"</span>, <span class="st">"6/1/2020"</span>, <span class="st">"6/1/2020"</span>, <span class="st">"6/1/2020"</span>, <span class="st">"6/1/2020"</span>, <span class="st">"7/1/2020"</span>, <span class="st">"7/1/2020"</span>, <span class="st">"7/1/2020"</span><span class="op">)</span>,</span>
+<span>  time      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"09:00"</span>, <span class="st">"09:00"</span>, <span class="st">"14:20"</span>, <span class="st">"14:20"</span>, <span class="st">"12:00"</span>, <span class="st">"16:10"</span>, <span class="st">"13:01"</span>, <span class="st">"15:20"</span>, <span class="st">"14:20"</span>, <span class="st">"12:30"</span>, <span class="st">"10:24"</span>,</span>
+<span>                <span class="st">"09:40"</span>, <span class="st">"07:25"</span>, <span class="st">"08:32"</span>, <span class="st">"15:36"</span>, <span class="st">"15:31"</span>, <span class="st">"07:59"</span>, <span class="st">"11:13"</span>, <span class="st">"17:12"</span><span class="op">)</span>,</span>
+<span>  encounter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">3</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">2</span>,</span>
+<span>                <span class="fl">2</span>,<span class="fl">2</span>,<span class="fl">3</span>,<span class="fl">2</span>,<span class="fl">2</span>,<span class="fl">3</span>,<span class="fl">2</span>,<span class="fl">1</span><span class="op">)</span>,</span>
+<span>  purpose   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"case"</span>, <span class="st">"case"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>,</span>
+<span>                <span class="st">"case"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"contact"</span>, <span class="st">"case"</span>, <span class="st">"contact"</span>, <span class="st">"case"</span><span class="op">)</span>,</span>
+<span>  symptoms_ever <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="cn">NA</span>, <span class="st">"No"</span>, <span class="st">"No"</span>, <span class="st">"No"</span>, <span class="st">"Yes"</span>, <span class="st">"Yes"</span>, <span class="st">"No"</span>, <span class="st">"Yes"</span>, <span class="cn">NA</span>, <span class="st">"Yes"</span>,</span>
+<span>                    <span class="st">"No"</span>, <span class="st">"No"</span>, <span class="st">"No"</span>, <span class="st">"Yes"</span>, <span class="st">"Yes"</span>, <span class="st">"No"</span>,<span class="st">"No"</span>, <span class="st">"No"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="va">date</span>, format <span class="op">=</span> <span class="st">"%d/%m/%Y"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div id="dedup_data" class="section level3 unnumbered">
+<h3>作成したデータセットを以下に表示します<a class="anchor" aria-label="anchor" href="#dedup_data"><i class="fas fa-link"></i></a>
+</h3>
+<p>上部のフィルターボックスを使って、電話調査に回答した人の各記録を確認することができます。</p>
+<div id="htmlwidget-875c3de5b3d6158f20b4" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-875c3de5b3d6158f20b4">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"number\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none;position: absolute;width: 200px;opacity: 1\">\n      <div data-min=\"1\" data-max=\"18\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"number\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none;position: absolute;width: 200px;opacity: 1\">\n      <div data-min=\"1\" data-max=\"8\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"date\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none;position: absolute;width: 200px;opacity: 1\">\n      <div data-min=\"1577836800000\" data-max=\"1578355200000\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"number\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none;position: absolute;width: 200px;opacity: 1\">\n      <div data-min=\"1\" data-max=\"3\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[[1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],[1,1,2,2,3,2,4,5,6,7,2,1,3,3,4,5,5,7,8],["adam","adam","amrish","amrish","mariah","amrish","nikhil","brian","smita","raquel","amrish","adam","mariah","mariah","nikhil","brian","brian","raquel","natalie"],["2020-01-01","2020-01-01","2020-01-02","2020-01-02","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-02","2020-01-05","2020-01-06","2020-01-06","2020-01-06","2020-01-06","2020-01-07","2020-01-07","2020-01-07"],["09:00","09:00","14:20","14:20","12:00","16:10","13:01","15:20","14:20","12:30","10:24","09:40","07:25","08:32","15:36","15:31","07:59","11:13","17:12"],[1,1,1,1,1,3,1,1,1,1,2,2,2,3,2,2,3,2,1],["contact","contact","contact","contact","case","case","contact","contact","contact","contact","contact","case","contact","contact","contact","contact","case","contact","case"],[null,null,"No","No","No","Yes","Yes","No","Yes",null,"Yes","No","No","No","Yes","Yes","No","No","No"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":19,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,1,5]}],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"lengthMenu":[10,19,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>データを確認する際、次の点に注意してください。</p>
+<ul>
+<li>最初の 2 行は完全に同じ記録（100% 重複）で、<code>recordID</code> も重複している（コンピュータの不具合により重複した記録が作成されたと考えられる）<br>
+</li>
+<li>2 番目の 2 行は、<u><code>recordID</code> を除く</u>すべての列で重複している<br>
+</li>
+<li>何人かの被調査者（調査回答者）は、調査を複数回受けている（接触者として調査を受けたこともあれば、感染者として調査を受けたこともある）<br>
+</li>
+<li>被調査者は、電話調査を受けた際に「<strong>今まで</strong>症状があったかどうか」を尋ねられるが、情報の一部が欠損している（<code>symptoms_ever</code> 列）</li>
+</ul>
+<p>以下に、<strong>janitor</strong> の <code>tabyl()</code> を使って、被調査者の名前と調査の目的（被調査者が接触者か感染者のどちらであるか）を簡単に集計しました。</p>
+<div class="sourceCode" id="cb721"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">tabyl</span><span class="op">(</span><span class="va">name</span>, <span class="va">purpose</span><span class="op">)</span></span></code></pre></div>
+<pre><code>##     name case contact
+##     adam    1       2
+##   amrish    1       3
+##    brian    1       2
+##   mariah    1       2
+##  natalie    1       0
+##   nikhil    0       2
+##   raquel    0       2
+##    smita    0       1</code></pre>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="重複排除" class="section level2" number="15.2">
+<h2>
+<span class="header-section-number">15.2</span> 重複排除<a class="anchor" aria-label="anchor" href="#%E9%87%8D%E8%A4%87%E6%8E%92%E9%99%A4"><i class="fas fa-link"></i></a>
+</h2>
+<p>ここでは、データフレーム内の重複する行を確認し、削除する方法を説明します。また、ベクトル内の重複する要素を処理する方法も紹介します。</p>
+<!-- ======================================================= -->
+<div id="重複する行を調べる" class="section level3 unnumbered">
+<h3>重複する行を調べる<a class="anchor" aria-label="anchor" href="#%E9%87%8D%E8%A4%87%E3%81%99%E3%82%8B%E8%A1%8C%E3%82%92%E8%AA%BF%E3%81%B9%E3%82%8B"><i class="fas fa-link"></i></a>
+</h3>
+<p>重複している行を素早く確認するには、 <strong>janitor</strong> パッケージの <code>get_dupes()</code> を使います。<u>デフォルトでは</u>、この関数が返す行は、<u>すべての</u>列の値が重複している行（100% 重複の行）です。</p>
+<p><code>obs</code> データフレームの最初の 2 行では、本来一意であるべき <code>recordID</code> 列を含むすべての列が同じ値となっており、この 2 列は <u>100% 重複</u> しています。以下のコマンドを実行して出力されたデータフレームには、新しい列 <code>dupe_count</code> が右側に自動的に追加され、重複した値の組み合わせを持つ行の数が表示されます。</p>
+<div class="sourceCode" id="cb723"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># すべての列で 100％ 重複</span></span>
+<span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">janitor</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/janitor/man/get_dupes.html">get_dupes</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div id="htmlwidget-64035a43de83d41735a4" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-64035a43de83d41735a4">{"x":{"filter":"none","vertical":false,"data":[[1,1],[1,1],["adam","adam"],["2020-01-01","2020-01-01"],["09:00","09:00"],[1,1],["contact","contact"],[null,null],[2,2]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n      <th>dupe_count<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":19,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,1,5,8]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[10,19,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+<p>しかし、<code>recordID</code> を無視して考えると、元データの 3 行目と 4 行目の行も重複していることになります。つまり、3 行目と 4 行目は <code>recordID</code> を<u>除く</u>すべての列に同じ値が記録されています。このような行を確認したい場合は、 <code>get_dupes()</code> の中でマイナス記号 - を使って無視する列を指定します。</p>
+<div class="sourceCode" id="cb724"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># recordID 列を除くすべての列で値が重複している</span></span>
+<span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">janitor</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/janitor/man/get_dupes.html">get_dupes</a></span><span class="op">(</span><span class="op">-</span><span class="va">recordID</span><span class="op">)</span>         <span class="co"># 除きたい列が複数ある場合は c() で囲む</span></span></code></pre></div>
+<div id="htmlwidget-6f1ccc6644efa237b97c" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-6f1ccc6644efa237b97c">{"x":{"filter":"none","vertical":false,"data":[[1,1,2,2],["adam","adam","amrish","amrish"],["2020-01-01","2020-01-01","2020-01-02","2020-01-02"],["09:00","09:00","14:20","14:20"],[1,1,1,1],["contact","contact","contact","contact"],[null,null,"No","No"],[2,2,2,2],[1,1,2,3]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n      <th>dupe_count<\/th>\n      <th>recordID<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":19,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,4,7,8]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[10,19,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>重複として考慮する列を明示的に指定することもできます。以下では、<code>name</code> と <code>purpose</code> という列のみに同じ値を持つ行が返されます。<code>name</code> 列に “amrish” という値をもつ行の <code>dupe_count</code> が 3 になっていることに注目してください。これは、“amrish” という人物が「接触者（“contact”）」として 3 回電話調査を受けたことを示しています。</p>
+<p><u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u></p>
+<div class="sourceCode" id="cb725"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># name と purpose の列の値が重複する行のみ</span></span>
+<span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">janitor</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/janitor/man/get_dupes.html">get_dupes</a></span><span class="op">(</span><span class="va">name</span>, <span class="va">purpose</span><span class="op">)</span></span></code></pre></div>
+<div id="htmlwidget-6778395f65d3e70553f5" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-6778395f65d3e70553f5">{"x":{"filter":"none","vertical":false,"data":[["adam","adam","amrish","amrish","amrish","brian","brian","mariah","mariah","nikhil","nikhil","raquel","raquel"],["contact","contact","contact","contact","contact","contact","contact","contact","contact","contact","contact","contact","contact"],[2,2,3,3,3,2,2,2,2,2,2,2,2],[1,1,2,3,10,7,15,12,13,6,14,9,17],[1,1,2,2,2,5,5,3,3,4,4,7,7],["2020-01-01","2020-01-01","2020-01-02","2020-01-02","2020-01-02","2020-01-05","2020-01-06","2020-01-06","2020-01-06","2020-01-05","2020-01-06","2020-01-05","2020-01-07"],["09:00","09:00","14:20","14:20","10:24","15:20","15:31","07:25","08:32","13:01","15:36","12:30","11:13"],[1,1,1,1,2,1,2,2,3,1,2,1,2],[null,null,"No","No","Yes","No","Yes","No","No","Yes","Yes",null,"No"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>name<\/th>\n      <th>purpose<\/th>\n      <th>dupe_count<\/th>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>symptoms_ever<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":7,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[2,3,4,7]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[7,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+<p><code>get_dupes()</code> に関する詳細は、<code>?get_dupes</code> をご覧ください。また、<a href="https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#explore-records-with-duplicated-values-for-specific-combinations-of-variables-with-get_dupes">こちら</a> のドキュメントもご参照ください。</p>
+<!-- ======================================================= -->
+</div>
+<div id="一意の行のみを保持する" class="section level3 unnumbered">
+<h3>一意の行のみを保持する<a class="anchor" aria-label="anchor" href="#%E4%B8%80%E6%84%8F%E3%81%AE%E8%A1%8C%E3%81%AE%E3%81%BF%E3%82%92%E4%BF%9D%E6%8C%81%E3%81%99%E3%82%8B"><i class="fas fa-link"></i></a>
+</h3>
+<p>データフレームの一意の行のみ（重複しない行のみ）を保持するには、<strong>dplyr</strong> の <code><a href="https://dplyr.tidyverse.org/reference/distinct.html">distinct()</a></code> を使います（<a href="cleaning.html#cleaning">データクリーニングと主要関数</a> の章でさらに詳しく説明しています）。重複している行のうち、最初の行のみが保持され、それ以外の行は削除されます。デフォルトでは、「最初」とは最も上位の <code>rownumber</code> （行の順序、上から下へ番号が振られている）を意味します。その結果、一意の行だけが残ります。</p>
+<p>以下の例では、<code>recordID</code> という列を除いて <code><a href="https://dplyr.tidyverse.org/reference/distinct.html">distinct()</a></code> を実行して、<strong>2 つの重複した行を削除</strong>しています。上の表の最初の行（<code>name</code> 列の値が “adam” の行）は 100% 重複しており、削除されます（訳注：最初の行ではなく、2 番目の行が削除される、の誤り。deuplicate() は重複する行のうち、最初の行が保持されそれ以外の重複行が削除される）。また、3 行目（“amrish” の行）は、<code>recordID</code> を<em>除く</em>すべての列で 4 行目と重複しており、削除されます（訳注：削除されるのは 4 行目）。その結果、<code>obs</code> データセットの n （調査記録の数）は 19 ではなく、17 になります。</p>
+<p><u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u></p>
+<div class="sourceCode" id="cb726"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 既存のパイプラインに加える（データクリーニング）</span></span>
+<span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html">distinct</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html">across</a></span><span class="op">(</span><span class="op">-</span><span class="va">recordID</span><span class="op">)</span>, <span class="co"># データフレームを一意の行だけにする（重複している最初の行は残す）</span></span>
+<span>           .keep_all <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> </span>
+<span></span>
+<span><span class="co"># パイプを使わない場合は、以下のように第一引数にデータセットの名前を入れる </span></span>
+<span><span class="co"># distinct(obs)</span></span></code></pre></div>
+<div id="htmlwidget-da9a592f44360f4ee3e8" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-da9a592f44360f4ee3e8">{"x":{"filter":"none","vertical":false,"data":[[1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],[1,2,3,2,4,5,6,7,2,1,3,3,4,5,5,7,8],["adam","amrish","mariah","amrish","nikhil","brian","smita","raquel","amrish","adam","mariah","mariah","nikhil","brian","brian","raquel","natalie"],["2020-01-01","2020-01-02","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-02","2020-01-05","2020-01-06","2020-01-06","2020-01-06","2020-01-06","2020-01-07","2020-01-07","2020-01-07"],["09:00","14:20","12:00","16:10","13:01","15:20","14:20","12:30","10:24","09:40","07:25","08:32","15:36","15:31","07:59","11:13","17:12"],[1,1,1,3,1,1,1,1,2,2,2,3,2,2,3,2,1],["contact","contact","case","case","contact","contact","contact","contact","contact","case","contact","contact","contact","contact","case","contact","case"],[null,"No","No","Yes","Yes","No","Yes",null,"Yes","No","No","No","Yes","Yes","No","No","No"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":6,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,1,5]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[6,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><span style="color: orange;"><u><strong>注意：</strong></u> グループ化されたデータに <code><a href="https://dplyr.tidyverse.org/reference/distinct.html">distinct()</a></code> を使う場合は、各グループごとに適用されます。</span></p>
+<p><strong>特定の列に基づいて重複排除する</strong></p>
+<p>重複排除の基準となる列を指定することもできます。これにより、指定した列の値のみ重複している行に重複排除が適用されます。また <code>.keep_all = TRUE</code> を設定しない限り、指定されていないすべての列が削除されます。</p>
+<p>以下のコマンドでは、<code>name</code> 列と <code>purpose</code> 列の値が同じ行にのみ重複排除が適用されます。したがって、<code>name</code> 列 が “brian” である行は 3 行から 2 行になります。残された 2 行は、“brain” が<u>最初に</u>「接触者（“contact”）」として受けた調査記録と、彼が「感染者（“case”）」として受けた唯一の調査記録です。調査の目的別に（接触者か感染者であるか）“brian” が受けた最後の調査記録（複数ある記録のうち、最も新しい記録）を保持したい場合は、本章の「グループ内のスライス」のセクションを参照してください。</p>
+<p><u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u></p>
+<div class="sourceCode" id="cb727"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 既存のパイプラインに加える（データクリーニング）</span></span>
+<span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html">distinct</a></span><span class="op">(</span><span class="va">name</span>, <span class="va">purpose</span>, .keep_all <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span>  <span class="co"># name と purpose 列によって重複を排除して一意の行にし、すべての列を保持する</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html">arrange</a></span><span class="op">(</span><span class="va">name</span><span class="op">)</span>                                  <span class="co"># 見やすさのために並び替える</span></span></code></pre></div>
+<div id="htmlwidget-9db533c6202ac38c82d2" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-9db533c6202ac38c82d2">{"x":{"filter":"none","vertical":false,"data":[[1,11,2,5,7,16,4,12,18,6,9,8],[1,1,2,2,5,5,3,3,8,4,7,6],["adam","adam","amrish","amrish","brian","brian","mariah","mariah","natalie","nikhil","raquel","smita"],["2020-01-01","2020-01-05","2020-01-02","2020-01-05","2020-01-05","2020-01-07","2020-01-05","2020-01-06","2020-01-07","2020-01-05","2020-01-05","2020-01-05"],["09:00","09:40","14:20","16:10","15:20","07:59","12:00","07:25","17:12","13:01","12:30","14:20"],[1,2,1,3,1,3,1,2,1,1,1,1],["contact","case","contact","case","contact","case","case","contact","case","contact","contact","contact"],[null,"No","No","Yes","No","No","No","No","No","Yes",null,"Yes"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":6,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,1,5]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[6,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+<!-- ======================================================= -->
+</div>
+<div id="ベクトル内の要素の重複排除" class="section level3 unnumbered">
+<h3>ベクトル内の要素の重複排除<a class="anchor" aria-label="anchor" href="#%E3%83%99%E3%82%AF%E3%83%88%E3%83%AB%E5%86%85%E3%81%AE%E8%A6%81%E7%B4%A0%E3%81%AE%E9%87%8D%E8%A4%87%E6%8E%92%E9%99%A4"><i class="fas fa-link"></i></a>
+</h3>
+<p><strong>base</strong> R に含まれている関数の <code><a href="https://rdrr.io/r/base/duplicated.html">duplicated()</a></code> は、ベクトル（列）を評価して、同じ長さのロジカルベクトル（TRUE または FALSE）を返します。重複する値のうち、最初の値が現れたときは FALSE（重複していない）を返し、それ以降に値が現れたときは TRUE （重複している）を返します。<code>NA</code> も他の値と同じように重複しているか判断されることに注意してください。</p>
+<div class="sourceCode" id="cb728"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">4</span>, <span class="fl">5</span>, <span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+<pre><code>##  [1] FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE  TRUE  TRUE  TRUE  TRUE</code></pre>
+<p>重複した要素だけを返したい場合は、角括弧 <code>[ ]</code> を使って、以下のように元のベクトルをから重複した要素のみを抜き出すことができます。</p>
+<div class="sourceCode" id="cb730"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre><code>## [1]  1 NA  4  4  1  2</code></pre>
+<p>一意の要素だけを返すには、<strong>base</strong> Rの <code><a href="https://rdrr.io/r/base/unique.html">unique()</a></code> を使います。<code>NA</code> を出力から取り除くには、<code><a href="https://rdrr.io/r/base/unique.html">unique()</a></code> の中に <code><a href="https://rdrr.io/r/stats/na.fail.html">na.omit()</a></code> を入れます。</p>
+<div class="sourceCode" id="cb732"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>           <span class="co"># 代わりに x[!duplicated(x)] を使うこともできる</span></span></code></pre></div>
+<pre><code>## [1]  1  2 NA  4  5</code></pre>
+<div class="sourceCode" id="cb734"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/na.fail.html">na.omit</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>  <span class="co"># NAを除外する</span></span></code></pre></div>
+<pre><code>## [1] 1 2 4 5</code></pre>
+<!-- ======================================================= -->
+</div>
+<div id="base-r-を使う" class="section level3 unnumbered">
+<h3>
+<strong>base</strong> R を使う<a class="anchor" aria-label="anchor" href="#base-r-%E3%82%92%E4%BD%BF%E3%81%86"><i class="fas fa-link"></i></a>
+</h3>
+<p><strong>重複する行を返す</strong></p>
+<p><strong>base</strong> R では、データフレーム <code>df</code> の中でどの行が 100% 重複しているかを、<code>duplicated(df)</code> というコマンドで確認できます（行のロジカルベクトルを返します）。</p>
+<p>したがって、基本のサブセット <code>[ ]</code> コマンドをデータフレームに使用して、<code>df[duplicated(df),]</code> で<u>重複した行</u>を表示して確認することもできます（すべての列を見るという意味のコンマを忘れないでください！）。</p>
+<p><strong>一意の行を返す</strong></p>
+<p>上述を参照してください。<u>一意の行</u>を表示して確認したい場合は、<code><a href="https://rdrr.io/r/base/duplicated.html">duplicated()</a></code> の前に論理否定演算子 <code>!</code> を加え、以下のように書きます。<br><code>df[!duplicated(df),]</code></p>
+<p><strong>特定の列の値だけが重複している行を返す</strong></p>
+<p><code><a href="https://rdrr.io/r/base/duplicated.html">duplicated()</a></code> の<u>括弧内</u>で <code>df</code> をサブセットし（重複判定の対象となる範囲を定義し）、<code><a href="https://rdrr.io/r/base/duplicated.html">duplicated()</a></code> が <code>df</code> の特定の列のみを考慮するようにします。</p>
+<p>重複判定の対象となる列を指定するには、コンマの後に列番号または列名を入力してください（これらはすべて <code><a href="https://rdrr.io/r/base/duplicated.html">duplicated()</a></code> 関数の<u>中で</u>行ってください）。</p>
+<p><code><a href="https://rdrr.io/r/base/duplicated.html">duplicated()</a></code> の後には、必ずコンマ <code>,</code> を<u>外側に</u>置くようにしてください。</p>
+<p>例えば、2 列目から 5 列目の値のみ重複の評価をする場合は、<code>df[!duplicated(df[, 2:5]),]</code><br>
+また、<code>name</code> と <code>purpose</code> の列の値のみ重複の評価をする場合は、<code>df[!duplicated(df[, c("name", "purpose")]),]</code> のように書きます。</p>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="スライシング抽出" class="section level2" number="15.3">
+<h2>
+<span class="header-section-number">15.3</span> スライシング（抽出）<a class="anchor" aria-label="anchor" href="#%E3%82%B9%E3%83%A9%E3%82%A4%E3%82%B7%E3%83%B3%E3%82%B0%E6%8A%BD%E5%87%BA"><i class="fas fa-link"></i></a>
+</h2>
+<p>データフレームの「スライス」とは、行番号・位置によってデータにフィルタリングを適用し、指定した行を抽出することです。これは、グループごとに複数の行があり（例えば、一人の被調査者（“person”）に複数の調査記録があるなど）、そのうちの 1 つまたはいくつかだけを残したい場合に特に便利です。</p>
+<p>基本的な <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice()</a></code> 関数は、数値を受け取り、その数値で表された位置にある行を返します。指定された数値が正の値であれば、その値のみが返されます。負の値で指定された行は返されません。複数のすうを指定する場合は、数値はすべて正またはすべて負でなければなりません。</p>
+<div class="sourceCode" id="cb736"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html">slice</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>  <span class="co"># 4番目の行を返す</span></span></code></pre></div>
+<pre><code>##   recordID personID   name       date  time encounter purpose symptoms_ever
+## 1        3        2 amrish 2020-01-02 14:20         1 contact            No</code></pre>
+<div class="sourceCode" id="cb738"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html">slice</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">)</span><span class="op">)</span>  <span class="co"># 2番目と4番目の行を返す</span></span></code></pre></div>
+<pre><code>##   recordID personID   name       date  time encounter purpose symptoms_ever
+## 1        1        1   adam 2020-01-01 09:00         1 contact          &lt;NA&gt;
+## 2        3        2 amrish 2020-01-02 14:20         1 contact            No</code></pre>
+<div class="sourceCode" id="cb740"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">#obs %&gt;% slice(c(2:4))  # 2～4番目の行を返す</span></span></code></pre></div>
+<p><a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+<p><code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice()</a></code> には、他にいくつかの応用的な関数があり、以下で紹介します。 このような関数を使用する際は、対象となる列を指定し、返す行の数を <code>n =</code> に書く必要があります。</p>
+<ul>
+<li>
+<code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_min()</a></code> と <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max()</a></code> は、指定した列の最小値や最大値を持つ行のみを保持します。これは、順序付き因子の “min”と “max”を返すのにも使えます。<br>
+</li>
+<li>
+<code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_head()</a></code> と <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_tail()</a></code> は、<u>最初</u>または<u>最後</u>の行のみを保持します。<br>
+</li>
+<li>
+<code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_sample()</a></code> は、行をランダムに抽出します。</li>
+</ul>
+<div class="sourceCode" id="cb741"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max</a></span><span class="op">(</span><span class="va">encounter</span>, n <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>  <span class="co"># 調査番号（encounter）で最大値を持つ行を返す</span></span></code></pre></div>
+<pre><code>##   recordID personID   name       date  time encounter purpose symptoms_ever
+## 1        5        2 amrish 2020-01-05 16:10         3    case           Yes
+## 2       13        3 mariah 2020-01-06 08:32         3 contact            No
+## 3       16        5  brian 2020-01-07 07:59         3    case            No</code></pre>
+<p>保持する行の数または割合を指定するには、引数 <code>n =</code> または <code>prop =</code> を使用します。この関数をパイプの中で使用しない場合は、第一引数にデータセットの名前を指定してください（例：<code>slice(data, n = 2)</code>）。詳細は <code><a href="https://dplyr.tidyverse.org/reference/slice.html">?slice</a></code> を参照してください。</p>
+<p>他にも以下の引数が使用できます。</p>
+<p><code>.order_by =</code> - <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_min()</a></code> や <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max()</a></code> の中でスライスする前に順序付ける列を指定するのに使用されます。<br><code>with_ties =</code> - デフォルトは TRUE で、関数の条件に該当する行が複数あった場合（「タイ（“ties”）」と呼ばれる状況）、そのすべての行が保持されます。<br><code>.preserve =</code> - デフォルトは FALSE です。TRUE の場合、スライス後にグループの構造が再計算されます。<br><code>weight_by =</code> - オプションで、重み付けのための数値列を指定します（数字が大きいほどサンプリングされる可能性が高い）。 また、サンプリングが復元・非復元で行われるかを示す <code>replace =</code> もあります。</p>
+<p><span style="color: darkgreen;"><u><strong><em>ヒント：</em></strong></u> <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max()</a></code> や <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_min()</a></code> を使用する際には、必ず <code>n =</code> を指定し記述してください（例：<code>2</code> だけでなく、<code>n = 2</code>）。<code>n =</code> を指定せずか関数を実行すると、<code>Error:</code>…<code>is not empty.</code> というエラーが発生することがあります。</span></p>
+<p><u><strong>注意：</strong></u><a href="https://dplyr.tidyverse.org/reference/top_n.html"><span style="color: black;"><code>top_n()</code></span></a><span style="color: black;">という関数を目にすることがあるかもしれませんが、これは各 slice 関数に取って代わられました。</span></p>
+<!-- ======================================================= -->
+<div id="グループごとのスライス" class="section level3 unnumbered">
+<h3>グループごとのスライス<a class="anchor" aria-label="anchor" href="#%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%97%E3%81%94%E3%81%A8%E3%81%AE%E3%82%B9%E3%83%A9%E3%82%A4%E3%82%B9"><i class="fas fa-link"></i></a>
+</h3>
+<p><code>slice_*()</code> をグループ化されたデータフレームに適用すると、スライス操作が各グループに対して個別に実行されるので、非常に便利です。<code><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by()</a></code> と <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice()</a></code> という<strong>関数</strong>を併用してデータをグループ化し、各グループから行をスライス（抽出）します。</p>
+<p>これは、被調査者（人）ごとに複数の記録（行）があり、そのうちの 1 つの記録（行）だけを残したい場合の重複排除に便利です。まず、グループ化に使用したい列を <code><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by()</a></code> に指定し、次に異なる列でスライス関数を使用します。</p>
+<p>以下の例では、被調査者ごとに最新の調査記録のみを保持するために、<code>name</code> 列で行をグループ化し、<code>date</code> 列に <code>n = 1</code> で <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max()</a></code> を使用します。<code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max()</a></code> のような関数を日付に適用するには、適用される日付の列は日付型（Date）にあらかじめ変換されていなければならないことに注意してください。</p>
+<p>デフォルトでは、関数の条件に該当する行が複数あった場合（この例では最新の日付が複数ある場合）はすべての行が保持されるため、一部の被調査者（“adam” など）には複数の行が表示されてしまいます。これを避けるために、<code>with_ties = FALSE</code> とします。これにより、1 人につき 1 つの行のみが返されます。</p>
+<p><span style="color: orange;"><u><strong>注意：</strong></u> <code><a href="https://dplyr.tidyverse.org/reference/arrange.html">arrange()</a></code>を使用する場合は、<code>.by_group = TRUE</code> を指定すると、各グループごとにデータが並び替えられます。</span></p>
+<p><span style="color: red;"><u>警告：</u>with_ties = FALSE の 場合、条件に該当する複数行の最初の行が保持されます。わかりづらいかもしれませんが、例えば、Mariah（<code>name</code> 列が “mariah” である行）の場合には最新の日付 （1 月 6 日）で 2 つの調査記録があり、最初の調査記録（データフレームを上から見て一番最初に現れる記録）が保持されています。同じ日の後の方の記録を保持したい場合は、次の例（「タイ」を壊す）をご覧ください。</span></p>
+<div class="sourceCode" id="cb743"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">name</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span>       <span class="co"># 行を name 列でグループ化</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max</a></span><span class="op">(</span><span class="va">date</span>,          <span class="co"># グループごとに最大の日付の値を持つ行を保持 </span></span>
+<span>            n <span class="op">=</span> <span class="fl">1</span>,         <span class="co"># 最上位の行のみを残す </span></span>
+<span>            with_ties <span class="op">=</span> <span class="cn">F</span><span class="op">)</span> <span class="co"># 同じ日付が複数ある場合、最初の列を残す</span></span></code></pre></div>
+<div id="htmlwidget-a0ed66bb171db6ba72ef" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-a0ed66bb171db6ba72ef">{"x":{"filter":"none","vertical":false,"data":[[11,5,16,12,18,14,17,8],[1,2,5,3,8,4,7,6],["adam","amrish","brian","mariah","natalie","nikhil","raquel","smita"],["2020-01-05","2020-01-05","2020-01-07","2020-01-06","2020-01-07","2020-01-06","2020-01-07","2020-01-05"],["09:40","16:10","07:59","07:25","17:12","15:36","11:13","14:20"],[2,3,3,2,1,2,2,1],["case","case","case","contact","case","contact","contact","contact"],["No","Yes","No","No","No","Yes","No","Yes"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":8,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,1,5]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[8,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>上の例では、Amrish の記録（<code>name</code> 列が “amrish” である行）では 1 月 5 日の行だけ、また Brian の記録（<code>name</code> 列が “brian” である行）では 1 月 7 日の行だけが保持されています。<a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+<p><strong>「タイ」を壊す</strong></p>
+<p>複数のスライス文を実行することで、「タイ（“ties”）を壊す」ことができます。上述の例では、最新の<u>日付（date）</u>に複数の調査記録がある場合、最新の<u>時間（time）</u>の調査記録が保持されます（文字型の時間を並べ替えるために、<code><a href="https://lubridate.tidyverse.org/reference/hms.html">lubridate::hm()</a></code> で time 型に変換しました）。<br>
+以下のコマンドを実行すると、Mariah （<code>name</code> 列が “mariah” である行）の 1 月 6 日の行は、時間が07:25 の 2 回目の調査記録ではなく、08:32 の 3 回目の調査記録が残されたことに注意してください。</p>
+<div class="sourceCode" id="cb744"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 「タイを壊す」ため、複数のスライスを使用する例</span></span>
+<span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">name</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  </span>
+<span>  <span class="co"># まず、最新の日付でスライスする</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max</a></span><span class="op">(</span><span class="va">date</span>, n <span class="op">=</span> <span class="fl">1</span>, with_ties <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  </span>
+<span>  <span class="co"># 次に、複数行が該当する場合は最新の時刻の行を選択する（タイは認められない）</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max</a></span><span class="op">(</span><span class="fu">lubridate</span><span class="fu">::</span><span class="fu"><a href="https://lubridate.tidyverse.org/reference/hms.html">hm</a></span><span class="op">(</span><span class="va">time</span><span class="op">)</span>, n <span class="op">=</span> <span class="fl">1</span>, with_ties <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<div id="htmlwidget-f174e7452babc9d3afdc" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f174e7452babc9d3afdc">{"x":{"filter":"none","vertical":false,"data":[[11,5,16,13,18,14,17,8],[1,2,5,3,8,4,7,6],["adam","amrish","brian","mariah","natalie","nikhil","raquel","smita"],["2020-01-05","2020-01-05","2020-01-07","2020-01-06","2020-01-07","2020-01-06","2020-01-07","2020-01-05"],["09:40","16:10","07:59","08:32","17:12","15:36","11:13","14:20"],[2,3,3,3,1,2,2,1],["case","case","case","contact","case","contact","contact","contact"],["No","Yes","No","No","No","Yes","No","Yes"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":8,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,1,5]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[8,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><u>上の例では、調査番号（<code>encounter</code> 列）の値でスライスすることも可能ですが、例として <code>date</code> 列と <code>time</code> 列でスライスしています。</u></p>
+<p><span style="color: darkgreen;"><u><strong>ヒント：</strong></u><code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max()</a></code> や <code><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_min()</a></code> を文字型（character）の列に使用する場合は、まずその列を順序付けられた因子型（factor）に変換する必要があります！</span></p>
+<p><a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+<!-- ======================================================= -->
+</div>
+<div id="すべてを残すが目印をつける" class="section level3 unnumbered">
+<h3>すべてを残すが、目印をつける<a class="anchor" aria-label="anchor" href="#%E3%81%99%E3%81%B9%E3%81%A6%E3%82%92%E6%AE%8B%E3%81%99%E3%81%8C%E7%9B%AE%E5%8D%B0%E3%82%92%E3%81%A4%E3%81%91%E3%82%8B"><i class="fas fa-link"></i></a>
+</h3>
+<p>すべての記録を残しつつ、一部の記録だけを分析対象として目印をつけたい場合は、一意の recordID と 調査番号（encounter）を利用した 2 段階のアプローチを検討します。</p>
+<ol style="list-style-type: decimal">
+<li>元のデータフレームから分析に必要な行だけをスライス（抽出）し、別のデータフレームとして保存する。<br>
+</li>
+<li>元のデータフレームの一意の識別子（ここでは recordID）がステップ 1. で作成したデータフレームに存在するかどうか判定した列を、元のデータフレームに <code><a href="https://dplyr.tidyverse.org/reference/case_when.html">case_when()</a></code> で新たに作成する。</li>
+</ol>
+<div class="sourceCode" id="cb745"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 1. 分析のために保持する行をデータフレームとして定義する</span></span>
+<span><span class="va">obs_keep</span> <span class="op">&lt;-</span> <span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">name</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html">slice_max</a></span><span class="op">(</span><span class="va">encounter</span>, n <span class="op">=</span> <span class="fl">1</span>, with_ties <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="co"># 各被調査者の最新の調査番号（ encounter）のみを残す</span></span>
+<span></span>
+<span></span>
+<span><span class="co"># 2. 元のデータフレームに目印をつける</span></span>
+<span><span class="va">obs_marked</span> <span class="op">&lt;-</span> <span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span></span>
+<span>  <span class="co"># 新しい dup_record 列の作成</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>dup_record <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case_when.html">case_when</a></span><span class="op">(</span></span>
+<span>    </span>
+<span>    <span class="co"># レコードが obs_keep のデータフレームにある場合</span></span>
+<span>    <span class="va">recordID</span> <span class="op"><a href="https://rdrr.io/r/base/match.html">%in%</a></span> <span class="va">obs_keep</span><span class="op">$</span><span class="va">recordID</span> <span class="op">~</span> <span class="st">"For analysis"</span>, </span>
+<span>    </span>
+<span>    <span class="co"># それ以外は、分析のために「無視（"Ignore"）」とマークする</span></span>
+<span>    <span class="cn">TRUE</span>                            <span class="op">~</span> <span class="st">"Ignore"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 出力</span></span>
+<span><span class="va">obs_marked</span></span></code></pre></div>
+<pre><code>##    recordID personID    name       date  time encounter purpose symptoms_ever
+## 1         1        1    adam 2020-01-01 09:00         1 contact          &lt;NA&gt;
+## 2         1        1    adam 2020-01-01 09:00         1 contact          &lt;NA&gt;
+## 3         2        2  amrish 2020-01-02 14:20         1 contact            No
+## 4         3        2  amrish 2020-01-02 14:20         1 contact            No
+## 5         4        3  mariah 2020-01-05 12:00         1    case            No
+## 6         5        2  amrish 2020-01-05 16:10         3    case           Yes
+## 7         6        4  nikhil 2020-01-05 13:01         1 contact           Yes
+## 8         7        5   brian 2020-01-05 15:20         1 contact            No
+## 9         8        6   smita 2020-01-05 14:20         1 contact           Yes
+## 10        9        7  raquel 2020-01-05 12:30         1 contact          &lt;NA&gt;
+## 11       10        2  amrish 2020-01-02 10:24         2 contact           Yes
+## 12       11        1    adam 2020-01-05 09:40         2    case            No
+## 13       12        3  mariah 2020-01-06 07:25         2 contact            No
+## 14       13        3  mariah 2020-01-06 08:32         3 contact            No
+## 15       14        4  nikhil 2020-01-06 15:36         2 contact           Yes
+## 16       15        5   brian 2020-01-06 15:31         2 contact           Yes
+## 17       16        5   brian 2020-01-07 07:59         3    case            No
+## 18       17        7  raquel 2020-01-07 11:13         2 contact            No
+## 19       18        8 natalie 2020-01-07 17:12         1    case            No
+##      dup_record
+## 1        Ignore
+## 2        Ignore
+## 3        Ignore
+## 4        Ignore
+## 5        Ignore
+## 6  For analysis
+## 7        Ignore
+## 8        Ignore
+## 9  For analysis
+## 10       Ignore
+## 11       Ignore
+## 12 For analysis
+## 13       Ignore
+## 14 For analysis
+## 15 For analysis
+## 16       Ignore
+## 17 For analysis
+## 18 For analysis
+## 19 For analysis</code></pre>
+<div id="htmlwidget-7f55b627325b55e5034d" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-7f55b627325b55e5034d">{"x":{"filter":"none","vertical":false,"data":[[1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],[1,1,2,2,3,2,4,5,6,7,2,1,3,3,4,5,5,7,8],["adam","adam","amrish","amrish","mariah","amrish","nikhil","brian","smita","raquel","amrish","adam","mariah","mariah","nikhil","brian","brian","raquel","natalie"],["2020-01-01","2020-01-01","2020-01-02","2020-01-02","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-02","2020-01-05","2020-01-06","2020-01-06","2020-01-06","2020-01-06","2020-01-07","2020-01-07","2020-01-07"],["09:00","09:00","14:20","14:20","12:00","16:10","13:01","15:20","14:20","12:30","10:24","09:40","07:25","08:32","15:36","15:31","07:59","11:13","17:12"],[1,1,1,1,1,3,1,1,1,1,2,2,2,3,2,2,3,2,1],["contact","contact","contact","contact","case","case","contact","contact","contact","contact","contact","case","contact","contact","contact","contact","case","contact","case"],[null,null,"No","No","No","Yes","Yes","No","Yes",null,"Yes","No","No","No","Yes","Yes","No","No","No"],["Ignore","Ignore","Ignore","Ignore","Ignore","For analysis","Ignore","Ignore","For analysis","Ignore","Ignore","For analysis","Ignore","For analysis","For analysis","Ignore","For analysis","For analysis","For analysis"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n      <th>dup_record<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":8,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,1,5]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[8,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+<!-- ======================================================= -->
+</div>
+<div id="行の完全性の計算" class="section level3 unnumbered">
+<h3>行の完全性の計算<a class="anchor" aria-label="anchor" href="#%E8%A1%8C%E3%81%AE%E5%AE%8C%E5%85%A8%E6%80%A7%E3%81%AE%E8%A8%88%E7%AE%97"><i class="fas fa-link"></i></a>
+</h3>
+<p>行の完全性（非欠損性）の指標を含む列を作成します。このような列は、重複排除やスライスの際に、どの行を他の行よりも優先させるかを決定する際に役立ちます。</p>
+<p>以下の例では、完全性を測定したい「キー（“key”）」となる列の列名を、ベクトルに保存します。</p>
+<p>そして、<code><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate()</a></code> で <code>key_completeness</code> という新しい列を作成します。新しく作成された各行の値は、計算された割合として定義されます。各行、「キー（“key”）」とした列のうち欠落していない列の数を、「キー（“key”）」とした列の数で割ったものです。</p>
+<p>これには <strong>base</strong> R の <code><a href="https://rdrr.io/r/base/colSums.html">rowSums()</a></code> が使われています。また、<code>.</code> も使われています。パイプの中で使用された <code>.</code> は、その時点でのデータフレームを参照します（この場合は角括弧 <code>[ ]</code> で囲んでサブセットされたデータ範囲）。</p>
+<p><u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u></p>
+<div class="sourceCode" id="cb747"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 「キー（"key"）」とする列をベクトルとして作成する</span></span>
+<span><span class="co"># 結果を "key_cols" として指定された列のうち、値が欠損していない割合として表示する</span></span>
+<span></span>
+<span><span class="va">key_cols</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"personID"</span>, <span class="st">"name"</span>, <span class="st">"symptoms_ever"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>key_completeness <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowSums</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">.</span><span class="op">[</span>,<span class="va">key_cols</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">key_cols</span><span class="op">)</span><span class="op">)</span> </span></code></pre></div>
+<div id="htmlwidget-11e83104ba2d278eb349" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-11e83104ba2d278eb349">{"x":{"filter":"none","vertical":false,"data":[[1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],[1,1,2,2,3,2,4,5,6,7,2,1,3,3,4,5,5,7,8],["adam","adam","amrish","amrish","mariah","amrish","nikhil","brian","smita","raquel","amrish","adam","mariah","mariah","nikhil","brian","brian","raquel","natalie"],["2020-01-01","2020-01-01","2020-01-02","2020-01-02","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-05","2020-01-02","2020-01-05","2020-01-06","2020-01-06","2020-01-06","2020-01-06","2020-01-07","2020-01-07","2020-01-07"],["09:00","09:00","14:20","14:20","12:00","16:10","13:01","15:20","14:20","12:30","10:24","09:40","07:25","08:32","15:36","15:31","07:59","11:13","17:12"],[1,1,1,1,1,3,1,1,1,1,2,2,2,3,2,2,3,2,1],["contact","contact","contact","contact","case","case","contact","contact","contact","contact","contact","case","contact","contact","contact","contact","case","contact","case"],[null,null,"No","No","No","Yes","Yes","No","Yes",null,"Yes","No","No","No","Yes","Yes","No","No","No"],[0.666666666666667,0.666666666666667,1,1,1,1,1,1,1,0.666666666666667,1,1,1,1,1,1,1,1,1]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>recordID<\/th>\n      <th>personID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n      <th>key_completeness<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[0,1,5,8]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><a href="deduplication.html#dedup_data">元のデータセット</a>をご覧ください。</p>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="str_rollup" class="section level2" number="15.4">
+<h2>
+<span class="header-section-number">15.4</span> ロールアップした値<a class="anchor" aria-label="anchor" href="#str_rollup"><i class="fas fa-link"></i></a>
+</h2>
+<p>このセクションでは、以下の項目について説明します。</p>
+<ol style="list-style-type: decimal">
+<li>複数の行の値を 1 つの行に「ロールアップする（“roll-up”）」（まとめる）方法<br>
+</li>
+<li>値をロールアップした後、各セルの値を上書き・優先させる方法</li>
+</ol>
+<p>このタブでは、本章の「準備」セクションで作成したサンプルデータセットを使用します。</p>
+<!-- ======================================================= -->
+<div id="ロールアップした値を一列に並べる" class="section level3 unnumbered">
+<h3>ロールアップした値を一列に並べる<a class="anchor" aria-label="anchor" href="#%E3%83%AD%E3%83%BC%E3%83%AB%E3%82%A2%E3%83%83%E3%83%97%E3%81%97%E3%81%9F%E5%80%A4%E3%82%92%E4%B8%80%E5%88%97%E3%81%AB%E4%B8%A6%E3%81%B9%E3%82%8B"><i class="fas fa-link"></i></a>
+</h3>
+<p>以下のコマンドでは、<code><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by()</a></code> と <code><a href="https://dplyr.tidyverse.org/reference/summarise.html">summarise()</a></code> を使って行を被調査者ごとにグループ化し、グループ化された行の中の一意な値を 1 つの行にすべて貼り付けています。このようにして、被調査者 1 人につき 1 つの要約行を作成できます。ここでは、要約行を作成する際のいくつかの注意点があります。</p>
+<ul>
+<li>新しく作成された列すべてに接尾辞を追加することができます（この例では “_roll”）。<br>
+</li>
+<li>セルごとに一意の値だけを表示したい場合は、<code><a href="https://rdrr.io/r/stats/na.fail.html">na.omit()</a></code> を <code><a href="https://rdrr.io/r/base/unique.html">unique()</a></code> で囲みます。<br>
+</li>
+<li>
+<code><a href="https://rdrr.io/r/stats/na.fail.html">na.omit()</a></code> は <code>NA</code> 値を削除しますが、残したい場合は <code>paste0(.x)</code> を削除します。</li>
+</ul>
+<div class="sourceCode" id="cb748"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 値を「personID」ごとに1行にロールアップ（まとめる）</span></span>
+<span><span class="va">cases_rolled</span> <span class="op">&lt;-</span> <span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  </span>
+<span>  <span class="co"># personID でグループ化</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">personID</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  </span>
+<span>  <span class="co"># 各グループ内で行を並べ替え（例：日付順）</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html">arrange</a></span><span class="op">(</span><span class="va">date</span>, .by_group <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  </span>
+<span>  <span class="co"># グループ化された行のすべての値を、各列に "; " で区切って貼り付ける</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html">summarise</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html">across</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html">everything</a></span><span class="op">(</span><span class="op">)</span>,                           <span class="co"># すべての列に適用</span></span>
+<span>           <span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/na.fail.html">na.omit</a></span><span class="op">(</span><span class="va">.x</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"; "</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="co"># 欠損値でない値を結合する関数</span></span></code></pre></div>
+<p>結果として、グループ（<code>personID</code>）ごとに 1 つの行が作成され、日付で並べ替えられた値が貼り合わされます。<u>右にスクロールすると、データフレームに含まれるすべての列を確認できます。</u></p>
+<div id="htmlwidget-0553681455e06f28f47d" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-0553681455e06f28f47d">{"x":{"filter":"none","vertical":false,"data":[[1,2,3,4,5,6,7,8],["1; 1; 11","2; 3; 10; 5","4; 12; 13","6; 14","7; 15; 16","8","9; 17","18"],["adam; adam; adam","amrish; amrish; amrish; amrish","mariah; mariah; mariah","nikhil; nikhil","brian; brian; brian","smita","raquel; raquel","natalie"],["2020-01-01; 2020-01-01; 2020-01-05","2020-01-02; 2020-01-02; 2020-01-02; 2020-01-05","2020-01-05; 2020-01-06; 2020-01-06","2020-01-05; 2020-01-06","2020-01-05; 2020-01-06; 2020-01-07","2020-01-05","2020-01-05; 2020-01-07","2020-01-07"],["09:00; 09:00; 09:40","14:20; 14:20; 10:24; 16:10","12:00; 07:25; 08:32","13:01; 15:36","15:20; 15:31; 07:59","14:20","12:30; 11:13","17:12"],["1; 1; 2","1; 1; 2; 3","1; 2; 3","1; 2","1; 2; 3","1","1; 2","1"],["contact; contact; case","contact; contact; contact; case","case; contact; contact","contact; contact","contact; contact; case","contact","contact; contact","case"],["No","No; No; Yes; Yes","No; No; No","Yes; Yes","No; Yes; No","Yes","No","No"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>personID<\/th>\n      <th>recordID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+<p><strong>次に、以下では、一意の値のみを表示します。</strong></p>
+<div class="sourceCode" id="cb749"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># バリエーション - 一意の値のみを表示 </span></span>
+<span><span class="va">cases_rolled</span> <span class="op">&lt;-</span> <span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">personID</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html">arrange</a></span><span class="op">(</span><span class="va">date</span>, .by_group <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html">summarise</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html">across</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html">everything</a></span><span class="op">(</span><span class="op">)</span>,                                   <span class="co"># すべての列に適用</span></span>
+<span>           <span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/na.fail.html">na.omit</a></span><span class="op">(</span><span class="va">.x</span><span class="op">)</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"; "</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="co"># 欠損値でない値を結合する関数</span></span></code></pre></div>
+<div id="htmlwidget-1b0e9b19227044f0e3ef" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1b0e9b19227044f0e3ef">{"x":{"filter":"none","vertical":false,"data":[[1,2,3,4,5,6,7,8],["1; 11","2; 3; 10; 5","4; 12; 13","6; 14","7; 15; 16","8","9; 17","18"],["adam","amrish","mariah","nikhil","brian","smita","raquel","natalie"],["2020-01-01; 2020-01-05","2020-01-02; 2020-01-05","2020-01-05; 2020-01-06","2020-01-05; 2020-01-06","2020-01-05; 2020-01-06; 2020-01-07","2020-01-05","2020-01-05; 2020-01-07","2020-01-07"],["09:00; 09:40","14:20; 10:24; 16:10","12:00; 07:25; 08:32","13:01; 15:36","15:20; 15:31; 07:59","14:20","12:30; 11:13","17:12"],["1; 2","1; 2; 3","1; 2; 3","1; 2","1; 2; 3","1","1; 2","1"],["contact; case","contact; case","case; contact","contact","contact; case","contact","contact","case"],["No","No; Yes","No","Yes","No; Yes","Yes","No","No"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>personID<\/th>\n      <th>recordID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><strong>そして、各列に接尾辞を追加します。</strong><br>
+この例では「_roll」と追加し、ロールアップされた（まとめられた）ことを表します。</p>
+<div class="sourceCode" id="cb750"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># バリエーション - 列名に接尾辞を追加 </span></span>
+<span><span class="va">cases_rolled</span> <span class="op">&lt;-</span> <span class="va">obs</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">personID</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html">arrange</a></span><span class="op">(</span><span class="va">date</span>, .by_group <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html">summarise</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html">across</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html">everything</a></span><span class="op">(</span><span class="op">)</span>,                </span>
+<span>           <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>roll <span class="op">=</span> <span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/na.fail.html">na.omit</a></span><span class="op">(</span><span class="va">.x</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"; "</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="co"># 列名に「_roll」を付加</span></span></code></pre></div>
+<div id="htmlwidget-db13b4d6d1b01e321c07" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-db13b4d6d1b01e321c07">{"x":{"filter":"none","vertical":false,"data":[[1,2,3,4,5,6,7,8],["1; 1; 11","2; 3; 10; 5","4; 12; 13","6; 14","7; 15; 16","8","9; 17","18"],["adam; adam; adam","amrish; amrish; amrish; amrish","mariah; mariah; mariah","nikhil; nikhil","brian; brian; brian","smita","raquel; raquel","natalie"],["2020-01-01; 2020-01-01; 2020-01-05","2020-01-02; 2020-01-02; 2020-01-02; 2020-01-05","2020-01-05; 2020-01-06; 2020-01-06","2020-01-05; 2020-01-06","2020-01-05; 2020-01-06; 2020-01-07","2020-01-05","2020-01-05; 2020-01-07","2020-01-07"],["09:00; 09:00; 09:40","14:20; 14:20; 10:24; 16:10","12:00; 07:25; 08:32","13:01; 15:36","15:20; 15:31; 07:59","14:20","12:30; 11:13","17:12"],["1; 1; 2","1; 1; 2; 3","1; 2; 3","1; 2","1; 2; 3","1","1; 2","1"],["contact; contact; case","contact; contact; contact; case","case; contact; contact","contact; contact","contact; contact; case","contact","contact; contact","case"],["No","No; No; Yes; Yes","No; No; No","Yes; Yes","No; Yes; No","Yes","No","No"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>personID<\/th>\n      <th>recordID_roll<\/th>\n      <th>name_roll<\/th>\n      <th>date_roll<\/th>\n      <th>time_roll<\/th>\n      <th>encounter_roll<\/th>\n      <th>purpose_roll<\/th>\n      <th>symptoms_ever_roll<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><!-- ======================================================= -->
+</div>
+<div id="値と階層の上書き" class="section level3 unnumbered">
+<h3>値と階層の上書き<a class="anchor" aria-label="anchor" href="#%E5%80%A4%E3%81%A8%E9%9A%8E%E5%B1%A4%E3%81%AE%E4%B8%8A%E6%9B%B8%E3%81%8D"><i class="fas fa-link"></i></a>
+</h3>
+<p>ある列のロールアップされた値（まとめられた値）をすべて評価して、特定の値（例えば、「最も重要な値（“best”）」や「最大値｛“maximum”）」など）だけを残したい場合は、その列で <code><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate()</a></code> を使用し、 <strong>stringr</strong> パッケージの <code><a href="https://stringr.tidyverse.org/reference/str_detect.html">str_detect()</a></code> で文字列パターンを順に探し、セルの内容を上書きするように <code><a href="https://dplyr.tidyverse.org/reference/case_when.html">case_when()</a></code> を使用します。</p>
+<div class="sourceCode" id="cb751"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># クリーンなケース</span></span>
+<span><span class="co">#############</span></span>
+<span><span class="va">cases_clean</span> <span class="op">&lt;-</span> <span class="va">cases_rolled</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>    </span>
+<span>    <span class="co"># クリーンな Yes-No-Unknown 列: 文字列に存在する "highest" の値（最も重要な値）でテキストを置き換える</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html">across</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">contains</a></span><span class="op">(</span><span class="st">"symptoms_ever"</span><span class="op">)</span><span class="op">)</span>,                     <span class="co"># 指定された列を操作（Y/N/U）</span></span>
+<span>             <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>mod <span class="op">=</span> <span class="op">~</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/case_when.html">case_when</a></span><span class="op">(</span>                                 <span class="co"># 新しい列に接尾辞 "_mod" を追加し、case_when() を実装</span></span>
+<span>               </span>
+<span>               <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html">str_detect</a></span><span class="op">(</span><span class="va">.x</span>, <span class="st">"Yes"</span><span class="op">)</span>       <span class="op">~</span> <span class="st">"Yes"</span>,                 <span class="co"># "Yes"が検出された場合、セルの値が "Yes" に変換される</span></span>
+<span>               <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html">str_detect</a></span><span class="op">(</span><span class="va">.x</span>, <span class="st">"No"</span><span class="op">)</span>        <span class="op">~</span> <span class="st">"No"</span>,                  <span class="co"># "No "が検出された場合、セルの値が "No" に変換される</span></span>
+<span>               <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html">str_detect</a></span><span class="op">(</span><span class="va">.x</span>, <span class="st">"Unknown"</span><span class="op">)</span>   <span class="op">~</span> <span class="st">"Unknown"</span>,             <span class="co"># "Unknown" が検出された場合、セルの値が "Unknown" に変換される</span></span>
+<span>               <span class="cn">TRUE</span>                        <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">.x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,   <span class="co"># それ以外の場合はそのままの値とする</span></span>
+<span>      .keep <span class="op">=</span> <span class="st">"unused"</span><span class="op">)</span>                                             <span class="co"># 古い列は削除し、_mod 列のみを残す</span></span></code></pre></div>
+<p>これで、<code>symptoms_ever</code> という列に、その人が症状に対して「Yes」と答えたことがある場合、「Yes」だけが表示されるようになりました。</p>
+<div id="htmlwidget-c4b9b1a9eaa968e78cf7" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c4b9b1a9eaa968e78cf7">{"x":{"filter":"none","vertical":false,"data":[[1,2,3,4,5,6,7,8],["1; 11","2; 3; 10; 5","4; 12; 13","6; 14","7; 15; 16","8","9; 17","18"],["adam","amrish","mariah","nikhil","brian","smita","raquel","natalie"],["2020-01-01; 2020-01-05","2020-01-02; 2020-01-05","2020-01-05; 2020-01-06","2020-01-05; 2020-01-06","2020-01-05; 2020-01-06; 2020-01-07","2020-01-05","2020-01-05; 2020-01-07","2020-01-07"],["09:00; 09:40","14:20; 10:24; 16:10","12:00; 07:25; 08:32","13:01; 15:36","15:20; 15:31; 07:59","14:20","12:30; 11:13","17:12"],["1; 2","1; 2; 3","1; 2; 3","1; 2","1; 2; 3","1","1; 2","1"],["contact; case","contact; case","case; contact","contact","contact; case","contact","contact","case"],["No","Yes","No","Yes","Yes","Yes","No","No"]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>personID<\/th>\n      <th>recordID<\/th>\n      <th>name<\/th>\n      <th>date<\/th>\n      <th>time<\/th>\n      <th>encounter<\/th>\n      <th>purpose<\/th>\n      <th>symptoms_ever_mod<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":10,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script><p><a href="deduplication.html#dedup_data">元のデータセット</a> と比較してみてください。</p>
+</div>
+</div>
+<div id="確率的重複排除" class="section level2" number="15.5">
+<h2>
+<span class="header-section-number">15.5</span> 確率的重複排除<a class="anchor" aria-label="anchor" href="#%E7%A2%BA%E7%8E%87%E7%9A%84%E9%87%8D%E8%A4%87%E6%8E%92%E9%99%A4"><i class="fas fa-link"></i></a>
+</h2>
+<p>名前、年齢、性別、生年月日などの複数の列にわたる類似性（文字列の「距離（どのくらい類似しているか）」など）に基づいて、重複している「可能性が高い」ものを特定したい場合があります。このような場合は、確率的マッチングアルゴリズム（probabilistic matching algorithm）を適用することが可能です。</p>
+<p>重複している可能性が高いものを特定する方法についての説明は、<a href="joining-matching.html#joining-matching">データの結合</a> の章を参照してください。「確率的マッチング」のセクションでは、確率的マッチングアルゴリズムを適用して、データフレームを<em>それ</em><u>自体</u>と比較し、確率的な重複排除を行う例を紹介しています。</p>
+<!-- ======================================================= -->
+</div>
+<div id="参考資料-8" class="section level2" number="15.6">
+<h2>
+<span class="header-section-number">15.6</span> 参考資料<a class="anchor" aria-label="anchor" href="#%E5%8F%82%E8%80%83%E8%B3%87%E6%96%99-8"><i class="fas fa-link"></i></a>
+</h2>
+<p>本章に掲載されている内容の多くは、以下の資料やウェブサイトを参考に作成されました。</p>
+<p><a href="https://www.datanovia.com/en/lessons/identify-and-remove-duplicate-data-in-r/">datanovia</a></p>
+<p><a href="https://dplyr.tidyverse.org/reference/slice.html">dplyr tidyverse reference</a></p>
+<p><a href="https://cran.r-project.org/web/packages/janitor/vignettes/janitor.html#explore-records-with-duplicated-values-for-specific-combinations-of-variables-with-get_dupes">cran janitor vignette</a></p>
+
+</div>
+</div>
+  <div class="chapter-nav">
+<div class="prev"><a href="joining-matching.html"><span class="header-section-number">14</span> データの結合</a></div>
+<div class="next"><a href="iteration.html"><span class="header-section-number">16</span> ループと反復処理・リストの操作</a></div>
+</div></main><div class="col-md-3 col-lg-2 d-none d-md-block sidebar sidebar-chapter">
+    <nav id="toc" data-toggle="toc" aria-label="On this page"><h2>On this page</h2>
+      <ul class="nav navbar-nav">
+<li><a class="nav-link" href="#deduplication"><span class="header-section-number">15</span> 重複データの排除</a></li>
+<li>
+<a class="nav-link" href="#%E6%BA%96%E5%82%99-6"><span class="header-section-number">15.1</span> 準備</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E8%AA%AD%E3%81%BF%E8%BE%BC%E3%81%BF-6">パッケージの読み込み</a></li>
+<li><a class="nav-link" href="#%E3%83%87%E3%83%BC%E3%82%BF%E3%81%AE%E3%82%A4%E3%83%B3%E3%83%9D%E3%83%BC%E3%83%88-7">データのインポート</a></li>
+<li><a class="nav-link" href="#dedup_data">作成したデータセットを以下に表示します</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#%E9%87%8D%E8%A4%87%E6%8E%92%E9%99%A4"><span class="header-section-number">15.2</span> 重複排除</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#%E9%87%8D%E8%A4%87%E3%81%99%E3%82%8B%E8%A1%8C%E3%82%92%E8%AA%BF%E3%81%B9%E3%82%8B">重複する行を調べる</a></li>
+<li><a class="nav-link" href="#%E4%B8%80%E6%84%8F%E3%81%AE%E8%A1%8C%E3%81%AE%E3%81%BF%E3%82%92%E4%BF%9D%E6%8C%81%E3%81%99%E3%82%8B">一意の行のみを保持する</a></li>
+<li><a class="nav-link" href="#%E3%83%99%E3%82%AF%E3%83%88%E3%83%AB%E5%86%85%E3%81%AE%E8%A6%81%E7%B4%A0%E3%81%AE%E9%87%8D%E8%A4%87%E6%8E%92%E9%99%A4">ベクトル内の要素の重複排除</a></li>
+<li><a class="nav-link" href="#base-r-%E3%82%92%E4%BD%BF%E3%81%86">base R を使う</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#%E3%82%B9%E3%83%A9%E3%82%A4%E3%82%B7%E3%83%B3%E3%82%B0%E6%8A%BD%E5%87%BA"><span class="header-section-number">15.3</span> スライシング（抽出）</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%97%E3%81%94%E3%81%A8%E3%81%AE%E3%82%B9%E3%83%A9%E3%82%A4%E3%82%B9">グループごとのスライス</a></li>
+<li><a class="nav-link" href="#%E3%81%99%E3%81%B9%E3%81%A6%E3%82%92%E6%AE%8B%E3%81%99%E3%81%8C%E7%9B%AE%E5%8D%B0%E3%82%92%E3%81%A4%E3%81%91%E3%82%8B">すべてを残すが、目印をつける</a></li>
+<li><a class="nav-link" href="#%E8%A1%8C%E3%81%AE%E5%AE%8C%E5%85%A8%E6%80%A7%E3%81%AE%E8%A8%88%E7%AE%97">行の完全性の計算</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#str_rollup"><span class="header-section-number">15.4</span> ロールアップした値</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#%E3%83%AD%E3%83%BC%E3%83%AB%E3%82%A2%E3%83%83%E3%83%97%E3%81%97%E3%81%9F%E5%80%A4%E3%82%92%E4%B8%80%E5%88%97%E3%81%AB%E4%B8%A6%E3%81%B9%E3%82%8B">ロールアップした値を一列に並べる</a></li>
+<li><a class="nav-link" href="#%E5%80%A4%E3%81%A8%E9%9A%8E%E5%B1%A4%E3%81%AE%E4%B8%8A%E6%9B%B8%E3%81%8D">値と階層の上書き</a></li>
+</ul>
+</li>
+<li><a class="nav-link" href="#%E7%A2%BA%E7%8E%87%E7%9A%84%E9%87%8D%E8%A4%87%E6%8E%92%E9%99%A4"><span class="header-section-number">15.5</span> 確率的重複排除</a></li>
+<li><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B3%87%E6%96%99-8"><span class="header-section-number">15.6</span> 参考資料</a></li>
+</ul>
+
+      <div class="book-extra">
+        <ul class="list-unstyled">
+          
+        </ul>
+</div>
+    </nav>
+</div>
+
+</div>
+</div> <!-- .container -->
+
+<footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
+
+  <div class="col-12 col-md-6 mt-3">
+    <p>"<strong>疫学のための R ハンドブック</strong>" was written by the handbook team. It was last built on 2022-10-04.</p>
+  </div>
+
+  <div class="col-12 col-md-6 mt-3">
+    <p>This book was built by the <a class="text-light" href="https://bookdown.org">bookdown</a> R package.</p>
+  </div>
+
+</div></div>
+</footer><!-- dynamically load mathjax for compatibility with self-contained --><script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/latest.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script><script type="text/x-mathjax-config">const popovers = document.querySelectorAll('a.footnote-ref[data-toggle="popover"]');
+for (let popover of popovers) {
+  const div = document.createElement('div');
+  div.setAttribute('style', 'position: absolute; top: 0, left:0; width:0, height:0, overflow: hidden; visibility: hidden;');
+  div.innerHTML = popover.getAttribute('data-content');
+
+  var has_math = div.querySelector("span.math");
+  if (has_math) {
+    document.body.appendChild(div);
+    MathJax.Hub.Queue(["Typeset", MathJax.Hub, div]);
+    MathJax.Hub.Queue(function() {
+      popover.setAttribute('data-content', div.innerHTML);
+      document.body.removeChild(div);
+    })
+  }
+}
+</script>
+</body>
+</html>

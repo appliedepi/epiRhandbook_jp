@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>9 日付型データ | 疫学のための R ハンドブック</title>
+<meta name="author" content="the handbook team">
+<meta name="description" content="R で日付データを扱う際には、他のデータ型のデータを扱うときよりも注意が必要です。本章では、日付データを扱いやすくするツールや例を紹介します。練習すれば日付データを簡単に扱えるようになりますし、lubridate のような便利なパッケージもあります。 R...">
+<meta name="generator" content="bookdown 0.29 with bs4_book()">
+<meta property="og:title" content="9 日付型データ | 疫学のための R ハンドブック">
+<meta property="og:type" content="book">
+<meta property="og:description" content="R で日付データを扱う際には、他のデータ型のデータを扱うときよりも注意が必要です。本章では、日付データを扱いやすくするツールや例を紹介します。練習すれば日付データを簡単に扱えるようになりますし、lubridate のような便利なパッケージもあります。 R...">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="9 日付型データ | 疫学のための R ハンドブック">
+<meta name="twitter:description" content="R で日付データを扱う際には、他のデータ型のデータを扱うときよりも注意が必要です。本章では、日付データを扱いやすくするツールや例を紹介します。練習すれば日付データを簡単に扱えるようになりますし、lubridate のような便利なパッケージもあります。 R...">
+<!-- JS --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://kit.fontawesome.com/6ecbd6c532.js" crossorigin="anonymous"></script><script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link href="libs/bootstrap-4.6.0/bootstrap.min.css" rel="stylesheet">
+<script src="libs/bootstrap-4.6.0/bootstrap.bundle.min.js"></script><script src="libs/bs3compat-0.4.0/transition.js"></script><script src="libs/bs3compat-0.4.0/tabs.js"></script><script src="libs/bs3compat-0.4.0/bs3compat.js"></script><link href="libs/bs4_book-1.0.0/bs4_book.css" rel="stylesheet">
+<script src="libs/bs4_book-1.0.0/bs4_book.js"></script><script src="libs/htmlwidgets-1.5.4/htmlwidgets.js"></script><link href="libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet">
+<script src="libs/datatables-binding-0.25/datatables.js"></script><link href="libs/dt-core-1.11.3/css/jquery.dataTables.min.css" rel="stylesheet">
+<link href="libs/dt-core-1.11.3/css/jquery.dataTables.extra.css" rel="stylesheet">
+<script src="libs/dt-core-1.11.3/js/jquery.dataTables.min.js"></script><link href="libs/nouislider-7.0.10/jquery.nouislider.min.css" rel="stylesheet">
+<script src="libs/nouislider-7.0.10/jquery.nouislider.min.js"></script><link href="libs/selectize-0.12.0/selectize.bootstrap3.css" rel="stylesheet">
+<script src="libs/selectize-0.12.0/selectize.min.js"></script><link href="libs/crosstalk-1.2.0/css/crosstalk.min.css" rel="stylesheet">
+<script src="libs/crosstalk-1.2.0/js/crosstalk.min.js"></script><script src="libs/kePrint-0.0.1/kePrint.js"></script><link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+<link href="libs/tabwid-1.1.0/tabwid.css" rel="stylesheet">
+<link href="libs/tabwid-1.1.0/scrool.css" rel="stylesheet">
+<link href="libs/leaflet-1.3.1/leaflet.css" rel="stylesheet">
+<script src="libs/leaflet-1.3.1/leaflet.js"></script><link href="libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet">
+<script src="libs/proj4-2.6.2/proj4.min.js"></script><script src="libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script><link href="libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet">
+<script src="libs/leaflet-binding-2.1.1/leaflet.js"></script><script src="libs/leaflet-providers-1.9.0/leaflet-providers_1.9.0.js"></script><script src="libs/leaflet-providers-plugin-2.1.1/leaflet-providers-plugin.js"></script><script src="libs/viz-1.8.2/viz.js"></script><link href="libs/DiagrammeR-styles-0.2/styles.css" rel="stylesheet">
+<script src="libs/grViz-binding-1.0.9/grViz.js"></script><script src="libs/d3-4.5.0/d3.min.js"></script><script src="libs/sankey-1/sankey.js"></script><script src="libs/sankeyNetwork-binding-0.4/sankeyNetwork.js"></script><script src="libs/plotly-binding-4.10.0/plotly.js"></script><script src="libs/typedarray-0.1/typedarray.min.js"></script><link href="libs/plotly-htmlwidgets-css-2.5.1/plotly-htmlwidgets.css" rel="stylesheet">
+<script src="libs/plotly-main-2.5.1/plotly-latest.min.js"></script><link href="libs/vis-9.1.0/vis-network.min.css" rel="stylesheet">
+<script src="libs/vis-9.1.0/vis-network.min.js"></script><script src="libs/visNetwork-binding-2.1.0/visNetwork.js"></script><link href="libs/font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<script src="libs/plotly-basic-2.5.1/plotly-basic-2.5.1.min.js"></script><script src="libs/plotly-cartesian-2.5.1/plotly-cartesian-2.5.1.min.js"></script><script src="libs/proj4js-2.3.15/proj4.js"></script><link href="libs/highcharts-9.3.1/css/motion.css" rel="stylesheet">
+<script src="libs/highcharts-9.3.1/highcharts.js"></script><script src="libs/highcharts-9.3.1/highcharts-3d.js"></script><script src="libs/highcharts-9.3.1/highcharts-more.js"></script><script src="libs/highcharts-9.3.1/modules/stock.js"></script><script src="libs/highcharts-9.3.1/modules/map.js"></script><script src="libs/highcharts-9.3.1/modules/data.js"></script><script src="libs/highcharts-9.3.1/modules/exporting.js"></script><script src="libs/highcharts-9.3.1/modules/offline-exporting.js"></script><script src="libs/highcharts-9.3.1/modules/drilldown.js"></script><script src="libs/highcharts-9.3.1/modules/item-series.js"></script><script src="libs/highcharts-9.3.1/modules/overlapping-datalabels.js"></script><script src="libs/highcharts-9.3.1/modules/annotations.js"></script><script src="libs/highcharts-9.3.1/modules/export-data.js"></script><script src="libs/highcharts-9.3.1/modules/funnel.js"></script><script src="libs/highcharts-9.3.1/modules/heatmap.js"></script><script src="libs/highcharts-9.3.1/modules/treemap.js"></script><script src="libs/highcharts-9.3.1/modules/sankey.js"></script><script src="libs/highcharts-9.3.1/modules/dependency-wheel.js"></script><script src="libs/highcharts-9.3.1/modules/organization.js"></script><script src="libs/highcharts-9.3.1/modules/solid-gauge.js"></script><script src="libs/highcharts-9.3.1/modules/streamgraph.js"></script><script src="libs/highcharts-9.3.1/modules/sunburst.js"></script><script src="libs/highcharts-9.3.1/modules/vector.js"></script><script src="libs/highcharts-9.3.1/modules/wordcloud.js"></script><script src="libs/highcharts-9.3.1/modules/xrange.js"></script><script src="libs/highcharts-9.3.1/modules/tilemap.js"></script><script src="libs/highcharts-9.3.1/modules/venn.js"></script><script src="libs/highcharts-9.3.1/modules/gantt.js"></script><script src="libs/highcharts-9.3.1/modules/timeline.js"></script><script src="libs/highcharts-9.3.1/modules/parallel-coordinates.js"></script><script src="libs/highcharts-9.3.1/modules/bullet.js"></script><script src="libs/highcharts-9.3.1/modules/coloraxis.js"></script><script src="libs/highcharts-9.3.1/modules/dumbbell.js"></script><script src="libs/highcharts-9.3.1/modules/lollipop.js"></script><script src="libs/highcharts-9.3.1/modules/series-label.js"></script><script src="libs/highcharts-9.3.1/plugins/motion.js"></script><script src="libs/highcharts-9.3.1/custom/reset.js"></script><script src="libs/highcharts-9.3.1/modules/boost.js"></script><script src="libs/highchart-binding-0.9.4/highchart.js"></script><script type="text/javascript">
+        // window.addEventListener("load", function() {
+        //     document.getElementById('toc').firstChild.innerHTML = "章目次"; 
+        // });
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementsByClassName("d-flex align-items-start justify-content-between")[0].children[0].children[0].innerHTML = "疫学のための R</br>ハンドブック";
+            document.getElementById('toc').firstChild.innerHTML = "章目次"; 
+            document.getElementById('main-nav').children[1].firstChild.innerHTML = "総目次";
+            document.getElementById('search').setAttribute("placeholder", "検索");
+        });
+    </script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- CSS --><style type="text/css">
+    
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  </style>
+<link rel="stylesheet" href="style_bs4.css">
+</head>
+<body data-spy="scroll" data-target="#toc">
+
+<div class="container-fluid">
+<div class="row">
+  <header class="col-sm-12 col-lg-3 sidebar sidebar-book"><a class="sr-only sr-only-focusable" href="#content">Skip to main content</a>
+
+    <div class="d-flex align-items-start justify-content-between">
+      <h1>
+        <a href="index.html" title="">疫学のための R ハンドブック</a>
+      </h1>
+      <button class="btn btn-outline-primary d-lg-none ml-2 mt-1" type="button" data-toggle="collapse" data-target="#main-nav" aria-expanded="true" aria-controls="main-nav"><i class="fas fa-bars"></i><span class="sr-only">Show table of contents</span></button>
+    </div>
+
+    <div id="main-nav" class="collapse-lg">
+      <form role="search">
+        <input id="search" class="form-control" type="search" placeholder="Search" aria-label="Search">
+</form>
+
+      <nav aria-label="Table of contents"><h2>Table of contents</h2>
+        <ul class="book-toc list-unstyled">
+<li><a class="" href="index.html"></a></li>
+<li class="book-part">本書について</li>
+<li><a class="" href="editorial-style.html"><span class="header-section-number">1</span> 編集前記・技術注記</a></li>
+<li><a class="" href="data-used.html"><span class="header-section-number">2</span> ハンドブックとデータのダウンロード</a></li>
+<li class="book-part">基本編</li>
+<li><a class="" href="basics.html"><span class="header-section-number">3</span> R の基礎</a></li>
+<li><a class="" href="transition-to-R.html"><span class="header-section-number">4</span> Excel・Stata・SASとの比較</a></li>
+<li><a class="" href="packages-suggested.html"><span class="header-section-number">5</span> 推奨パッケージ</a></li>
+<li><a class="" href="r-projects.html"><span class="header-section-number">6</span> R プロジェクト</a></li>
+<li><a class="" href="importing.html"><span class="header-section-number">7</span> データのインポート・エクスポート</a></li>
+<li class="book-part">データマネジメント</li>
+<li><a class="" href="cleaning.html"><span class="header-section-number">8</span> データクリーニングと主要関数</a></li>
+<li><a class="active" href="dates.html"><span class="header-section-number">9</span> 日付型データ</a></li>
+<li><a class="" href="characters-strings.html"><span class="header-section-number">10</span> 文字型・文字列型データ</a></li>
+<li><a class="" href="factors.html"><span class="header-section-number">11</span> 因子（ファクタ）型データ</a></li>
+<li><a class="" href="pivoting.html"><span class="header-section-number">12</span> データの縦横変換</a></li>
+<li><a class="" href="grouping.html"><span class="header-section-number">13</span> データのグループ化</a></li>
+<li><a class="" href="joining-matching.html"><span class="header-section-number">14</span> データの結合</a></li>
+<li><a class="" href="deduplication.html"><span class="header-section-number">15</span> 重複データの排除</a></li>
+<li><a class="" href="iteration.html"><span class="header-section-number">16</span> ループと反復処理・リストの操作</a></li>
+<li class="book-part">データ分析</li>
+<li><a class="" href="tables-descriptive.html"><span class="header-section-number">17</span> 記述統計表の作り方</a></li>
+<li><a class="" href="stat-tests.html"><span class="header-section-number">18</span> 基本的な統計的検定</a></li>
+<li><a class="" href="regression.html"><span class="header-section-number">19</span> 単変量と多変量回帰</a></li>
+<li><a class="" href="missing-data.html"><span class="header-section-number">20</span> データの欠損</a></li>
+<li><a class="" href="standardization.html"><span class="header-section-number">21</span> 標準化率</a></li>
+<li><a class="" href="moving-average.html"><span class="header-section-number">22</span> 移動平均</a></li>
+<li><a class="" href="time-series.html"><span class="header-section-number">23</span> 時系列分析とアウトブレイクの検出</a></li>
+<li><a class="" href="epidemic-models.html"><span class="header-section-number">24</span> エピデミックモデリング</a></li>
+<li><a class="" href="contact-tracing.html"><span class="header-section-number">25</span> 接触者の追跡</a></li>
+<li><a class="" href="survey-analysis.html"><span class="header-section-number">26</span> 標本調査データ分析</a></li>
+<li><a class="" href="survival-analysis.html"><span class="header-section-number">27</span> 生存時間解析</a></li>
+<li><a class="" href="gis.html"><span class="header-section-number">28</span> GIS の基本</a></li>
+<li class="book-part">データの可視化</li>
+<li><a class="" href="tables-presentation.html"><span class="header-section-number">29</span> 見やすい表の作り方</a></li>
+<li><a class="" href="ggplot-basics.html"><span class="header-section-number">30</span> ggplot の基本</a></li>
+<li><a class="" href="ggplot-tips.html"><span class="header-section-number">31</span> ggplotのヒント</a></li>
+<li><a class="" href="epicurves.html"><span class="header-section-number">32</span> 流行曲線（エピカーブ）</a></li>
+<li><a class="" href="age-pyramid.html"><span class="header-section-number">33</span> 人口ピラミッドとリッカート尺度</a></li>
+<li><a class="" href="heatmaps.html"><span class="header-section-number">34</span> ヒートマップ</a></li>
+<li><a class="" href="diagrams.html"><span class="header-section-number">35</span> フローチャート・サンキー図・タイムライン</a></li>
+<li><a class="" href="combination-analysis.html"><span class="header-section-number">36</span> 複数回答データの分析</a></li>
+<li><a class="" href="transmission-chains.html"><span class="header-section-number">37</span> 感染連鎖</a></li>
+<li><a class="" href="phylogenetic-trees.html"><span class="header-section-number">38</span> 系統樹</a></li>
+<li><a class="" href="interactive-plots.html"><span class="header-section-number">39</span> 動的な図の作成</a></li>
+<li class="book-part">レポートとダッシュボード</li>
+<li><a class="" href="rmarkdown.html"><span class="header-section-number">40</span> R Markdown で作るレポート</a></li>
+<li><a class="" href="reportfactory.html"><span class="header-section-number">41</span> ルーチンで作成するレポートの整理</a></li>
+<li><a class="" href="flexdashboard.html"><span class="header-section-number">42</span> R Markdownで作るダッシュボード</a></li>
+<li><a class="" href="shiny-basics.html"><span class="header-section-number">43</span> Shiny で作るダッシュボード</a></li>
+<li class="book-part">その他</li>
+<li><a class="" href="writing-functions.html"><span class="header-section-number">44</span> 関数の作成</a></li>
+<li><a class="" href="directories.html"><span class="header-section-number">45</span> ディレクトリの操作</a></li>
+<li><a class="" href="collaboration.html"><span class="header-section-number">46</span> Git と Github を使ったバージョン管理と共同作業</a></li>
+<li><a class="" href="errors.html"><span class="header-section-number">47</span> よくあるエラー</a></li>
+<li><a class="" href="help.html"><span class="header-section-number">48</span> ヘルプ</a></li>
+<li><a class="" href="network-drives.html"><span class="header-section-number">49</span> ネットワークドライブで R を使用する場合</a></li>
+<li><a class="" href="data-table.html"><span class="header-section-number">50</span> data.table パッケージを使用したデータ処理</a></li>
+</ul>
+
+        <div class="book-extra">
+          
+        </div>
+      </nav>
+</div>
+  </header><main class="col-sm-12 col-md-9 col-lg-7" id="content"><div id="dates" class="section level1" number="9">
+<h1>
+<span class="header-section-number">9</span> 日付型データ<a class="anchor" aria-label="anchor" href="#dates"><i class="fas fa-link"></i></a>
+</h1>
+<div class="inline-figure"><img src="images/Dates_500x500.png" width="50%" style="display: block; margin: auto;"></div>
+<p>R で日付データを扱う際には、他のデータ型のデータを扱うときよりも注意が必要です。本章では、日付データを扱いやすくするツールや例を紹介します。練習すれば日付データを簡単に扱えるようになりますし、<strong>lubridate</strong> のような便利なパッケージもあります。</p>
+<p>R に未加工のデータをインポートすると、日付データが文字型として解釈されることがあります。その場合、時系列の作成や時間間隔の計算など、日付データの一般的な操作が行えません。さらに日付には様々な書式があるため、日付のどの部分が何を表しているのか（月、日、時間など）を R に伝える必要があります。</p>
+<p>R における日付データは独自のデータ型である 日付型（<code>Date</code>）です。また、日付と時刻両方を持つオブジェクトを格納するデータ型もあるので、注意が必要です。日付と時刻の両方を格納するオブジェクトは、正式には <code>POSIXt</code> 型, <code>POSIXct</code> 型, <code>POSIXlt</code> 型 と呼ばれます（三つの型がどのように違うのかは重要ではありません）。これらの三つの型は、非公式に <u>日時型（datetime）</u>と呼ばれています。</p>
+<ul>
+<li>日付データが含まれる場合、それを R に伝えることが重要です。<br>
+</li>
+<li>日付はオブジェクトクラスであり、扱うのが難しい場合があります。<br>
+</li>
+<li>ここでは、日付の列を日付型（Date）に変換するいくつかの方法を紹介します。</li>
+</ul>
+<!-- ======================================================= --><div id="準備" class="section level2" number="9.1">
+<h2>
+<span class="header-section-number">9.1</span> 準備<a class="anchor" aria-label="anchor" href="#%E6%BA%96%E5%82%99"><i class="fas fa-link"></i></a>
+</h2>
+<div id="パッケージの読み込み-1" class="section level3 unnumbered">
+<h3>パッケージの読み込み<a class="anchor" aria-label="anchor" href="#%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E8%AA%AD%E3%81%BF%E8%BE%BC%E3%81%BF-1"><i class="fas fa-link"></i></a>
+</h3>
+<p>以下のコードを実行すると、分析に必要なパッケージが読み込まれます。このハンドブックでは、パッケージを読み込むために、<strong>pacman</strong> パッケージの <code><a href="https://rdrr.io/pkg/pacman/man/p_load.html">p_load()</a></code> を主に使用しています。<code><a href="https://rdrr.io/pkg/pacman/man/p_load.html">p_load()</a></code> は、必要に応じてパッケージをインストールし、現在の R セッションで使用するためにパッケージを読み込む関数です。また、すでにインストールされたパッケージは、R の基本パッケージである <strong>base</strong> の <code><a href="https://rdrr.io/r/base/library.html">library()</a></code> を使用して読み込むこともできます。R のパッケージについては、<a href="basics.html#basics">R の基礎</a> の章を参照してください。</p>
+<div class="sourceCode" id="cb313"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># パッケージがインストールされているか確認し、必要に応じてパッケージをインストールし、ロードする</span></span>
+<span></span>
+<span><span class="fu">pacman</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pacman/man/p_load.html">p_load</a></span><span class="op">(</span></span>
+<span>  <span class="va">lubridate</span>,  <span class="co"># 日付の扱いと変換のための一般的なパッケージ  </span></span>
+<span>  <span class="va">linelist</span>,   <span class="co"># 厄介な日付を「推測」する関数を持つ</span></span>
+<span>  <span class="va">aweek</span>,      <span class="co"># 日付を週に、週を日付に変換する別のオプション</span></span>
+<span>  <span class="va">zoo</span>,        <span class="co"># 日付と時間に関する追加の関数</span></span>
+<span>  <span class="va">tidyverse</span>,  <span class="co"># データマネジメントと可視化  </span></span>
+<span>  <span class="va">rio</span><span class="op">)</span>        <span class="co"># データのインポートとエクスポート</span></span></code></pre></div>
+</div>
+<div id="データのインポート-2" class="section level3 unnumbered">
+<h3>データのインポート<a class="anchor" aria-label="anchor" href="#%E3%83%87%E3%83%BC%E3%82%BF%E3%81%AE%E3%82%A4%E3%83%B3%E3%83%9D%E3%83%BC%E3%83%88-2"><i class="fas fa-link"></i></a>
+</h3>
+<p>エボラ出血熱の流行をシミュレートしたデータセットをインポートします。お手元の環境でこの章の内容を実行したい方は、<a href="#data_used">ハンドブックとデータのダウンロード</a> の章を参照してください。ここではデータのファイルが作業ディレクトリにあると仮定し、ファイルパスにはサブフォルダを指定しません。</p>
+<div class="sourceCode" id="cb314"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">linelist</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rio/man/import.html">import</a></span><span class="op">(</span><span class="st">"linelist_cleaned.xlsx"</span><span class="op">)</span></span></code></pre></div>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="現在の日付" class="section level2" number="9.2">
+<h2>
+<span class="header-section-number">9.2</span> 現在の日付<a class="anchor" aria-label="anchor" href="#%E7%8F%BE%E5%9C%A8%E3%81%AE%E6%97%A5%E4%BB%98"><i class="fas fa-link"></i></a>
+</h2>
+<p>コンピュータの「システム」における現在の日付や日時を取得するには、<strong>base</strong> R を使って次のように行います。</p>
+<div class="sourceCode" id="cb315"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># システムの日付を取得（日付型:DATE）</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.Date</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2022-10-04"</code></pre>
+<div class="sourceCode" id="cb317"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># システム時刻の取得（日時型:DATETIME）</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2022-10-04 12:51:48 UTC"</code></pre>
+<p><strong>lubridate</strong> パッケージでは、それぞれを <code>today()</code> と <code>now()</code> で返すことができます。 <code><a href="https://rdrr.io/r/base/date.html">date()</a></code> は現在の日付と時刻を、曜日と月名とともに返します。</p>
+<!-- ======================================================= -->
+</div>
+<div id="日付型dateに変換" class="section level2" number="9.3">
+<h2>
+<span class="header-section-number">9.3</span> 日付型（Date）に変換<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E4%BB%98%E5%9E%8Bdate%E3%81%AB%E5%A4%89%E6%8F%9B"><i class="fas fa-link"></i></a>
+</h2>
+<p>データセットを R にインポートすると、日付列の値が「1989/12/30」、「05/06/2014」、「13 Jan 2020」のようになることがあります。このような場合、R はこれらの値を文字として扱っている可能性が高いです。これらの値が日付であること、そしてその日付のフォーマット（どの部分が日で、どこが月で、どこが年であるかなど）を R に<u>伝える</u>必要があります。</p>
+<p>R に伝えることで、このような値を日付型（Date）に変換します。日付型（Date）に変更された日付は、システム内部では数値（「起点日」の 1970 年 1 月 1 日からの日数）として保存されています。日付を数値として扱うことはあまりありませんが、これにより日付を連続変数として扱い、日付間の距離を計算するなどの特殊な操作が可能になります。</p>
+<p>デフォルトでは、日付型（Date）の値は YYYY-MM-DD で表示されます。このセクションでは、日付の値の表示方式を変更する方法について説明します。</p>
+<p>以下では、列を文字型（character）から日付型（Date）型に変換する 2 つのアプローチを紹介します。</p>
+<p><u><strong>ヒント：</strong></u> <code>class(linelist$date_onset)</code> のように、<strong>base</strong> R の <code><a href="https://rdrr.io/r/base/class.html">class()</a></code> で現在のデータ型を確認することができます。</p>
+<div id="base-r" class="section level3 unnumbered">
+<h3>
+<strong>base</strong> R<a class="anchor" aria-label="anchor" href="#base-r"><i class="fas fa-link"></i></a>
+</h3>
+<p><code><a href="https://rdrr.io/r/base/as.Date.html">as.Date()</a></code> （“D” が大文字であることに注意）は、オブジェクトや列を日付型（Date）に変換する標準的な <strong>base</strong> R の関数です。</p>
+<p><code><a href="https://rdrr.io/r/base/as.Date.html">as.Date()</a></code> を使用する際には、以下が必要です。</p>
+<ul>
+<li>
+<u>文字型（character）としてインポートされた日付データの<strong>現在の</strong>形式を指定</u><em>します</em>。または、日付を数値として扱う場合は、元の日付の形式を指定します（9.4 Excel における日付 のセクションを参照）。<br>
+</li>
+<li>文字型（character）の日付データに使用する場合、すべての日付値は同じフォーマットでなければなりません（そうでない場合は、<strong>linelist</strong> パッケージの <code>guess_dates()</code> をお試しください）。</li>
+</ul>
+<p><strong>まず</strong>、<strong>base</strong> R の <code><a href="https://rdrr.io/r/base/class.html">class()</a></code> で列のデータ型を確認してください。データ型がわからない場合や表示されたデータ型が見慣れない場合（例えば “POSIXct”と表示される場合など）は、まず <code><a href="https://rdrr.io/r/base/character.html">as.character()</a></code> で文字型（character）に変換し、その後に日付型（Date）に変換するのが最も簡単です。</p>
+<p><strong>次に</strong>、<code><a href="https://rdrr.io/r/base/as.Date.html">as.Date()</a></code> 内で、<code>format =</code> 引数を使って、文字型（character）の日付データの<u>現在の</u>フォーマット、つまり、どの文字が月、日、年を表すのか、どのように分けられているのかを R に伝えます。現在のフォーマットがすでに R の標準的な日付フォーマット（“YYYY-MM-DD” または “YYYY/MM/DD”）である場合は、<code>format =</code> 引数は必要ありません。</p>
+<p><code>format =</code> には、以下の特殊な “strptime” の略語を使用して、<u>現在の</u>日付フォーマットを表す文字列を（引用符で囲んで）指定します。例えば、“24/04/1968” のように、現時点での日付データが ’“DD/MM/YYYY” のフォーマットである文字型（character）である場合、<code>format = "%d/%m/%Y"</code> を使用して値を日付型（Date）に変換します。<strong>フォーマットを引用符で囲む必要があることに注意してください。また、スラッシュやダッシュも忘れずにつけてくださいね！</strong></p>
+<div class="sourceCode" id="cb319"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Date 型に変換</span></span>
+<span><span class="va">linelist</span> <span class="op">&lt;-</span> <span class="va">linelist</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>date_onset <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="va">date_of_onset</span>, format <span class="op">=</span> <span class="st">"%d/%m/%Y"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>以下のリストは、strptime のほぼすべての略語を含んでいます。ここにない略語をご覧になりたい方は、<code><a href="https://rdrr.io/r/base/strptime.html">?strptime</a></code> を実行すると、すべての略語を含むリストを見ることができます。</p>
+<p>%d = 月の日にち（5、17、28 など）<br>
+%j = 年の日にち（ユリウス通日 001-366）<br>
+%a = 曜日の省略形（Mon、Tue、Wed など）<br>
+%A = 完全な曜日表示（Monday、Tuesday など）<br>
+%w = 曜日番号（0-6、日曜日が 0）<br>
+%u = 曜日番号（1-7、月曜日が 1）<br>
+%W = 週の番号（00-53、月曜日が週の始まり）<br>
+%U = 週の番号（01-53、日曜日が週の始まり）<br>
+%m = 月の番号（例：01、02、03、04）<br>
+%b = 月の省略形（Jan、Feb など）<br>
+%B = 完全な月表示（January、February など）<br>
+%y = 2桁の年（例：89）<br>
+%Y = 4桁の年（例：1989）<br>
+%h = 時間（24 時間表示）<br>
+%m = 分<br>
+%s = 秒<br>
+%z = GMT（グリニッジ標準時）からの差<br>
+%Z = タイムゾーン（文字型）</p>
+<p><u><strong>ヒント：</strong></u><code><a href="https://rdrr.io/r/base/as.Date.html">as.Date()</a></code> の <code>format =</code> 引数は、R にコマンド実行後の日付のフォーマットを伝えるため<u>ではなく</u>、コマンド<u>実行前</u>の日付を識別するために指定します。</p>
+<p><u><strong>ヒント：</strong></u><code>format =</code> の引数には、対象の日付に使われているセパレータ（例えば、/ や - 、またはスペース）を含めることを忘れないでください。</p>
+<p>日付が日付型（Date）に変換されると、YYYY-MM-DD というデフォルトの標準フォーマットで表示されます。</p>
+</div>
+<div id="lubridate" class="section level3 unnumbered">
+<h3>
+<strong>lubridate</strong><a class="anchor" aria-label="anchor" href="#lubridate"><i class="fas fa-link"></i></a>
+</h3>
+<p>文字型のオブジェクトを日付に変換するには、<strong>lubridate</strong> パッケージを使用すると簡単です。<strong>lubridate</strong> パッケージは <strong>base</strong> R よりもシンプルで一貫性があり、日付と時刻を扱うために開発された<strong>tidyverse</strong> のパッケージです。<strong>lubridate</strong> は日付と時刻の最も標準的な手法とされ、常に推奨されます。</p>
+<p><strong>lubridate</strong> パッケージは、文字型オブジェクトを日付に変換するためのヘルパー関数をいくつか提供しています。このヘルパー関数は、<code><a href="https://rdrr.io/r/base/as.Date.html">as.Date()</a></code> でフォーマットを指定ことに比べ、直観的かつ柔軟に文字型オブジェクトを変換することができます。ヘルパー関数は、柔軟な日付フォーマットに対応し、さまざまなセパレータを使用できることに加え、日付フォーマットの略語に由来した日付の同義語（例えば、January を意味する “01” や “Jan”）を使用することもできます。</p>
+<div class="sourceCode" id="cb320"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># lubridate をインストールし、読み込む</span></span>
+<span><span class="fu">pacman</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pacman/man/p_load.html">p_load</a></span><span class="op">(</span><span class="va">lubridate</span><span class="op">)</span></span></code></pre></div>
+<p><code>ymd()</code> は、対象となる日付の値を<strong>年、月、日</strong>の順に柔軟に変換します。</p>
+<div class="sourceCode" id="cb321"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 「年月日」のフォーマットで日付を読み込み</span></span>
+<span><span class="fu">ymd</span><span class="op">(</span><span class="st">"2020-10-11"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-10-11"</code></pre>
+<div class="sourceCode" id="cb323"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">ymd</span><span class="op">(</span><span class="st">"20201011"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-10-11"</code></pre>
+<p><code>mdy()</code> は、対象となる日付の値を<strong>月、日、年</strong>の順に柔軟に変換します。</p>
+<div class="sourceCode" id="cb325"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 「月日年」のフォーマットで日付を読み込み</span></span>
+<span><span class="fu">mdy</span><span class="op">(</span><span class="st">"10/11/2020"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-10-11"</code></pre>
+<div class="sourceCode" id="cb327"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">mdy</span><span class="op">(</span><span class="st">"Oct 11 20"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-10-11"</code></pre>
+<p><code>dmy()</code> は、対象となる日付の値を<strong>日、月、年</strong>の順に柔軟に変換します。</p>
+<div class="sourceCode" id="cb329"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 「日月年」のフォーマットで日付を読み込み</span></span>
+<span><span class="fu">dmy</span><span class="op">(</span><span class="st">"11 10 2020"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-10-11"</code></pre>
+<div class="sourceCode" id="cb331"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">dmy</span><span class="op">(</span><span class="st">"11 October 2020"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-10-11"</code></pre>
+<!-- `as.character()` と `as.Date()` コマンドはオプションとして以下のように組み合わせる   -->
+<!-- ```{r eval=F} -->
+<!-- linelist_cleaned$date_of_onset <- as.Date(as.character(linelist_cleaned$date_of_onset), format = "%d/%m/%Y") -->
+<!-- ``` -->
+<p>パイプ（<code>%&gt;%</code>）を使って文字型（character）の列から日付型（Date）の列への変換を <strong>lubridate</strong> で行うと、以下のようになります。</p>
+<div class="sourceCode" id="cb333"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">linelist</span> <span class="op">&lt;-</span> <span class="va">linelist</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>date_onset <span class="op">=</span> <span class="fu">lubridate</span><span class="fu">::</span><span class="fu"><a href="https://lubridate.tidyverse.org/reference/ymd.html">dmy</a></span><span class="op">(</span><span class="va">date_onset</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>コマンド実行後、<code><a href="https://rdrr.io/r/base/class.html">class()</a></code> を実行して列のデータ型を確認します。</p>
+<div class="sourceCode" id="cb334"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 列のデータ型を確認</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">linelist</span><span class="op">$</span><span class="va">date_onset</span><span class="op">)</span>  </span></code></pre></div>
+<p>日付が日付型（Date）に変換されると、YYYY-MM-DD というデフォルトの標準フォーマットで表示されます。</p>
+<p>上記の関数は、年が 4 桁のときに最も期待通りに機能します。2 桁の年は、<strong>lubridate</strong> が世紀として推測するため、予想外の結果になることがあります。</p>
+<p>2 桁の年を（すべて同じ世紀の 4 桁の年に変換するには、文字型（character）に変換した後、 <strong>stringr</strong> パッケージの <code><a href="https://stringr.tidyverse.org/reference/str_glue.html">str_glue()</a></code> を用いて、既存の数字と接頭辞（prefix）を組み合わせ（<a href="#characters_strings">文字型・文字列型データ</a> の章を参照）、その後日付型（Date）に変換します。</p>
+<div class="sourceCode" id="cb335"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">two_digit_years</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"15"</span>, <span class="st">"15"</span>, <span class="st">"16"</span>, <span class="st">"17"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_glue.html">str_glue</a></span><span class="op">(</span><span class="st">"20{two_digit_years}"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## 2015
+## 2015
+## 2016
+## 2017</code></pre>
+</div>
+<div id="列の結合" class="section level3 unnumbered">
+<h3>列の結合<a class="anchor" aria-label="anchor" href="#%E5%88%97%E3%81%AE%E7%B5%90%E5%90%88"><i class="fas fa-link"></i></a>
+</h3>
+<p>複数の数字型（numeric）の列を一つの日付型（Date）の列にまとめるには、<strong>lubridate</strong> 関数の <code>make_date()</code> と <code>make_datetime()</code> を利用します。例えば、データフレーム <code>linelist</code> に 数値列 <code>onset_day</code>, <code>onset_month</code>, <code>onset_year</code> がある場合、以下のようなコマンドを実行してください。</p>
+<div class="sourceCode" id="cb337"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">linelist</span> <span class="op">&lt;-</span> <span class="va">linelist</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>onset_date <span class="op">=</span> <span class="fu">make_date</span><span class="op">(</span>year <span class="op">=</span> <span class="va">onset_year</span>, month <span class="op">=</span> <span class="va">onset_month</span>, day <span class="op">=</span> <span class="va">onset_day</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="excel-における日付" class="section level2" number="9.4">
+<h2>
+<span class="header-section-number">9.4</span> Excel における日付<a class="anchor" aria-label="anchor" href="#excel-%E3%81%AB%E3%81%8A%E3%81%91%E3%82%8B%E6%97%A5%E4%BB%98"><i class="fas fa-link"></i></a>
+</h2>
+<p>多くのソフトウェアでは、内部では日付を数字として保存します。R は 1970 年 1 月 1 日を起点として日付を格納します。したがって、<code>as.numeric(as.Date("1970-01-01))</code> を実行すると <code>0</code> となります。</p>
+<p>Microsoft Excel では、お使いの OS に応じて、Windows の場合は 1899年12月30日、Mac の場合は 1904 年 1 月 1 日を起点として日付が保存されます。詳しくは <a href="https://docs.microsoft.com/en-us/office/troubleshoot/excel/1900-and-1904-date-system">Microsoft の公式ドキュメント</a> をご覧ください。</p>
+<p>このように、Excel では日付が数値として保存されているため、Excel ファイルを R でインポートすると、日付が文字ではなく数値としてインポートされることがよくあります。Excel からインポートしたデータセットで、日付が “41369” のような数字や文字として表示されている場合は <code><a href="https://rdrr.io/r/base/as.Date.html">as.Date()</a></code> （または <strong>lubridate</strong> の <code>as_date()</code>）を使って変換しますが、先述のように<strong>フォーマットを指定する代わりに、Excel の日付の起点日</strong>を引数 <code>origin =</code> に指定します。</p>
+<p>これは、Excel の日付が文字型（character）として R に保存されている場合には機能しないため、日付が数字型（numeric）であることを必ず確認してください。</p>
+<p><u><strong>注釈：</strong></u>起点日は、R の標準の日付形式（YYYY-MM-DD）で入力してください。</p>
+<div class="sourceCode" id="cb338"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Excel の数字の日付を変換する際、Excel の「起点日」を入力する例</span></span>
+<span><span class="va">data_cleaned</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>date_onset <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">date_onset</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span>   <span class="co"># 数字型であることを確認</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>date_onset <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="va">date_onset</span>, origin <span class="op">=</span> <span class="st">"1899-12-30"</span><span class="op">)</span><span class="op">)</span> <span class="co"># Excelの起点日で日付に変換</span></span></code></pre></div>
+<!-- ======================================================= -->
+</div>
+<div id="厄介な日付" class="section level2" number="9.5">
+<h2>
+<span class="header-section-number">9.5</span> 厄介な日付<a class="anchor" aria-label="anchor" href="#%E5%8E%84%E4%BB%8B%E3%81%AA%E6%97%A5%E4%BB%98"><i class="fas fa-link"></i></a>
+</h2>
+<p><strong>linelist</strong> パッケージの <code>guess_dates()</code> は、複数の異なる形式の日付を含む「厄介な」日付列を読み込んで、その日付を標準的な形式に変換してくれます。<code>guess_dates()</code> については、<a href="https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html">こちら</a> でさらに詳しく学ぶことができます。R 4.0.2 の CRAN に <code>guess_dates()</code> がない場合は、 <code>pacman::p_load_gh("reconhub/linelist")</code> でインストールしてください。</p>
+<p>例えば <code>guess_dates</code> は、文字の日付”03 Jan 2018”, “07/03/1982”, “08/20/85”のベクトルを、“2018-01-03”, “1982-03-07”, “1985-08-20”のように、一律で日付（Date）型に変換します。</p>
+<div class="sourceCode" id="cb339"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">linelist</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/linelist/man/guess_dates.html">guess_dates</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"03 Jan 2018"</span>,</span>
+<span>                        <span class="st">"07/03/1982"</span>,</span>
+<span>                        <span class="st">"08/20/85"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2018-01-03" "1982-03-07" "1985-08-20"</code></pre>
+<p><code>guess_dates()</code> のオプションの引数には、以下があります。</p>
+<ul>
+<li>
+<code>error_tolerance</code> - 日付が特定できない行が許容される割合 (デフォルトは 0.1、つまり10%)</li>
+<li>
+<code>last_date</code> - 最も新しい有効な日付（デフォルトは現在の日付）<br>
+</li>
+<li>
+<code>first_date</code> - 最も古い有効な日付（デフォルトは last_date の 50 年前）</li>
+</ul>
+<div class="sourceCode" id="cb341"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb341-1"><a href="dates.html#cb341-1" aria-hidden="true" tabindex="-1"></a><span class="co"># dater_onset 列に guess_dates を使用した例</span></span>
+<span id="cb341-2"><a href="dates.html#cb341-2" aria-hidden="true" tabindex="-1"></a>linelist <span class="ot">&lt;-</span> linelist <span class="sc">%&gt;%</span>                 <span class="co"># linelist というデータセット</span></span>
+<span id="cb341-3"><a href="dates.html#cb341-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb341-4"><a href="dates.html#cb341-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">date_onset =</span> linelist<span class="sc">::</span><span class="fu">guess_dates</span>(  <span class="co"># "linelist" パッケージの guess_dates()</span></span>
+<span id="cb341-5"><a href="dates.html#cb341-5" aria-hidden="true" tabindex="-1"></a>      date_onset,</span>
+<span id="cb341-6"><a href="dates.html#cb341-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">error_tolerance =</span> <span class="fl">0.1</span>,</span>
+<span id="cb341-7"><a href="dates.html#cb341-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">first_date =</span> <span class="st">"2016-01-01"</span></span>
+<span id="cb341-8"><a href="dates.html#cb341-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div>
+<!-- ======================================================= -->
+</div>
+<div id="日時型datetimeに変換" class="section level2" number="9.6">
+<h2>
+<span class="header-section-number">9.6</span> 日時型（datetime）に変換<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E6%99%82%E5%9E%8Bdatetime%E3%81%AB%E5%A4%89%E6%8F%9B"><i class="fas fa-link"></i></a>
+</h2>
+<p>先に述べたように、R では日付と時間の<strong>両方の</strong>情報を含む、日時型（datetime）もサポートしています。日付型（Date）と同様に、文字型（character）オブジェクトから日時型（datetime）オブジェクトに変換する必要があります。</p>
+<div id="日付と時刻の変換" class="section level3 unnumbered">
+<h3>日付と時刻の変換<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E4%BB%98%E3%81%A8%E6%99%82%E5%88%BB%E3%81%AE%E5%A4%89%E6%8F%9B"><i class="fas fa-link"></i></a>
+</h3>
+<p>標準的な日時型（datetime）は、最初に日付があり、その後に時間要素が続く形式です（ <em>01 Jan 2020, 16:30</em> など）。日付と同様に、このフォーマットには様々な方法があり、また、提供できる精度（時、分、秒）のレベルも様々です。</p>
+<p>これらの文字列を日時型（datetime）に変換するための <strong>lubridate</strong> ヘルパー関数も存在します。これらの関数は、日付ヘルパー関数を拡張したもので、末尾に <code>_h</code>（時のみを指定）、<code>_hm</code>（時と分を指定）、<code>_hms</code>（時、分、秒を指定）を付けます（例: <code>dmy_hms()</code>）。以下のように使用します。</p>
+<p>時間のみの日時データを日時型（datetime）に変換する</p>
+<div class="sourceCode" id="cb342"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">ymd_h</span><span class="op">(</span><span class="st">"2020-01-01 16hrs"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-01-01 16:00:00 UTC"</code></pre>
+<div class="sourceCode" id="cb344"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">ymd_h</span><span class="op">(</span><span class="st">"2020-01-01 4PM"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-01-01 16:00:00 UTC"</code></pre>
+<p>時と分を含む日時データを日時型（datetime）に変換する</p>
+<div class="sourceCode" id="cb346"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">dmy_hm</span><span class="op">(</span><span class="st">"01 January 2020 16:20"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-01-01 16:20:00 UTC"</code></pre>
+<p>時、分、秒を含む日時データを日時型（datetime）に変換する</p>
+<div class="sourceCode" id="cb348"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">mdy_hms</span><span class="op">(</span><span class="st">"01 January 2020, 16:20:40"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-01-20 16:20:40 UTC"</code></pre>
+<p>タイムゾーンを指定することもできますが、有効ではありません。タイムゾーンについては、この章の後半、「9.11 日付・タイムゾーンの変換」のセクションを参照してください。</p>
+<div class="sourceCode" id="cb350"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">mdy_hms</span><span class="op">(</span><span class="st">"01 January 2020, 16:20:40 PST"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-01-20 16:20:40 UTC"</code></pre>
+<p>データフレームを扱う場合は、<strong>stringr</strong> パッケージの <code><a href="https://stringr.tidyverse.org/reference/str_glue.html">str_glue()</a></code> と <strong>lubridate</strong> パッケージの関数を用いて、日付の列と時間の列を組み合わせて日時型（datetime）の列を作成できます。<strong>stringr</strong> の詳細については、<a href="#characters_strings">文字型・文字列型データ</a> の章を参照してください。</p>
+<p>以下では、<code>linelist</code> データフレームを例として使用します。<code>linelist</code> データフレームには、 “hours : minutes” という時間と分がコロン（:）で区切られているフォーマットの列があり、これを日時型（datetime）に変換していきます。</p>
+<ol style="list-style-type: decimal">
+<li>まず、“hours : minutes” 列の欠損値を列の中央値で埋め、「きれいな」入院時刻の列（<code>time_admission_clean</code>）を作成します。これは <strong>lubridate</strong> が欠損値を処理できないためです。<code>time_admission_clean</code> 列を <code>date_hospitalisation</code> 列に結合し、 最後に <code>ymd_hm()</code> 関数を使って日時型（datetime）に変換します。</li>
+</ol>
+<div class="sourceCode" id="cb352"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb352-1"><a href="dates.html#cb352-1" aria-hidden="true" tabindex="-1"></a><span class="co"># パッケージ</span></span>
+<span id="cb352-2"><a href="dates.html#cb352-2" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(tidyverse, lubridate, stringr)</span>
+<span id="cb352-3"><a href="dates.html#cb352-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb352-4"><a href="dates.html#cb352-4" aria-hidden="true" tabindex="-1"></a><span class="co"># time_admission 列は hours:minutes というフォーマット</span></span>
+<span id="cb352-5"><a href="dates.html#cb352-5" aria-hidden="true" tabindex="-1"></a>linelist <span class="ot">&lt;-</span> linelist <span class="sc">%&gt;%</span></span>
+<span id="cb352-6"><a href="dates.html#cb352-6" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb352-7"><a href="dates.html#cb352-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 入院時刻が欠損している場合は、中央値の入院時刻を割り当てる</span></span>
+<span id="cb352-8"><a href="dates.html#cb352-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb352-9"><a href="dates.html#cb352-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">time_admission_clean =</span> <span class="fu">ifelse</span>(</span>
+<span id="cb352-10"><a href="dates.html#cb352-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">is.na</span>(time_admission),         <span class="co"># 時刻が欠損している場合、</span></span>
+<span id="cb352-11"><a href="dates.html#cb352-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">median</span>(time_admission),        <span class="co"># 中央値を割り当て、</span></span>
+<span id="cb352-12"><a href="dates.html#cb352-12" aria-hidden="true" tabindex="-1"></a>      time_admission                 <span class="co"># 欠損していない場合はそのままにする</span></span>
+<span id="cb352-13"><a href="dates.html#cb352-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb352-14"><a href="dates.html#cb352-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb352-15"><a href="dates.html#cb352-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># str_glue() を使用して、日付と時刻の列を結合し、1つの文字型の列を作成</span></span>
+<span id="cb352-16"><a href="dates.html#cb352-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ymd_hm() を使って日時型に変換</span></span>
+<span id="cb352-17"><a href="dates.html#cb352-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb352-18"><a href="dates.html#cb352-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">date_time_of_admission =</span> <span class="fu">str_glue</span>(<span class="st">"{date_hospitalisation} {time_admission_clean}"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb352-19"><a href="dates.html#cb352-19" aria-hidden="true" tabindex="-1"></a>      <span class="fu">ymd_hm</span>()</span>
+<span id="cb352-20"><a href="dates.html#cb352-20" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div>
+</div>
+<div id="時間のみの変換" class="section level3 unnumbered">
+<h3>時間のみの変換<a class="anchor" aria-label="anchor" href="#%E6%99%82%E9%96%93%E3%81%AE%E3%81%BF%E3%81%AE%E5%A4%89%E6%8F%9B"><i class="fas fa-link"></i></a>
+</h3>
+<p>“hours : minutes” というように、対象となる日付データが文字型（character）で時間（時、分）しか含まれていない場合は、<strong>base</strong> R の <code><a href="https://rdrr.io/r/base/strptime.html">strptime()</a></code> を使って時間として変換・操作することができます。例えば、2 つの時間の差を求めるには、</p>
+<div class="sourceCode" id="cb353"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 直接、文字で時間を入力</span></span>
+<span><span class="va">time1</span> <span class="op">&lt;-</span> <span class="st">"13:45"</span> </span>
+<span><span class="va">time2</span> <span class="op">&lt;-</span> <span class="st">"15:20"</span></span>
+<span></span>
+<span><span class="co"># 日時型（datetime）に変換した時刻</span></span>
+<span><span class="va">time1_clean</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/strptime.html">strptime</a></span><span class="op">(</span><span class="va">time1</span>, format <span class="op">=</span> <span class="st">"%H:%M"</span><span class="op">)</span></span>
+<span><span class="va">time2_clean</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/strptime.html">strptime</a></span><span class="op">(</span><span class="va">time2</span>, format <span class="op">=</span> <span class="st">"%H:%M"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 差分はデフォルトでは "difftime" クラスだが、ここでは数値に変換</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">time2_clean</span> <span class="op">-</span> <span class="va">time1_clean</span><span class="op">)</span>   <span class="co"># 時間単位（ hour ）での差分</span></span></code></pre></div>
+<pre><code>## [1] 1.583333</code></pre>
+<p>ただし、日付の値が指定されていない場合は、今日の日付として変換されます。文字型の日付列と文字型の時刻列を組み合わせるには、上のセクションの <strong>stringr</strong> の使用方法を参照してください。<code><a href="https://rdrr.io/r/base/strptime.html">strptime()</a></code> について詳しくは<a href="https://rdrr.io/r/base/strptime.html">こちら</a>をご覧ください。</p>
+<p>一桁の数字を二桁に変換するには（例えば、時間や分を先頭のゼロで”埋めて” 2 桁にするなど）、<a href="characters-strings.html#str_pad">文字型・文字列型データの章の「文字列を伸長する」のセクション</a>をご覧ください。</p>
+</div>
+<div id="時間の抽出" class="section level3 unnumbered">
+<h3>時間の抽出<a class="anchor" aria-label="anchor" href="#%E6%99%82%E9%96%93%E3%81%AE%E6%8A%BD%E5%87%BA"><i class="fas fa-link"></i></a>
+</h3>
+<p><strong>lubridate</strong> の <code>hour()</code>, <code>minute()</code>, <code>second()</code> で時刻の要素を抽出できます。</p>
+<p>ここでは、時刻を抽出して一日の区分で分類する例を示します。 <code>time_admission</code> という入院時刻を表す列 は、“HH:MM” というフォーマットの文字型（character）です。まず、上述した <code><a href="https://rdrr.io/r/base/strptime.html">strptime()</a></code> を使って文字を日時型（datetime）に変換します。次に <code>hour()</code> で時間を抽出すると、0 ～ 24 の数値が返されます。最後に、<code><a href="https://dplyr.tidyverse.org/reference/case_when.html">case_when()</a></code> を用いて <code>time_period</code> という列を作成し、入院時刻に基づいて午前（Morning）、午後（Afternoon）、夕方（Evening）、夜（Night）の 4 つに分類します。</p>
+<div class="sourceCode" id="cb355"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">linelist</span> <span class="op">&lt;-</span> <span class="va">linelist</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>hour_admit <span class="op">=</span> <span class="fu">hour</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/strptime.html">strptime</a></span><span class="op">(</span><span class="va">time_admission</span>, format <span class="op">=</span> <span class="st">"%H:%M"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>time_period <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case_when.html">case_when</a></span><span class="op">(</span></span>
+<span>    <span class="va">hour_admit</span> <span class="op">&gt;</span> <span class="fl">06</span> <span class="op">&amp;</span> <span class="va">hour_admit</span> <span class="op">&lt;</span> <span class="fl">12</span> <span class="op">~</span> <span class="st">"Morning"</span>,</span>
+<span>    <span class="va">hour_admit</span> <span class="op">&gt;=</span> <span class="fl">12</span> <span class="op">&amp;</span> <span class="va">hour_admit</span> <span class="op">&lt;</span> <span class="fl">17</span> <span class="op">~</span> <span class="st">"Afternoon"</span>,</span>
+<span>    <span class="va">hour_admit</span> <span class="op">&gt;=</span> <span class="fl">17</span> <span class="op">&amp;</span> <span class="va">hour_admit</span> <span class="op">&lt;</span> <span class="fl">21</span> <span class="op">~</span> <span class="st">"Evening"</span>,</span>
+<span>    <span class="va">hour_admit</span> <span class="op">&gt;=</span><span class="fl">21</span> <span class="op">|</span> <span class="va">hour_admit</span> <span class="op">&lt;=</span> <span class="fl">6</span> <span class="op">~</span> <span class="st">"Night"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="https://dplyr.tidyverse.org/reference/case_when.html">case_when()</a></code> については、<a href="cleaning.html#cleaning">データのクリーニングと主要関数</a> の章をご覧ください。</p>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="日付の操作" class="section level2" number="9.7">
+<h2>
+<span class="header-section-number">9.7</span> 日付の操作<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E4%BB%98%E3%81%AE%E6%93%8D%E4%BD%9C"><i class="fas fa-link"></i></a>
+</h2>
+<p><code>lubridate</code> は他にも様々な機能があります。例えば、<strong>日付や日時から一部を抽出</strong>、<strong>日付の演算</strong>、<strong>日付の間隔を計算</strong>などです。</p>
+<p>まず、例に用いる日付を定義します。</p>
+<div class="sourceCode" id="cb356"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 日時型（Date）のオブジェクトを作成</span></span>
+<span><span class="va">example_date</span> <span class="op">&lt;-</span> <span class="fu">ymd</span><span class="op">(</span><span class="st">"2020-03-01"</span><span class="op">)</span></span></code></pre></div>
+<div id="日付成分の抽出" class="section level3 unnumbered">
+<h3>日付成分の抽出<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E4%BB%98%E6%88%90%E5%88%86%E3%81%AE%E6%8A%BD%E5%87%BA"><i class="fas fa-link"></i></a>
+</h3>
+<p>月、日、曜日などの共通する部分を抽出します。</p>
+<div class="sourceCode" id="cb357"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">month</span><span class="op">(</span><span class="va">example_date</span><span class="op">)</span>  <span class="co"># 月番号</span></span></code></pre></div>
+<pre><code>## [1] 3</code></pre>
+<div class="sourceCode" id="cb359"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">day</span><span class="op">(</span><span class="va">example_date</span><span class="op">)</span>    <span class="co"># 日にち</span></span></code></pre></div>
+<pre><code>## [1] 1</code></pre>
+<div class="sourceCode" id="cb361"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">wday</span><span class="op">(</span><span class="va">example_date</span><span class="op">)</span>   <span class="co"># 曜日番号（1-7）</span></span></code></pre></div>
+<pre><code>## [1] 1</code></pre>
+<p>また、日時型（datetime）のオブジェクトや列から時刻を抽出できます。これは、入院時刻の分布を見たい場合に便利です。</p>
+<div class="sourceCode" id="cb363"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">example_datetime</span> <span class="op">&lt;-</span> <span class="fu">ymd_hm</span><span class="op">(</span><span class="st">"2020-03-01 14:45"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">hour</span><span class="op">(</span><span class="va">example_datetime</span><span class="op">)</span>     <span class="co"># 時の抽出</span></span>
+<span><span class="fu">minute</span><span class="op">(</span><span class="va">example_datetime</span><span class="op">)</span>   <span class="co"># 分の抽出</span></span>
+<span><span class="fu">second</span><span class="op">(</span><span class="va">example_datetime</span><span class="op">)</span>   <span class="co"># 秒の抽出</span></span></code></pre></div>
+<p>週を抽出するにはいくつかオプションがあります。以下の「疫学週」のセクションを参照してください。</p>
+<p>特定の表記で日付を表示したい場合（「Jan 2020」や「Thursday 20 March」、「Week 20, 1977」など）は、次の「日付の表示」のセクションで説明するように、より柔軟に対応することができます。</p>
+</div>
+<div id="日付の計算" class="section level3 unnumbered">
+<h3>日付の計算<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E4%BB%98%E3%81%AE%E8%A8%88%E7%AE%97"><i class="fas fa-link"></i></a>
+</h3>
+<p>日数や週数を足すには、<strong>lubridate</strong> の関数を使用します。</p>
+<div class="sourceCode" id="cb364"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 日付に3日分足す</span></span>
+<span><span class="va">example_date</span> <span class="op">+</span> <span class="fu">days</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-03-04"</code></pre>
+<div class="sourceCode" id="cb366"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 日付に7週分足し、2日分引く</span></span>
+<span><span class="va">example_date</span> <span class="op">+</span> <span class="fu">weeks</span><span class="op">(</span><span class="fl">7</span><span class="op">)</span> <span class="op">-</span> <span class="fu">days</span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2020-04-17"</code></pre>
+</div>
+<div id="日付の間隔" class="section level3 unnumbered">
+<h3>日付の間隔<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E4%BB%98%E3%81%AE%E9%96%93%E9%9A%94"><i class="fas fa-link"></i></a>
+</h3>
+<p>日付の間隔は、以下の方法で計算できます。</p>
+<ol style="list-style-type: decimal">
+<li>両方の日付が日付型（Date）であることを確認する<br>
+</li>
+<li>引き算で日付の差 “difftime” を返す<br>
+</li>
+<li>必要に応じて、結果を数字型（numeric）に変換する</li>
+</ol>
+<p>以下では、2 つの日付の間隔を計算しています。日付型（Date）の値に減算記号（マイナス）を使用して、間隔を求められます。ただし、返される値のデータ型は “difftime” であり、数値に変換する必要があります。</p>
+<div class="sourceCode" id="cb368"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># example_dateから2020年2月20日までの間隔を求める </span></span>
+<span><span class="va">output</span> <span class="op">&lt;-</span> <span class="va">example_date</span> <span class="op">-</span> <span class="fu">ymd</span><span class="op">(</span><span class="st">"2020-02-20"</span><span class="op">)</span></span>
+<span><span class="va">output</span>    <span class="co"># 出力</span></span></code></pre></div>
+<pre><code>## Time difference of 10 days</code></pre>
+<div class="sourceCode" id="cb370"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">output</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "difftime"</code></pre>
+<p>“difftime” に対して追加の操作を行うには、<code><a href="https://rdrr.io/r/base/numeric.html">as.numeric()</a></code> で数字型（numeric）に変換します。</p>
+<p>パイプ（<code>%&gt;%</code>）によって、これらを一連の流れで操作できます。</p>
+<div class="sourceCode" id="cb372"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">pacman</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pacman/man/p_load.html">p_load</a></span><span class="op">(</span><span class="va">lubridate</span>, <span class="va">tidyverse</span><span class="op">)</span>   <span class="co"># パッケージを読み込む</span></span>
+<span></span>
+<span><span class="va">linelist</span> <span class="op">&lt;-</span> <span class="va">linelist</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  </span>
+<span>  <span class="co"># dmy フォーマットを指定して、発症日を文字から日付オブジェクトに変換</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>date_onset <span class="op">=</span> <span class="fu">dmy</span><span class="op">(</span><span class="va">date_onset</span><span class="op">)</span>,</span>
+<span>         date_hospitalisation <span class="op">=</span> <span class="fu">dmy</span><span class="op">(</span><span class="va">date_hospitalisation</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>  </span>
+<span>  <span class="co"># 3 月に発症していないケースをすべて除外</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html">filter</a></span><span class="op">(</span><span class="fu">month</span><span class="op">(</span><span class="va">date_onset</span><span class="op">)</span> <span class="op">==</span> <span class="fl">3</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span></span>
+<span>    </span>
+<span>  <span class="co"># 発症から入院までの日数の差を求める</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>days_onset_to_hosp <span class="op">=</span> <span class="va">date_hospitalisation</span> <span class="op">-</span> <span class="va">date_of_onset</span><span class="op">)</span></span></code></pre></div>
+<p>データフレームでは、上記の日付のいずれかが欠損していると操作が失敗し、数値ではなく <code>NA</code> が表示されます。この列を計算に使用する場合は、以下のように必ず <code>na.rm =</code> 引数を <code>TRUE</code> に設定してください。</p>
+<div class="sourceCode" id="cb373"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># データが欠損していない症例について、発症から入院までの日数の中央値を算出</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/median.html">median</a></span><span class="op">(</span><span class="va">linelist_delay</span><span class="op">$</span><span class="va">days_onset_to_hosp</span>, na.rm <span class="op">=</span> <span class="cn">T</span><span class="op">)</span></span></code></pre></div>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="日付の表示" class="section level2" number="9.8">
+<h2>
+<span class="header-section-number">9.8</span> 日付の表示<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E4%BB%98%E3%81%AE%E8%A1%A8%E7%A4%BA"><i class="fas fa-link"></i></a>
+</h2>
+<p>日付を正しいデータ型にした後、「2018-01-05」ではなく「Monday 05 January」など、データそのものとは異なる表示にしたいことがあります。また表示されている日付の要素でグループ化し、表示を調整することもあります（例：年と月でグループ化）。</p>
+<div id="format" class="section level3 unnumbered">
+<h3>
+<code>format()</code><a class="anchor" aria-label="anchor" href="#format"><i class="fas fa-link"></i></a>
+</h3>
+<p>日付の表示を調整するには、<strong>base</strong> R に含まれている関数である <code><a href="https://rdrr.io/r/base/format.html">format()</a></code> を使用します。この関数を使用する際は、“%” で始まる strptime 略語（ <code><a href="https://rdrr.io/r/base/as.Date.html">as.Date()</a></code> で使用されるのと同じ構文）を用いて、<u>希望の</u>出力フォーマットを文字列（引用符で囲まれたもの）で指定します。以下は、一般的な略語の例です。</p>
+<p>注意：<code><a href="https://rdrr.io/r/base/format.html">format()</a></code> を使用すると、値が文字型（character）に変換されます。そのため、データ分析や処理が終わった後に使用するか、または、表示のみに使用されます。 strptime のすべての略語の一覧は、<code><a href="https://rdrr.io/r/base/strptime.html">?strptime</a></code> を実行してご覧ください。</p>
+<p>%d = 月の日にち（5、17、28 など）<br>
+%j = 年の日にち（ユリウス通日 001-366）<br>
+%a = 曜日の省略形（Mon、Tue、Wed など）<br>
+%A = 完全な曜日表示（Monday、Tuesday など）<br>
+%w = 曜日番号（0-6、日曜日が 0）<br>
+%u = 曜日番号（1-7、月曜日が 1）<br>
+%W = 週の番号（00-53、月曜日が週の始まり）<br>
+%U = 週の番号（01-53、日曜日が週の始まり）<br>
+%m = 月の番号（例：01、02、03、04）<br>
+%b = 月の省略形（Jan、Feb など）<br>
+%B = 完全な月表示（January、February など）<br>
+%y = 2桁の年（例：89）<br>
+%Y = 4桁の年（例：1989）<br>
+%h = 時間（24 時間表示）<br>
+%m = 分<br>
+%s = 秒<br>
+%z = GMT（グリニッジ標準時）からの差<br>
+%Z = タイムゾーン（文字型）</p>
+<p>以下は、今日の日付のフォーマットの例です。</p>
+<div class="sourceCode" id="cb374"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># フォーマットした今日の日付</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.Date</a></span><span class="op">(</span><span class="op">)</span>, format <span class="op">=</span> <span class="st">"%d %B %Y"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "04 October 2022"</code></pre>
+<div class="sourceCode" id="cb376"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 日付と時間を簡単に取得する（デフォルトのフォーマット）</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/date.html">date</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "Tue Oct  4 12:51:48 2022"</code></pre>
+<div class="sourceCode" id="cb378"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># str_glue() を使って、フォーマットした日付、時刻、タイムゾーンを組み合わせる</span></span>
+<span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_glue.html">str_glue</a></span><span class="op">(</span><span class="st">"{format(Sys.Date(), format = '%A, %B %d %Y, %z  %Z, ')}{format(Sys.time(), format = '%H:%M:%S')}"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## Tuesday, October 04 2022, +0000  UTC, 12:51:48</code></pre>
+<div class="sourceCode" id="cb380"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># フォーマットを使用して週を表示</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.Date</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"%Y Week %W"</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## [1] "2022 Week 40"</code></pre>
+<p>なお、<code><a href="https://stringr.tidyverse.org/reference/str_glue.html">str_glue()</a></code> を使用する場合は、二重引用符（<code>""</code>）の中では一重引用符（<code>' '</code>）を使用することに注意してください。</p>
+</div>
+<div id="年月" class="section level3 unnumbered">
+<h3>年月<a class="anchor" aria-label="anchor" href="#%E5%B9%B4%E6%9C%88"><i class="fas fa-link"></i></a>
+</h3>
+<p>日付型（Date）の列を月と年に変換するには、 <strong>zoo</strong> パッケージの <code>as.yearmon()</code> を使うことをおすすめします。これは、日付を適切な順序で yearmon 型に変換する関数です。もし <code>format(column, "%Y %B")</code> を使用した場合、文字型（character）に変換され、値がアルファベット順に並んでしまいます。</p>
+<p>以下では、<code>as.yearmon()</code> 関数を使って、<code>date_onset</code> 列から <code>yearmonth</code> 列を新たに作成しています。デフォルト（正しい）の順序で得られた結果を以下のテーブルに示します。</p>
+<div class="sourceCode" id="cb382"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 新しい列の作成 </span></span>
+<span><span class="va">test_zoo</span> <span class="op">&lt;-</span> <span class="va">linelist</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>     <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>yearmonth <span class="op">=</span> <span class="fu">zoo</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/zoo/man/yearmon.html">as.yearmon</a></span><span class="op">(</span><span class="va">date_onset</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># テーブルの出力</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">test_zoo</span><span class="op">$</span><span class="va">yearmon</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## 
+## Apr 2014 May 2014 Jun 2014 Jul 2014 Aug 2014 Sep 2014 Oct 2014 Nov 2014 
+##        7       64      100      226      528     1070     1112      763 
+## Dec 2014 Jan 2015 Feb 2015 Mar 2015 Apr 2015 
+##      562      431      306      277      186</code></pre>
+<p>一方、<code><a href="https://rdrr.io/r/base/format.html">format()</a></code> を使うと、希望の表示形式にはなりますが、正しい順序にはなりません。</p>
+<div class="sourceCode" id="cb384"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 新しい列の作成</span></span>
+<span><span class="va">test_format</span> <span class="op">&lt;-</span> <span class="va">linelist</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>     <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>yearmonth <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html">format</a></span><span class="op">(</span><span class="va">date_onset</span>, <span class="st">"%b %Y"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># テーブルの出力</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">test_format</span><span class="op">$</span><span class="va">yearmon</span><span class="op">)</span></span></code></pre></div>
+<pre><code>## 
+## Apr 2014 Apr 2015 Aug 2014 Dec 2014 Feb 2015 Jan 2015 Jul 2014 Jun 2014 
+##        7      186      528      562      306      431      226      100 
+## Mar 2015 May 2014 Nov 2014 Oct 2014 Sep 2014 
+##      277       64      763     1112     1070</code></pre>
+<p>注意： <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot()</a></code> を用いる際、日付の<u>表示</u>のみを調整したい場合は、<code><a href="https://ggplot2.tidyverse.org/reference/scale_date.html">scale_x_date()</a></code> の <code>date_labels =</code> 引数に strptime フォーマットを使用するだけで十分な場合があります。この場合 <code>"%b %Y"</code> または <code>"%Y %b"</code> を使用できます。詳しくは、<a href="ggplot-tips.html#ggplot-tips">ggplot のヒント</a> の章をご覧ください。</p>
+<p><strong>zoo</strong> には <code>as.yearqtr()</code> という関数もあります。また、<code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot()</a></code> を用いる際には <code>scale_x_yearmon()</code> を使用できます。</p>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="dates_epi_wks" class="section level2" number="9.9">
+<h2>
+<span class="header-section-number">9.9</span> 疫学週<a class="anchor" aria-label="anchor" href="#dates_epi_wks"><i class="fas fa-link"></i></a>
+</h2>
+<div id="lubridate-1" class="section level3 unnumbered">
+<h3>
+<strong>lubridate</strong><a class="anchor" aria-label="anchor" href="#lubridate-1"><i class="fas fa-link"></i></a>
+</h3>
+<p>日付ごとにデータをグループ化する例は、<a href="grouping.html#grouping">データのグループ化</a> の章をご覧ください。以下では、週ごとにデータをグループ化する際の注意点について簡単に説明します。</p>
+<p>一般的には、 <strong>lubridate</strong> パッケージに含まれている関数である <code>floor_date()</code> に引数 <code>unit = "week"</code> を指定して使用することをおすすめします。これは、引数 <code>week_start =</code> で定義される週の「開始日」に日付を丸めるものです。デフォルトの週の開始日は 1（月曜日）ですが、週の任意の日を開始日として指定することができます（例：日曜日は 7）。<code>floor_date()</code> は汎用性があり、<code>unit =</code> を “second”, “minute”, “hour”, “day”, “month”, “year”に設定することで、他の時間単位への切り捨てに使用することができます。</p>
+<p>返される値は、日付型（Date）の週の開始日です。日付型（Date）はデータをプロットする際に便利で、<code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot()</a></code> に認識されやすく、正しい順序で表示されます。</p>
+<p>プロットの中で週ごとに日付を調整して<u>表示</u>するだけなら、この章の「日付の表示」のセクションを参照してください。例えば、エピカーブをプロットする際に、必要な strptime の “%” を指定することで、希望の日付表示をフォーマットすることができます。例えば、“%Y-%W” または “%Y-%U” を使用すると、年と週の番号が返されます（それぞれ月曜または日曜の週の開始日を指定）。</p>
+</div>
+<div id="週ごとのカウント" class="section level3 unnumbered">
+<h3>週ごとのカウント<a class="anchor" aria-label="anchor" href="#%E9%80%B1%E3%81%94%E3%81%A8%E3%81%AE%E3%82%AB%E3%82%A6%E3%83%B3%E3%83%88"><i class="fas fa-link"></i></a>
+</h3>
+<p><code><a href="https://dplyr.tidyverse.org/reference/count.html">count()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/summarise.html">summarise()</a></code>によるデータのグループ化については、<a href="grouping.html#grouping">データのグループ化</a> の章で詳しく説明しています。以下に簡単な例を示します。</p>
+<ol style="list-style-type: decimal">
+<li>
+<code><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate()</a></code> で新しく “week” という列を作成し、<code>floor_date()</code> で <code>unit = "week"</code> を使用する。<br>
+</li>
+<li>週ごとの行数（症例数）を <code><a href="https://dplyr.tidyverse.org/reference/count.html">count()</a></code> で取得し、日付が欠損しているケースを除外する。<br>
+</li>
+<li>
+<strong>tidyr</strong> の <code><a href="https://tidyr.tidyverse.org/reference/complete.html">complete()</a></code> を使用し、行や症例がないものも含めて、<u>すべての</u>週がデータに現れるようにする。デフォルトでは、「新しい」行のカウント値は NA だが、 <code>fill =</code> 引数で 0 にすることができる。 <code>fill =</code> 引数では、名前付きリストを指定する（以下、<code>n</code> はカウント列の名前）。</li>
+</ol>
+<div class="sourceCode" id="cb386"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 毎週の症例数を集計したデータセットの作成</span></span>
+<span><span class="va">weekly_counts</span> <span class="op">&lt;-</span> <span class="va">linelist</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://tidyr.tidyverse.org/reference/drop_na.html">drop_na</a></span><span class="op">(</span><span class="va">date_onset</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span>             <span class="co"># 発症日が欠損のケースを削除</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>weekly_cases <span class="op">=</span> <span class="fu">floor_date</span><span class="op">(</span>   <span class="co"># 発症週の新しい列を作成</span></span>
+<span>    <span class="va">date_onset</span>,</span>
+<span>    unit <span class="op">=</span> <span class="st">"week"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span>            </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html">count</a></span><span class="op">(</span><span class="va">weekly_cases</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span>           <span class="co"># 週ごとにグループ化し、グループごとの行数をカウント（「n」という列を作成）</span></span>
+<span>  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/complete.html">complete</a></span><span class="op">(</span>                  <span class="co"># 症例が報告されていない週も含めて、すべての週が存在するようにする</span></span>
+<span>    weekly_cases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.Date.html">seq.Date</a></span><span class="op">(</span>          <span class="co"># "weekly_cases" という列を完全なシーケンスとして再定義</span></span>
+<span>      from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">min</a></span><span class="op">(</span><span class="va">weekly_cases</span><span class="op">)</span>,       <span class="co"># 最小の日付から</span></span>
+<span>      to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">weekly_cases</span><span class="op">)</span>,         <span class="co"># 最大の日付まで</span></span>
+<span>      by <span class="op">=</span> <span class="st">"week"</span><span class="op">)</span>,                   <span class="co"># 週ごとに</span></span>
+<span>    fill <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span>             <span class="co"># n という列の NA を 0 で埋める</span></span></code></pre></div>
+<p>以下に、上のコマンドを実行して出力されたデータフレームの最初の行を示します。</p>
+<div id="htmlwidget-05c978b0e1007db9ae40" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-05c978b0e1007db9ae40">{"x":{"filter":"none","vertical":false,"data":[["2014-04-06","2014-04-13","2014-04-20","2014-04-27","2014-05-04","2014-05-11","2014-05-18","2014-05-25","2014-06-01","2014-06-08","2014-06-15","2014-06-22","2014-06-29","2014-07-06","2014-07-13","2014-07-20","2014-07-27","2014-08-03","2014-08-10","2014-08-17"],[1,1,4,4,12,14,14,21,21,18,30,23,31,35,55,58,80,86,114,122]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>weekly_cases<\/th>\n      <th>n<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":1}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+</div>
+<div id="疫学週-の代替案" class="section level3 unnumbered">
+<h3>疫学週 の代替案<a class="anchor" aria-label="anchor" href="#%E7%96%AB%E5%AD%A6%E9%80%B1-%E3%81%AE%E4%BB%A3%E6%9B%BF%E6%A1%88"><i class="fas fa-link"></i></a>
+</h3>
+<p>なお、<strong>lubridate</strong> には <code>week()</code>、 <code>epiweek()</code>、<code>isoweek()</code> という関数があり、それぞれ開始日などが微妙に異なります。しかし、一般的には <code>floor_date()</code> があれば十分です。これらの関数の詳細については、コンソールに <code>?week</code> と入力するか、<a href="https://www.rdocumentation.org/packages/lubridate/versions/1.7.4/topics/week">こちら</a> をご覧ください。</p>
+<p>疫学週を設定するために、<strong>aweek</strong> パッケージの使用を検討してみてください。このパッケージについては、<a href="https://www.repidemicsconsortium.org/aweek/">RECON のウェブサイト</a>で詳しく説明されています。このパッケージには、<code>date2week()</code> と <code>week2date()</code> という関数があり、<code>week_start = "Monday"</code> で週の開始日を設定することができます。このパッケージを使用すると、最も簡単に “week” フォーマット（例： “2020-W12”）で日付を出力することができます。もう一つの <strong>aweek</strong> の利点は、<code>date2week()</code> を日付列に適用すると、返される列（週形式）が自動的に因子型（factor）になり、対象期間内のすべての週のレベルが含まれることです（これにより、上述の <code><a href="https://tidyr.tidyverse.org/reference/complete.html">complete()</a></code> の余分なステップを回避できます）。ただし、<strong>aweek</strong> には、日付を月や年などの週以外の時間単位に丸める機能はありません。</p>
+<p>時系列の代わりに、“week” フォーマット（“2020 W12”）を表示するのにも適しているのが、パッケージ <strong>tsibble</strong> の <code>yearweek()</code> です。これは <a href="#time_series">時系列分析とアウトブレイクの検出</a> の章で紹介しています。</p>
+<!-- ======================================================= -->
+</div>
+</div>
+<div id="日付タイムゾーンの変換" class="section level2" number="9.10">
+<h2>
+<span class="header-section-number">9.10</span> 日付・タイムゾーンの変換<a class="anchor" aria-label="anchor" href="#%E6%97%A5%E4%BB%98%E3%82%BF%E3%82%A4%E3%83%A0%E3%82%BE%E3%83%BC%E3%83%B3%E3%81%AE%E5%A4%89%E6%8F%9B"><i class="fas fa-link"></i></a>
+</h2>
+<p>様々なタイムゾーンでデータが記録された場合、そのデータを一つのタイムゾーンで標準化することが重要になります。これには未だ解決されていない課題があり、多くの場合、データのタイムゾーン要素を手作業でコード化しなければなりません。</p>
+<p>R では、<u>日時型（datetime）</u>オブジェクトはタイムゾーン要素を含んでいます。デフォルトでは、すべての日時型（datetime）オブジェクトには、コンピュータのローカルタイムゾーンが適用されます。これは、サマータイムによりタイムゾーンが変更されることが多いため、通常は名前付きのタイムゾーンではなく<u>場所に</u>固有のものです。日付の列が表すイベントは特定の時間に起因するものではないため、時間単位でのタイムシフトを合理的に説明することはできませんので、日付の時間要素がなければタイムゾーンを正確に補正することはできません。</p>
+<p><strong>lubridate</strong> には日時型（datetime）オブジェクトのタイムゾーンを別のタイムゾーンに変更するためのヘルパー関数がいくつかあります。tz データベースのタイムゾーンを日時型（datetime）オブジェクトに適用することで、タイムゾーンの設定が行えます。データを使用している場所が以下の一覧にない場合は、近隣の大都市のタイムゾーンが利用可能です。</p>
+<p><a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" class="uri">https://en.wikipedia.org/wiki/List_of_tz_database_time_zones</a></p>
+<div class="sourceCode" id="cb387"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 現在の時刻を列に割り当て</span></span>
+<span><span class="va">time_now</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">time_now</span></span></code></pre></div>
+<pre><code>## [1] "2022-10-04 12:51:48 UTC"</code></pre>
+<div class="sourceCode" id="cb389"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># with_tz()を使用して、時刻を変更しながら、新しいタイムゾーンをカラムに割り当て</span></span>
+<span><span class="va">time_london_real</span> <span class="op">&lt;-</span> <span class="fu">with_tz</span><span class="op">(</span><span class="va">time_now</span>, <span class="st">"Europe/London"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># force_tz()を使って、時刻を維持したまま、新しいタイムゾーンをカラムに割り当て</span></span>
+<span><span class="va">time_london_local</span> <span class="op">&lt;-</span> <span class="fu">force_tz</span><span class="op">(</span><span class="va">time_now</span>, <span class="st">"Europe/London"</span><span class="op">)</span></span>
+<span></span>
+<span></span>
+<span><span class="co"># このコードを実行したコンピュータがロンドン時間に設定されていない場合は</span></span>
+<span><span class="co"># 時間の差が発生する</span></span>
+<span><span class="co"># (コンピュータのタイムゾーンとロンドンのタイムゾーンとの差の時間数)</span></span>
+<span><span class="va">time_london_real</span> <span class="op">-</span> <span class="va">time_london_local</span></span></code></pre></div>
+<pre><code>## Time difference of 1 hours</code></pre>
+<p>この作業は抽象的に見えるかもしれません。複数のタイムゾーンにまたがったデータを扱わなければ、このような作業は不要でしょう。</p>
+<!-- ======================================================= -->
+</div>
+<div id="前後の値の計算" class="section level2" number="9.11">
+<h2>
+<span class="header-section-number">9.11</span> 前後の値の計算<a class="anchor" aria-label="anchor" href="#%E5%89%8D%E5%BE%8C%E3%81%AE%E5%80%A4%E3%81%AE%E8%A8%88%E7%AE%97"><i class="fas fa-link"></i></a>
+</h2>
+<p><code><a href="https://dplyr.tidyverse.org/reference/lead-lag.html">lead()</a></code> と <code>lag()</code> は <strong>dplyr</strong> パッケージの関数で、ベクトル（通常は数値や日付のベクトル）の中から前の値（遅れた値）や後の値（先行する値）を見つけるのに役立ちます。これは、時間単位での変化や差を計算するときに便利です。</p>
+<p>例えば、現在の週と前の週の症例数の差を計算したいとします。元のデータは、以下のように週ごとのカウントになっています。</p>
+<div id="htmlwidget-ef53802dd0a6aeb290ff" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-ef53802dd0a6aeb290ff">{"x":{"filter":"none","vertical":false,"data":[["2019-06-23","2019-06-30","2019-07-07","2019-07-14","2019-07-21","2019-07-28","2019-08-04","2019-08-11","2019-08-18","2019-08-25","2019-09-01","2019-09-08","2019-09-15","2019-09-22","2019-09-29","2019-10-06","2019-10-13","2019-10-20","2019-10-27","2019-11-03","2019-11-10","2019-11-17","2019-11-24","2019-12-01","2019-12-08","2019-12-15","2019-12-22","2019-12-29"],[0,25,59,90,65,79,41,47,31,32,28,28,76,41,70,90,124,278,371,329,177,69,77,97,100,39,19,0]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>week_start<\/th>\n      <th>cases_wk<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":1}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><strong><code>lag()</code> や <code><a href="https://dplyr.tidyverse.org/reference/lead-lag.html">lead()</a></code> を使用する際には、データフレーム内の行の順序が非常に重要です。日付や数字が昇順か降順かに注意してください</strong>。</p>
+<p>まず、前週（lagged）の値を含む新しい列を作成します。</p>
+<ul>
+<li>
+<code>n =</code> で前後のユニット数（非負の整数）を指定する。<br>
+</li>
+<li>存在しない行（前の値がない最初の行など）に置かれる値を定義するには、<code>default =</code> を使用する。デフォルトは <code>NA</code> 。<br>
+</li>
+<li>参照する列が順序付けられていない場合は、<code>order_by = TRUE</code> を使用する。</li>
+</ul>
+<div class="sourceCode" id="cb391"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="va">counts</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>cases_prev_wk <span class="op">=</span> <span class="fu">lag</span><span class="op">(</span><span class="va">cases_wk</span>, n <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div id="htmlwidget-a5e58ab89ea9f80a9fb3" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-a5e58ab89ea9f80a9fb3">{"x":{"filter":"none","vertical":false,"data":[["2019-06-23","2019-06-30","2019-07-07","2019-07-14","2019-07-21","2019-07-28","2019-08-04","2019-08-11","2019-08-18","2019-08-25","2019-09-01","2019-09-08","2019-09-15","2019-09-22","2019-09-29","2019-10-06","2019-10-13","2019-10-20","2019-10-27","2019-11-03","2019-11-10","2019-11-17","2019-11-24","2019-12-01","2019-12-08","2019-12-15","2019-12-22","2019-12-29"],[0,25,59,90,65,79,41,47,31,32,28,28,76,41,70,90,124,278,371,329,177,69,77,97,100,39,19,0],[null,0,25,59,90,65,79,41,47,31,32,28,28,76,41,70,90,124,278,371,329,177,69,77,97,100,39,19]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>week_start<\/th>\n      <th>cases_wk<\/th>\n      <th>cases_prev_wk<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[1,2]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>次に、2 つの症例の列の差分となる新しい列を作成します。</p>
+<div class="sourceCode" id="cb392"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="va">counts</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>cases_prev_wk <span class="op">=</span> <span class="fu">lag</span><span class="op">(</span><span class="va">cases_wk</span>, n <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>         case_diff <span class="op">=</span> <span class="va">cases_wk</span> <span class="op">-</span> <span class="va">cases_prev_wk</span><span class="op">)</span></span></code></pre></div>
+<div id="htmlwidget-bec0c032fadaf9d38ce2" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-bec0c032fadaf9d38ce2">{"x":{"filter":"none","vertical":false,"data":[["2019-06-23","2019-06-30","2019-07-07","2019-07-14","2019-07-21","2019-07-28","2019-08-04","2019-08-11","2019-08-18","2019-08-25","2019-09-01","2019-09-08","2019-09-15","2019-09-22","2019-09-29","2019-10-06","2019-10-13","2019-10-20","2019-10-27","2019-11-03","2019-11-10","2019-11-17","2019-11-24","2019-12-01","2019-12-08","2019-12-15","2019-12-22","2019-12-29"],[0,25,59,90,65,79,41,47,31,32,28,28,76,41,70,90,124,278,371,329,177,69,77,97,100,39,19,0],[null,0,25,59,90,65,79,41,47,31,32,28,28,76,41,70,90,124,278,371,329,177,69,77,97,100,39,19],[null,25,34,31,-25,14,-38,6,-16,1,-4,0,48,-35,29,20,34,154,93,-42,-152,-108,8,20,3,-61,-20,-19]],"container":"<table class=\"white-space: nowrap\">\n  <thead>\n    <tr>\n      <th>week_start<\/th>\n      <th>cases_wk<\/th>\n      <th>cases_prev_wk<\/th>\n      <th>case_diff<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[{"className":"dt-right","targets":[1,2,3]}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p><code><a href="https://dplyr.tidyverse.org/reference/lead-lag.html">lead()</a></code> と <code>lag()</code> については、<a href="https://dplyr.tidyverse.org/reference/lead-lag.html">こちら</a> をご覧いただくか、コンソールで <code>?lag</code> と入力してください。</p>
+<!-- ======================================================= -->
+</div>
+<div id="参考資料-2" class="section level2" number="9.12">
+<h2>
+<span class="header-section-number">9.12</span> 参考資料<a class="anchor" aria-label="anchor" href="#%E5%8F%82%E8%80%83%E8%B3%87%E6%96%99-2"><i class="fas fa-link"></i></a>
+</h2>
+<p><strong>lubridate</strong> <a href="https://lubridate.tidyverse.org/">tidyverse page</a><br><strong>lubridate</strong> RStudio <a href="https://rawgit.com/rstudio/cheatsheets/master/lubridate.pdf">cheatsheet</a><br>
+R for Data Science page on <a href="https://r4ds.had.co.nz/dates-and-times.html">dates and times</a><br><a href="https://www.statmethods.net/input/dates.html">Online tutorial</a><br><a href="https://www.r-bloggers.com/2013/08/date-formats-in-r/">Date formats</a></p>
+
+</div>
+</div>
+  <div class="chapter-nav">
+<div class="prev"><a href="cleaning.html"><span class="header-section-number">8</span> データクリーニングと主要関数</a></div>
+<div class="next"><a href="characters-strings.html"><span class="header-section-number">10</span> 文字型・文字列型データ</a></div>
+</div></main><div class="col-md-3 col-lg-2 d-none d-md-block sidebar sidebar-chapter">
+    <nav id="toc" data-toggle="toc" aria-label="On this page"><h2>On this page</h2>
+      <ul class="nav navbar-nav">
+<li><a class="nav-link" href="#dates"><span class="header-section-number">9</span> 日付型データ</a></li>
+<li>
+<a class="nav-link" href="#%E6%BA%96%E5%82%99"><span class="header-section-number">9.1</span> 準備</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E8%AA%AD%E3%81%BF%E8%BE%BC%E3%81%BF-1">パッケージの読み込み</a></li>
+<li><a class="nav-link" href="#%E3%83%87%E3%83%BC%E3%82%BF%E3%81%AE%E3%82%A4%E3%83%B3%E3%83%9D%E3%83%BC%E3%83%88-2">データのインポート</a></li>
+</ul>
+</li>
+<li><a class="nav-link" href="#%E7%8F%BE%E5%9C%A8%E3%81%AE%E6%97%A5%E4%BB%98"><span class="header-section-number">9.2</span> 現在の日付</a></li>
+<li>
+<a class="nav-link" href="#%E6%97%A5%E4%BB%98%E5%9E%8Bdate%E3%81%AB%E5%A4%89%E6%8F%9B"><span class="header-section-number">9.3</span> 日付型（Date）に変換</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#base-r">base R</a></li>
+<li><a class="nav-link" href="#lubridate">lubridate</a></li>
+<li><a class="nav-link" href="#%E5%88%97%E3%81%AE%E7%B5%90%E5%90%88">列の結合</a></li>
+</ul>
+</li>
+<li><a class="nav-link" href="#excel-%E3%81%AB%E3%81%8A%E3%81%91%E3%82%8B%E6%97%A5%E4%BB%98"><span class="header-section-number">9.4</span> Excel における日付</a></li>
+<li><a class="nav-link" href="#%E5%8E%84%E4%BB%8B%E3%81%AA%E6%97%A5%E4%BB%98"><span class="header-section-number">9.5</span> 厄介な日付</a></li>
+<li>
+<a class="nav-link" href="#%E6%97%A5%E6%99%82%E5%9E%8Bdatetime%E3%81%AB%E5%A4%89%E6%8F%9B"><span class="header-section-number">9.6</span> 日時型（datetime）に変換</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#%E6%97%A5%E4%BB%98%E3%81%A8%E6%99%82%E5%88%BB%E3%81%AE%E5%A4%89%E6%8F%9B">日付と時刻の変換</a></li>
+<li><a class="nav-link" href="#%E6%99%82%E9%96%93%E3%81%AE%E3%81%BF%E3%81%AE%E5%A4%89%E6%8F%9B">時間のみの変換</a></li>
+<li><a class="nav-link" href="#%E6%99%82%E9%96%93%E3%81%AE%E6%8A%BD%E5%87%BA">時間の抽出</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#%E6%97%A5%E4%BB%98%E3%81%AE%E6%93%8D%E4%BD%9C"><span class="header-section-number">9.7</span> 日付の操作</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#%E6%97%A5%E4%BB%98%E6%88%90%E5%88%86%E3%81%AE%E6%8A%BD%E5%87%BA">日付成分の抽出</a></li>
+<li><a class="nav-link" href="#%E6%97%A5%E4%BB%98%E3%81%AE%E8%A8%88%E7%AE%97">日付の計算</a></li>
+<li><a class="nav-link" href="#%E6%97%A5%E4%BB%98%E3%81%AE%E9%96%93%E9%9A%94">日付の間隔</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#%E6%97%A5%E4%BB%98%E3%81%AE%E8%A1%A8%E7%A4%BA"><span class="header-section-number">9.8</span> 日付の表示</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#format">format()</a></li>
+<li><a class="nav-link" href="#%E5%B9%B4%E6%9C%88">年月</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#dates_epi_wks"><span class="header-section-number">9.9</span> 疫学週</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#lubridate-1">lubridate</a></li>
+<li><a class="nav-link" href="#%E9%80%B1%E3%81%94%E3%81%A8%E3%81%AE%E3%82%AB%E3%82%A6%E3%83%B3%E3%83%88">週ごとのカウント</a></li>
+<li><a class="nav-link" href="#%E7%96%AB%E5%AD%A6%E9%80%B1-%E3%81%AE%E4%BB%A3%E6%9B%BF%E6%A1%88">疫学週 の代替案</a></li>
+</ul>
+</li>
+<li><a class="nav-link" href="#%E6%97%A5%E4%BB%98%E3%82%BF%E3%82%A4%E3%83%A0%E3%82%BE%E3%83%BC%E3%83%B3%E3%81%AE%E5%A4%89%E6%8F%9B"><span class="header-section-number">9.10</span> 日付・タイムゾーンの変換</a></li>
+<li><a class="nav-link" href="#%E5%89%8D%E5%BE%8C%E3%81%AE%E5%80%A4%E3%81%AE%E8%A8%88%E7%AE%97"><span class="header-section-number">9.11</span> 前後の値の計算</a></li>
+<li><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B3%87%E6%96%99-2"><span class="header-section-number">9.12</span> 参考資料</a></li>
+</ul>
+
+      <div class="book-extra">
+        <ul class="list-unstyled">
+          
+        </ul>
+</div>
+    </nav>
+</div>
+
+</div>
+</div> <!-- .container -->
+
+<footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
+
+  <div class="col-12 col-md-6 mt-3">
+    <p>"<strong>疫学のための R ハンドブック</strong>" was written by the handbook team. It was last built on 2022-10-04.</p>
+  </div>
+
+  <div class="col-12 col-md-6 mt-3">
+    <p>This book was built by the <a class="text-light" href="https://bookdown.org">bookdown</a> R package.</p>
+  </div>
+
+</div></div>
+</footer><!-- dynamically load mathjax for compatibility with self-contained --><script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/latest.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script><script type="text/x-mathjax-config">const popovers = document.querySelectorAll('a.footnote-ref[data-toggle="popover"]');
+for (let popover of popovers) {
+  const div = document.createElement('div');
+  div.setAttribute('style', 'position: absolute; top: 0, left:0; width:0, height:0, overflow: hidden; visibility: hidden;');
+  div.innerHTML = popover.getAttribute('data-content');
+
+  var has_math = div.querySelector("span.math");
+  if (has_math) {
+    document.body.appendChild(div);
+    MathJax.Hub.Queue(["Typeset", MathJax.Hub, div]);
+    MathJax.Hub.Queue(function() {
+      popover.setAttribute('data-content', div.innerHTML);
+      document.body.removeChild(div);
+    })
+  }
+}
+</script>
+</body>
+</html>
