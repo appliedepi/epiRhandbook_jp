@@ -12,6 +12,7 @@ select <- dplyr::select
 summarise <- dplyr::summarise
 summary <- base::summary
 incidence <- incidence2::incidence
+clean_names <- janitor::clean_names
 
 #load core packages
 pacman::p_load(
@@ -34,5 +35,5 @@ linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.r
 options(scipen=1, digits=7)
 
 # print only text (not code)
-#library(knitr)
-#opts_chunk$set(list(echo = FALSE, eval = FALSE))
+# library(knitr)
+# opts_chunk$set(list(echo = FALSE, eval = FALSE))
