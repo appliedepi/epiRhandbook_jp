@@ -291,7 +291,8 @@ agg_weeks <- agg_weeks %>%
     n_reports       = dplyr::n(),                                 # 「施設 - 週」 からの報告回数（7件以上の可能性あり）
     malaria_tot     = sum(malaria_tot, na.rm = T),                # 「施設 - 週」 で報告されたマラリア患者数の合計
     n_days_reported = length(unique(data_date)),                  # データが報告された「施設 - 週」における日数
-    p_days_reported = round(100*(n_days_reported / n_days)))      # 「施設 - 週」 の7日間のうち、データが報告された日数の割合
+    p_days_reported = round(100*(n_days_reported / n_days))) %>%  # 「施設 - 週」 の7日間のうち、データが報告された日数の割合
+  ungroup(location_name, week)                                    # 次の処理で expand() が動作するように ungroup() を実行
 ```
 
 ```{r, echo=F}
@@ -305,13 +306,10 @@ DT::datatable(head(agg_weeks,30), rownames = FALSE, options = list(pageLength = 
 ```{r, message=F, warning=F}
 # 可能な全ての施設-週の組み合わせを作成
 expanded_weeks <- agg_weeks %>% 
-  mutate(week = as.factor(week)) %>%         # week 列をfactor型に変換
-  tidyr::expand(., week) %>%  # 可能な全ての施設-週の組み合わせを含むようにデータを拡張
-                                             # 注意: 「.」は%>%内のデータセットを意味します
-  mutate(week = as.Date(week))               # week 列をDate型に変換
+  tidyr::expand(location_name, week)  # 可能な施設-週の組み合わせすべてを含んだデータフレームを作成する
 ```
 
-`expanded_weeks` は以下のようなデータになっています。
+全 `r nrow(expanded_weeks)` 行の `expanded_weeks` は以下のようなデータになっています。
 
 ```{r, echo=F}
 DT::datatable(expanded_weeks, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap')
