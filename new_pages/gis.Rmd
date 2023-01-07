@@ -143,7 +143,7 @@ You can see an overview of all the R packages that deal with spatial data at the
 
 ### Sample case data {.unnumbered}
 
-For demonstration purposes, we will work with a random sample of 1000 cases from the simulated Ebola epidemic `linelist` dataframe (computationally, working with fewer cases is easier to display in this handbook). If you want to follow along, <a href='https://github.com/epirhandbook/Epi_R_handbook/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file).  
+For demonstration purposes, we will work with a random sample of 1000 cases from the simulated Ebola epidemic `linelist` dataframe (computationally, working with fewer cases is easier to display in this handbook). If you want to follow along, <a href='https://github.com/appliedepi/epirhandbook_eng/raw/master/data/case_linelists/linelist_cleaned.rds' class='download-button'>click to download the "clean" linelist</a> (as .rds file).  
 
 Since we are taking a random sample of the cases, your results may look slightly different from what is demonstrated here when you run the codes on your own.
 
@@ -209,7 +209,7 @@ Next we use `clean_names()` from the **janitor** package to standardize the colu
 ```{r}
 # ADM3 level clean
 sle_adm3 <- sle_adm3_raw %>%
-  clean_names() %>% # standardize column names
+  janitor::clean_names() %>% # standardize column names
   filter(admin2name %in% c("Western Area Urban", "Western Area Rural")) # filter to keep certain areas
 ```
 
@@ -231,7 +231,7 @@ These data can again be downloaded from HDX (link [here](https://data.humdata.or
 ```{r}
 # Population by ADM3
 sle_adm3_pop <- import(here("data", "gis", "population", "sle_admpop_adm3_2020.csv")) %>%
-  clean_names()
+  janitor::clean_names()
 ```
 
 Here is what the population file looks like. Scroll to the right to see how each jurisdiction has columns with `male` population, `female` populaton, `total` population, and the population break-down in columns by age group.  
@@ -254,7 +254,7 @@ We import the facility points shapefile with `read_sf()`, again clean the column
 ```{r}
 # OSM health facility shapefile
 sle_hf <- sf::read_sf(here("data", "gis", "shp", "sle_hf.shp")) %>% 
-  clean_names() %>%
+  janitor::clean_names() %>%
   filter(amenity %in% c("hospital", "clinic", "doctors"))
 ```
 
@@ -610,6 +610,7 @@ case_adm3_sf <- case_adm3 %>%                 # begin with cases & rate by admin
          admin2name, admin1name,
          cases, total, case_10kpop,
          geometry) %>%                        # keep geometry so polygons can be plotted
+  drop_na(objectid) %>%                       # drop any empty rows
   st_as_sf()                                  # convert to shapefile
 
 ```
@@ -726,7 +727,7 @@ Then, we create the object `map`, which we define using the function `openmap()`
 pacman::p_load(OpenStreetMap)
 
 # Fit basemap by range of lat/long coordinates. Choose tile type
-map <- openmap(
+map <- OpenStreetMap::openmap(
   upperLeft = c(max(linelist$lat, na.rm=T), max(linelist$lon, na.rm=T)),   # limits of basemap tile
   lowerRight = c(min(linelist$lat, na.rm=T), min(linelist$lon, na.rm=T)),
   zoom = NULL,
