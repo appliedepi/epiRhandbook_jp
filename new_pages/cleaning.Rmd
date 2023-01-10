@@ -1,7 +1,7 @@
 # データクリーニングと主要関数 {#cleaning}
 
 ```{r, out.height = "10%", fig.align = "center", echo=F}
-knitr::include_graphics(here::here("images", "cleaning.png"))
+knitr::include_graphics(here::here("images", "data_cleaning.png"))
 ```
 
 この章では、データクリーニング（データの前処理）の一般的な手順を示し、R を使ったデータ管理に不可欠な機能について説明します。
@@ -33,7 +33,7 @@ knitr::include_graphics(here::here("images", "cleaning.png"))
 | `case_when()`                                    | 複数の論理基準を使用し列値を再コーディング     | **dplyr**              |
 | `replace_na()`, `na_if()`, `coalesce()`          | 再コーティングのための専用関数                 | **tidyr**              |
 | `age_categories()`, `cut()`                      | 数値列からカテゴリグループを作成               | **epikit**, **base** R |
-| `clean_variable_spelling()`                      | データ辞書を使用した値の再定義・処理           | **linelist**           |
+| `match_df()`                                     | データ辞書を使用した値の再定義・処理           | **matchmaker**         |
 | `which()`                                        | 論理的基準を適用し、インデックスを抽出         | **base** R             |
 
 これらの関数を Stata や SAS のコマンドと比較したい場合は、[Excel・Stata・SASとの比較](#transition-to-R) の章を参照にしてください。
@@ -92,6 +92,7 @@ pacman::p_load(
   here,       # 相対ファイルパスを設定するためのパッケージ  
   janitor,    # データ前処理と表の作成のためのパッケージ  
   lubridate,  # 日付操作のためのパッケージ  
+  matchmaker, # dictionary-based cleaning
   epikit,     # age_categories()を含むパッケージ  
   tidyverse   # データ管理と可視化のためのパッケージ  
   )
@@ -181,10 +182,6 @@ names(linelist_raw)
 ```
 
 [**注釈**：スペースを含む列名を参照するには、その名前をバックティック（\`）で囲みます。例えば、linelist\$`` ` '\x60infection date\x60'` `` というように使用します。キーボードでは、バックティック（\`）とシングルクォーテーションマーク（'）が異なることに注意してください。]{style="color: black;"}
-
-### ラベル {.unnumbered}
-
-SAS などの他の統計ソフトでは、変数のラベルが付いていることに注意してください。
 
 ### 自動クリーニング {.unnumbered}
 
@@ -915,16 +912,36 @@ knitr::include_graphics(here::here("images", "ifelse bad.png"))
 ```{r}
 linelist <- linelist %>% 
   mutate(age_years = case_when(
-            age_unit == "years"  ~ age,       # 年齢が年単位の場合
-            age_unit == "months" ~ age/12,    # 年齢が月単位の場合
-            is.na(age_unit)      ~ age,       
-            # 年齢の単位が見つからない場合は、年を仮定
-            TRUE                 ~ NA_real_)) #その他の状況では、欠損値とする
+       age_unit == "years"  ~ age,       # 年齢が年単位の場合
+       age_unit == "months" ~ age/12,    # if age unit is months, divide age by 12
+       is.na(age_unit)      ~ age))      # 年齢の単位が見つからない場合は、年を仮定
+                                         # その他の状況では、欠損値 NA とする
 ```
 
-データの各行が評価されるとき、`case_when()` 内に書かれたコードの順に、上から下へと適用・評価されます。ある行で一番上の基準が `TRUE`と評価された場合、右側（RHS）の値が割り当てられ、残りの基準はその行では確認されません。したがって、最も明確な基準を最初に書き、最も一般的な基準を最後に書くのがよいでしょう。
 
-このようにして、最後の文では、左側（LHS）に `TRUE` を置くことで、前の基準のどれにも当てはまらない行を評価することができます。この文の右側（RHS）は、 "check me!" のような値や欠損値を割り当てることができます。
+As each row in the data is evaluated, the criteria are applied/evaluated in the order the `case_when()` statements are written - from top-to-bottom. If the top criteria evaluates to `TRUE` for a given row, the RHS value is assigned, and the remaining criteria are not even tested for that row in the data. Thus, it is best to write the most specific criteria first, and the most general last. A data row that does not meet any of the RHS criteria will be assigned `NA`.  
+
+Sometimes, you may with to write a final statement that assigns a value for all other scenarios not described by one of the previous lines. To do this, place `TRUE` on the left-side, which will capture any row that did not meet any of the previous criteria. The right-side of this statement could be assigned a value like "check me!" or missing.  
+
+Below is another example of `case_when()` used to create a new column with the patient classification, according to a case definition for confirmed and suspect cases:  
+
+```{r, eval=F}
+linelist <- linelist %>% 
+     mutate(case_status = case_when(
+
+          # if patient had lab test and it is positive,
+          # then they are marked as a confirmed case 
+          ct_blood < 20                   ~ "Confirmed",
+
+          # given that a patient does not have a positive lab result,
+          # if patient has a "source" (epidemiological link) AND has fever, 
+          # then they are marked as a suspect case
+          !is.na(source) & fever == "yes" ~ "Suspect",
+
+          # any other patient not addressed above 
+          # is marked for follow up
+          TRUE                            ~ "To investigate"))
+```
 
 [警告：右側の値はすべて同じデータ型でなければなりません。欠損値（NA）を割り当てるには、NA_character\_、`NA_real_`（数値や POSIX の場合）、`as.Date(NA)`など、データ型によって異なる NA を使用する必要があるかもしれません。詳しくは、日付型データの章の[日付の操作](https://epirhandbook.com/en/working-with-dates.html#working-with-dates-1) のセクションをご覧ください。]{style="color: red;"}
 
@@ -985,7 +1002,7 @@ linelist <- linelist %>%
 
 ### クリーニングディクショナリ（Cleaning dictionary） {.unnumbered}
 
-R の **linelist** パッケージに含まれる関数 `clean_variable_spelling()` を使用し、データフレームをクリーニングディクショナリを用いて前処理します。 **linelist** は [RECON](https://github.com/reconhub/linelist)（R Epidemics Consortium）によって開発されたパッケージです。
+R の **matchemaker** パッケージに含まれる関数 `match_df()` を使用し、データフレームをクリーニングディクショナリを用いて前処理します。
 
 1.  まず、クリーニングディクショナリを作成します。クリーニングディクショナリは、以下の 3 つの列で構成される必要があります。
 
@@ -997,7 +1014,7 @@ R の **linelist** パッケージに含まれる関数 `clean_variable_spelling
 
 注意：.globalのディクショナリ項目は、列固有のディクショナリ項目によって上書きされます。
 
-```{r, fig.align = "center", out.width = "100%", echo=F}
+```{r, fig.align = "center", out.width = "75%", echo=F}
 knitr::include_graphics(here::here("images", "cleaning_dict.png"))
 ```
 
@@ -1011,15 +1028,17 @@ cleaning_dict <- rio::import(here("data", "case_linelists", "cleaning_dict.csv")
 cleaning_dict <- import("cleaning_dict.csv")
 ```
 
-3)  <u>未加工の</u>ラインリストを `clean_variable_spelling()` に渡し、`wordlists =` 引数にインポートしたクリーニングディクショナリを指定します。`spelling_vars =` 引数は、ディクショナリのどの列を参照するかを指定するために使用できます（デフォルトでは3番目）。また、ディクショナリを文字列型の列と因子型の列すべてに適用するために、`spelling_vars =` 引数を `NULL` に設定することもできます。この関数の実行には時間がかかることに注意してください。
+3) Pipe the raw linelist to `match_df()`, specifying to `dictionary = ` the cleaning dictionary data frame. The `from = ` argument should be the name of the dictionary column which contains the "old" values, the `by = ` argument should be dictionary column which contains the corresponding "new" values, and the third column lists the column in which to make the change. Use `.global` in the `by = ` column to apply a change across all columns. A fourth dictionary column `order` can be used to specify factor order of new values.  
+
+Read more details in the [package documentation](https://cran.r-project.org/web/packages/matchmaker/vignettes/intro.html) by running `?match_df`. Note this function can take a long time to run for a large dataset. 
 
 ```{r}
-linelist <- linelist %>% 
-  linelist::clean_variable_spelling(
-    wordlists = cleaning_dict,
-    spelling_vars = "col",        
-     # 参照する列名を含む列を指定する
-     #（デフォルトではディクショナリの3番目の列になる）
+linelist <- linelist %>%     # provide or pipe your dataset
+     matchmaker::match_df(
+          dictionary = cleaning_dict,  # name of your dictionary
+          from = "from",               # column with values to be replaced (default is col 1)
+          to = "to",                   # column with final values (default is col 2)
+          by = "col"                   # column with column names (default is col 3)
   )
 ```
 
@@ -1439,8 +1458,7 @@ linelist <- linelist_raw %>%
     mutate(age_years = case_when(
           age_unit == "years" ~ age,
           age_unit == "months" ~ age/12,
-          is.na(age_unit) ~ age,
-          TRUE ~ NA_real_)) %>% 
+          is.na(age_unit) ~ age)) %>%
 
      # ここまでは、すでに説明したクリーニング手順
     ###################################################   
@@ -1717,8 +1735,7 @@ linelist <- linelist_raw %>%
     mutate(age_years = case_when(
           age_unit == "years" ~ age,
           age_unit == "months" ~ age/12,
-          is.na(age_unit) ~ age,
-          TRUE ~ NA_real_)) %>% 
+          is.na(age_unit) ~ age)) %>%
   
     mutate(
           # 年齢別カテゴリ：カスタマイズする
@@ -1824,7 +1841,7 @@ linelist <- linelist %>%
   select(case_id:gender, age, age_unit, age_years, age_cat, age_cat5, everything())
 ```
 
-```{r echo=F}
+```{r echo=F, eval=F}
 
 # クリーニングされたラインリストファイルを "data "フォルダにエクスポートする
 rio::export(linelist, here::here("data", "case_linelists", "linelist_cleaned.xlsx"))
