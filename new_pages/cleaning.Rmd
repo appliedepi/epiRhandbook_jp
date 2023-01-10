@@ -92,7 +92,7 @@ pacman::p_load(
   here,       # 相対ファイルパスを設定するためのパッケージ  
   janitor,    # データ前処理と表の作成のためのパッケージ  
   lubridate,  # 日付操作のためのパッケージ  
-  matchmaker, # dictionary-based cleaning
+  matchmaker, # データ辞書に基づいたデータ前処理のためのパッケージ
   epikit,     # age_categories()を含むパッケージ  
   tidyverse   # データ管理と可視化のためのパッケージ  
   )
@@ -913,33 +913,33 @@ knitr::include_graphics(here::here("images", "ifelse bad.png"))
 linelist <- linelist %>% 
   mutate(age_years = case_when(
        age_unit == "years"  ~ age,       # 年齢が年単位の場合
-       age_unit == "months" ~ age/12,    # if age unit is months, divide age by 12
+       age_unit == "months" ~ age/12,    # 年齢が月単位の場合、値を 12 で割る
        is.na(age_unit)      ~ age))      # 年齢の単位が見つからない場合は、年を仮定
                                          # その他の状況では、欠損値 NA とする
 ```
 
 
-As each row in the data is evaluated, the criteria are applied/evaluated in the order the `case_when()` statements are written - from top-to-bottom. If the top criteria evaluates to `TRUE` for a given row, the RHS value is assigned, and the remaining criteria are not even tested for that row in the data. Thus, it is best to write the most specific criteria first, and the most general last. A data row that does not meet any of the RHS criteria will be assigned `NA`.  
+データの各行が評価されるとき、`case_when()`  内に書かれたコードの順に、上から下へと適用・評価されます。ある行で論理式が `TRUE` と評価された場合、その行の評価式の右側（RHS）の値がオブジェクトに割り当てられ、残りの論理式は同じ行では評価されません。したがって、もっとも明確な範囲の論理式（狭い範囲の論理式）を最初に記述して、もっとも一般的な範囲の論理式（広い範囲の論理式）を最後に書くのがよいでしょう。いずれの論理式の右側 (RHS) にも当てはまらなかった場合は、オブジェクトに `NA` が割り当てられます。
 
-Sometimes, you may with to write a final statement that assigns a value for all other scenarios not described by one of the previous lines. To do this, place `TRUE` on the left-side, which will capture any row that did not meet any of the previous criteria. The right-side of this statement could be assigned a value like "check me!" or missing.  
+ときには、最後の行にそれ以前の行で記述しなかったすべての場合に値を割り当てる論理式を記述する必要があるかもしれません。この場合の論理式は、左辺 (LHS) に `TRUE` と記述すると実現できます。この記述方法は、この行より前の行の論理式のいずれも当てはまらない場合に対応します。左辺に `TRUE` と書いた論理式の右辺 (RHS) には、"check me!" や "missing" のような文字列型を指定できます。
 
-Below is another example of `case_when()` used to create a new column with the patient classification, according to a case definition for confirmed and suspect cases:  
+以下は、`case_when()` の別例です。確定症例と疑義症例を定義する論理式に従い、症例各行の分類を示す新しい列を作成する例です。
 
 ```{r, eval=F}
 linelist <- linelist %>% 
      mutate(case_status = case_when(
 
-          # if patient had lab test and it is positive,
-          # then they are marked as a confirmed case 
+          # 患者が血液検査を受けて、結果が陽性だった場合、
+          # 該当行の case_status 列に "Confirmed"（確定症例）を代入する
           ct_blood < 20                   ~ "Confirmed",
 
-          # given that a patient does not have a positive lab result,
-          # if patient has a "source" (epidemiological link) AND has fever, 
-          # then they are marked as a suspect case
+          # 患者の血液検査が陽性ではなく、かつ
+          # "source"（疫学的関係あり）であり、かつ、発熱している (ffever) 場合
+          # 該当行の case_status 列に "Suspect"（疑義症例）を代入する
           !is.na(source) & fever == "yes" ~ "Suspect",
 
-          # any other patient not addressed above 
-          # is marked for follow up
+          # 上記の論理式に該当しない患者の場合
+          # "To investigate"（要調査）を代入する
           TRUE                            ~ "To investigate"))
 ```
 
@@ -1028,17 +1028,17 @@ cleaning_dict <- rio::import(here("data", "case_linelists", "cleaning_dict.csv")
 cleaning_dict <- import("cleaning_dict.csv")
 ```
 
-3) Pipe the raw linelist to `match_df()`, specifying to `dictionary = ` the cleaning dictionary data frame. The `from = ` argument should be the name of the dictionary column which contains the "old" values, the `by = ` argument should be dictionary column which contains the corresponding "new" values, and the third column lists the column in which to make the change. Use `.global` in the `by = ` column to apply a change across all columns. A fourth dictionary column `order` can be used to specify factor order of new values.  
+3) <u>未加工の</u>ラインリストを `match_df()` に渡し、`distionary = ` 引数にインポートしたクリーニングディクショナリデータフレームを指定します。引数 `from = ` には「置き換え前」の値を含むディクショナリの列名を指定します。引数 `by = ` には対応する「置き換え後」の値を含む列名を指定し、データフレームの 3 列目には置き換えする列名を列挙します。すべての列に対して置き換えを実行する場合は、`by = ` 列に `.global` を指定します。4 列目 `order` は、変更後の値の並び順を指定します。
 
-Read more details in the [package documentation](https://cran.r-project.org/web/packages/matchmaker/vignettes/intro.html) by running `?match_df`. Note this function can take a long time to run for a large dataset. 
+詳しくは `?match_df` を実行すると表示される[パッケージドキュメント](https://cran.r-project.org/web/packages/matchmaker/vignettes/intro.html)を参照してください。この関数は、サイズの大きなデータセットでは、実行時間が長いことに注意してください。
 
 ```{r}
-linelist <- linelist %>%     # provide or pipe your dataset
+linelist <- linelist %>%     # match_df() にデータセットを渡す
      matchmaker::match_df(
-          dictionary = cleaning_dict,  # name of your dictionary
-          from = "from",               # column with values to be replaced (default is col 1)
-          to = "to",                   # column with final values (default is col 2)
-          by = "col"                   # column with column names (default is col 3)
+          dictionary = cleaning_dict,  # ディクショナリデータフレームのオブジェクト名を指定
+          from = "from",               # 置き換える値を格納した列を指定（デフォルトでは、1 列目）
+          to = "to",                   # 置き換え後の値を格納した列を指定（デフォルトでは 2 列目）
+          by = "col"                   # 置き換え対象の列名を列挙した列を指定（デフォルトでは 3 列目）
   )
 ```
 
