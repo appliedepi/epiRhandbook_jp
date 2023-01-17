@@ -10,19 +10,22 @@
 
 ```{r out.width=c('25%', '25%'), fig.show='hold', echo=F}
 
-## 開発版の epicontacts をインストール
+# 開発版の epicontacts をインストール
 if(
   !"epicontacts" %in% rownames(installed.packages()) |
   packageVersion("epicontacts") != "1.2.0"
 ) remotes::install_github("reconhub/epicontacts@timeline")
 
 ## パッケージをインストールし読み込む
-pacman::p_load(tidyverse, epicontacts, magrittr, here, webshot, visNetwork)
+pacman::p_load(tidyverse,
+               #epicontacts,
+               magrittr, here, webshot, visNetwork)
+
+library(epicontacts)
 
 ## linelist を読み込む
 linelist <- rio::import(here::here("data", "case_linelists", "linelist_cleaned.rds")) %>%
   filter(!duplicated(case_id))
-
 ## contacts を生成
 contacts <- linelist %>%
   transmute(
@@ -41,14 +44,15 @@ epic <- epicontacts::make_epicontacts(
 )
 
 ## オブジェクトのサブセット化
-epic %<>% subset(
-  node_attribute = list(date_onset = c(as.Date(c("2014-06-01", "2014-07-01"))))
-) %>%
-  thin("contacts")
+#epic %<>% subset(
+epic_small <- epic %>% 
+  subset(
+   node_attribute = list(date_onset = c(as.Date(c("2014-06-01", "2014-07-01"))))) %>%
+  epicontacts::thin("contacts")
 
-## x 軸に発症日を設定してプロット
+# x 軸に発症日を設定してプロット
 plot(
-  epic,
+  epic_small,
   x_axis = "date_onset",
   label = FALSE,
   node_color = "outcome",

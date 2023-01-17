@@ -524,21 +524,19 @@ joined_table <- left_join(ag, propcount, by = "age_group", suffix = c("", "_pop"
     "Source population (%)" = proportion_pop,
     "P-value" = p.value
   )
-
-DT::datatable(joined_table, rownames = FALSE, options = list(pageLength = 5, scrollX=T), class = 'white-space: nowrap' )
 ```
 
 
 
 ### 人口統計ピラミッド
 
-人口統計（または年齢-性別）ピラミッドは、母集団の分布を視覚化する簡単な方法です。また、調査の層別に年齢と性別の[記述統計表](#tables-descriptive)を作成することも検討する価値があります。ここでは、上記で作成した調査デザインオブジェクト（study design object）を使用して、加重比例が可能な **apyramid** パッケージを使用して説明します。[人口ピラミッドとリッカート尺度](#age-pyramid) の章で、人口統計ピラミッドを作成するための他の選択肢について詳しく説明しています。また、**sitrep** パッケージの `plot_age_pyramid()` ラッパー関数を使用して、人口比率のプロットを作成するためのコーディングを省きます。
+人口統計（または年齢-性別）ピラミッドは、母集団の分布を視覚化する簡単な方法です。また、調査の層別に年齢と性別の[記述統計表](#tables-descriptive)を作成することも検討する価値があります。ここでは、上記で作成した調査デザインオブジェクト（study design object）を使用して、加重比例が可能な **apyramid** パッケージを使用して説明します。[人口ピラミッドとリッカート尺度](#age-pyramid) の章で、人口統計ピラミッドを作成するための他の選択肢について詳しく説明しています。また、**apyramid** パッケージの `age_pyramid()` ラッパー関数を使用して、人口比率のプロットを作成するためのコーディングを省きます。
 
 前述の標本抽出のバイアスのセクションで例示した母集団と標本の人口比率の差の二項検定のように、このセクションでは、我々の標本抽出した集団が元の母集団と実質的に異なるかどうか、そして重み付けがこの差を修正するかどうかを可視化を扱います。コードを実行するために、**ggplot** パッケージの出力を並べて表示するために **patchwork** パッケージを使用します。詳細はハンドブックの [ggplot のヒント](#ggplot-tips) の章の「図の中に図を挿入する」のセクションを参照してください。このセクションでは、「母集団」、「重み付けされていない標本集団」、「重み付けされた標本集団」を視覚化します。また、調査の各層ごとに視覚化も可能です。ここでの例では、`stack_by = "health_district"` という引数を使用します（詳細は `?plot_age_pyramid` を参照してください）。
 
 <span style="color: black;">**<u>注釈：</u>**人口ピラミッドのプロットでは、x 軸と y 軸が反転します。</span>
 
-```{r weighted_age_pyramid, eval=F, warning = FALSE, message = FALSE, fig.show = "hold", fig.width = 15}
+```{r weighted_age_pyramid, warning = FALSE, message = FALSE, fig.show = "hold", fig.width = 15}
 
 ## x 軸の範囲とラベルを定義する ---------------------------------------------
 ## (これらの数値をグラフの値として更新する)
@@ -599,7 +597,7 @@ source_population <- population %>%
   
   
 ## 重み付けされていない標本集団をプロットする
-sample_population <- plot_age_pyramid(survey_data, 
+sample_population <- age_pyramid(survey_data, 
                  age_group = "age_group", 
                  split_by = "sex",
                  proportion = TRUE) + 
@@ -618,7 +616,7 @@ weighted_population <- survey_design %>%
   ## make sure the variables are factors
   mutate(age_group = factor(age_group), 
          sex = factor(sex)) %>%
-  plot_age_pyramid(
+  age_pyramid(
     age_group = "age_group",
     split_by = "sex", 
     proportion = TRUE) +
@@ -655,12 +653,7 @@ source_population + sample_population + weighted_population +
 ## 標本調査データの要約
 flow_table <- survey_data %>%
   count(startcause, endcause, sex) %>%  # 観察期間開始理由（startcause）、観察期間終了理由（endcause）、性別（sex）変数（列）のカウントを取得する
-  gather_set_data(x = c("startcause", "endcause")) %>%     # プロットのために startcause、endcause の形式を縦長から横長に変更する
-  mutate(x = fct_relevel(x, c("startcause", "endcause")),  # startcause を最初の水準（レベル）に設定する
-         x = fct_recode(x, 
-                        "Start \n cause" = "startcause",   # 改行コード(\n)を Start や End という文字の後に追加する
-                        "End \n cause"   = "endcause")
-        )
+  gather_set_data(x = c("startcause", "endcause"))     # プロットのために startcause、endcause の形式を縦長から横長に変更する
 
 
 ## データセットをプロットする
@@ -675,19 +668,10 @@ ggplot(flow_table, aes(x, id = id, split = y, value = n)) +
   geom_parallel_sets_axes(axis.width = 0.15, fill = "grey80", color = "grey80") +
   ## 文字の色や角度の変更する（調整が必要）
   geom_parallel_sets_labels(color = "black", angle = 0, size = 5) +
-  ## y 軸と x 軸の調整（おそらく垂直方向のスペースが必要）
-  scale_x_discrete(name = NULL, expand = c(0, 0.2)) + 
   ## 軸ラベルを削除する
-  theme(
-    title = element_text(size = 26),
-    text = element_text(size = 26),
-    axis.line = element_blank(),
-    axis.ticks = element_blank(),
-    axis.text.y = element_blank(),
-    panel.background = element_blank(),
-    legend.position = "bottom",                    # 凡例を図の下に移動
-    legend.title = element_blank(),                # タイトルを除去
-  )
+  theme_void()+
+  # 凡例を図の下に移動
+  theme(legend.position = "bottom")
 
 ```
 

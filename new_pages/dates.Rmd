@@ -27,7 +27,7 @@ R における日付データは独自のデータ型である 日付型（`Date
 
 pacman::p_load(
   lubridate,  # 日付の扱いと変換のための一般的なパッケージ  
-  linelist,   # 厄介な日付を「推測」する関数を持つ
+  parsedate,  # 厄介な日付を「推測」する関数を持つ
   aweek,      # 日付を週に、週を日付に変換する別のオプション
   zoo,        # 日付と時間に関する追加の関数
   tidyverse,  # データマネジメントと可視化  
@@ -85,7 +85,7 @@ R に伝えることで、このような値を日付型（Date）に変換し�
 `as.Date()` を使用する際には、以下が必要です。
 
 -   <u>文字型（character）としてインポートされた日付データの**現在の**形式を指定</u>*します*。または、日付を数値として扱う場合は、元の日付の形式を指定します（9.4 Excel における日付 のセクションを参照）。\
--   文字型（character）の日付データに使用する場合、すべての日付値は同じフォーマットでなければなりません（そうでない場合は、**linelist** パッケージの `guess_dates()` をお試しください）。
+-   文字型（character）の日付データに使用する場合、すべての日付値は同じフォーマットでなければなりません（そうでない場合は、**parsedate** パッケージの `parse_date()` をお試しください）。
 
 **まず**、**base** R の `class()` で列のデータ型を確認してください。データ型がわからない場合や表示されたデータ型が見慣れない場合（例えば "POSIXct"と表示される場合など）は、まず `as.character()` で文字型（character）に変換し、その後に日付型（Date）に変換するのが最も簡単です。
 
@@ -228,31 +228,21 @@ data_cleaned <- data %>%
 
 ## 厄介な日付
 
-**linelist** パッケージの `guess_dates()` は、複数の異なる形式の日付を含む「厄介な」日付列を読み込んで、その日付を標準的な形式に変換してくれます。`guess_dates()` については、[こちら](https://www.repidemicsconsortium.org/linelist/reference/guess_dates.html) でさらに詳しく学ぶことができます。R 4.0.2 の CRAN に `guess_dates()` がない場合は、 `pacman::p_load_gh("reconhub/linelist")` でインストールしてください。
+**parsedate** パッケージの `parse_date()` は、複数の異なる形式の日付を含む「厄介な」日付列を読み込んで、その日付を標準的な形式に変換してくれます。`parse_date()` については、[こちら](https://readr.tidyverse.org/reference/parse_datetime.html) でさらに詳しく学ぶことができます。
 
-例えば `guess_dates` は、文字の日付"03 Jan 2018", "07/03/1982", "08/20/85"のベクトルを、"2018-01-03", "1982-03-07", "1985-08-20"のように、一律で日付（Date）型に変換します。
+例えば `parse_date` は、文字の日付"03 Jan 2018", "07/03/1982", "08/20/85"のベクトルを、"2018-01-03", "1982-03-07", "1985-08-20"のように、一律で日付（Date）型に変換します。
 
 ```{r, }
-linelist::guess_dates(c("03 Jan 2018",
+parsedate::parse_date(c("03 January 2018",
                         "07/03/1982",
                         "08/20/85"))
 ```
 
-`guess_dates()` のオプションの引数には、以下があります。
-
--   `error_tolerance` - 日付が特定できない行が許容される割合 (デフォルトは 0.1、つまり10%)
--   `last_date` - 最も新しい有効な日付（デフォルトは現在の日付）\
--   `first_date` - 最も古い有効な日付（デフォルトは last_date の 50 年前）
 
 ```{r eval = FALSE}
-# dater_onset 列に guess_dates を使用した例
-linelist <- linelist %>%                 # linelist というデータセット
-  mutate(
-    date_onset = linelist::guess_dates(  # "linelist" パッケージの guess_dates()
-      date_onset,
-      error_tolerance = 0.1,
-      first_date = "2016-01-01"
-    )
+# dater_onset 列に parse_date() を使用した例
+linelist <- linelist %>%      
+    mutate(date_onset = parse_date(date_onset))
 ```
 
 <!-- ======================================================= -->
