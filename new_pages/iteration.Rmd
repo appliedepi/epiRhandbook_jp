@@ -27,6 +27,7 @@ pacman::p_load(
      rio,         # インポート・エクスポートのためのパッケージ
      here,        # ファイルの場所の指定のためのパッケージ
      purrr,       # 反復処理のためのパッケージ
+     grates,      # scales in ggplot
      tidyverse    # データ管理と視覚化のためのパッケージ
 )
 ```
@@ -247,17 +248,26 @@ for (hosp in hospital_names){
 # 'incidence' のオブジェクトを作成する
 outbreak <- incidence2::incidence(   
      x = linelist,                   # データフレームを指定する（linelist全体）
-     date_index = date_onset,        # 日付の列
+     date_index = "date_onset",      # 日付の列
      interval = "week",              # 週ごとに集計
-     groups = gender,                # 性別によるグルーピング
-     na_as_group = TRUE)             # 性別の欠損値は欠損のグループ（NA）として扱う
+     groups = gender)                # 性別によるグルーピング
+     #na_as_group = TRUE)             # 性別の欠損値は欠損のグループ（NA）として扱う
 
 # 流行曲線をプロットする
-plot(outbreak,                       # incidence のオブジェクト名
-     fill = "gender",                # 性別ごとにバーの色を変更
-     color = "black",                # バーの外枠の色を指定
-     title = "Outbreak of ALL cases" # タイトルを指定
-     )
+ggplot(outbreak, # nom de l'objet d'incidence
+        aes(x = date_index, #aesthetiques et axes
+            y = count, 
+            fill = gender), # Fill colour of bars by gender
+       color = "black"      # Contour colour of bars
+       ) +  
+     geom_col() + 
+     facet_wrap(~gender) +
+     theme_bw() + 
+     labs(title = "Outbreak of all cases", #titre
+          x = "Counts", 
+          y = "Date", 
+          fill = "Gender", 
+          color = "Gender")
 ```
 
 次に、各病院ごとに個別のプロットを作成するためには、この流行曲線のコードを <u>for ループ</u>の中に入れる必要があります。
@@ -282,20 +292,36 @@ for (hosp in hospital_names) {
      # 反復処理ごとにその時々の病院に対して incidence オブジェクトを作成する
      outbreak_hosp <- incidence2::incidence(
           x = linelist %>% filter(hospital == hosp),   # 現在反復処理が行われている病院名によって linelist をフィルタリングする
-          date_index = date_onset,
+          date_index = "date_onset",
           interval = "week", 
-          groups = gender,
-          na_as_group = TRUE
+          groups = "gender"#,
+          #na_as_group = TRUE
      )
      
      # プロットを作成し保存する
      # タイトルは現在反復処理が行われている病院名に合わせて自動生成される
-     plot_hosp <- plot(
-       outbreak_hosp,
-       fill = "gender",
-       color = "black",
-       title = stringr::str_glue("Epidemic of cases admitted to {hosp}")
-     )
+     plot_hosp <- ggplot(outbreak_hosp, # incidence object name
+                         aes(x = date_index, #axes
+                             y = count, 
+                             fill = gender), # fill colour by gender
+                         color = "black"      # colour of bar contour
+                         ) +  
+          geom_col() + 
+          facet_wrap(~gender) +
+          theme_bw() + 
+          labs(title = stringr::str_glue("Epidemic of cases admitted to {hosp}"), #title
+               x = "Counts", 
+               y = "Date", 
+               fill = "Gender", 
+               color = "Gender")
+     
+     # With older versions of R, remove the # before na_as_group and use this plot command instead.
+    # plot_hosp <- plot(
+#       outbreak_hosp,
+#       fill = "gender",
+#       color = "black",
+#       title = stringr::str_glue("Epidemic of cases admitted to {hosp}")
+#     )
      
      # 現在反復処理が行われている病院のプロットを表示する
      print(plot_hosp)

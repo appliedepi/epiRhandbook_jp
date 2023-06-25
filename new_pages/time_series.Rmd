@@ -506,8 +506,10 @@ fitted_model <- trending::fit(model, data.frame(counts))
 ## 信頼区間と予測区間を計算する
 observed <- predict(fitted_model, simulate_pi = FALSE)
 
+estimate_res <- data.frame(observed$result)
+
 ## 回帰式をプロットする
-ggplot(data = observed, aes(x = epiweek)) + 
+ggplot(data = estimate_res, aes(x = epiweek)) + 
   ## モデル推定値の線を追加する
   geom_line(aes(y = estimate),
             col = "Red") + 
@@ -534,24 +536,24 @@ ggplot(data = observed, aes(x = epiweek)) +
 ```{r, warning=F, message=F}
 
 ## 残差を計算する
-observed <- observed %>% 
-  mutate(resid = residuals(fitted_model$fitted_model, type = "response"))
+estimate_res <- estimate_res %>% 
+  mutate(resid = fitted_model$result[[1]]$residuals)
 
 ## 残差は時間経過で概ね一定か？（そうでない場合： アウトブレイク？治療の変化？）
-observed %>%
+estimate_res %>%
   ggplot(aes(x = epiweek, y = resid)) +
   geom_line() +
   geom_point() + 
   labs(x = "epiweek", y = "Residuals")
 
 ## 残差に自己相関があるか（誤差にパターンがあるか？）
-observed %>% 
+estimate_res %>% 
   as_tsibble(index = epiweek) %>% 
   ACF(resid, lag_max = 52) %>% 
   autoplot()
 
 ## 残差が正規分布しているか（過小または過大推定か？）
-observed %>%
+estimate_res %>%
   ggplot(aes(x = resid)) +
   geom_histogram(binwidth = 100) +
   geom_rug() +
@@ -559,7 +561,7 @@ observed %>%
   
 ## 観測されたカウントとその残差を比較する
   ## パターンがないべき 
-observed %>%
+estimate_res %>%
   ggplot(aes(x = estimate, y = resid)) +
   geom_point() +
   labs(x = "Fitted", y = "Residuals")
@@ -568,7 +570,7 @@ observed %>%
 ## H0 は残差がホワイトノイズ系列（つまりランダム）であるとする
 ## 独立性を検定する
 ## p 値が有意であればランダムではありません。
-Box.test(observed$resid, type = "Ljung-Box")
+Box.test(estimate_res$resid, type = "Ljung-Box")
 
 ```
 
@@ -700,18 +702,19 @@ observed <- predict(fitted_model, simulate_pi = FALSE)
 
 fitted_model %>% 
   ## 元の負の二項回帰を抽出する
-  get_model() %>% 
+  get_fitted_model() #%>% 
   ## 結果についての tidy なデータフレームを取得する
-  tidy(exponentiate = TRUE, 
-       conf.int = TRUE)
+  # tidy(exponentiate = TRUE, 
+  #      conf.int = TRUE)
 ```
 
 このモデルを可視化すると、観測された症例数のより正確な推定が可能かもしれないことがわかります。
 
 ```{r plot_nb_reg_bivar, warning=F, message=F}
+estimate_res <- data.frame(observed$result)
 
 ## 回帰式をプロットする
-ggplot(data = observed, aes(x = epiweek)) + 
+ggplot(data = estimate_res, aes(x = epiweek)) + 
   ## モデルの推定値の線を追加する
   geom_line(aes(y = estimate),
             col = "Red") + 
@@ -737,24 +740,24 @@ ggplot(data = observed, aes(x = epiweek)) +
 ```{r}
 
 ## 残差を計算する
-observed <- observed %>% 
+estimate_res <- estimate_res %>% 
   mutate(resid = case_int - estimate)
 
 ## 残差は時間経過で概ね一定か？（そうでない場合： アウトブレイク？治療の変化？）
-observed %>%
+estimate_res %>%
   ggplot(aes(x = epiweek, y = resid)) +
   geom_line() +
   geom_point() + 
   labs(x = "epiweek", y = "Residuals")
 
 ## 残差に自己相関があるか（誤差にパターンがあるか？）
-observed %>% 
+estimate_res %>% 
   as_tsibble(index = epiweek) %>% 
   ACF(resid, lag_max = 52) %>% 
   autoplot()
 
 ## 残差が正規分布しているか（過小または過大推定か？） 
-observed %>%
+estimate_res %>%
   ggplot(aes(x = resid)) +
   geom_histogram(binwidth = 100) +
   geom_rug() +
@@ -762,7 +765,7 @@ observed %>%
   
 ## 観測されたカウントとその残差を比較する
   ## パターンがないべき 
-observed %>%
+estimate_res %>%
   ggplot(aes(x = estimate, y = resid)) +
   geom_point() +
   labs(x = "Fitted", y = "Residuals")
@@ -771,7 +774,7 @@ observed %>%
 ## H0 は残差がホワイトノイズ系列（つまりランダム）であるとする
 ## 独立性を検定する
 ## p 値が有意であればランダムではない
-Box.test(observed$resid, type = "Ljung-Box")
+Box.test(estimate_res$resid, type = "Ljung-Box")
 
 ```
 
@@ -925,7 +928,7 @@ forecasts <- fitted_model %>%
   predict(data.frame(pred_data), simulate_pi = FALSE)
 
 ## ベースラインと予測されたデータセットを結合する
-observed <- bind_rows(observed, forecasts)
+observed <- bind_rows(observed$result, forecasts$result)
 
 ```
 
@@ -1104,7 +1107,8 @@ forecasts <- purrr::map(unique(case_roll$.id),
   
   # 予測したいデータを予想する
   forecasts <- fitted_model %>% 
-    predict(data.frame(pred_data), simulate_pi = FALSE) %>% 
+    predict(data.frame(pred_data), simulate_pi = FALSE)
+  forecasts <- data.frame(forecasts$result[[1]]) %>% 
     ## 週と予想する推定値のみを保持する
     select(epiweek, estimate)
     
@@ -1363,9 +1367,9 @@ fitted_model <- trending::fit(model, data.frame(counts))
 
 ## 信頼区間と予測区間を算出する
 observed <- predict(fitted_model, simulate_pi = FALSE)
+```
 
-
-
+```{r table_regression, eval = FALSE, echo = TRUE}
 ## 推定値と変化率をテーブル内に表示する
 fitted_model %>% 
   ## 元の負の二項回帰を抽出する
@@ -1398,8 +1402,10 @@ fitted_model %>%
 前述のように、回帰の出力を視覚化できます。
 
 ```{r plot_interrupted}
+estimate_res <- data.frame(observed$result)
 
-ggplot(observed, aes(x = epiweek)) + 
+
+ggplot(estimate_res, aes(x = epiweek)) + 
   ## 観測されたケースの数を追加する
   geom_line(aes(y = case_int, colour = "Observed")) + 
   ## モデル推定値についての線を追加する
